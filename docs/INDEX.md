@@ -12,6 +12,7 @@ for context, not for execution. When a doc is superseded, move it to `archive/`.
 
 ### Orientation & planning
 - [current/FORGE-STACK.md](current/FORGE-STACK.md) — the system map: how hub, engine, llama, and Godot connect
+- [current/NEXT-PHASE-VISUAL-EVAL-SURVEY.md](current/NEXT-PHASE-VISUAL-EVAL-SURVEY.md) — next direction (visual eval + reliability loop A/B) + chat & CLI survey prompts
 - [current/CONVENTIONS.md](current/CONVENTIONS.md) — the few coding rules (read at session start)
 - [current/GOD-FILE-SPLIT-PLAN.md](current/GOD-FILE-SPLIT-PLAN.md) — handoff plan to split the god files + quick-win bug fixes
 - [current/LAYER3-IMPLEMENTATION-PROMPT.md](current/LAYER3-IMPLEMENTATION-PROMPT.md) — the prompt handing the Layer-3 work to a code-writing CLI AI
