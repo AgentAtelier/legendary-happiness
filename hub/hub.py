@@ -735,7 +735,7 @@ async def chain_health():
     # Catches the "edited code but forgot to restart" class of bugs — a stale
     # DevForge caused a 0% scenario run before.
     for svc_id, svc_name, src_files in [
-        ("restart-devforge", "DevForge", ["devforge_review_package/devforge/compilation/pipeline/engine.py"]),
+        ("restart-devforge", "DevForge", ["engine/devforge/compilation/pipeline/engine.py"]),
         ("restart-godot-ai", "godot-ai", ["dev/ai/godot-ai/src/godot_ai/server.py"]),
     ]:
         try:

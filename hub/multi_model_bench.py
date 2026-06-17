@@ -113,7 +113,7 @@ def parse_pytest_summary(output: str) -> dict:
 async def run_unit_tests(outdir: Path) -> dict:
     log("\n═══ Phase 1: Unit Tests (shared across all models) ═══")
 
-    DEVFORGE_DIR = HOME / "dev" / "games" / "Forge" / "devforge_review_package"
+    DEVFORGE_DIR = HOME / "dev" / "games" / "Forge" / "engine"
     ODYSSEUS_DIR = HOME / "dev" / "ai" / "odysseus"
 
     suites = [

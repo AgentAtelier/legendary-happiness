@@ -1,6 +1,6 @@
 """Tests for ScatterPlanner — grammar loading, prompt building, response parsing.
 
-Run with:  cd devforge_review_package && .venv/bin/python -m pytest devforge/tests/test_scatter_planner.py -v
+Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_scatter_planner.py -v
 """
 
 from __future__ import annotations

@@ -5,7 +5,7 @@ given a seed.  Covers: seed determinism, district tessellation, road
 detection, building placement, district types, no district-plane overlap
 (regression guard for the bug just fixed), in-bounds positions.
 
-Run with:  cd devforge_review_package && .venv/bin/python -m pytest devforge/tests/test_voronoi.py -v
+Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_voronoi.py -v
 """
 
 from __future__ import annotations

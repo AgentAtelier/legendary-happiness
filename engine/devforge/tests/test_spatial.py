@@ -1,6 +1,6 @@
 """Tests for the spatial layout engine — anchors, lexicon, compiler.
 
-Run with:  cd devforge_review_package && .venv/bin/python -m pytest devforge/tests/test_spatial.py -v
+Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_spatial.py -v
 """
 
 from __future__ import annotations

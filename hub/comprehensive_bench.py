@@ -40,7 +40,7 @@ from typing import Any, Callable
 HOME = Path.home()
 HUB_DIR = Path(__file__).parent.resolve()
 FORGE_DIR = HOME / "dev" / "games" / "Forge"
-DEVFORGE_DIR = FORGE_DIR / "devforge_review_package"
+DEVFORGE_DIR = FORGE_DIR / "engine"
 ODYSSEUS_DIR = HOME / "dev" / "ai" / "odysseus"
 OUTPUT_BASE = HUB_DIR / "data" / "comprehensive-bench"
 

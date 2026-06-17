@@ -1,6 +1,6 @@
 """Tests for BSP Multi-Room Building Partition Engine.
 
-Run with:  cd devforge_review_package && .venv/bin/python -m pytest devforge/tests/test_bsp.py -v
+Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_bsp.py -v
 """
 
 from __future__ import annotations

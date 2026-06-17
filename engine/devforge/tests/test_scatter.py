@@ -1,6 +1,6 @@
 """Tests for Outdoor Scatter Engine — Poisson-disk + jittered grid.
 
-Run with:  cd devforge_review_package && .venv/bin/python -m pytest devforge/tests/test_scatter.py -v
+Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_scatter.py -v
 """
 
 from __future__ import annotations
