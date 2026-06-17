@@ -58,9 +58,7 @@ _GDSCRIPT_LINE_RE = re.compile(
     r"(?:\s*\([^)]*\))?\s+var\s+\w+|signal\s+\w+|#\s*path:\s*\S+)",
 )
 # Filename hint near a fragment: "Create Foo.gd" / "name it Foo.gd" / "in Bar.gd"
-_FILENAME_HINT_RE = re.compile(
-    r"\b([A-Za-z_][A-Za-z0-9_]*\.gd)\b"
-)
+_FILENAME_HINT_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*\.gd)\b")
 # Explicit "path: foo.gd" comment header inside a fragment
 _PATH_HEADER_RE = re.compile(r"^\s*#\s*path:\s*(\S+\.gd)\s*$", re.MULTILINE)
 # class_name X declaration
@@ -128,6 +126,7 @@ def extract(prompt: str) -> Tuple[List[ExtractedFile], str]:
 
 
 # ── Helpers ────────────────────────────────────────────────────
+
 
 def _looks_like_gdscript(text: str) -> bool:
     """Cheap heuristic: does the text contain at least one GDScript signature line?"""

@@ -38,9 +38,7 @@ VALIDATION_SCRIPT = "tools/validate_scripts.gd"
 
 # Pattern for structured error lines emitted by validate_scripts.gd
 # Matches: FILE:res://path/to/file.gd:<line> - <message>
-FILE_ERROR_PATTERN = re.compile(
-    r"FILE:(?P<file>.*?\.gd):(?P<line>-?\d+)\s*-\s*(?P<message>.+)"
-)
+FILE_ERROR_PATTERN = re.compile(r"FILE:(?P<file>.*?\.gd):(?P<line>-?\d+)\s*-\s*(?P<message>.+)")
 
 # Godot startup lines to filter from error detection.
 # NOTE: ^WARNING: and ^ERROR: patterns match engine-level log messages.
@@ -61,6 +59,7 @@ FILES_CHECKED_PATTERN = re.compile(r"FILES_CHECKED:(\d+)")
 
 
 # ── Data structures ──────────────────────────────────────────────
+
 
 @dataclass
 class ValidationError:
@@ -106,9 +105,7 @@ class ValidationReport:
             "files_checked": self.files_checked,
             "elapsed_ms": self.elapsed_ms,
             "errors": [
-                {"file": e.file, "line": e.line, "message": e.message,
-                 "type": e.error_type}
-                for e in self.errors
+                {"file": e.file, "line": e.line, "message": e.message, "type": e.error_type} for e in self.errors
             ],
             "repair_plans": len(self.repair_plans),
         }
@@ -130,6 +127,7 @@ class ValidationReport:
 
 
 # ── Headless Runner ──────────────────────────────────────────────
+
 
 class HeadlessRunner:
     """Runs Godot headless with the validation script.
@@ -177,7 +175,8 @@ class HeadlessRunner:
                 passed=False,
                 errors=[
                     ValidationError(
-                        file="", line=0,
+                        file="",
+                        line=0,
                         message=f"Validation script not found: {script_path}",
                         error_type="config_error",
                     )
@@ -196,7 +195,8 @@ class HeadlessRunner:
                 passed=False,
                 errors=[
                     ValidationError(
-                        file="", line=0,
+                        file="",
+                        line=0,
                         message=f"Godot process error: {exc}",
                         error_type="process_error",
                     )
@@ -236,12 +236,9 @@ class HeadlessRunner:
                     plan = self._repair_planner.plan_repair(pe, content, step=None)
                     if plan:
                         repair_plans.append(plan)
-                        logger.info("headless",
-                                     f"Repair plan for {pe.file}:{pe.line}",
-                                     steps=len(plan.steps))
+                        logger.info("headless", f"Repair plan for {pe.file}:{pe.line}", steps=len(plan.steps))
             except Exception as exc:
-                logger.warn("headless",
-                            f"Could not generate repair plan for {pe.file}: {exc}")
+                logger.warn("headless", f"Could not generate repair plan for {pe.file}: {exc}")
 
         elapsed = int((time.time() - start) * 1000)
 
@@ -275,8 +272,10 @@ class HeadlessRunner:
         cmd = [
             self._godot_bin,
             "--headless",
-            "--path", str(self._project_path),
-            "-s", str(script_path),
+            "--path",
+            str(self._project_path),
+            "-s",
+            str(script_path),
         ]
 
         logger.info("headless", f"Running: {' '.join(cmd)}")
@@ -296,20 +295,16 @@ class HeadlessRunner:
             if proc.returncode != 0:
                 logger.warn(
                     "headless",
-                    f"Godot exited with code {proc.returncode} "
-                    f"(exit codes are unreliable; checking output for errors)",
+                    f"Godot exited with code {proc.returncode} (exit codes are unreliable; checking output for errors)",
                 )
 
             return stdout, stderr
 
         except subprocess.TimeoutExpired:
-            raise RuntimeError(
-                f"Godot validation timed out ({self._timeout}s)"
-            )
+            raise RuntimeError(f"Godot validation timed out ({self._timeout}s)")
         except FileNotFoundError:
             raise RuntimeError(
-                f"Godot binary not found: {self._godot_bin}. "
-                f"Install Godot or set GODOT_BIN environment variable."
+                f"Godot binary not found: {self._godot_bin}. Install Godot or set GODOT_BIN environment variable."
             )
 
     # ------------------------------------------------------------------
@@ -351,24 +346,23 @@ class HeadlessRunner:
                     line_number = 0
                 message = match.group("message")
 
-                errors.append(ParsedError(
-                    file=file,
-                    line=line_number,
-                    message=message,
-                    error_type="parse_error",
-                ))
+                errors.append(
+                    ParsedError(
+                        file=file,
+                        line=line_number,
+                        message=message,
+                        error_type="parse_error",
+                    )
+                )
                 file_matched_lines.add(line)
 
         # Feed remaining (non-FILE-matched) lines through ErrorParser
         # to catch Godot-native error lines like "res://path:42 - Parse error: ..."
         remaining_lines = [
-            l for l in raw_stdout.splitlines()
-            if l not in file_matched_lines and not self._is_startup_noise(l)
+            l for l in raw_stdout.splitlines() if l not in file_matched_lines and not self._is_startup_noise(l)
         ]
         if remaining_lines:
-            std_errors = self._error_parser.parse_report_from_text(
-                "\n".join(remaining_lines)
-            )
+            std_errors = self._error_parser.parse_report_from_text("\n".join(remaining_lines))
             errors.extend(std_errors)
 
         return errors, files_checked

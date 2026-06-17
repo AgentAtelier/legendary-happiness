@@ -57,9 +57,10 @@ _MIN_SEGMENT: float = 0.01
 @dataclass
 class RoomRect:
     """A leaf room produced by the BSP partition."""
+
     origin: Tuple[float, float]  # (x, z) world offset of bottom-left corner
-    size: Tuple[float, float]    # (width, depth) in metres
-    pattern: str                 # pattern id e.g. "rectangle_room"
+    size: Tuple[float, float]  # (width, depth) in metres
+    pattern: str  # pattern id e.g. "rectangle_room"
     slot_fills: Dict[str, str] = field(default_factory=dict)
     room_name: str = ""
 
@@ -70,11 +71,12 @@ class _WallSpec:
 
     Generated at each SPLIT boundary during tree traversal.
     """
-    axis: str         # "x" or "z" — which axis the wall runs along
-    wall_x: float     # x coordinate of the split line
-    wall_z: float     # z coordinate of the split line
-    span_start: float # start of the wall span
-    span_end: float   # end of the wall span
+
+    axis: str  # "x" or "z" — which axis the wall runs along
+    wall_x: float  # x coordinate of the split line
+    wall_z: float  # z coordinate of the split line
+    span_start: float  # start of the wall span
+    span_end: float  # end of the wall span
 
 
 # ── Engine ────────────────────────────────────────────────────────
@@ -146,11 +148,13 @@ class BSPPartitioner:
         steps: List = []
 
         # 2. Building floor slab (one PlaneMesh spanning the footprint)
-        steps.extend(self._building_floor(
-            origin=(0.0, 0.0),
-            size=(fp_width, fp_depth),
-            root_path=root_path,
-        ))
+        steps.extend(
+            self._building_floor(
+                origin=(0.0, 0.0),
+                size=(fp_width, fp_depth),
+                root_path=root_path,
+            )
+        )
 
         # 3. Per-room compilation via the existing SpatialCompiler.
         #    Each room gets a Node3D container so furniture names don't
@@ -162,11 +166,13 @@ class BSPPartitioner:
             room_path = f"{root_path}/{leaf.room_name}"
 
             # Room container node
-            steps.append(CreateEntityStep(
-                name=leaf.room_name,
-                node_type="Node3D",
-                parent=root_path,
-            ))
+            steps.append(
+                CreateEntityStep(
+                    name=leaf.room_name,
+                    node_type="Node3D",
+                    parent=root_path,
+                )
+            )
 
             room_json = {
                 "pattern": leaf.pattern,
@@ -199,8 +205,7 @@ class BSPPartitioner:
 
         logger.info(
             "bsp",
-            f"Compiled {building_name}: {len(leaves)} rooms, "
-            f"{len(steps)} steps, {len(walls)} wall boundaries",
+            f"Compiled {building_name}: {len(leaves)} rooms, {len(steps)} steps, {len(walls)} wall boundaries",
         )
 
         return DevForgePlan(
@@ -246,13 +251,15 @@ class BSPPartitioner:
             room_name = node.get("room", "room")
             pattern = node.get("pattern", "rectangle_room")
             slot_fills = node.get("slot_fills", {})
-            return [RoomRect(
-                origin=(ox, oz),
-                size=(width, depth),
-                pattern=pattern,
-                slot_fills=slot_fills,
-                room_name=room_name,
-            )]
+            return [
+                RoomRect(
+                    origin=(ox, oz),
+                    size=(width, depth),
+                    pattern=pattern,
+                    slot_fills=slot_fills,
+                    room_name=room_name,
+                )
+            ]
 
         # ── SPLIT node — has 'axis', 'ratio', 'left', 'right' ──
         if "axis" not in node:
@@ -283,13 +290,15 @@ class BSPPartitioner:
             right_size = (right_w, depth)
 
             # Wall at the split line, spanning the full depth
-            walls.append(_WallSpec(
-                axis="z",           # wall runs along Z (vertical in top-down)
-                wall_x=ox + left_w,
-                wall_z=oz,
-                span_start=oz,
-                span_end=oz + depth,
-            ))
+            walls.append(
+                _WallSpec(
+                    axis="z",  # wall runs along Z (vertical in top-down)
+                    wall_x=ox + left_w,
+                    wall_z=oz,
+                    span_start=oz,
+                    span_end=oz + depth,
+                )
+            )
         else:
             # Split along Z axis — left gets ratio×depth
             left_d = depth * ratio
@@ -301,13 +310,15 @@ class BSPPartitioner:
             right_size = (width, right_d)
 
             # Wall at the split line, spanning the full width
-            walls.append(_WallSpec(
-                axis="x",           # wall runs along X
-                wall_x=ox,
-                wall_z=oz + left_d,
-                span_start=ox,
-                span_end=ox + width,
-            ))
+            walls.append(
+                _WallSpec(
+                    axis="x",  # wall runs along X
+                    wall_x=ox,
+                    wall_z=oz + left_d,
+                    span_start=ox,
+                    span_end=ox + width,
+                )
+            )
 
         left_node = node.get("left", {})
         right_node = node.get("right", {})
@@ -337,38 +348,46 @@ class BSPPartitioner:
         floor_name = "BuildingFloor"
         floor_path = f"{root_path}/{floor_name}"
 
-        steps.append(CreateEntityStep(
-            name=floor_name,
-            node_type="MeshInstance3D",
-            parent=root_path,
-        ))
+        steps.append(
+            CreateEntityStep(
+                name=floor_name,
+                node_type="MeshInstance3D",
+                parent=root_path,
+            )
+        )
 
         # Position at centre of footprint, y just below 0
-        steps.append(SetPropertyStep(
-            node=floor_path,
-            property="position",
-            value={
-                "x": ox + width / 2,
-                "y": -_FLOOR_THICKNESS / 2,
-                "z": oz + depth / 2,
-            },
-        ))
+        steps.append(
+            SetPropertyStep(
+                node=floor_path,
+                property="position",
+                value={
+                    "x": ox + width / 2,
+                    "y": -_FLOOR_THICKNESS / 2,
+                    "z": oz + depth / 2,
+                },
+            )
+        )
 
         # PlaneMesh with the footprint dimensions
-        steps.append(SetPropertyStep(
-            node=floor_path,
-            property="mesh",
-            value={
-                "__class__": "PlaneMesh",
-                "size": {"x": width, "y": depth},
-            },
-        ))
+        steps.append(
+            SetPropertyStep(
+                node=floor_path,
+                property="mesh",
+                value={
+                    "__class__": "PlaneMesh",
+                    "size": {"x": width, "y": depth},
+                },
+            )
+        )
 
-        steps.append(SetPropertyStep(
-            node=floor_path,
-            property="material_override",
-            value=_FLOOR_MATERIAL,
-        ))
+        steps.append(
+            SetPropertyStep(
+                node=floor_path,
+                property="material_override",
+                value=_FLOOR_MATERIAL,
+            )
+        )
 
         return steps
 
@@ -395,8 +414,8 @@ class BSPPartitioner:
 
             # Two wall segments: below the door, above the door
             segments = [
-                (w.span_start, span_centre - gap_half),   # segment 1
-                (span_centre + gap_half, w.span_end),     # segment 2
+                (w.span_start, span_centre - gap_half),  # segment 1
+                (span_centre + gap_half, w.span_end),  # segment 2
             ]
 
             for seg_start, seg_end in segments:
@@ -408,65 +427,77 @@ class BSPPartitioner:
                 wall_name = f"Wall_{wall_count}"
                 wall_path = f"{root_path}/{wall_name}"
 
-                steps.append(CreateEntityStep(
-                    name=wall_name,
-                    node_type="MeshInstance3D",
-                    parent=root_path,
-                ))
+                steps.append(
+                    CreateEntityStep(
+                        name=wall_name,
+                        node_type="MeshInstance3D",
+                        parent=root_path,
+                    )
+                )
 
                 seg_centre = (seg_start + seg_end) / 2
 
                 if w.axis == "x":
                     # Wall runs along X (horizontal in top-down view)
-                    steps.append(SetPropertyStep(
-                        node=wall_path,
-                        property="position",
-                        value={
-                            "x": seg_centre,
-                            "y": _WALL_HEIGHT / 2,
-                            "z": w.wall_z,
-                        },
-                    ))
-                    steps.append(SetPropertyStep(
-                        node=wall_path,
-                        property="mesh",
-                        value={
-                            "__class__": "BoxMesh",
-                            "size": {
-                                "x": seg_len,
-                                "y": _WALL_HEIGHT,
-                                "z": _WALL_THICKNESS,
+                    steps.append(
+                        SetPropertyStep(
+                            node=wall_path,
+                            property="position",
+                            value={
+                                "x": seg_centre,
+                                "y": _WALL_HEIGHT / 2,
+                                "z": w.wall_z,
                             },
-                        },
-                    ))
+                        )
+                    )
+                    steps.append(
+                        SetPropertyStep(
+                            node=wall_path,
+                            property="mesh",
+                            value={
+                                "__class__": "BoxMesh",
+                                "size": {
+                                    "x": seg_len,
+                                    "y": _WALL_HEIGHT,
+                                    "z": _WALL_THICKNESS,
+                                },
+                            },
+                        )
+                    )
                 else:
                     # Wall runs along Z
-                    steps.append(SetPropertyStep(
-                        node=wall_path,
-                        property="position",
-                        value={
-                            "x": w.wall_x,
-                            "y": _WALL_HEIGHT / 2,
-                            "z": seg_centre,
-                        },
-                    ))
-                    steps.append(SetPropertyStep(
-                        node=wall_path,
-                        property="mesh",
-                        value={
-                            "__class__": "BoxMesh",
-                            "size": {
-                                "x": _WALL_THICKNESS,
-                                "y": _WALL_HEIGHT,
-                                "z": seg_len,
+                    steps.append(
+                        SetPropertyStep(
+                            node=wall_path,
+                            property="position",
+                            value={
+                                "x": w.wall_x,
+                                "y": _WALL_HEIGHT / 2,
+                                "z": seg_centre,
                             },
-                        },
-                    ))
+                        )
+                    )
+                    steps.append(
+                        SetPropertyStep(
+                            node=wall_path,
+                            property="mesh",
+                            value={
+                                "__class__": "BoxMesh",
+                                "size": {
+                                    "x": _WALL_THICKNESS,
+                                    "y": _WALL_HEIGHT,
+                                    "z": seg_len,
+                                },
+                            },
+                        )
+                    )
 
-                steps.append(SetPropertyStep(
-                    node=wall_path,
-                    property="material_override",
-                    value=_WALL_MATERIAL,
-                ))
+                steps.append(
+                    SetPropertyStep(
+                        node=wall_path,
+                        property="material_override",
+                        value=_WALL_MATERIAL,
+                    )
+                )
 
         return steps

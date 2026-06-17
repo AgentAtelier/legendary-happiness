@@ -1,12 +1,1 @@
-RULES = {
-
-    "Enemy": [
-        "Health",
-        "Attack"
-    ],
-
-    "Movement": [
-        "Collision"
-    ]
-
-}
+RULES = {"Enemy": ["Health", "Attack"], "Movement": ["Collision"]}

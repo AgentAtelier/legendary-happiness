@@ -43,8 +43,8 @@ async def test_open_fresh_bounces_through_other_scene():
 
     assert [t for t, _ in calls] == ["scene_open", "scene_open"]
     bounce, target = calls[0][1], calls[1][1]
-    assert bounce == shootout.BASE_SCENE          # bounced away first
-    assert target == shootout.SHOOTOUT_SCENE      # then re-opened target
+    assert bounce == shootout.BASE_SCENE  # bounced away first
+    assert target == shootout.SHOOTOUT_SCENE  # then re-opened target
     assert bounce != target
 
 
@@ -54,6 +54,7 @@ async def test_with_heartbeat_ticks_and_returns_value():
     still return the coro's result — this is what keeps long phases (swap, 40s+
     planner) from looking frozen in the UI."""
     import asyncio
+
     beats = []
 
     async def slow():

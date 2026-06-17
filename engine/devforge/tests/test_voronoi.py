@@ -34,14 +34,17 @@ def _create_steps(plan):
 
 def _prop(plan, suffix, prop):
     for s in plan.steps:
-        if (getattr(s, "step_type", "") == "set_property"
-                and getattr(s, "property", "") == prop
-                and s.node.endswith(suffix)):
+        if (
+            getattr(s, "step_type", "") == "set_property"
+            and getattr(s, "property", "") == prop
+            and s.node.endswith(suffix)
+        ):
             return s.value
     return None
 
 
 # ── Imports ──────────────────────────────────────────────────────
+
 
 class TestVoronoiImports:
     def test_engine_importable(self):
@@ -56,6 +59,7 @@ class TestVoronoiImports:
 
 # ── TownSpec ─────────────────────────────────────────────────────
 
+
 class TestTownSpec:
     def test_defaults(self):
         spec = TownSpec()
@@ -67,11 +71,16 @@ class TestTownSpec:
     def test_override(self):
         spec = TownSpec(width=100, depth=60, districts=8, tile_size=2.0, seed=7)
         assert (spec.width, spec.depth, spec.districts, spec.tile_size, spec.seed) == (
-            100, 60, 8, 2.0, 7,
+            100,
+            60,
+            8,
+            2.0,
+            7,
         )
 
 
 # ── Seed determinism ─────────────────────────────────────────────
+
 
 class TestSeedDeterminism:
     def _names_positions(self, plan):
@@ -99,6 +108,7 @@ class TestSeedDeterminism:
 
 # ── District tessellation ────────────────────────────────────────
 
+
 class TestDistrictTessellation:
     def test_place_seeds_count(self, engine):
         """The number of seeds equals the number of districts requested."""
@@ -122,6 +132,7 @@ class TestDistrictTessellation:
 
 # ── Compile town ─────────────────────────────────────────────────
 
+
 class TestCompileTown:
     def test_produces_nodes(self, engine):
         plan = engine.compile_town(
@@ -143,10 +154,7 @@ class TestCompileTown:
         plan = engine.compile_town(
             {"region": {"width": 40, "depth": 40}, "districts": 5, "seed": 2},
         )
-        district_planes = [
-            s.name for s in _create_steps(plan)
-            if s.name.startswith("district_")
-        ]
+        district_planes = [s.name for s in _create_steps(plan) if s.name.startswith("district_")]
         assert len(district_planes) == 0
 
     def test_roads_exist(self, engine):
@@ -154,9 +162,7 @@ class TestCompileTown:
         plan = engine.compile_town(
             {"region": {"width": 60, "depth": 60}, "districts": 4, "seed": 3},
         )
-        road_nodes = [
-            s.name for s in _create_steps(plan) if s.name.startswith("road_")
-        ]
+        road_nodes = [s.name for s in _create_steps(plan) if s.name.startswith("road_")]
         assert len(road_nodes) > 0
 
     def test_buildings_exist(self, engine):
@@ -164,9 +170,7 @@ class TestCompileTown:
         plan = engine.compile_town(
             {"region": {"width": 60, "depth": 60}, "districts": 4, "seed": 7},
         )
-        bld_nodes = [
-            s.name for s in _create_steps(plan) if s.name.startswith("bld_")
-        ]
+        bld_nodes = [s.name for s in _create_steps(plan) if s.name.startswith("bld_")]
         assert len(bld_nodes) > 0
 
     def test_positions_within_bounds(self, engine):
@@ -205,10 +209,10 @@ class TestCompileTown:
 
 # ── District type catalogue ──────────────────────────────────────
 
+
 class TestDistrictTypes:
     def test_all_seven_types_present(self):
-        expected = {"residential", "commercial", "industrial", "park", "civic",
-                     "waterfront", "default"}
+        expected = {"residential", "commercial", "industrial", "park", "civic", "waterfront", "default"}
         assert set(_DISTRICT_COLORS.keys()) == expected
 
     def test_each_type_has_dims_and_counts(self):
@@ -218,5 +222,4 @@ class TestDistrictTypes:
 
 
 def expected_district_types():
-    return {"residential", "commercial", "industrial", "park", "civic",
-            "waterfront", "default"}
+    return {"residential", "commercial", "industrial", "park", "civic", "waterfront", "default"}

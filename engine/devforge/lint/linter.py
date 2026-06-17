@@ -141,7 +141,9 @@ def lint_file(
     if other_files:
         id_field = schema.id_field if schema else "id"
         cross_findings = check_duplicate_ids_cross_file(
-            entries, other_files, id_field=id_field,
+            entries,
+            other_files,
+            id_field=id_field,
             target_schema_name=schema_name,
         )
         if cross_findings:

@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 CATALOG: list[type[Test]] = []
 
 DEFAULT_SUITES: dict[str, list[str]] = {
-    "everything": [],           # populated from all registered tests
-    "fast": [],                 # tests that run in < 5s (declared in test metadata)
+    "everything": [],  # populated from all registered tests
+    "fast": [],  # tests that run in < 5s (declared in test metadata)
     "llama-layer": [],
     "devforge-layer": [],
     "godotai-layer": [],

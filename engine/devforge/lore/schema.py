@@ -22,8 +22,8 @@ VALID_FIELD_TYPES = {"str", "int", "float", "bool", "list", "dict"}
 class SchemaField:
     """A single field in a content schema."""
 
-    name: str           # "damage", "npc_id"
-    type: str           # "int" | "str" | "float" | "bool" | "list" | "dict" | "ref:<schema>"
+    name: str  # "damage", "npc_id"
+    type: str  # "int" | "str" | "float" | "bool" | "list" | "dict" | "ref:<schema>"
     required: bool = False
     default: Any = None
     description: str = ""
@@ -47,7 +47,7 @@ class SchemaField:
 class SchemaDefinition:
     """A complete content-type schema."""
 
-    name: str           # "item", "npc", "quest"
+    name: str  # "item", "npc", "quest"
     version: int = 1
     description: str = ""
     fields: list[SchemaField] = field(default_factory=list)
@@ -75,6 +75,7 @@ class SchemaDefinition:
 
 # ── Validation ──────────────────────────────────────────────────
 
+
 def validate_data_entry(
     entry: dict,
     schema: SchemaDefinition,
@@ -89,9 +90,7 @@ def validate_data_entry(
     # Check required fields
     for name in schema.required_fields():
         if name not in entry or entry[name] is None:
-            errors.append(
-                f"Missing required field '{name}' in {schema.name} entry"
-            )
+            errors.append(f"Missing required field '{name}' in {schema.name} entry")
 
     # Check field types and values
     for key, value in entry.items():
@@ -136,16 +135,16 @@ def validate_referential_integrity(
 
             if ref_value not in data_index[target_schema]:
                 errors.append(
-                    f"{schema.name} '{entry_id}': "
-                    f"{ref_field.name}='{ref_value}' does not exist in "
-                    f"{target_schema}"
+                    f"{schema.name} '{entry_id}': {ref_field.name}='{ref_value}' does not exist in {target_schema}"
                 )
 
     return errors
 
 
 def _validate_field_value(
-    key: str, value: Any, field: SchemaField,
+    key: str,
+    value: Any,
+    field: SchemaField,
 ) -> list[str]:
     """Validate that *value* matches *field.type*."""
     errors: list[str] = []
@@ -181,6 +180,7 @@ def _validate_field_value(
 
 # ── Serialization ───────────────────────────────────────────────
 
+
 def schema_from_dict(data: dict) -> SchemaDefinition:
     """Parse a schema dict (from JSON) into a SchemaDefinition."""
     fields = []
@@ -189,14 +189,16 @@ def schema_from_dict(data: dict) -> SchemaDefinition:
         foreign_ref = None
         if ftype.startswith("ref:"):
             foreign_ref = f.get("foreign_ref", ftype[4:])
-        fields.append(SchemaField(
-            name=f["name"],
-            type=ftype,
-            required=f.get("required", False),
-            default=f.get("default"),
-            description=f.get("description", ""),
-            foreign_ref=foreign_ref,
-        ))
+        fields.append(
+            SchemaField(
+                name=f["name"],
+                type=ftype,
+                required=f.get("required", False),
+                default=f.get("default"),
+                description=f.get("description", ""),
+                foreign_ref=foreign_ref,
+            )
+        )
     return SchemaDefinition(
         name=data["name"],
         version=data.get("version", 1),

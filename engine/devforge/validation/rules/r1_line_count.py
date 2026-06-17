@@ -22,8 +22,7 @@ class R1LineCount(Rule):
             return [
                 Violation(
                     rule_id="R1_LINE_COUNT",
-                    message=f"File exceeds {MAX_LINES} lines "
-                    f"(has {line_count}) — split into smaller files",
+                    message=f"File exceeds {MAX_LINES} lines (has {line_count}) — split into smaller files",
                     severity="critical",
                     action="block_merge",
                 )

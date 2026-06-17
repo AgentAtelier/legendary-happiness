@@ -40,9 +40,7 @@ class BuildingPlanner:
         # building_json → BSPPartitioner.compile_building()
     """
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "building_planner.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "building_planner.gbnf"
 
     def __init__(
         self,
@@ -212,9 +210,7 @@ Output JSON now (no prose, no markdown fences, just the JSON object):
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         return {
             "building": data.get("building", "Building"),
@@ -229,5 +225,4 @@ Output JSON now (no prose, no markdown fences, just the JSON object):
             return 0
         if "room" in node:
             return 1
-        return BuildingPlanner._count_rooms(node.get("left", {})) + \
-               BuildingPlanner._count_rooms(node.get("right", {}))
+        return BuildingPlanner._count_rooms(node.get("left", {})) + BuildingPlanner._count_rooms(node.get("right", {}))

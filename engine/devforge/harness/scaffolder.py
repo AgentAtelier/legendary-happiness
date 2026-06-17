@@ -68,28 +68,28 @@ class TestScaffolder:
             params: list[dict] = []
             if raw_params:
                 for pm in self._PARAM_RE.finditer(raw_params):
-                    params.append({
-                        "name": pm.group(1),
-                        "type": pm.group(2) or "Variant",
-                        "default": pm.group(3),
-                    })
+                    params.append(
+                        {
+                            "name": pm.group(1),
+                            "type": pm.group(2) or "Variant",
+                            "default": pm.group(3),
+                        }
+                    )
 
-            funcs.append(ParsedFunc(
-                name=name,
-                params=params,
-                return_type=return_type,
-                is_static=False,
-            ))
+            funcs.append(
+                ParsedFunc(
+                    name=name,
+                    params=params,
+                    return_type=return_type,
+                    is_static=False,
+                )
+            )
 
         return funcs
 
     def public_functions(self, funcs: list[ParsedFunc]) -> list[ParsedFunc]:
         """Filter to public, testable functions only."""
-        return [
-            f for f in funcs
-            if not f.name.startswith("_")
-            and f.name not in ("static",)
-        ]
+        return [f for f in funcs if not f.name.startswith("_") and f.name not in ("static",)]
 
     def generate(
         self,
@@ -120,7 +120,9 @@ class TestScaffolder:
         }
 
     def _build_test_source(
-        self, funcs: list[ParsedFunc], script_path: str,
+        self,
+        funcs: list[ParsedFunc],
+        script_path: str,
     ) -> str:
         """Build a GDScript test file from parsed functions."""
         lines: list[str] = [

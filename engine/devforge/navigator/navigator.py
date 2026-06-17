@@ -15,8 +15,8 @@ from devforge.infrastructure.logger import logger
 class SearchHit:
     """A single search result from a project-wide query."""
 
-    source: str          # "filesystem" | "symbol" | "filename"
-    path: str            # res:// path to the file
+    source: str  # "filesystem" | "symbol" | "filename"
+    path: str  # res:// path to the file
     line: int = 0
     snippet: str = ""
     symbol_type: str = ""  # "function", "signal", "class", "export_var"
@@ -73,12 +73,14 @@ class ProjectNavigator:
                 if isinstance(f, str):
                     hits.append(SearchHit(source="filesystem", path=f))
                 elif isinstance(f, dict):
-                    hits.append(SearchHit(
-                        source="filesystem",
-                        path=f.get("path", ""),
-                        line=f.get("line", 0),
-                        snippet=f.get("snippet", ""),
-                    ))
+                    hits.append(
+                        SearchHit(
+                            source="filesystem",
+                            path=f.get("path", ""),
+                            line=f.get("line", 0),
+                            snippet=f.get("snippet", ""),
+                        )
+                    )
 
         # 2. Symbol search across files found in step 1
         seen_paths: set[str] = set()
@@ -95,23 +97,35 @@ class ProjectNavigator:
             for func in sym_result.get("functions", []):
                 name = func.get("name", "") if isinstance(func, dict) else str(func)
                 if qlower in name.lower():
-                    hits.append(SearchHit(
-                        source="symbol", path=path,
-                        snippet=name, symbol_type="function",
-                    ))
+                    hits.append(
+                        SearchHit(
+                            source="symbol",
+                            path=path,
+                            snippet=name,
+                            symbol_type="function",
+                        )
+                    )
             for sig in sym_result.get("signals", []):
                 name = sig.get("name", "") if isinstance(sig, dict) else str(sig)
                 if qlower in name.lower():
-                    hits.append(SearchHit(
-                        source="symbol", path=path,
-                        snippet=name, symbol_type="signal",
-                    ))
+                    hits.append(
+                        SearchHit(
+                            source="symbol",
+                            path=path,
+                            snippet=name,
+                            symbol_type="signal",
+                        )
+                    )
             class_name = sym_result.get("class_name", "")
             if qlower in class_name.lower():
-                hits.append(SearchHit(
-                    source="symbol", path=path,
-                    snippet=class_name, symbol_type="class",
-                ))
+                hits.append(
+                    SearchHit(
+                        source="symbol",
+                        path=path,
+                        snippet=class_name,
+                        symbol_type="class",
+                    )
+                )
 
         # Deduplicate by (source, path, snippet)
         deduped: list[SearchHit] = []

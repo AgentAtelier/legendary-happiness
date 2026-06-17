@@ -134,10 +134,10 @@ class SystemGraph:
 
     def to_dict(self) -> dict:
         return {
-            "nodes": {nid: {"name": n.name, "type": n.type.value, "metadata": n.metadata}
-                      for nid, n in self.nodes.items()},
-            "edges": [{"source": e.source, "target": e.target, "type": e.type.value}
-                      for e in self.edges],
+            "nodes": {
+                nid: {"name": n.name, "type": n.type.value, "metadata": n.metadata} for nid, n in self.nodes.items()
+            },
+            "edges": [{"source": e.source, "target": e.target, "type": e.type.value} for e in self.edges],
         }
 
     @classmethod

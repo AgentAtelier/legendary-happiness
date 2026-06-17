@@ -122,8 +122,8 @@ def test_connections_across_files() -> None:
     from devforge.mapper.signal_mapper import SignalMapper
 
     mapper = SignalMapper()
-    mapper.scan_file("res://a.gd", 'extends Node\n\nfunc _ready():\n\tplayer.died.connect(_on_died)\n')
-    mapper.scan_file("res://b.gd", 'extends Node\n\nfunc _ready():\n\tboss.died.connect(_on_boss_died)\n')
+    mapper.scan_file("res://a.gd", "extends Node\n\nfunc _ready():\n\tplayer.died.connect(_on_died)\n")
+    mapper.scan_file("res://b.gd", "extends Node\n\nfunc _ready():\n\tboss.died.connect(_on_boss_died)\n")
 
     graph = mapper.build_graph()
     died_conns = [c for c in graph.connections if c.signal_name == "died"]
@@ -214,7 +214,9 @@ def test_who_listens_to() -> None:
     from devforge.mapper.signal_mapper import SignalMapper
 
     mapper = SignalMapper()
-    mapper.scan_file("res://a.gd", "extends Node\n\nfunc _ready():\n\tplayer.died.connect(_a)\n\tboss.died.connect(_b)\n")
+    mapper.scan_file(
+        "res://a.gd", "extends Node\n\nfunc _ready():\n\tplayer.died.connect(_a)\n\tboss.died.connect(_b)\n"
+    )
 
     graph = mapper.build_graph()
     listeners = graph.who_listens_to("died")
@@ -238,13 +240,16 @@ def test_who_emits() -> None:
 
 # ── Orphaned signals ─────────────────────────────────────────────
 
+
 def test_orphaned_signals_detected() -> None:
     """Signals with no emitters and no listeners are flagged as orphaned."""
     from devforge.mapper.signal_mapper import SignalMapper
 
     mapper = SignalMapper()
     # Declare 3 signals, but only connect and emit "died"
-    mapper.scan_file("res://orphan.gd", """extends Node
+    mapper.scan_file(
+        "res://orphan.gd",
+        """extends Node
 
 signal died
 signal unused_signal
@@ -255,7 +260,8 @@ func _ready():
 
 func _process():
     died.emit()
-""")
+""",
+    )
 
     graph = mapper.build_graph()
     orphaned = graph.orphaned_signals()
@@ -266,6 +272,7 @@ func _process():
 
 
 # ── map_signals orchestrator ─────────────────────────────────────
+
 
 def test_map_signals_multiple_files() -> None:
     """map_signals orchestrates scanning multiple files."""

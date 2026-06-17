@@ -16,6 +16,7 @@ use the official client, which keeps the stream open and routes replies.
 
 Run:  .venv/bin/python tests/pipeline_test.py [--skip-apply]
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,30 +46,29 @@ def _content_text(result) -> str:
 async def run_phases(session: ClientSession, skip_apply: bool) -> int:
     print("[2/5] initialize...")
     info = await session.initialize()
-    print(f"  server = {info.serverInfo.name} {info.serverInfo.version} "
-          f"(protocol {info.protocolVersion})")
+    print(f"  server = {info.serverInfo.name} {info.serverInfo.version} (protocol {info.protocolVersion})")
 
     print("[3/5] tools/list...")
     listed = await session.list_tools()
     names = sorted(t.name for t in listed.tools)
     has_apply = "apply_spec" in names
     has_scene = "get_scene" in names
-    print(f"  {len(names)} tools exposed. "
-          f"apply_spec={'yes' if has_apply else 'NO'}  "
-          f"get_scene={'yes' if has_scene else 'NO'}")
+    print(
+        f"  {len(names)} tools exposed. "
+        f"apply_spec={'yes' if has_apply else 'NO'}  "
+        f"get_scene={'yes' if has_scene else 'NO'}"
+    )
     if not (has_apply and has_scene):
         print(f"  FAIL: required tools missing. saw: {names[:20]}")
         return 3
 
     print("[4/5] get_scene (read-only probe)...")
     t0 = time.time()
-    scene = await session.call_tool(
-        "get_scene", {}, read_timeout_seconds=timedelta(seconds=30))
+    scene = await session.call_tool("get_scene", {}, read_timeout_seconds=timedelta(seconds=30))
     print(f"  elapsed: {time.time() - t0:.2f}s  isError={scene.isError}")
     print(f"  -> {_content_text(scene)[:500]}")
     if scene.isError:
-        print("  FAIL: get_scene errored — is the Godot editor + godot-ai "
-              "plugin running? (stack godot)")
+        print("  FAIL: get_scene errored — is the Godot editor + godot-ai plugin running? (stack godot)")
         return 4
     print()
 
@@ -79,8 +79,8 @@ async def run_phases(session: ClientSession, skip_apply: bool) -> int:
     print(f"[5/5] apply_spec({PROMPT!r})...")
     t0 = time.time()
     applied = await session.call_tool(
-        "apply_spec", {"prompt": PROMPT},
-        read_timeout_seconds=timedelta(seconds=APPLY_TIMEOUT_S))
+        "apply_spec", {"prompt": PROMPT}, read_timeout_seconds=timedelta(seconds=APPLY_TIMEOUT_S)
+    )
     text = _content_text(applied)
     print(f"  elapsed: {time.time() - t0:.2f}s  isError={applied.isError}")
     try:
@@ -99,8 +99,7 @@ async def main() -> int:
 
     print("[1/5] opening SSE session...")
     try:
-        async with sse_client(f"{DEVFORGE}/sse", timeout=10,
-                              sse_read_timeout=APPLY_TIMEOUT_S + 60) as (read, write):
+        async with sse_client(f"{DEVFORGE}/sse", timeout=10, sse_read_timeout=APPLY_TIMEOUT_S + 60) as (read, write):
             print("  connected")
             async with ClientSession(read, write) as session:
                 return await run_phases(session, skip_apply)

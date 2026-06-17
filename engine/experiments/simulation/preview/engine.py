@@ -62,9 +62,7 @@ class PreviewEngine:
 
     def remove_system(self, system_type: Type[SimulationSystem]) -> None:
 
-        self.systems = [
-            s for s in self.systems if not isinstance(s, system_type)
-        ]
+        self.systems = [s for s in self.systems if not isinstance(s, system_type)]
 
     # ----------------------------------------------------------------
 
@@ -113,9 +111,7 @@ class PreviewEngine:
     def set_parameter(self, system_name: str, param: str, value) -> None:
 
         for system in self.systems:
-
             if system.name == system_name:
-
                 system.set_parameters({param: value})
 
                 self.parameters.update_parameter(system_name, param, value)

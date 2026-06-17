@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Parsing ─────────────────────────────────────────────────────
 
+
 def test_parse_simple_function() -> None:
     """Parses a function with typed params and return type."""
     from devforge.harness.scaffolder import TestScaffolder
@@ -70,6 +71,7 @@ def test_parse_untyped_params() -> None:
 
 # ── Public function filtering ───────────────────────────────────
 
+
 def test_public_functions_filter() -> None:
     """Filters out private and built-in methods."""
     from devforge.harness.scaffolder import TestScaffolder
@@ -91,6 +93,7 @@ func heal(amount: int): pass
 
 
 # ── Scaffold generation ─────────────────────────────────────────
+
 
 def test_generate_scaffold() -> None:
     """Generates a WAT test file from function signatures."""
@@ -139,6 +142,7 @@ def test_scaffold_placeholder_values() -> None:
 
 
 # ── scaffold_file convenience ───────────────────────────────────
+
 
 def test_scaffold_file() -> None:
     """scaffold_file() is a convenience wrapper."""

@@ -5,7 +5,6 @@ from devforge.simulation.preview.design_suggestion import DesignSuggestionEngine
 
 
 class SuggestionFeature(PreviewFeature):
-
     name = "suggestions"
 
     def __init__(self):

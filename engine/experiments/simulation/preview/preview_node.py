@@ -1,5 +1,4 @@
 class PreviewNode:
-
     def __init__(self, name: str, node_type: str):
         self.name = name
         self.node_type = node_type

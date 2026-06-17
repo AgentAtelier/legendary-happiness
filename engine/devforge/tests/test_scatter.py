@@ -19,6 +19,7 @@ from devforge.spatial.lexicon import AssetLexicon
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def engine():
     """ScatterEngine without lexicon — uses hardcoded fallback defaults."""
@@ -33,13 +34,15 @@ def engine_with_lexicon():
 
 # ── Poisson-disk basic tests ────────────────────────────────────
 
+
 class TestPoissonDiskBasic:
     """Core Poisson-disk sampler: count, spacing, boundaries."""
 
     def test_places_requested_count(self, engine):
         """Sampler places exactly the requested count in a spacious region."""
         points = engine._poisson_disk_sample(
-            width=50.0, depth=50.0,
+            width=50.0,
+            depth=50.0,
             min_radius=2.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -51,7 +54,8 @@ class TestPoissonDiskBasic:
     def test_all_points_within_bounds(self, engine):
         """Every point lies within [item_radius, width-item_radius] × [...depth...]."""
         points = engine._poisson_disk_sample(
-            width=20.0, depth=15.0,
+            width=20.0,
+            depth=15.0,
             min_radius=1.5,
             keep_out_zones=[],
             item_radius=0.3,
@@ -65,7 +69,8 @@ class TestPoissonDiskBasic:
     def test_minimum_spacing(self, engine):
         """No two points are closer than min_radius to each other."""
         points = engine._poisson_disk_sample(
-            width=30.0, depth=30.0,
+            width=30.0,
+            depth=30.0,
             min_radius=3.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -84,7 +89,8 @@ class TestPoissonDiskBasic:
     def test_zero_count_returns_empty(self, engine):
         """count=0 → empty list."""
         points = engine._poisson_disk_sample(
-            width=10.0, depth=10.0,
+            width=10.0,
+            depth=10.0,
             min_radius=1.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -96,7 +102,8 @@ class TestPoissonDiskBasic:
     def test_negative_count_returns_empty(self, engine):
         """count<0 → empty list."""
         points = engine._poisson_disk_sample(
-            width=10.0, depth=10.0,
+            width=10.0,
+            depth=10.0,
             min_radius=1.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -108,7 +115,8 @@ class TestPoissonDiskBasic:
     def test_single_point(self, engine):
         """A single point is always placed (if region ≥ item_radius×2)."""
         points = engine._poisson_disk_sample(
-            width=5.0, depth=5.0,
+            width=5.0,
+            depth=5.0,
             min_radius=1.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -120,13 +128,15 @@ class TestPoissonDiskBasic:
 
 # ── Seed determinism ─────────────────────────────────────────────
 
+
 class TestSeedDeterminism:
     """Same seed, same region → same positions every time."""
 
     def test_same_seed_same_positions(self, engine):
         """Identical inputs with same seed produce identical outputs."""
         kwargs = dict(
-            width=20.0, depth=20.0,
+            width=20.0,
+            depth=20.0,
             min_radius=2.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -140,7 +150,8 @@ class TestSeedDeterminism:
     def test_different_seed_different_positions(self, engine):
         """Different seeds produce different first positions."""
         kwargs_base = dict(
-            width=20.0, depth=20.0,
+            width=20.0,
+            depth=20.0,
             min_radius=2.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -149,9 +160,7 @@ class TestSeedDeterminism:
         a = engine._poisson_disk_sample(**kwargs_base, seed=100)
         b = engine._poisson_disk_sample(**kwargs_base, seed=200)
         # The first seed point should be different (different RNG stream)
-        assert a[0] != b[0], (
-            f"Different seeds produced same first point: {a[0]}"
-        )
+        assert a[0] != b[0], f"Different seeds produced same first point: {a[0]}"
 
     def test_compile_garden_seed_determinism(self, engine_with_lexicon):
         """Two compile_garden calls with same seed produce identical ops."""
@@ -170,19 +179,20 @@ class TestSeedDeterminism:
         assert names1 == names2
 
         pos1 = [
-            s.value for s in plan1.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "position"
+            s.value
+            for s in plan1.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "position"
         ]
         pos2 = [
-            s.value for s in plan2.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "position"
+            s.value
+            for s in plan2.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "position"
         ]
         assert pos1 == pos2
 
 
 # ── Keep-out zone tests ──────────────────────────────────────────
+
 
 class TestKeepOutZones:
     """Items must not fall inside keep-out zones (with item_radius margin)."""
@@ -191,7 +201,8 @@ class TestKeepOutZones:
         """A keep-out zone covering most of the region leaves only the edges."""
         ko = KeepOutZone(x=4.0, z=4.0, w=12.0, d=12.0)
         points = engine._poisson_disk_sample(
-            width=20.0, depth=20.0,
+            width=20.0,
+            depth=20.0,
             min_radius=1.0,
             keep_out_zones=[ko],
             item_radius=0.3,
@@ -211,7 +222,8 @@ class TestKeepOutZones:
         """When keep-out zones cover the entire region → 0 points."""
         ko = KeepOutZone(x=0.0, z=0.0, w=10.0, d=10.0)
         points = engine._poisson_disk_sample(
-            width=10.0, depth=10.0,
+            width=10.0,
+            depth=10.0,
             min_radius=1.0,
             keep_out_zones=[ko],
             item_radius=0.5,
@@ -229,7 +241,8 @@ class TestKeepOutZones:
             KeepOutZone(x=4.0, z=7.0, w=3.0, d=3.0),
         ]
         points = engine._poisson_disk_sample(
-            width=12.0, depth=12.0,
+            width=12.0,
+            depth=12.0,
             min_radius=0.5,
             keep_out_zones=zones,
             item_radius=0.2,
@@ -243,13 +256,11 @@ class TestKeepOutZones:
                 ok_w = ko.w + 0.4
                 ok_d = ko.d + 0.4
                 in_ko = ok_x <= x <= ok_x + ok_w and ok_z <= z <= ok_z + ok_d
-                assert not in_ko, (
-                    f"Point ({x:.1f}, {z:.1f}) in keep-out at "
-                    f"({ko.x},{ko.z} {ko.w}×{ko.d})"
-                )
+                assert not in_ko, f"Point ({x:.1f}, {z:.1f}) in keep-out at ({ko.x},{ko.z} {ko.w}×{ko.d})"
 
 
 # ── Jittered grid fallback tests ─────────────────────────────────
+
 
 class TestJitteredGrid:
     """Jittered-grid sampler: direct call and fallback behaviour."""
@@ -257,8 +268,10 @@ class TestJitteredGrid:
     def test_direct_jittered_grid(self, engine):
         """Direct jittered-grid call produces the right count."""
         import random
+
         points = engine._jittered_grid_sample(
-            width=20.0, depth=20.0,
+            width=20.0,
+            depth=20.0,
             spacing=2.0,
             keep_out_zones=[],
             item_radius=0.5,
@@ -270,8 +283,10 @@ class TestJitteredGrid:
     def test_jittered_grid_points_in_bounds(self, engine):
         """All jittered grid points are within the region (minus margin)."""
         import random
+
         points = engine._jittered_grid_sample(
-            width=15.0, depth=10.0,
+            width=15.0,
+            depth=10.0,
             spacing=1.5,
             keep_out_zones=[],
             item_radius=0.4,
@@ -285,9 +300,11 @@ class TestJitteredGrid:
     def test_jittered_grid_respects_keep_out(self, engine):
         """Jittered grid skips cells inside keep-out zones."""
         import random
+
         ko = KeepOutZone(x=5.0, z=5.0, w=5.0, d=5.0)
         points = engine._jittered_grid_sample(
-            width=15.0, depth=15.0,
+            width=15.0,
+            depth=15.0,
             spacing=1.0,
             keep_out_zones=[ko],
             item_radius=0.3,
@@ -305,9 +322,11 @@ class TestJitteredGrid:
     def test_jittered_grid_existing_positions_filter(self, engine):
         """Points too close to existing positions are rejected."""
         import random
+
         existing = {(5.0, 5.0), (5.5, 5.5)}
         points = engine._jittered_grid_sample(
-            width=10.0, depth=10.0,
+            width=10.0,
+            depth=10.0,
             spacing=2.0,
             keep_out_zones=[],
             item_radius=0.3,
@@ -318,20 +337,19 @@ class TestJitteredGrid:
         for x, z in points:
             for ex, ez in existing:
                 dist = math.sqrt((x - ex) ** 2 + (z - ez) ** 2)
-                assert dist >= 1.99, (
-                    f"Point ({x:.1f},{z:.1f}) too close to existing ({ex},{ez}): {dist:.2f}"
-                )
+                assert dist >= 1.99, f"Point ({x:.1f},{z:.1f}) too close to existing ({ex},{ez}): {dist:.2f}"
 
     def test_poisson_falls_back_to_jittered(self, engine):
         """When Poisson-disk can't fill a dense request, jittered grid fills in."""
         # Tight region + high count + very low attempts → Poisson retires fast
         points = engine._poisson_disk_sample(
-            width=10.0, depth=10.0,
+            width=10.0,
+            depth=10.0,
             min_radius=0.6,
             keep_out_zones=[],
             item_radius=0.1,
             count=30,
-            max_attempts=2,    # extremely low → Poisson retires immediately
+            max_attempts=2,  # extremely low → Poisson retires immediately
             seed=42,
         )
         # With max_attempts=2, Poisson will place only a handful of points
@@ -340,6 +358,7 @@ class TestJitteredGrid:
 
 
 # ── compile_garden tests ─────────────────────────────────────────
+
 
 class TestCompileGarden:
     """Full pipeline: garden JSON → DevForgePlan with proper steps."""
@@ -355,21 +374,15 @@ class TestCompileGarden:
         }
         plan = engine_with_lexicon.compile_garden(garden, root_path="/root/Main", seed=42)
 
-        create_steps = [
-            s for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_steps = [s for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         assert len(create_steps) == 5
         for i, cs in enumerate(create_steps):
-            assert cs.name == f"tree_{i+1}"
+            assert cs.name == f"tree_{i + 1}"
             assert cs.node_type == "MeshInstance3D"
             assert cs.parent == "/root/Main"
 
         # Each tree gets position, mesh, material = 3 set_property steps
-        set_steps = [
-            s for s in plan.steps
-            if getattr(s, "step_type", "") == "set_property"
-        ]
+        set_steps = [s for s in plan.steps if getattr(s, "step_type", "") == "set_property"]
         assert len(set_steps) == 15  # 5 * 3
 
     def test_compile_multi_species(self, engine_with_lexicon):
@@ -384,10 +397,7 @@ class TestCompileGarden:
         }
         plan = engine_with_lexicon.compile_garden(garden, root_path="/root/Main", seed=42)
 
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         tree_count = sum(1 for n in create_names if n.startswith("tree_"))
         bush_count = sum(1 for n in create_names if n.startswith("bush_"))
         assert tree_count == 3
@@ -415,9 +425,9 @@ class TestCompileGarden:
         plan = engine_with_lexicon.compile_garden(garden, root_path="/root/Main", seed=42)
 
         mesh_steps = [
-            s for s in plan.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "mesh"
+            s
+            for s in plan.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "mesh"
         ]
         assert len(mesh_steps) == 1
         m = mesh_steps[0].value
@@ -438,9 +448,9 @@ class TestCompileGarden:
         plan = engine_with_lexicon.compile_garden(garden, root_path="/root/Main", seed=42)
 
         mesh_steps = [
-            s for s in plan.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "mesh"
+            s
+            for s in plan.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "mesh"
         ]
         assert len(mesh_steps) == 1
         m = mesh_steps[0].value
@@ -462,7 +472,8 @@ class TestCompileGarden:
 
         # Extract all tree positions
         positions = [
-            s.value for s in plan.steps
+            s.value
+            for s in plan.steps
             if getattr(s, "step_type", "") == "set_property"
             and getattr(s, "property", "") == "position"
             and "tree_" in getattr(s, "node", "")
@@ -477,9 +488,7 @@ class TestCompileGarden:
             ok_w = 12.0 + 1.2
             ok_d = 12.0 + 1.2
             in_ko = ok_x <= x <= ok_x + ok_w and ok_z <= z <= ok_z + ok_d
-            assert not in_ko, (
-                f"Tree at ({x:.1f}, {z:.1f}) in keep-out zone"
-            )
+            assert not in_ko, f"Tree at ({x:.1f}, {z:.1f}) in keep-out zone"
 
     def test_compile_goal_string(self, engine):
         """Plan goal includes the total item count."""
@@ -505,9 +514,9 @@ class TestCompileGarden:
         plan = engine_with_lexicon.compile_garden(garden, root_path="/root/Main", seed=42)
 
         pos_steps = [
-            s for s in plan.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "position"
+            s
+            for s in plan.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "position"
         ]
         p = pos_steps[0].value
         # tree height = 3.0, so y = 1.5
@@ -525,9 +534,9 @@ class TestCompileGarden:
         plan = engine_with_lexicon.compile_garden(garden, root_path="/root/Main", seed=42)
 
         mat_steps = [
-            s for s in plan.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "material_override"
+            s
+            for s in plan.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "material_override"
         ]
         assert len(mat_steps) == 1
         c = mat_steps[0].value["albedo_color"]
@@ -538,6 +547,7 @@ class TestCompileGarden:
 
 
 # ── Dataclass tests ──────────────────────────────────────────────
+
 
 class TestDataClasses:
     """Dataclass constructors and defaults."""
@@ -569,11 +579,16 @@ class TestDataClasses:
 
 # ── Import tests ─────────────────────────────────────────────────
 
+
 class TestScatterImports:
     def test_imports_available(self):
         from devforge.spatial.scatter import (
-            ScatterEngine, KeepOutZone, SpeciesSpec, ScatterRegion,
+            ScatterEngine,
+            KeepOutZone,
+            SpeciesSpec,
+            ScatterRegion,
         )
+
         assert ScatterEngine is not None
         assert KeepOutZone is not None
         assert SpeciesSpec is not None

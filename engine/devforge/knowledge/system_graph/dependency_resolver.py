@@ -26,7 +26,6 @@ class DependencyResolver:
         deps: Set[str] = set()
 
         for edge in self.graph.edges:
-
             if edge.source == node_id and edge.type == EdgeType.DEPENDS_ON:
                 deps.add(edge.target)
 
@@ -41,7 +40,6 @@ class DependencyResolver:
         dependents: Set[str] = set()
 
         for edge in self.graph.edges:
-
             if edge.target == node_id and edge.type == EdgeType.DEPENDS_ON:
                 dependents.add(edge.source)
 
@@ -57,11 +55,9 @@ class DependencyResolver:
         stack = [node_id]
 
         while stack:
-
             current = stack.pop()
 
             for dep in self.dependencies(current):
-
                 if dep not in visited:
                     visited.add(dep)
                     stack.append(dep)
@@ -77,15 +73,11 @@ class DependencyResolver:
         missing = []
 
         for edge in self.graph.edges:
-
             if edge.type != EdgeType.DEPENDS_ON:
                 continue
 
             if edge.target not in self.graph.nodes:
-
-                missing.append(
-                    f"Missing dependency: {edge.source} -> {edge.target}"
-                )
+                missing.append(f"Missing dependency: {edge.source} -> {edge.target}")
 
         return missing
 

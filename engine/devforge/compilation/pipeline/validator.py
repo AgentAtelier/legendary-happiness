@@ -25,7 +25,6 @@ SUPPORTED_OPERATIONS = {
 
 
 class OperationValidator:
-
     def validate(
         self,
         operations: List[Dict],
@@ -174,8 +173,7 @@ class OperationValidator:
             allowed = _property_matches_type(prop, node_type)
             if allowed is False:
                 return False, (
-                    f"property '{prop}' not valid for {node_type} "
-                    f"'{node}' — dropped to protect atomic batch"
+                    f"property '{prop}' not valid for {node_type} '{node}' — dropped to protect atomic batch"
                 )
 
         return True, ""

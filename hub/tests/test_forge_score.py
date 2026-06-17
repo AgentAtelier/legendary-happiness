@@ -22,9 +22,13 @@ class TestVerdict:
 
 class TestNormalize:
     def test_health_passfail_maps_to_100_0(self):
-        raw = {"checks": [{"name": "llama", "passed": True},
-                          {"name": "devforge", "passed": True},
-                          {"name": "godot", "passed": False}]}
+        raw = {
+            "checks": [
+                {"name": "llama", "passed": True},
+                {"name": "devforge", "passed": True},
+                {"name": "godot", "passed": False},
+            ]
+        }
         card = normalize_result("health", raw, target="current", label="quick")
         assert card["suite"] == "health"
         assert card["score"] == 67  # 2/3 rounded
@@ -32,8 +36,7 @@ class TestNormalize:
         assert {"label": "godot", "value": "fail", "good": False} in card["metrics"]
 
     def test_gauntlet_coverage_is_score(self):
-        raw = {"coverage": 83, "metrics": {"depth": "1/4", "scripts": 4,
-                                           "nodes": "3/25", "overlap": 0}}
+        raw = {"coverage": 83, "metrics": {"depth": "1/4", "scripts": 4, "nodes": "3/25", "overlap": 0}}
         card = normalize_result("gauntlet", raw, target="current", label="G7")
         assert card["score"] == 83
         assert card["verdict"] == "partial"

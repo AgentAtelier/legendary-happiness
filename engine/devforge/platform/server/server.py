@@ -105,9 +105,9 @@ def startup():
         grammar_path = config.llama_grammar_path
         if not grammar_path:
             from devforge.knowledge.scene.godot_node_types import generate_grammar_file
+
             grammar_path = generate_grammar_file()
-            logger.info("server", "Generated grammar from GODOT_NODE_TYPES",
-                         path=grammar_path)
+            logger.info("server", "Generated grammar from GODOT_NODE_TYPES", path=grammar_path)
 
         _llm.configure_llama(
             endpoint=config.llama_endpoint,
@@ -127,12 +127,13 @@ def startup():
                 "Grammar self-test FAILED — llama.cpp is not enforcing "
                 "the GBNF grammar.  Generation will proceed without "
                 "grammar constraints; post-generation validation will "
-                "catch malformed output."
+                "catch malformed output.",
             )
 
         # Clamp the context budget to the server's real window
         # (must happen before the engine builds its ContextAssembler)
         from devforge.infrastructure.llm.llama_client import apply_server_limits
+
         apply_server_limits(config, _llm._backend)
 
     _executor = _create_executor(config)
@@ -142,7 +143,10 @@ def startup():
     if not grammar_path:
         # Try default location
         import os
-        default_grammar = os.path.join(os.path.dirname(__file__), "..", "..", "reasoning", "prompts", "arch_planner.gbnf")
+
+        default_grammar = os.path.join(
+            os.path.dirname(__file__), "..", "..", "reasoning", "prompts", "arch_planner.gbnf"
+        )
         if os.path.exists(default_grammar):
             grammar_path = default_grammar
 
@@ -167,15 +171,19 @@ def startup():
         set_config(config)
         logger.info("server", "Property serialization hints stored in config", hints=hints)
 
-    logger.info("server", "DevForge server started",
-                 backend=_llm.backend_name,
-                 executor=_executor.backend_name,
-                 game_root=str(config.game_root))
+    logger.info(
+        "server",
+        "DevForge server started",
+        backend=_llm.backend_name,
+        executor=_executor.backend_name,
+        game_root=str(config.game_root),
+    )
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Request/Response Models
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 
 class GenerateRequest(BaseModel):
     prompt: str
@@ -195,6 +203,7 @@ class ReportRequest(BaseModel):
 # Health
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+
 @app.get("/")
 def health():
     return {
@@ -210,6 +219,7 @@ def health():
 # Generate
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+
 @app.post("/generate")
 def generate(req: GenerateRequest):
     trace = monitor.begin_trace(req.prompt)
@@ -222,7 +232,8 @@ def generate(req: GenerateRequest):
         # ── Phases 1-7: Shared Pipeline Engine ──
         monitor.log_step(trace, "pipeline")
         pipeline = _engine.run_pipeline(
-            req.prompt, req.scene_tree,
+            req.prompt,
+            req.scene_tree,
             temperature=req.temperature,
             planner=req.planner,
             skip_cache=req.skip_cache,
@@ -246,15 +257,21 @@ def generate(req: GenerateRequest):
         files = pipeline.files
         operations = pipeline.operations
 
-        monitor.log_step(trace, "pipeline_result", {
-            "files": len(files),
-            "operations": len(operations),
-        })
+        monitor.log_step(
+            trace,
+            "pipeline_result",
+            {
+                "files": len(files),
+                "operations": len(operations),
+            },
+        )
 
         # ── Phase 8: Execute ──
         monitor.log_step(trace, "execution")
-        exec_result = _executor.execute(operations, files, scene_tree) if _executor else ExecutionResult(
-            success=True, results=[], errors=["Executor not initialized"]
+        exec_result = (
+            _executor.execute(operations, files, scene_tree)
+            if _executor
+            else ExecutionResult(success=True, results=[], errors=["Executor not initialized"])
         )
 
         if exec_result.errors:
@@ -274,20 +291,26 @@ def generate(req: GenerateRequest):
         }
         _session_log.append(session_entry)
 
-        monitor.end_trace(trace, status="complete",
-                          files_count=len(files),
-                          ops_count=len(operations),
-                          cache_hits=pipeline.cache_stats.get("hits", 0),
-                          cache_misses=pipeline.cache_stats.get("misses", 0),
-                          cache_hit_rate=pipeline.cache_stats.get("hit_rate", 0))
+        monitor.end_trace(
+            trace,
+            status="complete",
+            files_count=len(files),
+            ops_count=len(operations),
+            cache_hits=pipeline.cache_stats.get("hits", 0),
+            cache_misses=pipeline.cache_stats.get("misses", 0),
+            cache_hit_rate=pipeline.cache_stats.get("hit_rate", 0),
+        )
 
         executor_name = _executor.backend_name if _executor else "uninitialized"
 
-        logger.info("server", "Generate complete",
-                     files=len(files),
-                     operations=len(operations),
-                     executor=executor_name,
-                     elapsed_ms=int(elapsed * 1000))
+        logger.info(
+            "server",
+            "Generate complete",
+            files=len(files),
+            operations=len(operations),
+            executor=executor_name,
+            elapsed_ms=int(elapsed * 1000),
+        )
 
         return {
             "files": files,
@@ -315,6 +338,7 @@ def generate(req: GenerateRequest):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Report
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 
 @app.post("/report")
 def report(req: ReportRequest):
@@ -347,6 +371,7 @@ def report(req: ReportRequest):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Status & Debug Endpoints
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 
 @app.get("/status")
 def status():

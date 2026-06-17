@@ -20,36 +20,64 @@ from devforge.governance.gate1 import run_gate1, Gate1Result, Violation, Signatu
 from devforge.governance.analyzer import analyze_file, analyze_directory, GDFileAnalysis
 from devforge.governance.contracts.parser import ContractsParser
 from devforge.governance.scope_lock import (
-    ScopeLock, ScopeValidation,
-    create_scope_lock, validate_against_lock,
+    ScopeLock,
+    ScopeValidation,
+    create_scope_lock,
+    validate_against_lock,
 )
 from devforge.governance.risk_scoring import (
-    compute_risk, RiskResult, RiskTier, Depth, SUBSYSTEM_WEIGHTS,
+    compute_risk,
+    RiskResult,
+    RiskTier,
+    Depth,
+    SUBSYSTEM_WEIGHTS,
 )
 from devforge.governance.change_report import ChangeReport, generate_report
 from devforge.governance.decision_log import append_entry, generate_run_id, list_entries, compute_stats
 from devforge.governance.metrics_append import append_row, validate_row, print_summary
 from devforge.governance.sidecar_validator import (
-    validate_sidecar, scan_directory, generate_template,
+    validate_sidecar,
+    scan_directory,
+    generate_template,
 )
 
 __all__ = [
     # Gate 1
-    "run_gate1", "Gate1Result", "Violation", "SignatureChange",
+    "run_gate1",
+    "Gate1Result",
+    "Violation",
+    "SignatureChange",
     # Analyzer
-    "analyze_file", "analyze_directory", "GDFileAnalysis",
+    "analyze_file",
+    "analyze_directory",
+    "GDFileAnalysis",
     # Contracts
     "ContractsParser",
     # Scope Lock
-    "ScopeLock", "ScopeValidation", "create_scope_lock", "validate_against_lock",
+    "ScopeLock",
+    "ScopeValidation",
+    "create_scope_lock",
+    "validate_against_lock",
     # Risk Scoring
-    "compute_risk", "RiskResult", "RiskTier", "Depth", "SUBSYSTEM_WEIGHTS",
+    "compute_risk",
+    "RiskResult",
+    "RiskTier",
+    "Depth",
+    "SUBSYSTEM_WEIGHTS",
     # Change Report
-    "ChangeReport", "generate_report",
+    "ChangeReport",
+    "generate_report",
     # Decision Log
-    "append_entry", "generate_run_id", "list_entries", "compute_stats",
+    "append_entry",
+    "generate_run_id",
+    "list_entries",
+    "compute_stats",
     # Metrics
-    "append_row", "validate_row", "print_summary",
+    "append_row",
+    "validate_row",
+    "print_summary",
     # Sidecar Validator
-    "validate_sidecar", "scan_directory", "generate_template",
+    "validate_sidecar",
+    "scan_directory",
+    "generate_template",
 ]

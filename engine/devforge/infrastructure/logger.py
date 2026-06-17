@@ -41,9 +41,7 @@ def _init_file_logging() -> None:
             backupCount=10,
         )
         _file_handler.setLevel(logging.DEBUG)
-        _file_handler.setFormatter(
-            logging.Formatter("%(message)s")
-        )
+        _file_handler.setFormatter(logging.Formatter("%(message)s"))
         _file_logger = logging.getLogger("devforge.file")
         _file_logger.addHandler(_file_handler)
         _file_logger.setLevel(logging.DEBUG)
@@ -118,7 +116,7 @@ class DevForgeLogger:
 
         self._entries.append(entry)
         if len(self._entries) > self._max_entries:
-            self._entries = self._entries[-self._max_entries:]
+            self._entries = self._entries[-self._max_entries :]
 
         # Always print to stderr for immediate visibility
         print(entry, file=sys.stderr)

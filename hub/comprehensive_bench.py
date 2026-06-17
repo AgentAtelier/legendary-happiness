@@ -46,18 +46,21 @@ OUTPUT_BASE = HUB_DIR / "data" / "comprehensive-bench"
 
 # ── Which model-dependent tests to run, and how ──────────────────
 MODEL_TESTS = [
-    ("diagnostics:repeat",   "diagnostics repeat",    "diagnostics"),
-    ("diagnostics:intent",   "diagnostics intent",    "diagnostics"),
-    ("diagnostics:ceiling",  "diagnostics ceiling",   "diagnostics"),
-    ("probes:all",           "run all probes",        "probes"),
-    ("gauntlet:key",         "gauntlet key tests",    "gauntlet"),
+    ("diagnostics:repeat", "diagnostics repeat", "diagnostics"),
+    ("diagnostics:intent", "diagnostics intent", "diagnostics"),
+    ("diagnostics:ceiling", "diagnostics ceiling", "diagnostics"),
+    ("probes:all", "run all probes", "probes"),
+    ("gauntlet:key", "gauntlet key tests", "gauntlet"),
 ]
 
-GAUNTLET_KEY_TESTS = ["G7_integration", "G5_scripts_signals", "G8_adversarial",
-                       "B1_small_house", "S4_adjacency"]
-GAUNTLET_KEY_SETS = {"G7_integration": "capability-v1", "G5_scripts_signals": "capability-v1",
-                     "G8_adversarial": "capability-v1", "B1_small_house": "building-v1",
-                     "S4_adjacency": "spatial-v1"}
+GAUNTLET_KEY_TESTS = ["G7_integration", "G5_scripts_signals", "G8_adversarial", "B1_small_house", "S4_adjacency"]
+GAUNTLET_KEY_SETS = {
+    "G7_integration": "capability-v1",
+    "G5_scripts_signals": "capability-v1",
+    "G8_adversarial": "capability-v1",
+    "B1_small_house": "building-v1",
+    "S4_adjacency": "spatial-v1",
+}
 
 RUNS = 3  # Number of times to repeat each model-dependent test
 
@@ -65,6 +68,7 @@ RUNS = 3  # Number of times to repeat each model-dependent test
 # ═══════════════════════════════════════════════════════════════════
 #  Helpers
 # ═══════════════════════════════════════════════════════════════════
+
 
 def stamp() -> str:
     return time.strftime("%Y%m%d-%H%M%S")
@@ -88,8 +92,7 @@ def read_env() -> dict[str, str]:
     return env
 
 
-async def run_cmd(cmd: str, cwd: str | None = None,
-                  timeout: int = 600) -> tuple[int, str]:
+async def run_cmd(cmd: str, cwd: str | None = None, timeout: int = 600) -> tuple[int, str]:
     """Run a shell command, return (exit_code, combined_output)."""
     proc = await asyncio.create_subprocess_shell(
         cmd,
@@ -116,13 +119,13 @@ def parse_pytest_summary(output: str) -> dict:
     m = re.search(r"(\d+) warnings?", output)
     warnings = int(m.group(1)) if m else 0
     errors = len(re.findall(r"^(ERROR|FAIL)", output, re.M))
-    return {"passed": passed, "failed": failed, "skipped": skipped,
-            "warnings": warnings, "errors": errors}
+    return {"passed": passed, "failed": failed, "skipped": skipped, "warnings": warnings, "errors": errors}
 
 
 # ═══════════════════════════════════════════════════════════════════
 #  Section runners
 # ═══════════════════════════════════════════════════════════════════
+
 
 async def run_unit_tests(outdir: Path) -> dict:
     """Run all 3 pytest suites, save logs, return summary."""
@@ -130,12 +133,13 @@ async def run_unit_tests(outdir: Path) -> dict:
     results: dict[str, Any] = {}
 
     suites = [
-        ("DevForge Core",  str(DEVFORGE_DIR / "devforge" / "tests"),
-         f"cd {DEVFORGE_DIR} && .venv/bin/python -m pytest devforge/tests/ -v"),
-        ("Forge Hub",      str(HUB_DIR / "tests"),
-         f"cd {HUB_DIR} && .venv/bin/python -m pytest tests/ -v"),
-        ("Odysseus",       str(ODYSSEUS_DIR / "tests"),
-         f"cd {ODYSSEUS_DIR} && .venv/bin/python -m pytest tests/ -v"),
+        (
+            "DevForge Core",
+            str(DEVFORGE_DIR / "devforge" / "tests"),
+            f"cd {DEVFORGE_DIR} && .venv/bin/python -m pytest devforge/tests/ -v",
+        ),
+        ("Forge Hub", str(HUB_DIR / "tests"), f"cd {HUB_DIR} && .venv/bin/python -m pytest tests/ -v"),
+        ("Odysseus", str(ODYSSEUS_DIR / "tests"), f"cd {ODYSSEUS_DIR} && .venv/bin/python -m pytest tests/ -v"),
     ]
 
     for name, _, cmd in suites:
@@ -156,14 +160,12 @@ async def run_unit_tests(outdir: Path) -> dict:
         logfile.write_text(output)
 
         status = "OK" if code == 0 else f"FAIL (code={code})"
-        log(f"{status}  {elapsed//1000}s  "
-            f"({summary['passed']}p/{summary['failed']}f/{summary['skipped']}s)")
+        log(f"{status}  {elapsed // 1000}s  ({summary['passed']}p/{summary['failed']}f/{summary['skipped']}s)")
 
     return results
 
 
-async def run_diagnostics_test(test_name: str, run_label: str,
-                               outdir: Path) -> dict:
+async def run_diagnostics_test(test_name: str, run_label: str, outdir: Path) -> dict:
     """Run a single diagnostics test (repeat/intent/ceiling)."""
     # The test function captures its data to the standard diagnostics dir.
     # After it finishes, we copy the output file into our unified output dir.
@@ -326,7 +328,7 @@ async def run_model_tests(outdir: Path) -> dict:
             elapsed = int((time.time() - t0) * 1000)
             result["elapsed_ms"] = elapsed
             all_results.setdefault(run_label, {})[name] = result
-            log(f"{elapsed//1000}s")
+            log(f"{elapsed // 1000}s")
 
     return all_results
 
@@ -375,6 +377,7 @@ def build_cross_run_comparison(all_model_results: dict) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 #  Main
 # ═══════════════════════════════════════════════════════════════════
+
 
 async def main() -> None:
     args = set(sys.argv[1:])
@@ -436,6 +439,7 @@ async def main() -> None:
         try:
             sys.path.insert(0, str(HUB_DIR))
             from forge_ops import swap_model
+
             code = await swap_model(model_alias, lambda m: log(f"    {m}"))
         except Exception as e:
             log(f"  ✗ Model swap failed: {e}")
@@ -465,6 +469,7 @@ async def main() -> None:
         log("\n── Pre-flight: Live Stack Health ──")
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5) as c:
                 llm = await c.get(f"http://127.0.0.1:{env.get('LLAMA_PORT', '8002')}/health")
                 df = await c.get("http://127.0.0.1:8001/sse")
@@ -501,8 +506,7 @@ async def main() -> None:
         try:
             comparison = build_cross_run_comparison(model_results)
             manifest["cross_run_comparison"] = comparison
-            (outdir / "cross-run-comparison.json").write_text(
-                json.dumps(comparison, indent=2))
+            (outdir / "cross-run-comparison.json").write_text(json.dumps(comparison, indent=2))
         except Exception as e:
             log(f"  ✗ Cross-run comparison failed: {e}")
 
@@ -534,7 +538,8 @@ async def main() -> None:
                     f"{suite_result.get('passed', 0):>3d} passed  "
                     f"{suite_result.get('failed', 0):>3d} failed  "
                     f"{suite_result.get('skipped', 0):>3d} skipped  "
-                    f"({suite_result.get('elapsed_ms', 0) // 1000}s)")
+                    f"({suite_result.get('elapsed_ms', 0) // 1000}s)"
+                )
             elif "error" in suite_result if isinstance(suite_result, dict) else False:
                 summary_lines.append(f"  {suite_name:20s}  ERROR: {suite_result['error']}")
         summary_lines.append("")
@@ -549,9 +554,8 @@ async def main() -> None:
                 ec = result.get("exit_code", -1)
                 status = "✓" if ec == 0 else "✗"
                 summary_lines.append(
-                    f"    {status} {test_name:25s}  "
-                    f"({result.get('elapsed_ms', 0) // 1000}s, "
-                    f"exit={ec})")
+                    f"    {status} {test_name:25s}  ({result.get('elapsed_ms', 0) // 1000}s, exit={ec})"
+                )
 
         if "cross_run_comparison" in manifest:
             summary_lines.append("")
@@ -561,7 +565,8 @@ async def main() -> None:
                 stable_str = {True: "STABLE", False: "VARIES", None: "N/A"}.get(stable, "?")
                 summary_lines.append(
                     f"  {test_name:25s}  {stable_str}  "
-                    f"({comp.get('runs_completed', 0)}/{comp.get('runs_total', 0)} runs)")
+                    f"({comp.get('runs_completed', 0)}/{comp.get('runs_total', 0)} runs)"
+                )
 
     summary_lines.append("")
     summary_lines.append(f"  Full data: {outdir}/")

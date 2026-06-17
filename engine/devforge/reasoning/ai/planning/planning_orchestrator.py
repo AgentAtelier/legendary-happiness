@@ -47,7 +47,6 @@ class PlanningOrchestrator:
         all_steps = []
 
         for feature in features:
-
             llm_prompt = PlannerPromptTemplate.build(feature, context)
 
             response = llm(llm_prompt)
@@ -71,7 +70,6 @@ class PlanningOrchestrator:
             return []
 
         try:
-
             data = json.loads(response)
 
             if isinstance(data, list):
@@ -89,7 +87,6 @@ class PlanningOrchestrator:
         steps = []
 
         for step in raw_steps:
-
             if not isinstance(step, dict):
                 continue
 
@@ -100,7 +97,6 @@ class PlanningOrchestrator:
             # ----------------------------
 
             if step_type == "create_entity":
-
                 steps.append(
                     CreateEntityStep(
                         name=step.get("name", "Entity"),
@@ -110,11 +106,9 @@ class PlanningOrchestrator:
                 )
 
             elif step_type == "create_script":
-
                 path = step.get("path")
 
                 if path:
-
                     steps.append(
                         CreateScriptStep(
                             path=path,
@@ -123,12 +117,10 @@ class PlanningOrchestrator:
                     )
 
             elif step_type == "attach_script":
-
                 node = step.get("node")
                 script = step.get("script")
 
                 if node and script:
-
                     steps.append(
                         AttachScriptStep(
                             node=node,
@@ -137,12 +129,10 @@ class PlanningOrchestrator:
                     )
 
             elif step_type == "set_property":
-
                 node = step.get("node")
                 prop = step.get("property")
 
                 if node and prop:
-
                     steps.append(
                         SetPropertyStep(
                             node=node,
@@ -156,24 +146,16 @@ class PlanningOrchestrator:
             # ----------------------------
 
             elif step_type == "create_component":
-
                 name = step.get("component")
 
                 if name:
-
-                    steps.append(
-                        CreateComponentStep(
-                            component_name=name
-                        )
-                    )
+                    steps.append(CreateComponentStep(component_name=name))
 
             elif step_type == "attach_component":
-
                 entity = step.get("entity")
                 component = step.get("component")
 
                 if entity and component:
-
                     steps.append(
                         AttachComponentStep(
                             entity=entity,

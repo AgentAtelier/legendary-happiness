@@ -30,37 +30,69 @@ from typing import Iterable
 # Every Godot node type the LLM is allowed to emit in an entity.
 # Add new types here, then re-run the grammar generator. Do not edit
 # ``arch_planner.gbnf`` or ``VALID_GODOT_TYPES`` by hand.
-GODOT_NODE_TYPES: frozenset[str] = frozenset({
-    # Core
-    "Node", "Node2D", "Node3D",
-    # 3D physics bodies
-    "CharacterBody2D", "CharacterBody3D",
-    "RigidBody2D", "RigidBody3D",
-    "StaticBody2D", "StaticBody3D",
-    "Area2D", "Area3D",
-    "CollisionShape2D", "CollisionShape3D",
-    # 3D visuals / cameras / lights
-    "Camera2D", "Camera3D",
-    "DirectionalLight3D", "OmniLight3D", "SpotLight3D",
-    "SpringArm3D",
-    "MeshInstance3D", "Sprite2D", "Sprite3D",
-    "WorldEnvironment", "GPUParticles3D", "GPUParticles2D",
-    # 2D / UI
-    "CanvasLayer", "Control", "Label", "Button",
-    "TextureRect", "ProgressBar",
-    "ColorRect", "Panel", "LineEdit", "TextEdit",
-    "GridContainer", "VBoxContainer", "HBoxContainer",
-    # Animation / timing
-    "AnimationPlayer", "Timer",
-    # Navigation
-    "NavigationAgent3D", "NavigationRegion3D",
-    "Path3D", "PathFollow3D",
-    # Audio
-    "AudioStreamPlayer", "AudioStreamPlayer2D", "AudioStreamPlayer3D",
-    # Misc
-    "RayCast3D", "RayCast2D",
-    "SubViewport", "Marker3D",
-})
+GODOT_NODE_TYPES: frozenset[str] = frozenset(
+    {
+        # Core
+        "Node",
+        "Node2D",
+        "Node3D",
+        # 3D physics bodies
+        "CharacterBody2D",
+        "CharacterBody3D",
+        "RigidBody2D",
+        "RigidBody3D",
+        "StaticBody2D",
+        "StaticBody3D",
+        "Area2D",
+        "Area3D",
+        "CollisionShape2D",
+        "CollisionShape3D",
+        # 3D visuals / cameras / lights
+        "Camera2D",
+        "Camera3D",
+        "DirectionalLight3D",
+        "OmniLight3D",
+        "SpotLight3D",
+        "SpringArm3D",
+        "MeshInstance3D",
+        "Sprite2D",
+        "Sprite3D",
+        "WorldEnvironment",
+        "GPUParticles3D",
+        "GPUParticles2D",
+        # 2D / UI
+        "CanvasLayer",
+        "Control",
+        "Label",
+        "Button",
+        "TextureRect",
+        "ProgressBar",
+        "ColorRect",
+        "Panel",
+        "LineEdit",
+        "TextEdit",
+        "GridContainer",
+        "VBoxContainer",
+        "HBoxContainer",
+        # Animation / timing
+        "AnimationPlayer",
+        "Timer",
+        # Navigation
+        "NavigationAgent3D",
+        "NavigationRegion3D",
+        "Path3D",
+        "PathFollow3D",
+        # Audio
+        "AudioStreamPlayer",
+        "AudioStreamPlayer2D",
+        "AudioStreamPlayer3D",
+        # Misc
+        "RayCast3D",
+        "RayCast2D",
+        "SubViewport",
+        "Marker3D",
+    }
+)
 
 
 # ── Re-export under the historical name ─────────────────────────
@@ -85,30 +117,48 @@ PROPERTY_ALLOWLIST: dict[str, set[str]] = {
     # Mesh / material — only on renderable geometry
     "mesh": {"MeshInstance3D"},
     "material_override": {
-        "MeshInstance3D", "GeometryInstance3D", "Sprite3D",
-        "CSGBox3D", "CSGSphere3D", "CSGCylinder3D", "CSGPolygon3D",
-        "CSGCombiner3D", "CSGMesh3D",
+        "MeshInstance3D",
+        "GeometryInstance3D",
+        "Sprite3D",
+        "CSGBox3D",
+        "CSGSphere3D",
+        "CSGCylinder3D",
+        "CSGPolygon3D",
+        "CSGCombiner3D",
+        "CSGMesh3D",
     },
     "material_overlay": {
-        "MeshInstance3D", "GeometryInstance3D", "Sprite3D",
+        "MeshInstance3D",
+        "GeometryInstance3D",
+        "Sprite3D",
     },
     # Shape — only on collision shapes
     "shape": {"CollisionShape3D", "CollisionShape2D"},
     # Light-specific properties
     "light_energy": {
-        "DirectionalLight3D", "OmniLight3D", "SpotLight3D",
+        "DirectionalLight3D",
+        "OmniLight3D",
+        "SpotLight3D",
     },
     "light_color": {
-        "DirectionalLight3D", "OmniLight3D", "SpotLight3D",
+        "DirectionalLight3D",
+        "OmniLight3D",
+        "SpotLight3D",
     },
     "light_negative": {
-        "DirectionalLight3D", "OmniLight3D", "SpotLight3D",
+        "DirectionalLight3D",
+        "OmniLight3D",
+        "SpotLight3D",
     },
     "light_specular": {
-        "DirectionalLight3D", "OmniLight3D", "SpotLight3D",
+        "DirectionalLight3D",
+        "OmniLight3D",
+        "SpotLight3D",
     },
     "shadow_enabled": {
-        "DirectionalLight3D", "OmniLight3D", "SpotLight3D",
+        "DirectionalLight3D",
+        "OmniLight3D",
+        "SpotLight3D",
     },
     # Text — only on labels
     "text": {"Label", "LineEdit", "TextEdit", "Button"},
@@ -123,29 +173,73 @@ PROPERTY_ALLOWLIST: dict[str, set[str]] = {
 # DENYLIST rather than an allowlist because the set of types WITH a transform
 # is huge (all Node3D + all CanvasItem) while the transform-less set is small.
 NODES_WITHOUT_VECTOR3_TRANSFORM: set[str] = {
-    "Node", "Timer",
-    "CanvasLayer", "Label", "Button", "LineEdit", "TextEdit",
-    "ColorRect", "Panel", "Control", "HBoxContainer", "VBoxContainer",
-    "GridContainer", "MarginContainer", "CenterContainer",
-    "ScrollContainer", "AspectRatioContainer",
-    "Popup", "PopupMenu", "PopupPanel", "Window",
-    "RichTextLabel", "TextureRect", "TextureButton", "CheckBox",
-    "CheckButton", "MenuButton", "OptionButton", "SpinBox",
-    "ProgressBar", "HSlider", "VSlider", "HSplitContainer",
-    "VSplitContainer", "TabContainer", "TabBar",
-    "ItemList", "Tree", "ColorPicker",
-    "FileDialog", "AcceptDialog", "ConfirmationDialog",
-    "GraphNode", "GraphEdit", "SubViewportContainer",
-    "AnimationPlayer", "AnimationTree",
-    "AudioStreamPlayer", "AudioStreamPlayer2D",
+    "Node",
+    "Timer",
+    "CanvasLayer",
+    "Label",
+    "Button",
+    "LineEdit",
+    "TextEdit",
+    "ColorRect",
+    "Panel",
+    "Control",
+    "HBoxContainer",
+    "VBoxContainer",
+    "GridContainer",
+    "MarginContainer",
+    "CenterContainer",
+    "ScrollContainer",
+    "AspectRatioContainer",
+    "Popup",
+    "PopupMenu",
+    "PopupPanel",
+    "Window",
+    "RichTextLabel",
+    "TextureRect",
+    "TextureButton",
+    "CheckBox",
+    "CheckButton",
+    "MenuButton",
+    "OptionButton",
+    "SpinBox",
+    "ProgressBar",
+    "HSlider",
+    "VSlider",
+    "HSplitContainer",
+    "VSplitContainer",
+    "TabContainer",
+    "TabBar",
+    "ItemList",
+    "Tree",
+    "ColorPicker",
+    "FileDialog",
+    "AcceptDialog",
+    "ConfirmationDialog",
+    "GraphNode",
+    "GraphEdit",
+    "SubViewportContainer",
+    "AnimationPlayer",
+    "AnimationTree",
+    "AudioStreamPlayer",
+    "AudioStreamPlayer2D",
 }
 
 # Vector3 transform properties this pipeline emits onto spatial nodes.
-VECTOR3_TRANSFORM_PROPS: frozenset[str] = frozenset({
-    "position", "rotation", "rotation_degrees", "scale", "transform",
-    "global_position", "global_rotation", "global_rotation_degrees",
-    "global_transform", "quaternion", "basis",
-})
+VECTOR3_TRANSFORM_PROPS: frozenset[str] = frozenset(
+    {
+        "position",
+        "rotation",
+        "rotation_degrees",
+        "scale",
+        "transform",
+        "global_position",
+        "global_rotation",
+        "global_rotation_degrees",
+        "global_transform",
+        "quaternion",
+        "basis",
+    }
+)
 
 
 def _property_matches_type(prop: str, node_type: str) -> bool | None:
@@ -178,9 +272,7 @@ def _property_matches_type(prop: str, node_type: str) -> bool | None:
 
 # ── Path to the template grammar ───────────────────────────────
 # Relative to this file: ../../reasoning/prompts/arch_planner.gbnf
-_GRAMMAR_TEMPLATE = os.path.join(
-    os.path.dirname(__file__), "..", "..", "reasoning", "prompts", "arch_planner.gbnf"
-)
+_GRAMMAR_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "..", "reasoning", "prompts", "arch_planner.gbnf")
 
 
 # ── Grammar generator ───────────────────────────────────────────
@@ -203,7 +295,7 @@ def generate_grammar_enum(types: Iterable[str] | None = None) -> str:
 
     lines: list[str] = []
     for i, t in enumerate(types):
-        prefix = '             | ' if i > 0 else 'godot-type ::= '
+        prefix = "             | " if i > 0 else "godot-type ::= "
         lines.append(f'{prefix}"\\"{t}\\""')
     return "\n".join(lines)
 
@@ -228,9 +320,7 @@ def generate_grammar_file(
     template_path = os.path.normpath(_GRAMMAR_TEMPLATE)
 
     if not os.path.exists(template_path):
-        raise FileNotFoundError(
-            f"Grammar template not found at {template_path}"
-        )
+        raise FileNotFoundError(f"Grammar template not found at {template_path}")
 
     with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
@@ -247,6 +337,7 @@ def generate_grammar_file(
     # (and silently generates UNCONSTRAINED on parse failure) — write
     # the file in the single-line form both parsers accept.
     from devforge.infrastructure.llm.llama_client import normalize_gbnf
+
     generated = normalize_gbnf(generated)
 
     out_dir = output_dir or os.path.dirname(template_path)

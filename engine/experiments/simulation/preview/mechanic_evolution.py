@@ -8,7 +8,6 @@ from .mechanic_mutator import MechanicMutator
 
 
 class MechanicEvolution:
-
     def __init__(self, controller):
 
         self.controller = controller
@@ -29,15 +28,12 @@ class MechanicEvolution:
         best_score = float("inf")
 
         for _ in range(generations):
-
             candidates = self.mutator.mutate(best_systems, population)
 
             for systems in candidates:
-
                 score = self._evaluate(systems)
 
                 if score < best_score:
-
                     best_score = score
 
                     best_systems = systems
@@ -56,7 +52,6 @@ class MechanicEvolution:
         self.controller.engine.clear_systems()
 
         for system in systems:
-
             self.controller.add_generated_system(system)
 
         self.controller.run(steps=200)
@@ -66,7 +61,6 @@ class MechanicEvolution:
         score = 0
 
         for m in metrics.values():
-
             score += abs(m.value)
 
         return score

@@ -66,7 +66,6 @@ _SIGNAL_HANDLER_ARGS = {
 
 
 class ArchitectureCompiler:
-
     def compile(self, delta: Dict, scene: SceneGraph | None = None) -> DevForgePlan:
 
         steps: List[PlanStep] = []
@@ -91,8 +90,8 @@ class ArchitectureCompiler:
         # entity name → its full resolved path, so script attachment targets the
         # node at its REAL (possibly nested) path, not a flat /root/Main/<name>.
         entity_paths: Dict[str, str] = {}
-        entity_types: Dict[str, str] = {}      # entity name → Godot type (T1 signal)
-        system_attach: Dict[str, str] = {}     # system name → node path it attaches to (T1)
+        entity_types: Dict[str, str] = {}  # entity name → Godot type (T1 signal)
+        system_attach: Dict[str, str] = {}  # system name → node path it attaches to (T1)
 
         logger.info(
             "arch_compiler",
@@ -134,8 +133,7 @@ class ArchitectureCompiler:
                 # Fall through to safe default rather than fail
                 logger.warn(
                     "arch_compiler",
-                    f"Parent '{explicit}' for '{name}' not found; "
-                    f"falling back to scene root",
+                    f"Parent '{explicit}' for '{name}' not found; falling back to scene root",
                 )
             # Default to the ACTUAL scene root, resolved at runtime
             # (scene.root.path = /root/<RootName>). Hardcoding "/root/Main"
@@ -154,7 +152,6 @@ class ArchitectureCompiler:
         # entity_paths is populated during this loop so the rename/remove
         # block below can resolve same-delta targets.
         for entity in entities:
-
             if not isinstance(entity, dict):
                 continue
 
@@ -195,7 +192,6 @@ class ArchitectureCompiler:
         # Track script contents so Fix B3 can check method existence.
         script_contents: Dict[str, str] = {}  # system_name → script_content
         for system in systems:
-
             if not isinstance(system, dict):
                 continue
 
@@ -221,7 +217,6 @@ class ArchitectureCompiler:
             attach_target = self._find_attach_target(name, entities, entity_types)
 
             if attach_target:
-
                 # Use the target's real (possibly nested) path; fall back to a
                 # flat root child only if we never created/saw it this delta.
                 attach_node = entity_paths.get(attach_target, f"{root_path}/{attach_target}")
@@ -241,11 +236,13 @@ class ArchitectureCompiler:
                 host_name = name
                 host_path = f"{root_path}/{host_name}"
                 if not (scene and scene.has_path(host_path)):
-                    steps.append(CreateEntityStep(
-                        name=host_name,
-                        node_type="Node3D",
-                        parent=root_path,
-                    ))
+                    steps.append(
+                        CreateEntityStep(
+                            name=host_name,
+                            node_type="Node3D",
+                            parent=root_path,
+                        )
+                    )
                     delta_parents[host_name] = root_path
                     entity_paths[host_name] = host_path
                     entity_types[host_name] = "Node3D"
@@ -253,8 +250,7 @@ class ArchitectureCompiler:
                     entities.append({"name": host_name, "type": "Node3D"})
                     logger.info(
                         "arch_compiler",
-                        f"Created host node '{host_path}' for orphaned system "
-                        f"'{name}' — enables signal connections.",
+                        f"Created host node '{host_path}' for orphaned system '{name}' — enables signal connections.",
                     )
                 else:
                     logger.warn(
@@ -366,8 +362,7 @@ class ArchitectureCompiler:
             # Button (pressed). A correct signal name is what makes the connection
             # actually wire instead of being rejected.
             if not signal_name:
-                signal_name = _DEFAULT_SIGNAL_BY_TYPE.get(
-                    entity_types.get(from_name, ""), "body_entered")
+                signal_name = _DEFAULT_SIGNAL_BY_TYPE.get(entity_types.get(from_name, ""), "body_entered")
             if not method_name:
                 method_name = f"_on_{signal_name}"
 
@@ -394,9 +389,7 @@ class ArchitectureCompiler:
                     f"physics signal handlers.",
                 )
                 continue
-            if (to_name in entity_paths
-                    and target_path not in attached_nodes
-                    and method_name.startswith("_on_")):
+            if to_name in entity_paths and target_path not in attached_nodes and method_name.startswith("_on_"):
                 # Slice B — reverse host-node: rather than DROP a connection to
                 # a script-less same-delta target, synthesize a stub script
                 # that defines the handler (with the correct signature for the
@@ -404,8 +397,7 @@ class ArchitectureCompiler:
                 # of the forward host-node (system with no entity → Node3D host).
                 # If we can't guarantee a correct handler signature, fall back to
                 # the safe drop — a wrong signature is worse than a missing wire.
-                stub = self._generate_signal_stub(
-                    entity_types.get(to_name, "Node3D"), method_name, signal_name)
+                stub = self._generate_signal_stub(entity_types.get(to_name, "Node3D"), method_name, signal_name)
                 if stub is not None:
                     stub_path = f"scripts/{to_name.replace(' ', '_').lower()}_stub.gd"
                     steps.append(CreateScriptStep(path=stub_path, content=stub))
@@ -452,8 +444,7 @@ class ArchitectureCompiler:
                         # ("_on_SpawnTimer_timeout") — try the default
                         # "_on_{signal}" pattern which stubs/templates define.
                         default_method = f"_on_{signal_name}"
-                        if (default_method != method_name
-                                and f"func {default_method}(" in target_script):
+                        if default_method != method_name and f"func {default_method}(" in target_script:
                             logger.info(
                                 "arch_compiler",
                                 f"Signal connection '{from_name}' → '{to_name}': "
@@ -463,6 +454,7 @@ class ArchitectureCompiler:
                             method_name = default_method
                         else:
                             import re as _re
+
                             funcs = _re.findall(r"func\s+(\w+)", target_script)
                             logger.warn(
                                 "arch_compiler",
@@ -474,16 +466,17 @@ class ArchitectureCompiler:
                             )
                             continue
 
-            steps.append(ConnectSignalStep(
-                source=source_path,
-                signal=signal_name,
-                target=target_path,
-                method=method_name,
-            ))
+            steps.append(
+                ConnectSignalStep(
+                    source=source_path,
+                    signal=signal_name,
+                    target=target_path,
+                    method=method_name,
+                )
+            )
             logger.info(
                 "arch_compiler",
-                f"Signal connection: {source_path}.{signal_name} → "
-                f"{target_path}.{method_name}",
+                f"Signal connection: {source_path}.{signal_name} → {target_path}.{method_name}",
             )
 
         plan = DevForgePlan(goal="", steps=steps)
@@ -527,9 +520,7 @@ class ArchitectureCompiler:
         return plan
 
     @staticmethod
-    def _resolve_node_target(
-        target: str, scene: SceneGraph | None, root_path: str
-    ) -> str:
+    def _resolve_node_target(target: str, scene: SceneGraph | None, root_path: str) -> str:
         """Resolve a user-named rename/remove target to a scene node path.
 
         Accepts a full path as-is. Bare names are matched against the
@@ -560,6 +551,7 @@ class ArchitectureCompiler:
         # Resolves noun phrases + stray punctuation by matching the LONGEST
         # node name present as a token (most specific wins).
         import re as _re
+
         tokens = {t.lower() for t in _re.findall(r"[A-Za-z0-9_]+", target)}
         best = None
         for node in nodes:
@@ -570,8 +562,7 @@ class ArchitectureCompiler:
 
         logger.warn(
             "arch_compiler",
-            f"Rename/remove target '{target}' not found in scene; "
-            f"passing through for validation",
+            f"Rename/remove target '{target}' not found in scene; passing through for validation",
         )
         return f"{root_path}/{cleaned or target}"
 
@@ -618,9 +609,11 @@ class ArchitectureCompiler:
                 # execution time.  The validator does not yet have a position
                 # allowlist, so this guard is still needed.
                 if node_type in _NON_3D_TYPES:
-                    logger.warn("arch_compiler",
+                    logger.warn(
+                        "arch_compiler",
                         f"position prop on {node_type} '{entity_path}' — SKIPPED "
-                        f"(position requires Node3D or subclass)")
+                        f"(position requires Node3D or subclass)",
+                    )
                     continue
                 x, y, z = float(value[0]), float(value[1]), float(value[2])
                 steps.append(SetPropertyStep(node=entity_path, property="position", value={"x": x, "y": y, "z": z}))
@@ -636,19 +629,60 @@ class ArchitectureCompiler:
     # no keywords matched. Broader coverage + lower threshold (1 hit) ensures
     # more systems get real scripts instead of vanishing.
     _INTENT_KEYWORDS: Dict[str, List[str]] = {
-        "movement": ["movement", "player", "input", "wasd", "walk", "move",
-                     "control", "keyboard", "character", "controller",
-                     "fly", "run", "dash", "jump", "swim", "drive", "pilot"],
-        "collectible": ["collect", "coin", "pickup", "item", "body_entered",
-                        "trigger", "area", "gem", "loot",
-                        "powerup", "health", "ammo", "resource", "drop", "spawn"],
-        "score": ["score", "ui", "label", "hud", "display", "counter", "gui",
-                  "points", "timer", "wave", "level", "inventory", "shop"],
+        "movement": [
+            "movement",
+            "player",
+            "input",
+            "wasd",
+            "walk",
+            "move",
+            "control",
+            "keyboard",
+            "character",
+            "controller",
+            "fly",
+            "run",
+            "dash",
+            "jump",
+            "swim",
+            "drive",
+            "pilot",
+        ],
+        "collectible": [
+            "collect",
+            "coin",
+            "pickup",
+            "item",
+            "body_entered",
+            "trigger",
+            "area",
+            "gem",
+            "loot",
+            "powerup",
+            "health",
+            "ammo",
+            "resource",
+            "drop",
+            "spawn",
+        ],
+        "score": [
+            "score",
+            "ui",
+            "label",
+            "hud",
+            "display",
+            "counter",
+            "gui",
+            "points",
+            "timer",
+            "wave",
+            "level",
+            "inventory",
+            "shop",
+        ],
     }
 
-    def _generate_signal_stub(
-        self, node_type: str, method_name: str, signal_name: str
-    ) -> str | None:
+    def _generate_signal_stub(self, node_type: str, method_name: str, signal_name: str) -> str | None:
         """Stub script defining *method_name* for *signal_name* (reverse host-node).
 
         Returns GDScript text, or None when *signal_name* has no known handler
@@ -669,7 +703,7 @@ class ArchitectureCompiler:
 
     # ── Phase 5: script templates (real GDScript, not stubs) ──
     _SCRIPT_TEMPLATES: Dict[str, str] = {
-        "movement": '''extends Node3D
+        "movement": """extends Node3D
 
 # {name}
 # {description}
@@ -692,8 +726,8 @@ func _process(delta: float) -> void:
 
 func _on_timeout() -> void:
     pass
-''',
-        "collectible": '''extends Area3D
+""",
+        "collectible": """extends Area3D
 
 # {name}
 # {description}
@@ -713,8 +747,8 @@ func _on_body_entered(body: Node3D) -> void:
 
 func _on_timeout() -> void:
     pass
-''',
-        "score": '''extends Node
+""",
+        "score": """extends Node
 
 # {name}
 # {description}
@@ -728,7 +762,7 @@ func add_score(amount: int) -> void:
 
 func _on_timeout() -> void:
     pass
-''',
+""",
     }
 
     # Entity types that justify each behavior intent (so we don't invent a
@@ -745,8 +779,7 @@ func _on_timeout() -> void:
     }
 
     @classmethod
-    def infer_systems(cls, prompt: str, entities: List[Dict],
-                      existing_systems: List[Dict]) -> List[Dict]:
+    def infer_systems(cls, prompt: str, entities: List[Dict], existing_systems: List[Dict]) -> List[Dict]:
         """T2: deterministically recover behavior systems the LLM drops under load.
 
         For big prompts the planner emits entities but an empty `systems` array,
@@ -758,8 +791,11 @@ func _on_timeout() -> void:
         extra LLM call.
         """
         text = (prompt or "").lower()
-        covered = {cls._detect_intent(s.get("name", ""), s.get("description", ""))
-                   for s in (existing_systems or []) if isinstance(s, dict)}
+        covered = {
+            cls._detect_intent(s.get("name", ""), s.get("description", ""))
+            for s in (existing_systems or [])
+            if isinstance(s, dict)
+        }
         present_types = {e.get("type", "") for e in entities if isinstance(e, dict)}
         inferred: List[Dict] = []
         for intent, kws in cls._INTENT_KEYWORDS.items():
@@ -803,13 +839,11 @@ func _on_timeout() -> void:
         intent = self._detect_intent(name, description)
 
         if intent and intent in self._SCRIPT_TEMPLATES:
-            logger.info("arch_compiler",
-                f"Using {intent} template for system '{name}'")
-            return self._SCRIPT_TEMPLATES[intent].format(
-                name=name, description=description)
+            logger.info("arch_compiler", f"Using {intent} template for system '{name}'")
+            return self._SCRIPT_TEMPLATES[intent].format(name=name, description=description)
 
         # Fallback: old stub for unrecognized intents
-        return f'''extends Node
+        return f"""extends Node
 
 # {name}
 # {description}
@@ -822,11 +856,10 @@ func _process(delta: float) -> void:
 
 func _on_timeout() -> void:
     pass
-'''
+"""
 
     @staticmethod
-    def _find_attach_target(system_name: str, entities: List[Dict],
-                            entity_types: Dict[str, str] | None = None):
+    def _find_attach_target(system_name: str, entities: List[Dict], entity_types: Dict[str, str] | None = None):
         """Find the best entity to attach a script to.
 
         Phase 5: multi-strategy matching —

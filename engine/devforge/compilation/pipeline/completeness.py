@@ -15,7 +15,6 @@ from devforge.knowledge.scene.resource_templates import MESH_RESOURCES
 
 
 class CompletenessChecker:
-
     def enforce(
         self,
         files: List[Dict],
@@ -38,12 +37,14 @@ class CompletenessChecker:
                     dim = "3D" if "3D" in node_type else "2D"
                     collision = f"{path}/CollisionShape{dim}"
                     if collision not in node_index:
-                        operations.append({
-                            "type": "add_node",
-                            "parent": path,
-                            "node_type": f"CollisionShape{dim}",
-                            "name": f"CollisionShape{dim}",
-                        })
+                        operations.append(
+                            {
+                                "type": "add_node",
+                                "parent": path,
+                                "node_type": f"CollisionShape{dim}",
+                                "name": f"CollisionShape{dim}",
+                            }
+                        )
                         node_index[collision] = f"CollisionShape{dim}"
                         added += 1
                 except Exception as exc:
@@ -57,12 +58,14 @@ class CompletenessChecker:
         if has_3d and not self._has_node_type(node_index, "Camera3D"):
             try:
                 root_path = self._find_root(node_index, operations)
-                operations.append({
-                    "type": "add_node",
-                    "parent": root_path,
-                    "node_type": "Camera3D",
-                    "name": "MainCamera",
-                })
+                operations.append(
+                    {
+                        "type": "add_node",
+                        "parent": root_path,
+                        "node_type": "Camera3D",
+                        "name": "MainCamera",
+                    }
+                )
                 added += 1
             except Exception as exc:
                 logger.warn(
@@ -74,12 +77,14 @@ class CompletenessChecker:
         if has_3d and not self._has_node_type(node_index, "DirectionalLight3D"):
             try:
                 root_path = self._find_root(node_index, operations)
-                operations.append({
-                    "type": "add_node",
-                    "parent": root_path,
-                    "node_type": "DirectionalLight3D",
-                    "name": "DirectionalLight",
-                })
+                operations.append(
+                    {
+                        "type": "add_node",
+                        "parent": root_path,
+                        "node_type": "DirectionalLight3D",
+                        "name": "DirectionalLight",
+                    }
+                )
                 added += 1
             except Exception as exc:
                 logger.warn(
@@ -94,9 +99,7 @@ class CompletenessChecker:
         # a default BoxMesh — visible immediately, trivially replaced.
         try:
             mesh_set_for = {
-                op.get("node")
-                for op in operations
-                if op.get("type") == "set_property" and op.get("property") == "mesh"
+                op.get("node") for op in operations if op.get("type") == "set_property" and op.get("property") == "mesh"
             }
             for op in list(operations):
                 if op.get("type") != "add_node":
@@ -106,12 +109,14 @@ class CompletenessChecker:
                 node_path = f"{op.get('parent')}/{op.get('name')}"
                 if node_path in mesh_set_for:
                     continue
-                operations.append({
-                    "type": "set_property",
-                    "node": node_path,
-                    "property": "mesh",
-                    "value": MESH_RESOURCES["box"],
-                })
+                operations.append(
+                    {
+                        "type": "set_property",
+                        "node": node_path,
+                        "property": "mesh",
+                        "value": MESH_RESOURCES["box"],
+                    }
+                )
                 added += 1
         except Exception as exc:
             logger.warn(

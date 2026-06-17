@@ -38,6 +38,7 @@ def _sanity() -> tuple[str, dict]:
         pytest.skip(f"Model not found: {cur}")
     port = env.get("LLAMA_PORT", "8002")
     import httpx
+
     try:
         r = httpx.get(f"http://127.0.0.1:{port}/health", timeout=3)
         if r.status_code != 200:
@@ -108,41 +109,29 @@ class TestSwapLive:
 
         try:
             t0 = time.time()
-            exit_code = asyncio.run(
-                swap_model(target["alias"], lambda line: lines.append(line))
-            )
+            exit_code = asyncio.run(swap_model(target["alias"], lambda line: lines.append(line)))
             elapsed = time.time() - t0
 
             if exit_code != 0:
                 all_output = "\n".join(lines)
-                pytest.fail(
-                    f"Swap to {target['alias']} failed (exit {exit_code}) "
-                    f"in {elapsed:.0f}s:\n{all_output}"
-                )
+                pytest.fail(f"Swap to {target['alias']} failed (exit {exit_code}) in {elapsed:.0f}s:\n{all_output}")
 
             # Verify the running model matches
             cur_env = read_env(ENVFILE)
             assert cur_env.get("MODEL_ALIAS") == target["alias"], (
-                f"stack.env says {cur_env.get('MODEL_ALIAS')}, "
-                f"expected {target['alias']}"
+                f"stack.env says {cur_env.get('MODEL_ALIAS')}, expected {target['alias']}"
             )
 
             # Drift check should show no drift
-            drift = asyncio.run(
-                check_drift(cur_env.get("LLAMA_PORT", "8002"))
-            )
+            drift = asyncio.run(check_drift(cur_env.get("LLAMA_PORT", "8002")))
             if drift and drift.get("drift"):
-                pytest.fail(
-                    f"Drift detected after swap: {drift.get('reason')}"
-                )
+                pytest.fail(f"Drift detected after swap: {drift.get('reason')}")
 
         finally:
             # Restore original model — fail if restore doesn't work
             if read_env(ENVFILE).get("MODEL_ALIAS") != original_model:
                 lines.append(f"[restore] swapping back to {original_model}...")
-                restore_exit = asyncio.run(
-                    swap_model(original_model, lambda _: None)
-                )
+                restore_exit = asyncio.run(swap_model(original_model, lambda _: None))
                 if restore_exit != 0:
                     pytest.fail(
                         f"CRITICAL: restore to {original_model} FAILED — "
@@ -179,14 +168,11 @@ class TestSwapLive:
 
         lines: list[str] = []
         t0 = time.time()
-        exit_code = asyncio.run(
-            swap_model(biggest["alias"], lambda line: lines.append(line))
-        )
+        exit_code = asyncio.run(swap_model(biggest["alias"], lambda line: lines.append(line)))
         elapsed = time.time() - t0
 
-        assert exit_code == 1, (
-            f"Expected swap to REFUSE (exit 1) but got exit {exit_code}. "
-            f"Output:\n" + "\n".join(lines[-20:])
+        assert exit_code == 1, f"Expected swap to REFUSE (exit 1) but got exit {exit_code}. Output:\n" + "\n".join(
+            lines[-20:]
         )
 
         all_output = "\n".join(lines)
@@ -202,21 +188,13 @@ class TestSwapLive:
         )
 
         # Verify the original model is still running
-        drift = asyncio.run(
-            check_drift(env.get("LLAMA_PORT", "8002"))
-        )
+        drift = asyncio.run(check_drift(env.get("LLAMA_PORT", "8002")))
         if drift:
             running = drift.get("running_alias", "")
             configured = env.get("MODEL_ALIAS", "")
-            assert running == configured, (
-                f"Model changed after refusal! Configured: {configured}, "
-                f"Running: {running}"
-            )
+            assert running == configured, f"Model changed after refusal! Configured: {configured}, Running: {running}"
 
-        assert elapsed < 10, (
-            f"Refusal took {elapsed:.1f}s — should be near-instant "
-            f"(VRAM check alone, no restart)"
-        )
+        assert elapsed < 10, f"Refusal took {elapsed:.1f}s — should be near-instant (VRAM check alone, no restart)"
 
 
 # ── Estimator calibration ────────────────────────────────────────
@@ -249,8 +227,7 @@ class TestEstimatorCalibration:
             # Model + KV cache must be at least the GGUF file size
             file_gb = m["size_bytes"] / GIB
             assert need >= file_gb, (
-                f"{m['alias']}: fit says {need} GiB but the GGUF alone "
-                f"is {file_gb:.1f} GiB — estimator is broken"
+                f"{m['alias']}: fit says {need} GiB but the GGUF alone is {file_gb:.1f} GiB — estimator is broken"
             )
 
             # Should not claim to fit in impossibly small VRAM
@@ -296,8 +273,7 @@ class TestEstimatorCalibration:
     def test_estimator_constants_documented(self):
         """Verify key estimator constants are not accidentally regressed."""
         assert FIT_SAFETY_MARGIN >= 0.5 * GIB, (
-            f"FIT_SAFETY_MARGIN={FIT_SAFETY_MARGIN / GIB:.1f} GiB — "
-            f"must stay ≥0.5 GiB to prevent F1 regression"
+            f"FIT_SAFETY_MARGIN={FIT_SAFETY_MARGIN / GIB:.1f} GiB — must stay ≥0.5 GiB to prevent F1 regression"
         )
         assert FIT_SAFETY_MARGIN <= 2.0 * GIB, (
             f"FIT_SAFETY_MARGIN={FIT_SAFETY_MARGIN / GIB:.1f} GiB — "
@@ -308,6 +284,7 @@ class TestEstimatorCalibration:
         """The gemma SWA *0.45 fudge was measured empirically.
         It must stay in [0.3, 0.55] — lower risks OOM, higher wastes VRAM."""
         from forge_models import KV_BYTES_PER_EL
+
         models = scan()
         gemma = next((m for m in models if "gemma" in m.get("arch", "").lower()), None)
         if not gemma:
@@ -367,9 +344,7 @@ class TestActionLogDiagnostics:
 
         # Trigger a refused swap
         lines: list[str] = []
-        exit_code = asyncio.run(
-            swap_model(biggest["alias"], lambda line: lines.append(line))
-        )
+        exit_code = asyncio.run(swap_model(biggest["alias"], lambda line: lines.append(line)))
         assert exit_code == 1, f"Expected refusal, got exit {exit_code}"
 
         # Small sleep to let the async record_action() file write flush
@@ -384,14 +359,10 @@ class TestActionLogDiagnostics:
         )
 
         latest = swap_records[0]
-        assert latest["exit_code"] == 1, (
-            f"Latest swap record has exit_code {latest['exit_code']}, expected 1"
-        )
+        assert latest["exit_code"] == 1, f"Latest swap record has exit_code {latest['exit_code']}, expected 1"
 
         # Classification must be present and non-trivial
-        assert "classification" in latest, (
-            f"Swap record missing 'classification' key. Keys: {list(latest.keys())}"
-        )
+        assert "classification" in latest, f"Swap record missing 'classification' key. Keys: {list(latest.keys())}"
         assert latest["classification"]["cause"] != "unknown", (
             f"Classification is 'unknown' — the VRAM refusal should have been "
             f"classified. Record: {json.dumps(latest, indent=2, default=str)}"
@@ -437,9 +408,7 @@ class TestActionLogDiagnostics:
                             f"Failed action '{record['action']}' at {fpath}:{i} "
                             f"(ts={record.get('ts')}) has no classification"
                         )
-                        assert "cause" in record["classification"], (
-                            f"Classification missing 'cause' at {fpath}:{i}"
-                        )
+                        assert "cause" in record["classification"], f"Classification missing 'cause' at {fpath}:{i}"
                 except json.JSONDecodeError:
                     pytest.fail(f"Invalid JSON at {fpath}:{i}: {line[:100]}")
 
@@ -472,7 +441,7 @@ class TestVRAMCalibration:
         # a few hundred MB (desktop compositor). If it's 0, something
         # is wrong with the measurement.
         assert baseline > 50 * 1024 * 1024, (
-            f"VRAM used looks impossibly low: {baseline / (1024*1024):.1f} MB. "
+            f"VRAM used looks impossibly low: {baseline / (1024 * 1024):.1f} MB. "
             f"Check /sys/class/drm/card*/device/mem_info_vram_used"
         )
 
@@ -518,6 +487,3 @@ class TestVRAMCalibration:
             f"Estimated: {fit_est_gb:.1f} GiB, Observed (model): {observed_model_gb:.1f} GiB. "
             f"OVERHEAD={OVERHEAD / GIB:.1f} GiB or KV_BYTES_PER_EL may be too high."
         )
-
-
-

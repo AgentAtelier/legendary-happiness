@@ -19,6 +19,7 @@ def planner():
 
 # ── Imports ──────────────────────────────────────────────────────
 
+
 class TestWFCPlannerImports:
     def test_planner_importable(self):
         assert WFCPlanner is not None
@@ -32,6 +33,7 @@ class TestWFCPlannerImports:
 
 # ── Grammar loading ──────────────────────────────────────────────
 
+
 class TestGrammarLoading:
     def test_grammar_loaded(self, planner):
         assert planner.grammar is not None and len(planner.grammar) > 0
@@ -42,6 +44,7 @@ class TestGrammarLoading:
 
 
 # ── Prompt building ──────────────────────────────────────────────
+
 
 class TestPromptBuilding:
     def test_prompt_contains_schema_and_context(self, planner):
@@ -57,6 +60,7 @@ class TestPromptBuilding:
 
 
 # ── Response parsing ─────────────────────────────────────────────
+
 
 class TestResponseParsing:
     def test_plain_json(self, planner):
@@ -78,7 +82,7 @@ class TestResponseParsing:
         assert out["size"]["width"] == 9
 
     def test_defaults_applied(self, planner):
-        out = planner._parse_response('{}')
+        out = planner._parse_response("{}")
         assert out["size"] == {"width": 8, "depth": 8}
         assert out["tile_size"] == 2.0
         assert out["seed"] is None
@@ -94,11 +98,13 @@ class TestResponseParsing:
 
 # ── plan() ───────────────────────────────────────────────────────
 
+
 class TestPlanMethod:
     def test_plan_returns_parsed(self, planner):
         """Non-keyword prompt exercises the LLM path (skip-heuristic won't match)."""
         out = planner.plan(
-            context="", prompt="a winding underground complex",
+            context="",
+            prompt="a winding underground complex",
             llm_fn=lambda p: '{"size":{"width":11,"depth":7},"tile_size":2.5}',
         )
         assert out["size"] == {"width": 11, "depth": 7}
@@ -106,10 +112,13 @@ class TestPlanMethod:
 
     def test_skip_heuristic_keyword_returns_default(self, planner):
         """Keyword 'dungeon' triggers the heuristic — returns default, no LLM call."""
+
         def should_not_be_called(_):
             raise RuntimeError("LLM was called but heuristic should have intercepted")
+
         out = planner.plan(
-            context="", prompt="build a dungeon",
+            context="",
+            prompt="build a dungeon",
             llm_fn=should_not_be_called,
         )
         assert "size" in out
@@ -138,6 +147,7 @@ class TestPlanMethod:
     def test_plan_wraps_llm_errors(self, planner):
         def boom(_):
             raise RuntimeError("llm down")
+
         with pytest.raises(WFCPlanningError):
             planner.plan(context="", prompt="an empty dimensional void", llm_fn=boom)
 

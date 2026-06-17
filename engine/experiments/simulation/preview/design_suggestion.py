@@ -6,7 +6,6 @@ from typing import List, Dict, Any
 
 
 class DesignSuggestionEngine:
-
     """
     Generates improvement suggestions for mechanics.
     """
@@ -36,11 +35,9 @@ class DesignSuggestionEngine:
         output = []
 
         for name, metric in metrics.items():
-
             value = metric.value
 
             if name == "rain_volatility" and value > 0.5:
-
                 output.append(
                     {
                         "type": "parameter_adjustment",
@@ -58,9 +55,7 @@ class DesignSuggestionEngine:
         output = []
 
         for issue in critique:
-
             if issue["type"] == "cascade":
-
                 output.append(
                     {
                         "type": "mechanic_addition",
@@ -79,7 +74,6 @@ class DesignSuggestionEngine:
         output = []
 
         if len(edges) > 8:
-
             output.append(
                 {
                     "type": "complexity_reduction",

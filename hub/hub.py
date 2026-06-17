@@ -41,16 +41,19 @@ from fastapi.responses import (
 from forge_env import read_env, write_env, plan_env, validate_env, ENVFILE
 from forge_models import GIB, vram_total, RESERVE
 from forge_ops import (
-    get_free_vram, check_drift, reconcile_model,
-    record_action, get_action_history,
+    get_free_vram,
+    check_drift,
+    reconcile_model,
+    record_action,
+    get_action_history,
 )
 
 # Downstream modules imported here (not mid-file) — none import hub.py back,
 # so there is no actual circular dependency.  The old mid-file placement was
 # defensive but unnecessary.
-import bench       # noqa: E402
-import scenarios   # noqa: E402
-import shootout    # noqa: E402
+import bench  # noqa: E402
+import scenarios  # noqa: E402
+import shootout  # noqa: E402
 
 HOME = Path.home()
 STACK = str(HOME / ".local/bin/stack")
@@ -64,8 +67,7 @@ ALLOWED_HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
 CSRF_HEADER = "x-forge-hub"
 
 # Phase 5: API versioning — build ID changes when any source file changes
-_BUILD_FILES = ["hub.py", "forge_env.py", "forge_models.py", "forge_ops.py",
-                "scenarios.py", "static/index.html"]
+_BUILD_FILES = ["hub.py", "forge_env.py", "forge_models.py", "forge_ops.py", "scenarios.py", "static/index.html"]
 _BUILD_HASH = hashlib.sha1()
 for _bf in _BUILD_FILES:
     _fp = STATIC_DIR.parent / _bf
@@ -148,9 +150,7 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
         # Restart the container so it reconnects.
         if job["exit"] == 0 and action in _RECONNECT_ACTIONS:
             job["lines"].append("[hub] DevForge/godot-ai restarted — restarting Odysseus to reconnect MCP...")
-            recode, reout = await _run_capture(
-                ["docker", "restart", "odysseus-odysseus-1"], timeout=30
-            )
+            recode, reout = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
             if recode == 0:
                 job["lines"].append("[hub] Odysseus restarted — MCP tools should reconnect")
             else:
@@ -172,8 +172,7 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
 
 @app.get("/")
 async def index():
-    return FileResponse(STATIC_DIR / "index.html",
-                        headers={"Cache-Control": "no-cache, must-revalidate"})
+    return FileResponse(STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache, must-revalidate"})
 
 
 @app.get("/api/status")
@@ -181,13 +180,9 @@ async def status():
     _, raw = await _run_capture([STACK, "status"])
     chips: dict[str, str] = {}
     for svc in SERVICES:
-        code, out = await _run_capture(
-            ["systemctl", "--user", "is-active", f"forge-{svc}.service"], timeout=5
-        )
+        code, out = await _run_capture(["systemctl", "--user", "is-active", f"forge-{svc}.service"], timeout=5)
         chips[svc] = out.strip() or "unknown"
-    code, out = await _run_capture(
-        ["docker", "ps", "--format", "{{.Names}}"], timeout=8
-    )
+    code, out = await _run_capture(["docker", "ps", "--format", "{{.Names}}"], timeout=8)
     chips["odysseus"] = "active" if "odysseus-odysseus" in out else "inactive"
     env = read_env(ENVFILE)
     drift_info = await check_drift(env.get("LLAMA_PORT", "8002"))
@@ -222,8 +217,13 @@ async def run(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": [f"$ {' '.join(cmd)}"], "done": False, "exit": None, "t": time.time(),
-           "label": f"{action} {' '.join(cmd[1:3]) if len(cmd) > 2 else ''}"}
+    job = {
+        "lines": [f"$ {' '.join(cmd)}"],
+        "done": False,
+        "exit": None,
+        "t": time.time(),
+        "label": f"{action} {' '.join(cmd[1:3]) if len(cmd) > 2 else ''}",
+    }
     _jobs[job_id] = job
     asyncio.get_running_loop().create_task(_job_runner(job, cmd, action))
     return {"job": job_id}
@@ -247,6 +247,7 @@ async def swap(request: Request):
     # Resolve exact file if provided (bypasses find() ambiguity)
     if exact_file:
         from forge_models import scan as _scan
+
         models = _scan()
         match = next((m for m in models if m["file"] == exact_file), None)
         if not match:
@@ -265,8 +266,10 @@ async def swap(request: Request):
 
     async def _runner() -> None:
         try:
+
             def emit(line: str) -> None:
                 job["lines"].append(line)
+
             job["exit"] = await swap_model(fragment, emit)
         except Exception as e:
             job["lines"].append(f"[hub] swap failed: {e}")
@@ -314,11 +317,11 @@ async def stream(job_id: str):
 
 @app.get("/api/models")
 async def models():
-    code, out = await _run_capture(
-        [str(HOME / ".local/bin/forge-model"), "list", "--json"], timeout=30)
+    code, out = await _run_capture([str(HOME / ".local/bin/forge-model"), "list", "--json"], timeout=30)
     if code != 0:
         raise HTTPException(500, f"forge-model failed: {out[:300]}")
     import json as _json
+
     env = read_env(ENVFILE)
     data = _json.loads(out)
     free_vram = get_free_vram()
@@ -340,9 +343,12 @@ async def models():
                 f"but ~{available / GIB:.1f} GiB available. "
                 f"Close apps or lower ctx."
             )
-    return {"models": data["models"], "alias": env.get("MODEL_ALIAS", "?"),
-            "template": env.get("DEVFORGE_PROMPT_TEMPLATE", "?"),
-            "vram_free_gb": round(free_vram / GIB, 1)}
+    return {
+        "models": data["models"],
+        "alias": env.get("MODEL_ALIAS", "?"),
+        "template": env.get("DEVFORGE_PROMPT_TEMPLATE", "?"),
+        "vram_free_gb": round(free_vram / GIB, 1),
+    }
 
 
 @app.get("/api/models/search")
@@ -354,12 +360,14 @@ async def models_search(q: str = ""):
     if not q or len(q.strip()) < 2:
         return {"matches": [], "ambiguous": False, "hint": "need at least 2 characters"}
     from forge_models import scan as _scan
+
     models = _scan()
     q_lower = q.strip().lower()
-    hits = [{"file": m["file"], "alias": m["alias"], "fit": m["fit"],
-             "size_bytes": m["size_bytes"]}
-            for m in models
-            if q_lower in m["file"].lower() or q_lower in m["alias"]]
+    hits = [
+        {"file": m["file"], "alias": m["alias"], "fit": m["fit"], "size_bytes": m["size_bytes"]}
+        for m in models
+        if q_lower in m["file"].lower() or q_lower in m["alias"]
+    ]
     return {"matches": hits, "ambiguous": len(hits) > 1, "query": q.strip()}
 
 
@@ -397,12 +405,16 @@ async def config_save(request: Request):
     ENVFILE.write_text(text)
     code, _ = await _run_capture(["systemctl", "--user", "daemon-reload"], timeout=10)
 
-    record_action("config_save", ["save", "stack.env"], 0, 0,
-                  output=f"backup={backup.name} diff_added={len(diff_added)}")
+    record_action(
+        "config_save", ["save", "stack.env"], 0, 0, output=f"backup={backup.name} diff_added={len(diff_added)}"
+    )
 
-    return {"saved": True, "backup": backup.name,
-            "diff_added": diff_added,
-            "hint": "apply with Restart all (or the one service you changed)"}
+    return {
+        "saved": True,
+        "backup": backup.name,
+        "diff_added": diff_added,
+        "hint": "apply with Restart all (or the one service you changed)",
+    }
 
 
 @app.post("/api/config/restore")
@@ -414,8 +426,7 @@ async def config_restore(request: Request):
     latest = backups[0]
     ENVFILE.write_text(latest.read_text())
     await _run_capture(["systemctl", "--user", "daemon-reload"], timeout=10)
-    record_action("config_restore", ["restore", str(latest)], 0, 0,
-                  output=f"restored from {latest.name}")
+    record_action("config_restore", ["restore", str(latest)], 0, 0, output=f"restored from {latest.name}")
     return {"restored": latest.name, "hint": "config restored — restart affected services"}
 
 
@@ -434,14 +445,15 @@ async def reconcile(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": ["$ reconcile (restart llama to match stack.env)"],
-           "done": False, "exit": None, "t": time.time()}
+    job = {"lines": ["$ reconcile (restart llama to match stack.env)"], "done": False, "exit": None, "t": time.time()}
     _jobs[job_id] = job
 
     async def _runner() -> None:
         try:
+
             def emit(line: str) -> None:
                 job["lines"].append(line)
+
             job["exit"] = await reconcile_model(emit)
         except Exception as e:
             job["lines"].append(f"[hub] reconcile failed: {e}")
@@ -459,11 +471,10 @@ async def logs(svc: str, n: int = 200):
     n = max(10, min(n, 1000))
     if svc in SERVICES:
         _, out = await _run_capture(
-            ["journalctl", "--user", "-u", f"forge-{svc}", "-n", str(n),
-             "--no-pager", "-o", "cat"], timeout=15)
+            ["journalctl", "--user", "-u", f"forge-{svc}", "-n", str(n), "--no-pager", "-o", "cat"], timeout=15
+        )
     elif svc == "odysseus":
-        _, out = await _run_capture(
-            ["docker", "logs", "--tail", str(n), "odysseus-odysseus-1"], timeout=15)
+        _, out = await _run_capture(["docker", "logs", "--tail", str(n), "odysseus-odysseus-1"], timeout=15)
     else:
         raise HTTPException(400, "unknown service")
     return PlainTextResponse(out)
@@ -528,6 +539,7 @@ async def chain_health():
     polls this every 30 seconds and renders a color-coded chain diagram.
     """
     import httpx as _httpx
+
     env = read_env(ENVFILE)
     llama_port = env.get("LLAMA_PORT", "8002")
     devforge_port = env.get("MCP_PORT", "8001")
@@ -563,18 +575,23 @@ async def chain_health():
                 r = await client.get(f"http://127.0.0.1:{llama_port}/props")
                 if r.status_code == 200:
                     pdata = r.json()
-                    running_alias = (pdata.get("model_alias") or
-                                     (pdata.get("default_generation_settings") or {}).get("model_alias", "?"))
+                    running_alias = pdata.get("model_alias") or (pdata.get("default_generation_settings") or {}).get(
+                        "model_alias", "?"
+                    )
             except Exception:
                 logging.debug(f"chain_health: /props fetch failed, using defaults")
                 pass  # /props fetch is best-effort; chain-health still works without it
 
-        links.append({
-            "id": "llama", "label": "llama.cpp", "port": int(llama_port),
-            "status": "healthy" if llama_ok else "down",
-            "detail": f"{running_alias}" if llama_ok else "unreachable",
-            "fix": None if llama_ok else "stack up" if not llama_ok else None,
-        })
+        links.append(
+            {
+                "id": "llama",
+                "label": "llama.cpp",
+                "port": int(llama_port),
+                "status": "healthy" if llama_ok else "down",
+                "detail": f"{running_alias}" if llama_ok else "unreachable",
+                "fix": None if llama_ok else "stack up" if not llama_ok else None,
+            }
+        )
         if llama_ok and running_alias != configured_alias and running_alias != "?":
             links[-1]["status"] = "degraded"
             links[-1]["detail"] = f"{running_alias} ≠ {configured_alias} (drift)"
@@ -584,38 +601,49 @@ async def chain_health():
         # 2. DevForge reachable — MCP server, 404 on `/` means UP (use `alive`).
         df = await _check_http("devforge", f"http://127.0.0.1:{devforge_port}")
         df_template = env.get("DEVFORGE_PROMPT_TEMPLATE", "?")
-        links.append({
-            "id": "devforge", "label": "DevForge", "port": int(devforge_port),
-            "status": "healthy" if df["alive"] else "down",
-            "detail": f"template={df_template}" if df["alive"] else "unreachable",
-            "fix": None if df["alive"] else "stack restart devforge",
-        })
+        links.append(
+            {
+                "id": "devforge",
+                "label": "DevForge",
+                "port": int(devforge_port),
+                "status": "healthy" if df["alive"] else "down",
+                "detail": f"template={df_template}" if df["alive"] else "unreachable",
+                "fix": None if df["alive"] else "stack restart devforge",
+            }
+        )
 
         # 3. godot-ai reachable — MCP server, 404 on `/` means UP (use `alive`).
         ga = await _check_http("godot-ai", f"http://127.0.0.1:{godot_ai_port}")
-        links.append({
-            "id": "godot-ai", "label": "godot-ai", "port": int(godot_ai_port),
-            "status": "healthy" if ga["alive"] else "down",
-            "detail": "connected" if ga["alive"] else "unreachable",
-            "fix": None if ga["alive"] else "stack restart godot-ai",
-        })
+        links.append(
+            {
+                "id": "godot-ai",
+                "label": "godot-ai",
+                "port": int(godot_ai_port),
+                "status": "healthy" if ga["alive"] else "down",
+                "detail": "connected" if ga["alive"] else "unreachable",
+                "fix": None if ga["alive"] else "stack restart godot-ai",
+            }
+        )
 
         # 4. Odysseus HTTP
         ody_url = env.get("ODYSSEUS_URL", "http://127.0.0.1:7000")
         ody = await _check_http("odysseus", ody_url)
-        links.append({
-            "id": "odysseus", "label": "Odysseus", "port": 7000,
-            "status": "healthy" if ody["ok"] else "down",
-            "detail": "responding" if ody["ok"] else "unreachable",
-            "fix": None if ody["ok"] else "stack up (docker)",
-        })
+        links.append(
+            {
+                "id": "odysseus",
+                "label": "Odysseus",
+                "port": 7000,
+                "status": "healthy" if ody["ok"] else "down",
+                "detail": "responding" if ody["ok"] else "unreachable",
+                "fix": None if ody["ok"] else "stack up (docker)",
+            }
+        )
 
         # ── slow checks (docker exec, parallel, 3s timeout) ──
         async def _docker_check(label: str, docker_cmd: list[str]) -> dict:
             try:
                 code, out = await asyncio.wait_for(
-                    _run_capture(["docker", "exec", "odysseus-odysseus-1"] + docker_cmd,
-                                 timeout=8),
+                    _run_capture(["docker", "exec", "odysseus-odysseus-1"] + docker_cmd, timeout=8),
                     timeout=5.0,
                 )
                 return {"ok": code == 0, "output": out.strip()[:200]}
@@ -625,48 +653,65 @@ async def chain_health():
         # Only run docker checks if Odysseus container is running
         if ody["ok"]:
             d_llama, d_devf, d_mcp = await asyncio.gather(
-                _docker_check("ody→llama", ["curl", "-s", "--max-time", "2",
-                              f"host.docker.internal:{llama_port}/health"]),
-                _docker_check("ody→DevForge", ["curl", "-s", "--max-time", "2",
-                              f"host.docker.internal:{devforge_port}"]),
-                _docker_check("mcp-keyword", ["grep", "-c", "MCP",
-                              "/app/data/presets.json"]),
+                _docker_check(
+                    "ody→llama", ["curl", "-s", "--max-time", "2", f"host.docker.internal:{llama_port}/health"]
+                ),
+                _docker_check(
+                    "ody→DevForge", ["curl", "-s", "--max-time", "2", f"host.docker.internal:{devforge_port}"]
+                ),
+                _docker_check("mcp-keyword", ["grep", "-c", "MCP", "/app/data/presets.json"]),
             )
 
             # 5. Odysseus → llama
-            links.append({
-                "id": "ody-llama", "label": "Odysseus→llama",
-                "status": "healthy" if d_llama["ok"] else "degraded",
-                "detail": "reachable" if d_llama["ok"] else "cannot reach llama from docker",
-                "fix": None if d_llama["ok"] else "Check host.docker.internal / firewall",
-            })
+            links.append(
+                {
+                    "id": "ody-llama",
+                    "label": "Odysseus→llama",
+                    "status": "healthy" if d_llama["ok"] else "degraded",
+                    "detail": "reachable" if d_llama["ok"] else "cannot reach llama from docker",
+                    "fix": None if d_llama["ok"] else "Check host.docker.internal / firewall",
+                }
+            )
 
             # 6. Odysseus → DevForge
-            links.append({
-                "id": "ody-devforge", "label": "Odysseus→DevForge",
-                "status": "healthy" if d_devf["ok"] else "degraded",
-                "detail": "reachable" if d_devf["ok"] else "cannot reach DevForge from docker",
-                "fix": None if d_devf["ok"] else "Check DevForge MCP_HOST=0.0.0.0",
-            })
+            links.append(
+                {
+                    "id": "ody-devforge",
+                    "label": "Odysseus→DevForge",
+                    "status": "healthy" if d_devf["ok"] else "degraded",
+                    "detail": "reachable" if d_devf["ok"] else "cannot reach DevForge from docker",
+                    "fix": None if d_devf["ok"] else "Check DevForge MCP_HOST=0.0.0.0",
+                }
+            )
 
             # 7. MCP keyword in persona
             mcp_ok = d_mcp["ok"] and int(d_mcp.get("output", "0") or "0") > 0
-            links.append({
-                "id": "mcp-keyword", "label": "MCP keyword",
-                "status": "healthy" if mcp_ok else "stale",
-                "detail": "found in persona" if mcp_ok else "MISSING — godot-ai tools may not appear",
-                "fix": None if mcp_ok else "Add 'MCP' to persona inject_suffix in presets.json",
-            })
+            links.append(
+                {
+                    "id": "mcp-keyword",
+                    "label": "MCP keyword",
+                    "status": "healthy" if mcp_ok else "stale",
+                    "detail": "found in persona" if mcp_ok else "MISSING — godot-ai tools may not appear",
+                    "fix": None if mcp_ok else "Add 'MCP' to persona inject_suffix in presets.json",
+                }
+            )
             if not mcp_ok:
                 warnings.append("MCP keyword missing from persona — godot-ai tools may be disabled")
         else:
-            for lid, lbl in [("ody-llama", "Odysseus→llama"),
-                              ("ody-devforge", "Odysseus→DevForge"),
-                              ("mcp-keyword", "MCP keyword")]:
-                links.append({
-                    "id": lid, "label": lbl,
-                    "status": "unknown", "detail": "Odysseus not running", "fix": "stack up",
-                })
+            for lid, lbl in [
+                ("ody-llama", "Odysseus→llama"),
+                ("ody-devforge", "Odysseus→DevForge"),
+                ("mcp-keyword", "MCP keyword"),
+            ]:
+                links.append(
+                    {
+                        "id": lid,
+                        "label": lbl,
+                        "status": "unknown",
+                        "detail": "Odysseus not running",
+                        "fix": "stack up",
+                    }
+                )
 
         # 8. Config-doc consistency check
         doc_mismatches = []
@@ -677,12 +722,15 @@ async def chain_health():
             if "enable_thinking" not in env.get("LLAMA_ARG_CHAT_TEMPLATE_KWARGS", ""):
                 if "enable_thinking" in doc_text:
                     doc_mismatches.append("LLAMA_ARG_CHAT_TEMPLATE_KWARGS missing (doc says needed for thinking)")
-        links.append({
-            "id": "config-doc", "label": "Config↔Doc",
-            "status": "healthy" if not doc_mismatches else "stale",
-            "detail": "consistent" if not doc_mismatches else "; ".join(doc_mismatches),
-            "fix": None if not doc_mismatches else "Edit stack.env or update forge-stack-chain.md",
-        })
+        links.append(
+            {
+                "id": "config-doc",
+                "label": "Config↔Doc",
+                "status": "healthy" if not doc_mismatches else "stale",
+                "detail": "consistent" if not doc_mismatches else "; ".join(doc_mismatches),
+                "fix": None if not doc_mismatches else "Edit stack.env or update forge-stack-chain.md",
+            }
+        )
     if doc_mismatches:
         warnings.extend(doc_mismatches)
 
@@ -694,9 +742,7 @@ async def chain_health():
     probe_root_fix = None
     if ga["alive"]:
         try:
-            h_result = await asyncio.wait_for(
-                bench._godot_ai_call("scene_get_hierarchy", {"depth": 1}),
-                timeout=5.0)
+            h_result = await asyncio.wait_for(bench._godot_ai_call("scene_get_hierarchy", {"depth": 1}), timeout=5.0)
             nodes = [n for n in h_result.get("nodes", []) if isinstance(n, dict)]
             roots = [n for n in nodes if n.get("path", "").count("/") == 1]
             if len(roots) != 1:
@@ -724,12 +770,15 @@ async def chain_health():
             probe_root_detail = f"could not check: {type(e).__name__}"
             probe_root_fix = "Is the Godot editor running with probe.tscn open?"
 
-    links.append({
-        "id": "probe-root", "label": "Probe root",
-        "status": probe_root_status,
-        "detail": probe_root_detail,
-        "fix": probe_root_fix,
-    })
+    links.append(
+        {
+            "id": "probe-root",
+            "label": "Probe root",
+            "status": probe_root_status,
+            "detail": probe_root_detail,
+            "fix": probe_root_fix,
+        }
+    )
 
     # 10. Restart-staleness warning (D4): detect source files newer than running services.
     # Catches the "edited code but forgot to restart" class of bugs — a stale
@@ -741,16 +790,15 @@ async def chain_health():
         try:
             # Get wall-clock start time from systemd
             code, wall_ts = await _run_capture(
-                ["systemctl", "--user", "show", f"forge-{svc_name}.service",
-                 "--property=ActiveEnterTimestamp"], timeout=5)
+                ["systemctl", "--user", "show", f"forge-{svc_name}.service", "--property=ActiveEnterTimestamp"],
+                timeout=5,
+            )
             if code != 0 or not wall_ts.strip():
                 continue
             # Parse "ActiveEnterTimestamp=Day YYYY-MM-DD HH:MM:SS TZ"
             ts_str = wall_ts.strip().split("=", 1)[-1]
             try:
-                svc_start = time.mktime(time.strptime(
-                    ts_str.rsplit(" ", 1)[0], "%a %Y-%m-%d %H:%M:%S"
-                ))
+                svc_start = time.mktime(time.strptime(ts_str.rsplit(" ", 1)[0], "%a %Y-%m-%d %H:%M:%S"))
             except ValueError:
                 continue
             # Find newest source file mtime
@@ -761,12 +809,15 @@ async def chain_health():
                     newest_src = max(newest_src, fp.stat().st_mtime)
             if newest_src > svc_start + 5:  # 5s grace for deployment
                 staleness = int(newest_src - svc_start)
-                links.append({
-                    "id": svc_id, "label": f"{svc_name} stale?",
-                    "status": "degraded",
-                    "detail": f"source newer than service by ~{staleness}s",
-                    "fix": f"systemctl --user restart forge-{svc_name}",
-                })
+                links.append(
+                    {
+                        "id": svc_id,
+                        "label": f"{svc_name} stale?",
+                        "status": "degraded",
+                        "detail": f"source newer than service by ~{staleness}s",
+                        "fix": f"systemctl --user restart forge-{svc_name}",
+                    }
+                )
                 warnings.append(
                     f"{svc_name} source files changed {staleness}s after last restart — "
                     f"code change may not be live. Run: systemctl --user restart forge-{svc_name}"
@@ -779,8 +830,7 @@ async def chain_health():
     last_swap = None
     for a in actions_list:
         if a.get("action") == "swap" and a.get("exit_code") == 0:
-            last_swap = {"alias": a.get("output", "").replace("model=", ""),
-                         "ts": a.get("ts", "?")}
+            last_swap = {"alias": a.get("output", "").replace("model=", ""), "ts": a.get("ts", "?")}
             break
     if last_swap:
         warnings.append(f"Last swap to {last_swap['alias']} at {last_swap['ts']} — reload Odysseus browser tab if open")
@@ -795,6 +845,7 @@ async def chain_health():
 
 
 # ── Workstream A1: godot-ai logs proxy (diagnostic data retrieval) ─
+
 
 @app.get("/api/logs-read")
 async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0):
@@ -819,12 +870,16 @@ async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0
     offset = max(0, offset)
     try:
         result = await asyncio.wait_for(
-            bench._godot_ai_call("logs_read", {
-                "source": source,
-                "count": count,
-                "offset": offset,
-            }),
-            timeout=8.0)
+            bench._godot_ai_call(
+                "logs_read",
+                {
+                    "source": source,
+                    "count": count,
+                    "offset": offset,
+                },
+            ),
+            timeout=8.0,
+        )
         return result
     except asyncio.TimeoutError:
         return {"lines": [], "error": "godot-ai logs_read timed out (8s)", "stale_run_id": True}
@@ -838,8 +893,7 @@ async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0
 @app.get("/api/bench/tests")
 async def bench_tests():
     return {
-        "tests": [{k: t[k] for k in ("id", "layer", "speed", "title", "desc")}
-                  for t in bench.TESTS],
+        "tests": [{k: t[k] for k in ("id", "layer", "speed", "title", "desc")} for t in bench.TESTS],
         "bundles": bench.load_bundles(),
     }
 
@@ -855,8 +909,7 @@ async def bench_run(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": [f"test bench — {len(ids)} test(s)"], "done": False,
-           "exit": None, "t": time.time()}
+    job = {"lines": [f"test bench — {len(ids)} test(s)"], "done": False, "exit": None, "t": time.time()}
     _jobs[job_id] = job
 
     async def _runner():
@@ -892,11 +945,11 @@ async def bench_history():
 
 # ── probe mode (chain probes with data + 3-tier verdicts) ─────────
 
+
 @app.get("/api/bench/probes")
 async def bench_probes():
     return {
-        "probes": [{k: p[k] for k in ("id", "layer", "speed", "title", "desc")}
-                   for p in bench.PROBES],
+        "probes": [{k: p[k] for k in ("id", "layer", "speed", "title", "desc")} for p in bench.PROBES],
         "bundles": bench.PROBE_BUNDLES,
     }
 
@@ -912,8 +965,7 @@ async def bench_probe_run(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": [f"chain probe — {len(ids)} probe(s)"], "done": False,
-           "exit": None, "t": time.time()}
+    job = {"lines": [f"chain probe — {len(ids)} probe(s)"], "done": False, "exit": None, "t": time.time()}
     _jobs[job_id] = job
 
     async def _runner():
@@ -939,12 +991,13 @@ async def bench_probe_history():
 
 @app.get("/api/bench/probe/{ts}")
 async def bench_probe_detail(ts: str):
-    if not re.match(r'^\d{8}-\d{6}$', ts):
+    if not re.match(r"^\d{8}-\d{6}$", ts):
         raise HTTPException(400, "invalid probe timestamp")
     fp = bench.DATA_DIR / f"probe-{ts}.json"
     if not fp.exists():
         raise HTTPException(404, "no such probe run")
     import json as _json
+
     return _json.loads(fp.read_text())
 
 
@@ -958,8 +1011,7 @@ async def api_scenarios():
     """List all available scenarios."""
     return {
         "scenarios": [s.to_dict() for s in scenarios.SCENARIOS],
-        "tool_call_probes": [{"id": p["id"], "intent": p["intent"]}
-                             for p in scenarios.TOOL_CALL_PROBES],
+        "tool_call_probes": [{"id": p["id"], "intent": p["intent"]} for p in scenarios.TOOL_CALL_PROBES],
     }
 
 
@@ -985,14 +1037,15 @@ async def api_scenarios_run(request: Request):
     n = len(ids)
     if run_tools:
         n += len(scenarios.TOOL_CALL_PROBES)
-    job = {"lines": [f"scenario suite — {n} run(s)"], "done": False,
-           "exit": None, "t": time.time()}
+    job = {"lines": [f"scenario suite — {n} run(s)"], "done": False, "exit": None, "t": time.time()}
     _jobs[job_id] = job
 
     async def _runner():
         try:
+
             def emit(line: str) -> None:
                 job["lines"].append(line)
+
             result = await scenarios.run_suite(ids, emit)
             if run_tools:
                 tc_result = await scenarios.run_tool_call_suite(emit)
@@ -1004,8 +1057,9 @@ async def api_scenarios_run(request: Request):
                 s["tool_fail"] = ts["fail"]
                 s["tool_total"] = ts["total"]
             fail = result["summary"]["fail"] + result["summary"]["error"]
-            tc_fail = result.get("tool_calls", {}).get("summary", {}).get("fail", 0) + \
-                      result.get("tool_calls", {}).get("summary", {}).get("error", 0)
+            tc_fail = result.get("tool_calls", {}).get("summary", {}).get("fail", 0) + result.get("tool_calls", {}).get(
+                "summary", {}
+            ).get("error", 0)
             job["exit"] = 0 if fail == 0 and tc_fail == 0 else 1
         except Exception as e:
             job["lines"].append(f"[scenarios] crashed: {e}")
@@ -1034,6 +1088,7 @@ async def api_scorecards_compare(model_a: str = "", model_b: str = ""):
 
 # ── Pipeline Shootout ────────────────────────────────────────────
 
+
 @app.post("/api/shootout")
 async def api_shootout(request: Request):
     """Run the full pipeline shootout against all available models.
@@ -1061,14 +1116,15 @@ async def api_shootout(request: Request):
 
     label = model_filter or "all models"
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": [f"shootout — {label} — starting..."], "done": False,
-           "exit": None, "t": time.time()}
+    job = {"lines": [f"shootout — {label} — starting..."], "done": False, "exit": None, "t": time.time()}
     _jobs[job_id] = job
 
     async def _runner():
         try:
+
             def emit(line: str) -> None:
                 job["lines"].append(line)
+
             result = await shootout.run_shootout(emit, model_filter=model_filter)
             if "error" in result:
                 job["exit"] = 1
@@ -1106,13 +1162,14 @@ async def api_shootout_detail(ts: str):
     if not fp.exists():
         raise HTTPException(404, "no such shootout")
     import json as _json
+
     return _json.loads(fp.read_text())
 
 
 @app.get("/api/shootout/{ts}/log")
 async def api_shootout_log(ts: str):
     """Get the companion log file for a shootout."""
-    if not re.match(r'^\d{8}-\d{6}$', ts):
+    if not re.match(r"^\d{8}-\d{6}$", ts):
         raise HTTPException(400, "invalid shootout timestamp")
     fp = shootout.SHOOTOUT_DIR / f"shootout-{ts}.log"
     if not fp.exists():
@@ -1153,8 +1210,13 @@ async def api_gauntlet_run(request: Request):
 
     job_id = uuid.uuid4().hex[:12]
     label = f"Gauntlet: {set_id}" + (f" ×{runs}" if runs > 1 else "")
-    job = {"lines": [f"gauntlet — {set_id}{f' ×{runs}' if runs > 1 else ''} — starting..."],
-           "done": False, "exit": None, "t": time.time(), "label": label}
+    job = {
+        "lines": [f"gauntlet — {set_id}{f' ×{runs}' if runs > 1 else ''} — starting..."],
+        "done": False,
+        "exit": None,
+        "t": time.time(),
+        "label": label,
+    }
     _jobs[job_id] = job
 
     async def _runner():
@@ -1181,7 +1243,7 @@ async def api_gauntlet_history():
 
 @app.get("/api/gauntlet/{ts}")
 async def api_gauntlet_detail(ts: str):
-    if not re.match(r'^\d{8}-\d{6}$', ts):
+    if not re.match(r"^\d{8}-\d{6}$", ts):
         raise HTTPException(400, "invalid gauntlet timestamp")
     run = gauntlet.get_run(ts)
     if not run:
@@ -1213,6 +1275,7 @@ def _scan_runs(kind: str | None = None, limit: int = 50) -> list[dict]:
     file, counts. The full run is one read_artifact / detail endpoint away.
     """
     import json as _json
+
     runs: list[dict] = []
     kinds = [kind] if kind and kind in _RUN_PATTERNS else list(_RUN_PATTERNS)
     for k in kinds:
@@ -1254,6 +1317,7 @@ async def api_runs(kind: str = "", limit: int = 50):
     Full detail is at /api/runs/{kind}/{ts} or the existing per-kind endpoints.
     """
     import json as _json
+
     limit = max(1, min(limit, 200))
     kf = kind.strip() if kind else None
     return {"runs": _scan_runs(kf, limit)}
@@ -1274,6 +1338,7 @@ async def api_runs_compare(kind: str = "", a: str = "", b: str = ""):
     Returns {kind, runs: [{ts, model, config_hash, counts}]} with up to 2 runs.
     """
     import json as _json
+
     kf = kind.strip()
     if not kf or kf not in _RUN_PATTERNS:
         raise HTTPException(400, f"kind must be one of: {sorted(_RUN_PATTERNS)}")
@@ -1313,6 +1378,7 @@ async def api_runs_compare(kind: str = "", a: str = "", b: str = ""):
 
 # ── A6: editor screenshot (visual ground truth) ──
 
+
 @app.get("/api/screenshot")
 async def api_screenshot(source: str = "editor"):
     """Capture a screenshot of the Godot editor viewport or running game.
@@ -1330,13 +1396,13 @@ async def api_screenshot(source: str = "editor"):
         fmt = result.get("format", "png") if isinstance(result, dict) else "png"
         if not img_b64:
             return {"error": "godot-ai returned no image data"}
-        return {"image": img_b64, "format": fmt, "source": source,
-                "data_uri": f"data:image/{fmt};base64,{img_b64}"}
+        return {"image": img_b64, "format": fmt, "source": source, "data_uri": f"data:image/{fmt};base64,{img_b64}"}
     except Exception as e:
         return {"error": f"screenshot failed: {type(e).__name__}: {e}"}
 
 
 # ── C1: tool-call probes (model-only axis — isolates model capability from DevForge) ──
+
 
 @app.post("/api/tools/run")
 async def api_tools_run(request: Request):
@@ -1351,16 +1417,18 @@ async def api_tools_run(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": ["tool-call probe suite — testing model capability directly"],
-           "done": False, "exit": None, "t": time.time(),
-           "label": "Tool-call probes"}
+    job = {
+        "lines": ["tool-call probe suite — testing model capability directly"],
+        "done": False,
+        "exit": None,
+        "t": time.time(),
+        "label": "Tool-call probes",
+    }
     _jobs[job_id] = job
 
     async def _runner():
         try:
-            result = await scenarios.run_tool_call_suite(
-                lambda line: job["lines"].append(line)
-            )
+            result = await scenarios.run_tool_call_suite(lambda line: job["lines"].append(line))
             fail = result["summary"]["fail"] + result["summary"]["error"]
             job["exit"] = 0 if fail == 0 else 1
             job["tool_result"] = result
@@ -1385,9 +1453,12 @@ async def api_tools_history():
         job = _jobs[jid]
         tr = job.get("tool_result")
         if tr and job.get("done"):
-            return {"model": model, "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "probes": tr.get("probes", []),
-                    "summary": tr.get("summary", {})}
+            return {
+                "model": model,
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "probes": tr.get("probes", []),
+                "summary": tr.get("summary", {}),
+            }
     # Fallback: search scorecards for tool_calls data
     cards = scenarios.list_scorecards()
     for c in cards:
@@ -1396,9 +1467,12 @@ async def api_tools_history():
             d = json.loads(fp.read_text())
             if d.get("tool_calls"):
                 tc = d["tool_calls"]
-                return {"model": c["model"], "ts": c["ts"],
-                        "probes": tc.get("probes", []),
-                        "summary": tc.get("summary", {})}
+                return {
+                    "model": c["model"],
+                    "ts": c["ts"],
+                    "probes": tc.get("probes", []),
+                    "summary": tc.get("summary", {}),
+                }
         except Exception:
             continue
     return {"probes": [], "summary": {}, "hint": "Run tool-call probes from Testing tab to populate data"}
@@ -1406,10 +1480,12 @@ async def api_tools_history():
 
 # ── B3: thinking-config toggle continued...
 
+
 @app.get("/api/thinking/status")
 async def api_thinking_status():
     """Report current thinking-config state for the A/B test."""
     import json as _json
+
     env = read_env(ENVFILE)
     kwargs_raw = env.get("LLAMA_ARG_CHAT_TEMPLATE_KWARGS", "")
     thinking_enabled = True  # default: thinking is on
@@ -1455,14 +1531,13 @@ async def api_thinking_toggle(request: Request):
         # Turn thinking ON: remove the line entirely (write_env with "" creates KEY=""
         # which read_env still picks up as an empty-but-present key).
         text = ENVFILE.read_text()
-        lines = [l for l in text.splitlines()
-                 if not l.strip().startswith("LLAMA_ARG_CHAT_TEMPLATE_KWARGS=")]
+        lines = [l for l in text.splitlines() if not l.strip().startswith("LLAMA_ARG_CHAT_TEMPLATE_KWARGS=")]
         ENVFILE.write_text("\n".join(lines) + "\n")
         new_state = True
 
     return {
         "thinking_enabled": new_state,
-        "LLAMA_ARG_CHAT_TEMPLATE_KWARGS": '' if new_state else '{"enable_thinking": false}',
+        "LLAMA_ARG_CHAT_TEMPLATE_KWARGS": "" if new_state else '{"enable_thinking": false}',
         "needs_restart": True,
         "hint": "Run 'stack restart llama' or click Restart Llama for the change to take effect.",
     }
@@ -1515,30 +1590,28 @@ async def api_runs_stability(kind: str = "", n: int = 10):
         score = 0
         if kf == "probe":
             # Probes use works/broken/degraded, not pass/fail
-            total = (c.get("works", 0) + c.get("broken", 0) +
-                     c.get("degraded", 0) + c.get("skip", 0))
+            total = c.get("works", 0) + c.get("broken", 0) + c.get("degraded", 0) + c.get("skip", 0)
             score = round(100 * c.get("works", 0) / total) if total else 0
             if c.get("broken", 0) or c.get("degraded", 0):
-                failure_items.add(f"{c.get('broken',0)}b+{c.get('degraded',0)}d")
+                failure_items.add(f"{c.get('broken', 0)}b+{c.get('degraded', 0)}d")
         elif kf == "bench":
-            total = (c.get("pass", 0) + c.get("fail", 0) +
-                     c.get("error", 0) + c.get("skip", 0))
+            total = c.get("pass", 0) + c.get("fail", 0) + c.get("error", 0) + c.get("skip", 0)
             score = round(100 * c.get("pass", 0) / total) if total else 0
             # Envelope carries flat counts only; per-test detail is in the full
             # run JSON (available via detail endpoint). Failure signature uses
             # count string so eg. "3f+1e" → "2f+0e" is a detectable change.
             if c.get("fail", 0) or c.get("error", 0):
-                failure_items.add(f"{c.get('fail',0)}f+{c.get('error',0)}e")
+                failure_items.add(f"{c.get('fail', 0)}f+{c.get('error', 0)}e")
         elif kf == "scenarios":
             score = round(c.get("pass_rate", 0) * 100)
             # Envelope carries flat pass/fail/error/total; per-scenario detail
             # is in the full scorecard JSON (available via /api/scorecards).
             # Failure signature detects count shifts (eg. 5f→3f = fewer failures).
             if c.get("fail", 0) or c.get("error", 0):
-                failure_items.add(f"{c.get('fail',0)}f+{c.get('error',0)}e")
+                failure_items.add(f"{c.get('fail', 0)}f+{c.get('error', 0)}e")
         elif kf == "gauntlet":
             score = round(c.get("avg_coverage", 0))
-            failure_items.add(f"F{c.get('full',0)}P{c.get('partial',0)}B{c.get('broke',0)}")
+            failure_items.add(f"F{c.get('full', 0)}P{c.get('partial', 0)}B{c.get('broke', 0)}")
 
         scores.append(score)
 
@@ -1563,9 +1636,14 @@ async def api_runs_stability(kind: str = "", n: int = 10):
     failure_sig = hashlib.sha1(",".join(sig_items).encode()).hexdigest()[:12] if sig_items else ""
 
     # Per-run score time series for sparklines (newest first)
-    score_series = [{"score": s, "verdict": "pass" if s >= 90 else ("partial" if s >= 60 else "fail"),
-                     "ts": runs[i].get("ts", "")[:16]}
-                    for i, s in enumerate(scores)]
+    score_series = [
+        {
+            "score": s,
+            "verdict": "pass" if s >= 90 else ("partial" if s >= 60 else "fail"),
+            "ts": runs[i].get("ts", "")[:16],
+        }
+        for i, s in enumerate(scores)
+    ]
 
     # B3: compute truncation rate across recent runs
     trunc_count = 0
@@ -1607,6 +1685,7 @@ async def api_runs_stability(kind: str = "", n: int = 10):
 
 
 # ── Phase 2a: job-lock visibility ─────────────────────────────────
+
 
 @app.get("/api/job/active")
 async def api_job_active():
@@ -1658,12 +1737,18 @@ async def api_mode(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": [f"$ mode {mode}"], "done": False, "exit": None, "t": time.time(),
-           "label": f"Mode: {'Build (qwen3)' if mode == 'build' else 'Write (Cydonia)'}"}
+    job = {
+        "lines": [f"$ mode {mode}"],
+        "done": False,
+        "exit": None,
+        "t": time.time(),
+        "label": f"Mode: {'Build (qwen3)' if mode == 'build' else 'Write (Cydonia)'}",
+    }
     _jobs[job_id] = job
 
     async def _runner():
         try:
+
             def emit(line: str) -> None:
                 job["lines"].append(line)
 
@@ -1673,6 +1758,7 @@ async def api_mode(request: Request):
             # Step 1: swap model
             emit(f"Step 1/3: swapping to {fragment}...")
             from forge_ops import swap_model
+
             swap_ok = await swap_model(fragment, emit)
             if swap_ok != 0:
                 emit(f"[mode] swap returned exit {swap_ok}")
@@ -1683,6 +1769,7 @@ async def api_mode(request: Request):
             emit("Step 2/3: updating persona temperature...")
             try:
                 import json as _json
+
                 presets = _json.loads(PRESETS_PATH.read_text())
                 if "custom" not in presets:
                     emit("  persona 'custom' preset missing — skipping temp update")
@@ -1695,9 +1782,7 @@ async def api_mode(request: Request):
 
             # Step 3: restart Odysseus to pick up persona change + fresh MCP connections
             emit("Step 3/3: restarting Odysseus...")
-            code, out = await _run_capture(
-                ["docker", "restart", "odysseus-odysseus-1"], timeout=30
-            )
+            code, out = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
             if code == 0:
                 emit(f"  Odysseus restarted — mode '{mode}' active")
                 emit("  ⚠ Tool index is now cold — send ONE agent chat in Odysseus to warm it.")
@@ -1733,18 +1818,17 @@ async def api_embedding_status():
     retrieval is running locally or against a remote service.
     """
     import sqlite3
+
     result = {
         "lane": "FastEmbed (local)",
         "status": "ok",
         "remote_endpoints": [],
-        "note": "FastEmbed runs locally — no remote endpoint needed. Retrieval uses local embeddings."
+        "note": "FastEmbed runs locally — no remote endpoint needed. Retrieval uses local embeddings.",
     }
     try:
         db = sqlite3.connect(str(ODYSSEUS_APPDB))
         # Check if an embedding_endpoints table exists
-        cur = db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='embedding_endpoints'"
-        )
+        cur = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='embedding_endpoints'")
         if cur.fetchone():
             eps = db.execute("SELECT id, base_url FROM embedding_endpoints").fetchall()
             if eps:
@@ -1753,9 +1837,7 @@ async def api_embedding_status():
                 result["note"] = f"{len(eps)} remote embedding endpoint(s) configured"
         else:
             # No embedding_endpoints table — check model_endpoints for any endpoint_kind='embedding'
-            cur2 = db.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='model_endpoints'"
-            )
+            cur2 = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='model_endpoints'")
             if cur2.fetchone():
                 # Check schema for endpoint_kind column
                 cols = [c[1] for c in db.execute("PRAGMA table_info(model_endpoints)").fetchall()]
@@ -1796,16 +1878,18 @@ async def api_odysseus_warmup():
             "Odysseus to warm the MCP tool index. After this, the "
             "odysseus.retrieval probe should show 'works'."
         ),
-        "note": "Tool index is cold after any Odysseus restart — this is normal."
+        "note": "Tool index is cold after any Odysseus restart — this is normal.",
     }
 
 
 # ── Phase 3d: persona anti-clobber ────────────────────────────────
 
+
 @app.get("/api/persona/check")
 async def api_persona_check():
     """Check for persona drift vs the vault doc."""
     import json as _json
+
     try:
         presets = _json.loads(PRESETS_PATH.read_text())
     except Exception:
@@ -1857,12 +1941,18 @@ async def api_persona_restore(request: Request):
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {"lines": ["$ persona restore"], "done": False, "exit": None, "t": time.time(),
-           "label": "Restore persona from vault"}
+    job = {
+        "lines": ["$ persona restore"],
+        "done": False,
+        "exit": None,
+        "t": time.time(),
+        "label": "Restore persona from vault",
+    }
     _jobs[job_id] = job
 
     async def _runner():
         try:
+
             def emit(line: str) -> None:
                 job["lines"].append(line)
 
@@ -1913,9 +2003,7 @@ async def api_persona_restore(request: Request):
 
             # Restart Odysseus to pick up changes
             emit("Restarting Odysseus...")
-            code, out = await _run_capture(
-                ["docker", "restart", "odysseus-odysseus-1"], timeout=30
-            )
+            code, out = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
             if code == 0:
                 emit("  Persona restored — Odysseus restarting")
                 job["exit"] = 0
@@ -1931,9 +2019,6 @@ async def api_persona_restore(request: Request):
 
     asyncio.get_running_loop().create_task(_runner())
     return {"job": job_id}
-
-
-
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ from devforge.spatial.compiler import SpatialCompiler
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def lexicon():
     """Create an AssetLexicon from the built-in greybox lexicon."""
@@ -43,6 +44,7 @@ def compiler(lexicon):
 
 
 # ── Lexicon tests ─────────────────────────────────────────────────
+
 
 class TestAssetLexicon:
     def test_loads_eight_assets(self, lexicon):
@@ -84,7 +86,9 @@ class TestAssetLexicon:
 
     def test_greybox_ops_structure(self, lexicon):
         ops = lexicon.greybox_ops(
-            "counter", "/root/Main", "counter_north_counter_center",
+            "counter",
+            "/root/Main",
+            "counter_north_counter_center",
             {"x": 1.5, "y": 0, "z": 0.3},
         )
         types = [o["type"] for o in ops]
@@ -99,6 +103,7 @@ class TestAssetLexicon:
 
 
 # ── Anchor tests ──────────────────────────────────────────────────
+
 
 class TestAnchorResolver:
     def test_resolve_center(self, resolver):
@@ -120,8 +125,7 @@ class TestAnchorResolver:
 
     def test_chain_resolution(self, resolver):
         # Register a placed object
-        resolver.register_placed("table", {"x": 3.0, "y": 0, "z": 2.5},
-                                  {"half_width": 0.75, "half_depth": 0.5})
+        resolver.register_placed("table", {"x": 3.0, "y": 0, "z": 2.5}, {"half_width": 0.75, "half_depth": 0.5})
         # Chain north from table
         pos = resolver.resolve_chain(
             ["table", "north", 1.2],
@@ -147,6 +151,7 @@ class TestAnchorResolver:
 
 
 # ── Compiler tests ────────────────────────────────────────────────
+
 
 class TestSpatialCompiler:
     def test_loads_patterns(self, compiler):
@@ -181,10 +186,7 @@ class TestSpatialCompiler:
         assert "Ceiling" in names
 
         # Check assets are placed
-        asset_names = [
-            s.name for s in create_steps
-            if s.name not in ("Floor", "Ceiling")
-        ]
+        asset_names = [s.name for s in create_steps if s.name not in ("Floor", "Ceiling")]
         assert len(asset_names) >= 2, f"Expected >=2 greybox assets, got {asset_names}"
 
     def test_compile_with_invalid_pattern_raises(self, compiler):
@@ -235,8 +237,7 @@ class TestSpatialCompiler:
     def test_compile_l_shape(self, compiler):
         layout = {
             "pattern": "l_shape_room",
-            "dimensions": {"width_main": 6, "height": 3, "depth_main": 3,
-                         "width_return": 3, "depth_return": 6},
+            "dimensions": {"width_main": 6, "height": 3, "depth_main": 3, "width_return": 3, "depth_return": 6},
             "slot_fills": {
                 "cook_counter": "counter",
                 "cook_appliance_left": "fridge",
@@ -317,9 +318,11 @@ class TestSpatialCompiler:
 
         def table_pos(plan):
             for s in plan.steps:
-                if (getattr(s, "step_type", "") == "set_property"
-                        and getattr(s, "property", "") == "position"
-                        and s.node.endswith("table_center_table")):
+                if (
+                    getattr(s, "step_type", "") == "set_property"
+                    and getattr(s, "property", "") == "position"
+                    and s.node.endswith("table_center_table")
+                ):
                     return s.value
             return None
 
@@ -330,12 +333,10 @@ class TestSpatialCompiler:
         assert abs(op["x"] - (bp["x"] + 10.0)) < 1e-6, (bp, op)
         assert abs(op["z"] - (bp["z"] + 20.0)) < 1e-6, (bp, op)
         # shell=False → no Floor/Ceiling nodes
-        off_names = [s.name for s in off.steps
-                     if getattr(s, "step_type", "") == "create_entity"]
+        off_names = [s.name for s in off.steps if getattr(s, "step_type", "") == "create_entity"]
         assert not any(n in ("Floor", "Ceiling") for n in off_names), off_names
         # shell=True (base) DOES build the shell
-        base_names = [s.name for s in base.steps
-                      if getattr(s, "step_type", "") == "create_entity"]
+        base_names = [s.name for s in base.steps if getattr(s, "step_type", "") == "create_entity"]
         assert any(n in ("Floor", "Ceiling") for n in base_names), base_names
 
     def test_arcs_override_nudged_off_slot_object(self, compiler):
@@ -352,29 +353,32 @@ class TestSpatialCompiler:
         }
         plan = compiler.compile_layout(layout)
         pos = {
-            s.node: s.value for s in plan.steps
-            if getattr(s, "step_type", "") == "set_property"
-            and getattr(s, "property", "") == "position"
+            s.node: s.value
+            for s in plan.steps
+            if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "position"
         }
         slot = next((v for k, v in pos.items() if k.endswith("table_center_table")), None)
         arc = next((v for k, v in pos.items() if k.endswith("table_arcs")), None)
         assert slot is not None and arc is not None, f"positions: {pos}"
         # table footprint 1.5×1.0 → halves 0.75×0.5; AABB must not overlap.
-        assert (abs(slot["x"] - arc["x"]) >= 1.5 - 1e-6
-                or abs(slot["z"] - arc["z"]) >= 1.0 - 1e-6), (
-            f"ARCS table clips the slot table: slot={slot}, arc={arc}")
+        assert abs(slot["x"] - arc["x"]) >= 1.5 - 1e-6 or abs(slot["z"] - arc["z"]) >= 1.0 - 1e-6, (
+            f"ARCS table clips the slot table: slot={slot}, arc={arc}"
+        )
 
 
 # ── Layout Planner tests (unit, no LLM) ──────────────────────────
 
+
 class TestLayoutPlanner:
     def test_import(self):
         from devforge.spatial.layout_planner import LayoutPlanner
+
         planner = LayoutPlanner()
         assert planner.grammar is not None
 
     def test_grammar_loads(self):
         from devforge.spatial.layout_planner import LayoutPlanner
+
         planner = LayoutPlanner()
         assert planner.grammar is not None
         assert "root ::=" in planner.grammar

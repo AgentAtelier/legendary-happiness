@@ -16,10 +16,7 @@ import devforge
 
 def test_all_modules_import():
 
-    for mod in pkgutil.walk_packages(
-        devforge.__path__,
-        devforge.__name__ + "."
-    ):
+    for mod in pkgutil.walk_packages(devforge.__path__, devforge.__name__ + "."):
         __import__(mod.name)
 
 

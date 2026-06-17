@@ -26,25 +26,19 @@ class PreviewValidator:
 
         # Required components
         if node.node_type in self.REQUIRED_CHILDREN:
-
             required = self.REQUIRED_CHILDREN[node.node_type]
 
             for r in required:
                 if r not in children_types:
-                    errors.append(
-                        f"{node.node_type}:{node.name} missing required child {r}"
-                    )
+                    errors.append(f"{node.node_type}:{node.name} missing required child {r}")
 
         # Invalid combinations
         if node.node_type in self.INVALID_CHILDREN:
-
             invalid = self.INVALID_CHILDREN[node.node_type]
 
             for c in children_types:
                 if c in invalid:
-                    errors.append(
-                        f"{node.node_type}:{node.name} cannot contain {c}"
-                    )
+                    errors.append(f"{node.node_type}:{node.name} cannot contain {c}")
 
         # Duplicate child names
         names = set()

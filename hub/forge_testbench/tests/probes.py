@@ -54,6 +54,7 @@ def _probe_verdict_to_status(verdict: str) -> Status:
 # Layer 1: llama probes
 # ═══════════════════════════════════════════════════════════════════
 
+
 @register
 class ProbeLlamaThroughput(Test):
     id = "probe.llama.throughput"
@@ -67,14 +68,12 @@ class ProbeLlamaThroughput(Test):
         port = ctx.env.get("LLAMA_PORT", "8002")
         payload = {
             "prompt": (
-                "<|im_start|>user\nWrite one paragraph about a blacksmith's forge."
-                "<|im_end|>\n<|im_start|>assistant\n"
+                "<|im_start|>user\nWrite one paragraph about a blacksmith's forge.<|im_end|>\n<|im_start|>assistant\n"
             ),
             "n_predict": 200,
             "temperature": 0.7,
         }
-        r = await ctx.llama_post(
-            f"http://127.0.0.1:{port}/completion", payload, timeout=120)
+        r = await ctx.llama_post(f"http://127.0.0.1:{port}/completion", payload, timeout=120)
         t = r.get("timings", {})
         return {
             "tok_per_sec": round(t.get("predicted_per_second", 0), 1),
@@ -88,7 +87,8 @@ class ProbeLlamaThroughput(Test):
         tps = raw.get("tok_per_sec", 0)
         if not tps:
             return ScoredResult(
-                self.id, "broke",
+                self.id,
+                "broke",
                 metrics={
                     "throughput": Metric(float(tps), "tok_s", True, "throughput"),
                     "ttft": Metric(raw.get("ttft_ms", 0), "ms", False, "TTFT"),
@@ -98,7 +98,8 @@ class ProbeLlamaThroughput(Test):
             )
         verdict = "works" if tps >= 15 else ("degraded" if tps >= 5 else "broken")
         return ScoredResult(
-            self.id, _probe_verdict_to_status(verdict),
+            self.id,
+            _probe_verdict_to_status(verdict),
             score=min(round(tps / 30 * 100), 100) if tps > 0 else 0,
             metrics={
                 "throughput": Metric(float(tps), "tok_s", True, "throughput"),
@@ -142,7 +143,8 @@ class ProbeLlamaContext(Test):
 
         if alias != want:
             return ScoredResult(
-                self.id, "broke",
+                self.id,
+                "broke",
                 metrics={
                     "context": Metric(loaded, "count", True, "loaded ctx"),
                     "match": Metric.boolean(False, "model matches"),
@@ -152,7 +154,8 @@ class ProbeLlamaContext(Test):
             )
         if configured and loaded < configured:
             return ScoredResult(
-                self.id, "partial",
+                self.id,
+                "partial",
                 score=round(loaded / max(configured, 1) * 100),
                 metrics={
                     "context": Metric(loaded, "count", True, "loaded ctx"),
@@ -161,7 +164,8 @@ class ProbeLlamaContext(Test):
                 raw=raw,
             )
         return ScoredResult(
-            self.id, "ok",
+            self.id,
+            "ok",
             score=100,
             metrics={
                 "context": Metric(loaded, "count", True, "loaded ctx"),
@@ -188,8 +192,7 @@ class ProbeLlamaGrammar(Test):
             "temperature": 1.2,
             "grammar": 'root ::= "FORGE" | "ANVIL"',
         }
-        r = await ctx.llama_post(
-            f"http://127.0.0.1:{port}/completion", payload, timeout=60)
+        r = await ctx.llama_post(f"http://127.0.0.1:{port}/completion", payload, timeout=60)
         out = r.get("content", "")
         honored = out.strip() in ("FORGE", "ANVIL")
         return {"raw_output": out.strip(), "honored": honored}
@@ -199,14 +202,18 @@ class ProbeLlamaGrammar(Test):
         out = raw.get("raw_output", "")
         if honored:
             return ScoredResult(
-                self.id, "ok", score=100,
+                self.id,
+                "ok",
+                score=100,
                 metrics={
                     "enforced": Metric.boolean(True, "grammar enforced"),
                 },
                 raw=raw,
             )
         return ScoredResult(
-            self.id, "broke", score=0,
+            self.id,
+            "broke",
+            score=0,
             metrics={
                 "enforced": Metric.boolean(False, "grammar enforced"),
             },
@@ -233,8 +240,7 @@ class ProbeLlamaThinking(Test):
             "max_tokens": 400,
             "messages": [{"role": "user", "content": content_msg}],
         }
-        r = await ctx.llama_post(
-            f"http://127.0.0.1:{port}/v1/chat/completions", payload, timeout=120)
+        r = await ctx.llama_post(f"http://127.0.0.1:{port}/v1/chat/completions", payload, timeout=120)
         ch = r["choices"][0]
         content = ch["message"].get("content") or ""
         reasoning = ch["message"].get("reasoning_content") or ""
@@ -253,7 +259,9 @@ class ProbeLlamaThinking(Test):
 
         if content_len < 3:
             return ScoredResult(
-                self.id, "broke", score=0,
+                self.id,
+                "broke",
+                score=0,
                 metrics={
                     "content_chars": Metric(content_len, "count", True, "answer chars"),
                     "reasoning_chars": Metric(reasoning_len, "count", False, "reasoning leak"),
@@ -263,7 +271,9 @@ class ProbeLlamaThinking(Test):
             )
         if is_qwen and reasoning_len > 50:
             return ScoredResult(
-                self.id, "partial", score=60,
+                self.id,
+                "partial",
+                score=60,
                 metrics={
                     "content_chars": Metric(content_len, "count", True, "answer chars"),
                     "reasoning_chars": Metric(reasoning_len, "count", False, "reasoning leak"),
@@ -271,7 +281,9 @@ class ProbeLlamaThinking(Test):
                 raw=raw,
             )
         return ScoredResult(
-            self.id, "ok", score=100,
+            self.id,
+            "ok",
+            score=100,
             metrics={
                 "content_chars": Metric(content_len, "count", True, "answer chars"),
                 "reasoning_chars": Metric(reasoning_len, "count", False, "reasoning leak"),
@@ -294,17 +306,18 @@ class ProbeLlamaTools(Test):
             "model": ctx.model_alias,
             "temperature": 0.2,
             "messages": [{"role": "user", "content": "Read the scene hierarchy."}],
-            "tools": [{
-                "type": "function",
-                "function": {
-                    "name": "scene_get_hierarchy",
-                    "description": "list scene nodes",
-                    "parameters": {"type": "object", "properties": {}},
-                },
-            }],
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "scene_get_hierarchy",
+                        "description": "list scene nodes",
+                        "parameters": {"type": "object", "properties": {}},
+                    },
+                }
+            ],
         }
-        r = await ctx.llama_post(
-            f"http://127.0.0.1:{port}/v1/chat/completions", payload, timeout=180)
+        r = await ctx.llama_post(f"http://127.0.0.1:{port}/v1/chat/completions", payload, timeout=180)
         ch = r["choices"][0]
         calls = ch["message"].get("tool_calls") or []
         name = calls[0]["function"]["name"] if calls else None
@@ -323,7 +336,9 @@ class ProbeLlamaTools(Test):
 
         if calls:
             return ScoredResult(
-                self.id, "ok", score=100,
+                self.id,
+                "ok",
+                score=100,
                 metrics={
                     "tool_call": Metric.boolean(True, "emitted tool call"),
                 },
@@ -331,14 +346,18 @@ class ProbeLlamaTools(Test):
             )
         if "scene_get_hierarchy" in text:
             return ScoredResult(
-                self.id, "partial", score=40,
+                self.id,
+                "partial",
+                score=40,
                 metrics={
                     "tool_call": Metric.boolean(False, "emitted tool call"),
                 },
                 raw=raw,
             )
         return ScoredResult(
-            self.id, "broke", score=0,
+            self.id,
+            "broke",
+            score=0,
             metrics={
                 "tool_call": Metric.boolean(False, "emitted tool call"),
             },
@@ -351,14 +370,14 @@ class ProbeLlamaTools(Test):
 # Layer 2: DevForge probes
 # ═══════════════════════════════════════════════════════════════════
 
+
 async def _capture_pipeline(ctx: Context) -> dict:
     """Run the fixed DevForge prompt and capture all stages."""
     t0 = time.time()
     before = set()
     try:
         h = await ctx.godot_ai("scene_get_hierarchy", {"depth": 10})
-        before = {n["path"] for n in h.get("nodes", [])
-                  if isinstance(n, dict) and n.get("path")}
+        before = {n["path"] for n in h.get("nodes", []) if isinstance(n, dict) and n.get("path")}
     except Exception:
         pass
 
@@ -376,8 +395,7 @@ async def _capture_pipeline(ctx: Context) -> dict:
     after = set()
     try:
         h = await ctx.godot_ai("scene_get_hierarchy", {"depth": 10})
-        after = {n["path"] for n in h.get("nodes", [])
-                 if isinstance(n, dict) and n.get("path")}
+        after = {n["path"] for n in h.get("nodes", []) if isinstance(n, dict) and n.get("path")}
     except Exception:
         pass
 
@@ -417,15 +435,18 @@ class ProbeDevforgePlan(Test):
         }
 
         if not entities:
-            return ScoredResult(self.id, "broke", score=0, metrics=metrics, raw=raw,
-                               errors=["planner produced an EMPTY delta (0 entities)"])
+            return ScoredResult(
+                self.id,
+                "broke",
+                score=0,
+                metrics=metrics,
+                raw=raw,
+                errors=["planner produced an EMPTY delta (0 entities)"],
+            )
         if len(entities) < 3:
-            return ScoredResult(self.id, "partial",
-                               score=round(len(entities) / 3 * 100),
-                               metrics=metrics, raw=raw)
+            return ScoredResult(self.id, "partial", score=round(len(entities) / 3 * 100), metrics=metrics, raw=raw)
         score = 100 if apply_ms <= 60000 else 70
-        return ScoredResult(self.id, "ok" if score >= 70 else "partial",
-                           score=score, metrics=metrics, raw=raw)
+        return ScoredResult(self.id, "ok" if score >= 70 else "partial", score=score, metrics=metrics, raw=raw)
 
 
 @register
@@ -447,26 +468,25 @@ class ProbeDevforgeCompile(Test):
         scaffold = {"MainCamera", "DirectionalLight"}
         requested = [o for o in adds if o.get("name") not in scaffold]
         parents = {o.get("name"): o.get("parent") for o in adds}
-        bad = {n: p for n, p in parents.items()
-               if p and not str(p).startswith("/root/Main")}
+        bad = {n: p for n, p in parents.items() if p and not str(p).startswith("/root/Main")}
         covered = sorted({o.get("name") for o in requested} & PROBE_EXPECTED)
 
         metrics = {
             "ops": Metric(len(requested), "count", True, "requested ops"),
-            "coverage": Metric.ratio(
-                len(covered) / max(len(PROBE_EXPECTED), 1), "compile coverage"),
+            "coverage": Metric.ratio(len(covered) / max(len(PROBE_EXPECTED), 1), "compile coverage"),
         }
 
         if bad:
             return ScoredResult(self.id, "partial", score=50, metrics=metrics, raw=raw)
         if not requested:
-            return ScoredResult(self.id, "broke", score=0, metrics=metrics, raw=raw,
-                               errors=["compiler emitted ONLY scaffolding"])
+            return ScoredResult(
+                self.id, "broke", score=0, metrics=metrics, raw=raw, errors=["compiler emitted ONLY scaffolding"]
+            )
         if set(covered) >= PROBE_EXPECTED:
             return ScoredResult(self.id, "ok", score=100, metrics=metrics, raw=raw)
-        return ScoredResult(self.id, "partial",
-                           score=round(len(covered) / max(len(PROBE_EXPECTED), 1) * 100),
-                           metrics=metrics, raw=raw)
+        return ScoredResult(
+            self.id, "partial", score=round(len(covered) / max(len(PROBE_EXPECTED), 1) * 100), metrics=metrics, raw=raw
+        )
 
 
 @register
@@ -496,21 +516,27 @@ class ProbeDevforgeExecute(Test):
             "applied": Metric(applied, "count", True, "applied ops"),
             "errors": Metric(len(errors), "count", False, "errors"),
             "nodes_added": Metric(len(added), "count", True, "nodes added"),
-            "coverage": Metric.ratio(
-                len(built) / max(len(PROBE_EXPECTED), 1), "execution coverage"),
+            "coverage": Metric.ratio(len(built) / max(len(PROBE_EXPECTED), 1), "execution coverage"),
         }
 
         if errors:
             return ScoredResult(
-                self.id, "broke" if not added else "partial",
+                self.id,
+                "broke" if not added else "partial",
                 score=round(len(built) / max(len(PROBE_EXPECTED), 1) * 100),
-                metrics=metrics, raw=raw)
+                metrics=metrics,
+                raw=raw,
+            )
         if set(built) >= PROBE_EXPECTED:
             return ScoredResult(self.id, "ok", score=100, metrics=metrics, raw=raw)
         if built:
-            return ScoredResult(self.id, "partial",
-                               score=round(len(built) / max(len(PROBE_EXPECTED), 1) * 100),
-                               metrics=metrics, raw=raw)
+            return ScoredResult(
+                self.id,
+                "partial",
+                score=round(len(built) / max(len(PROBE_EXPECTED), 1) * 100),
+                metrics=metrics,
+                raw=raw,
+            )
         return ScoredResult(self.id, "partial", score=10, metrics=metrics, raw=raw)
 
 
@@ -530,32 +556,38 @@ class ProbeDevforgeCompleteness(Test):
         art = raw.get("artifact", {}) if isinstance(raw.get("artifact"), dict) else {}
         ops = [o for o in art.get("operations", []) if isinstance(o, dict)]
         injected = [
-            o for o in ops
+            o
+            for o in ops
             if o.get("type") == "add_node"
             and o.get("node_type") in ("DirectionalLight3D", "Camera3D")
             and o.get("name") in ("DirectionalLight", "MainCamera")
         ]
         parents = {o.get("name"): o.get("parent") for o in injected}
-        bad = {n: p for n, p in parents.items()
-               if p and not str(p).startswith("/root/Main")}
+        bad = {n: p for n, p in parents.items() if p and not str(p).startswith("/root/Main")}
 
         if bad:
             return ScoredResult(
-                self.id, "broke", score=0,
+                self.id,
+                "broke",
+                score=0,
                 metrics={"injected": Metric(len(injected), "count", True, "injected nodes")},
-                raw=raw, errors=[f"invalid parents: {bad}"])
+                raw=raw,
+                errors=[f"invalid parents: {bad}"],
+            )
         if not injected:
             return ScoredResult(
-                self.id, "partial", score=50,
-                metrics={"injected": Metric(0, "count", True, "injected nodes")},
-                raw=raw)
+                self.id, "partial", score=50, metrics={"injected": Metric(0, "count", True, "injected nodes")}, raw=raw
+            )
         return ScoredResult(
-            self.id, "ok", score=100,
+            self.id,
+            "ok",
+            score=100,
             metrics={
                 "injected": Metric(len(injected), "count", True, "injected nodes"),
                 "valid_parents": Metric.boolean(True, "valid parents"),
             },
-            raw=raw)
+            raw=raw,
+        )
 
 
 @register
@@ -586,28 +618,37 @@ class ProbeDevforgeValidate(Test):
 
         if valid_n == 1 and caught:
             return ScoredResult(
-                self.id, "ok", score=100,
+                self.id,
+                "ok",
+                score=100,
                 metrics={
                     "valid_count": Metric(valid_n, "count", True, "accepted"),
                     "error_count": Metric(err_n, "count", False, "rejected"),
                 },
-                raw=raw)
+                raw=raw,
+            )
         if valid_n == 2:
             return ScoredResult(
-                self.id, "partial", score=50,
+                self.id,
+                "partial",
+                score=50,
                 metrics={
                     "valid_count": Metric(valid_n, "count", True, "accepted"),
                     "error_count": Metric(err_n, "count", False, "rejected"),
                 },
-                raw=raw)
+                raw=raw,
+            )
         return ScoredResult(
-            self.id, "broke", score=0,
+            self.id,
+            "broke",
+            score=0,
             metrics={
                 "valid_count": Metric(valid_n, "count", True, "accepted"),
                 "error_count": Metric(err_n, "count", False, "rejected"),
             },
             raw=raw,
-            errors=[f"validator rejected the valid op (valid={valid_n})"])
+            errors=[f"validator rejected the valid op (valid={valid_n})"],
+        )
 
 
 @register
@@ -630,7 +671,7 @@ class ProbeDevforgeRoundtrip(Test):
 
         def _count(node):
             n = 1
-            for ch in (node.get("children") or []):
+            for ch in node.get("children") or []:
                 n += _count(ch)
             return n
 
@@ -651,17 +692,20 @@ class ProbeDevforgeRoundtrip(Test):
         }
 
         if df_n == 0:
-            return ScoredResult(self.id, "broke", score=0, metrics=metrics, raw=raw,
-                               errors=["DevForge returned no scene tree"])
+            return ScoredResult(
+                self.id, "broke", score=0, metrics=metrics, raw=raw, errors=["DevForge returned no scene tree"]
+            )
         if df_n == gd_n:
             return ScoredResult(self.id, "ok", score=100, metrics=metrics, raw=raw)
-        return ScoredResult(self.id, "partial", score=round(min(df_n, gd_n) / max(df_n, gd_n, 1) * 100),
-                           metrics=metrics, raw=raw)
+        return ScoredResult(
+            self.id, "partial", score=round(min(df_n, gd_n) / max(df_n, gd_n, 1) * 100), metrics=metrics, raw=raw
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════
 # Layer 3: godot-ai probes
 # ═══════════════════════════════════════════════════════════════════
+
 
 @register
 class ProbeGodotaiLatency(Test):
@@ -675,19 +719,14 @@ class ProbeGodotaiLatency(Test):
 
     async def run(self, ctx: Context) -> dict:
         t0 = time.time()
-        await ctx.godot_ai("node_create", {
-            "parent_path": "/Main", "type": "Node3D", "name": "ProbePing"})
+        await ctx.godot_ai("node_create", {"parent_path": "/Main", "type": "Node3D", "name": "ProbePing"})
         create_ms = int((time.time() - t0) * 1000)
 
         h = await ctx.godot_ai("scene_get_hierarchy", {"depth": 10})
-        verified = any(
-            n.get("path") == "/Main/ProbePing"
-            for n in h.get("nodes", []) if isinstance(n, dict)
-        )
+        verified = any(n.get("path") == "/Main/ProbePing" for n in h.get("nodes", []) if isinstance(n, dict))
 
         t1 = time.time()
-        await ctx.godot_ai("node_manage", {
-            "op": "delete", "params": {"path": "/Main/ProbePing"}})
+        await ctx.godot_ai("node_manage", {"op": "delete", "params": {"path": "/Main/ProbePing"}})
         delete_ms = int((time.time() - t1) * 1000)
 
         return {"create_ms": create_ms, "delete_ms": delete_ms, "verified": verified}
@@ -741,8 +780,14 @@ class ProbeGodotaiFidelity(Test):
         }
 
         if not nodes:
-            return ScoredResult(self.id, "broke", score=0, metrics=metrics, raw=raw,
-                               errors=["empty hierarchy — no scene or broken editor link"])
+            return ScoredResult(
+                self.id,
+                "broke",
+                score=0,
+                metrics=metrics,
+                raw=raw,
+                errors=["empty hierarchy — no scene or broken editor link"],
+            )
         if root != "Main":
             return ScoredResult(self.id, "partial", score=40, metrics=metrics, raw=raw)
         return ScoredResult(self.id, "ok", score=100, metrics=metrics, raw=raw)
@@ -751,6 +796,7 @@ class ProbeGodotaiFidelity(Test):
 # ═══════════════════════════════════════════════════════════════════
 # Layer 4: runtime
 # ═══════════════════════════════════════════════════════════════════
+
 
 @register
 class ProbeRuntimeLaunch(Test):
@@ -764,13 +810,13 @@ class ProbeRuntimeLaunch(Test):
 
     async def run(self, ctx: Context) -> dict:
         import asyncio as aio
+
         launched = False
         fps = 0
         capture_ready = False
         polls = 0
         try:
-            await ctx.godot_ai("project_run", {
-                "mode": "custom", "scene": "res://probe.tscn", "autosave": False})
+            await ctx.godot_ai("project_run", {"mode": "custom", "scene": "res://probe.tscn", "autosave": False})
             launched = True
             for polls in range(1, 7):
                 await aio.sleep(1.5)
@@ -780,10 +826,13 @@ class ProbeRuntimeLaunch(Test):
                 except Exception:
                     pass
                 try:
-                    mon = await ctx.godot_ai("editor_manage", {
-                        "op": "monitors_get",
-                        "params": {"monitors": ["time/fps"]},
-                    })
+                    mon = await ctx.godot_ai(
+                        "editor_manage",
+                        {
+                            "op": "monitors_get",
+                            "params": {"monitors": ["time/fps"]},
+                        },
+                    )
                     mdata = mon.get("data", mon)
                     if isinstance(mdata, dict):
                         fps = mdata.get("time/fps", 0) or 0
@@ -799,18 +848,24 @@ class ProbeRuntimeLaunch(Test):
             except Exception:
                 pass
         return {
-            "launched": launched, "fps": fps,
-            "capture_ready": capture_ready, "polls": polls,
+            "launched": launched,
+            "fps": fps,
+            "capture_ready": capture_ready,
+            "polls": polls,
         }
 
     def score(self, raw: dict) -> ScoredResult:
         if raw.get("error"):
             return ScoredResult(
-                self.id, "broke", score=0,
+                self.id,
+                "broke",
+                score=0,
                 metrics={
                     "fps": Metric(0, "count", True, "FPS"),
                 },
-                raw=raw, errors=[raw["error"]])
+                raw=raw,
+                errors=[raw["error"]],
+            )
 
         fps = raw.get("fps", 0)
         launched = raw.get("launched", False)
@@ -829,6 +884,7 @@ class ProbeRuntimeLaunch(Test):
 # ═══════════════════════════════════════════════════════════════════
 # Layer 5: odysseus probes
 # ═══════════════════════════════════════════════════════════════════
+
 
 @register
 class ProbeOdyPersona(Test):
@@ -858,8 +914,7 @@ class ProbeOdyPersona(Test):
 
     def score(self, raw: dict) -> ScoredResult:
         if raw.get("error"):
-            return ScoredResult(self.id, "broke", score=0, raw=raw,
-                               errors=[raw["error"]])
+            return ScoredResult(self.id, "broke", score=0, raw=raw, errors=[raw["error"]])
 
         enabled = raw.get("enabled", False)
         sp_chars = raw.get("system_prompt_chars", 0)
@@ -875,8 +930,13 @@ class ProbeOdyPersona(Test):
 
         if not enabled or sp_chars < 1000:
             return ScoredResult(
-                self.id, "broke", score=0, metrics=metrics, raw=raw,
-                errors=[f"persona husk — enabled={enabled}, prompt={sp_chars} chars"])
+                self.id,
+                "broke",
+                score=0,
+                metrics=metrics,
+                raw=raw,
+                errors=[f"persona husk — enabled={enabled}, prompt={sp_chars} chars"],
+            )
 
         minor = []
         if not has_mcp:
@@ -926,8 +986,7 @@ class ProbeOdyRetrieval(Test):
             "    out['error'] = type(e).__name__ + ': ' + str(e)[:160]\n"
             "print(json.dumps(out))\n"
         )
-        code, out = await ctx.sh(
-            "docker", "exec", ODY_CONTAINER, "python", "-c", script, timeout=90)
+        code, out = await ctx.sh("docker", "exec", ODY_CONTAINER, "python", "-c", script, timeout=90)
         if code != 0:
             return {"error": f"probe failed in container: {out.strip()[:200]}"}
         try:
@@ -937,8 +996,7 @@ class ProbeOdyRetrieval(Test):
 
     def score(self, raw: dict) -> ScoredResult:
         if raw.get("error"):
-            return ScoredResult(
-                self.id, "broke", score=0, raw=raw, errors=[raw["error"]])
+            return ScoredResult(self.id, "broke", score=0, raw=raw, errors=[raw["error"]])
 
         tools = raw.get("retrieved", [])
         mcp = [t for t in tools if t.startswith("mcp__")]
@@ -954,11 +1012,14 @@ class ProbeOdyRetrieval(Test):
         if apply_present:
             return ScoredResult(self.id, "ok", score=100, metrics=metrics, raw=raw)
         if not mcp_in_coll:
-            return ScoredResult(
-                self.id, "partial", score=50, metrics=metrics, raw=raw)
+            return ScoredResult(self.id, "partial", score=50, metrics=metrics, raw=raw)
         if mcp:
-            return ScoredResult(
-                self.id, "partial", score=30, metrics=metrics, raw=raw)
+            return ScoredResult(self.id, "partial", score=30, metrics=metrics, raw=raw)
         return ScoredResult(
-            self.id, "broke", score=0, metrics=metrics, raw=raw,
-            errors=["MCP tools indexed but none retrieved for a build query"])
+            self.id,
+            "broke",
+            score=0,
+            metrics=metrics,
+            raw=raw,
+            errors=["MCP tools indexed but none retrieved for a build query"],
+        )

@@ -3,7 +3,6 @@ from devforge.reasoning.ai.repair.repair_planner import RepairPlanner
 
 
 class RepairAgent(Agent):
-
     def __init__(self):
 
         super().__init__("repair")
@@ -19,6 +18,4 @@ class RepairAgent(Agent):
 
         plan = self.repair.plan_repair(errors)
 
-        return {
-            "repair_plan": plan
-        }
+        return {"repair_plan": plan}

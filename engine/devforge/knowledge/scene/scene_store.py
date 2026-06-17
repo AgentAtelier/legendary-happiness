@@ -42,9 +42,7 @@ class SceneStore:
     # Public API
     # ------------------------------------------------------------------
 
-    def get_or_fetch(
-        self, executor
-    ) -> Tuple[Dict[str, Any], int]:
+    def get_or_fetch(self, executor) -> Tuple[Dict[str, Any], int]:
         """Return (scene_tree, version), fetching from Godot if changed.
 
         Fetches the live scene from the executor on every call.  The

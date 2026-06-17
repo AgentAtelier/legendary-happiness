@@ -2,7 +2,6 @@ from .preview_node import PreviewNode
 
 
 class PreviewScene:
-
     def __init__(self):
         self.root = PreviewNode("root", "Node")
 
@@ -16,7 +15,6 @@ class PreviewScene:
         node = self.root
 
         for part in parts[1:]:
-
             found = None
 
             for child in node.children:

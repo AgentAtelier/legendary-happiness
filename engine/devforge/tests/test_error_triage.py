@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Knowledge table integrity ───────────────────────────────────
 
+
 def test_all_regexes_compile() -> None:
     """Every KNOWN_ERRORS entry has a compilable regex."""
     import re
@@ -23,9 +24,7 @@ def test_all_regexes_compile() -> None:
         try:
             re.compile(entry.pattern, re.IGNORECASE)
         except re.error as e:
-            raise AssertionError(
-                f"{entry.id}: regex compile failed: {e}"
-            )
+            raise AssertionError(f"{entry.id}: regex compile failed: {e}")
 
 
 def test_all_entries_have_explanation_and_fix_hint() -> None:
@@ -33,12 +32,8 @@ def test_all_entries_have_explanation_and_fix_hint() -> None:
     from devforge.triage.knowledge import KNOWN_ERRORS
 
     for entry in KNOWN_ERRORS:
-        assert entry.explanation.strip(), (
-            f"{entry.id}: explanation is empty"
-        )
-        assert entry.fix_hint.strip(), (
-            f"{entry.id}: fix_hint is empty"
-        )
+        assert entry.explanation.strip(), f"{entry.id}: explanation is empty"
+        assert entry.fix_hint.strip(), f"{entry.id}: fix_hint is empty"
 
 
 def test_table_ids_are_unique() -> None:
@@ -46,30 +41,24 @@ def test_table_ids_are_unique() -> None:
     from devforge.triage.knowledge import KNOWN_ERRORS
 
     ids = [e.id for e in KNOWN_ERRORS]
-    assert len(ids) == len(set(ids)), (
-        f"Duplicate IDs: {sorted(set(i for i in ids if ids.count(i) > 1))}"
-    )
+    assert len(ids) == len(set(ids)), f"Duplicate IDs: {sorted(set(i for i in ids if ids.count(i) > 1))}"
 
 
 def test_table_has_twenty_entries() -> None:
     """Knowledge table has at least 20 entries."""
     from devforge.triage.knowledge import KNOWN_ERRORS
 
-    assert len(KNOWN_ERRORS) >= 20, (
-        f"Expected ≥20 entries, got {len(KNOWN_ERRORS)}"
-    )
+    assert len(KNOWN_ERRORS) >= 20, f"Expected ≥20 entries, got {len(KNOWN_ERRORS)}"
 
 
 # ── triage_text classification ──────────────────────────────────
+
 
 def test_classify_missing_member() -> None:
     """Log with E01-pattern message → missing_member, known_id E01."""
     from devforge.triage.triage import triage_text
 
-    log = (
-        "player.gd:42 - Invalid call. Nonexistent function 'move' "
-        "in base 'Node3D'."
-    )
+    log = "player.gd:42 - Invalid call. Nonexistent function 'move' in base 'Node3D'."
     result = triage_text(log)
     assert result["total_raw"] == 1
     assert len(result["findings"]) == 1
@@ -85,10 +74,7 @@ def test_classify_null_access() -> None:
     """Log with null-instance message → null_access."""
     from devforge.triage.triage import triage_text
 
-    log = (
-        "enemy.gd:15 - Attempt to call function 'take_damage' "
-        "on a null instance."
-    )
+    log = "enemy.gd:15 - Attempt to call function 'take_damage' on a null instance."
     result = triage_text(log)
     assert len(result["findings"]) == 1
     assert result["findings"][0]["category"] == "null_access"
@@ -110,6 +96,7 @@ def test_classify_unrecognized() -> None:
 
 # ── Deduplication ───────────────────────────────────────────────
 
+
 def test_dedupe_identical_errors() -> None:
     """Three identical errors → one finding with occurrence_count 3."""
     from devforge.triage.triage import triage_text
@@ -130,14 +117,12 @@ def test_dedupe_identical_errors() -> None:
 
 # ── Sorting ─────────────────────────────────────────────────────
 
+
 def test_findings_sorted_by_file_then_line() -> None:
     """Two different files → findings sorted by (file, line)."""
     from devforge.triage.triage import triage_text
 
-    log = (
-        "b.gd:20 - Division by zero.\n"
-        "a.gd:10 - Division by zero."
-    )
+    log = "b.gd:20 - Division by zero.\na.gd:10 - Division by zero."
     result = triage_text(log)
     assert len(result["findings"]) == 2
     assert result["findings"][0]["file"] == "a.gd"
@@ -145,6 +130,7 @@ def test_findings_sorted_by_file_then_line() -> None:
 
 
 # ── Edge cases ──────────────────────────────────────────────────
+
 
 def test_empty_log_returns_zero() -> None:
     """Empty log → total_raw:0, findings:[], no crash."""

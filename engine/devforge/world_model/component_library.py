@@ -17,7 +17,6 @@ class ComponentLibrary:
     def load(self):
 
         for file in self.directory.glob("*.json"):
-
             data = json.loads(file.read_text())
 
             self.components[data["name"]] = data

@@ -11,7 +11,6 @@ from devforge.knowledge.system_graph.system_graph import (
 
 @dataclass
 class GraphDiff:
-
     missing_nodes: List[str]
     extra_nodes: List[str]
 

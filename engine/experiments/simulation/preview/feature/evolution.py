@@ -5,7 +5,6 @@ from devforge.simulation.preview.mechanic_evolution import MechanicEvolution
 
 
 class EvolutionFeature(PreviewFeature):
-
     name = "evolution"
 
     def __init__(self):

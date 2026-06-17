@@ -48,6 +48,7 @@ except ImportError:
 @dataclass
 class CriticViolation:
     """A violation from any critic (deterministic or governance)."""
+
     source: str  # "det_validator", "gate1", "risk"
     rule_id: str
     severity: str  # "critical", "high", "warning"
@@ -104,9 +105,7 @@ class CriticResult:
         }
         if self.risk_result is not None:
             base["risk_score"] = getattr(self.risk_result, "final_score", 0)
-            base["risk_tier"] = getattr(
-                getattr(self.risk_result, "tier", None), "value", "unknown"
-            )
+            base["risk_tier"] = getattr(getattr(self.risk_result, "tier", None), "value", "unknown")
         return base
 
     def summary(self) -> str:
@@ -128,10 +127,7 @@ class CriticResult:
             for v in self.blocking_violations:
                 loc = f":{v.line_number}" if v.line_number else ""
                 path = f" — {v.file_path}" if v.file_path else ""
-                lines.append(
-                    f"    [{v.severity.upper()}] [{v.source}] {v.rule_id}"
-                    f"{path}{loc}: {v.message}"
-                )
+                lines.append(f"    [{v.severity.upper()}] [{v.source}] {v.rule_id}{path}{loc}: {v.message}")
         return "\n".join(lines)
 
 
@@ -155,8 +151,8 @@ class CriticManager:
         contracts_path: Optional[str] = None,
     ):
         """Args:
-            project_root: Root of the project for Gate 1 path resolution.
-            contracts_path: Override path to architectural_contracts.yaml.
+        project_root: Root of the project for Gate 1 path resolution.
+        contracts_path: Override path to architectural_contracts.yaml.
         """
         self._project_root = project_root
         self._contracts_path = contracts_path
@@ -290,8 +286,7 @@ class CriticManager:
         status = "PASSED" if result.passed else "FAILED"
         logger.info(
             "critic",
-            f"CriticManager review {status}: {result.violation_count} blocking, "
-            f"{len(result.review_flags)} flags",
+            f"CriticManager review {status}: {result.violation_count} blocking, {len(result.review_flags)} flags",
         )
 
         return result

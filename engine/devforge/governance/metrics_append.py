@@ -20,22 +20,43 @@ from typing import Any, Dict, List
 RUN_PATTERN = re.compile(r"^DF-[0-9]{4}-[0-9]{4}$")
 
 HEADER = [
-    "run_id", "timestamp", "tick_budget_ms", "tick_baseline_ms", "tick_delta_ms",
-    "boundary_violations_caught", "boundary_violations_30d", "repair_loop_depth",
-    "max_repair_attempts", "plan_conformance_flagged", "scope_files_estimated",
-    "scope_files_actual", "scope_accuracy_pct", "decision_log_word_count",
-    "risk_score", "risk_tier", "gate1_pass", "gate2_pass", "gate3_pass",
+    "run_id",
+    "timestamp",
+    "tick_budget_ms",
+    "tick_baseline_ms",
+    "tick_delta_ms",
+    "boundary_violations_caught",
+    "boundary_violations_30d",
+    "repair_loop_depth",
+    "max_repair_attempts",
+    "plan_conformance_flagged",
+    "scope_files_estimated",
+    "scope_files_actual",
+    "scope_accuracy_pct",
+    "decision_log_word_count",
+    "risk_score",
+    "risk_tier",
+    "gate1_pass",
+    "gate2_pass",
+    "gate3_pass",
 ]
 
 REQUIRED_FIELDS = set(HEADER)
 
 NUMERIC_FIELDS = {
-    "tick_budget_ms", "tick_baseline_ms", "tick_delta_ms",
-    "boundary_violations_caught", "boundary_violations_30d",
-    "repair_loop_depth", "max_repair_attempts",
-    "plan_conformance_flagged", "scope_files_estimated",
-    "scope_files_actual", "scope_accuracy_pct",
-    "decision_log_word_count", "risk_score",
+    "tick_budget_ms",
+    "tick_baseline_ms",
+    "tick_delta_ms",
+    "boundary_violations_caught",
+    "boundary_violations_30d",
+    "repair_loop_depth",
+    "max_repair_attempts",
+    "plan_conformance_flagged",
+    "scope_files_estimated",
+    "scope_files_actual",
+    "scope_accuracy_pct",
+    "decision_log_word_count",
+    "risk_score",
 }
 
 GATE_FIELDS = {"gate1_pass", "gate2_pass", "gate3_pass"}
@@ -131,8 +152,16 @@ def print_summary(path: str = "metrics.csv", n: int = 5) -> None:
         return
 
     # Column widths
-    cols = ["run_id", "risk_tier", "tick_delta_ms", "boundary_violations_caught",
-            "repair_loop_depth", "gate1_pass", "gate2_pass", "gate3_pass"]
+    cols = [
+        "run_id",
+        "risk_tier",
+        "tick_delta_ms",
+        "boundary_violations_caught",
+        "repair_loop_depth",
+        "gate1_pass",
+        "gate2_pass",
+        "gate3_pass",
+    ]
     headers = ["RunID", "Tier", "TickΔ(ms)", "Violations", "Repairs", "G1", "G2", "G3"]
     widths = [max(len(h), max(len(str(r.get(c, ""))) for r in rows)) for h, c in zip(headers, cols)]
 
@@ -151,22 +180,11 @@ def print_summary(path: str = "metrics.csv", n: int = 5) -> None:
 # CLI
 # --------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="DevForge Metrics CSV Appender"
-    )
-    parser.add_argument(
-        "--json",
-        help="Path to JSON file or JSON string containing row data."
-    )
+    parser = argparse.ArgumentParser(description="DevForge Metrics CSV Appender")
+    parser.add_argument("--json", help="Path to JSON file or JSON string containing row data.")
     parser.add_argument("--file", default="metrics.csv", help="Path to metrics CSV.")
-    parser.add_argument(
-        "--summary", action="store_true",
-        help="Print last 5 entries as a formatted table."
-    )
-    parser.add_argument(
-        "-n", type=int, default=5,
-        help="Number of entries to show in summary (default 5)."
-    )
+    parser.add_argument("--summary", action="store_true", help="Print last 5 entries as a formatted table.")
+    parser.add_argument("-n", type=int, default=5, help="Number of entries to show in summary (default 5).")
 
     args = parser.parse_args()
 

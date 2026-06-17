@@ -21,6 +21,7 @@ from devforge.infrastructure.logger import logger
 
 class OpsPlanningError(Exception):
     """Ops planning failed — retryable."""
+
     pass
 
 
@@ -37,8 +38,8 @@ class OpsPlanner:
 
     def __init__(self, grammar_dir: Optional[str] = None):
         """Args:
-            grammar_dir: Path to the directory containing ops_planner.gbnf.
-                Defaults to the prompts directory next to arch_planner.gbnf.
+        grammar_dir: Path to the directory containing ops_planner.gbnf.
+            Defaults to the prompts directory next to arch_planner.gbnf.
         """
         self._grammar_text: Optional[str] = None
         self._load_grammar(grammar_dir)
@@ -47,11 +48,12 @@ class OpsPlanner:
         """Load the ops GBNF grammar from the prompts directory."""
         try:
             from devforge.reasoning.prompts import arch_planner as _ref
+
             prompts_dir = Path(_ref.__file__).parent
         except Exception:
-            prompts_dir = Path(grammar_dir) if grammar_dir else Path(
-                __file__
-            ).resolve().parents[2] / "reasoning" / "prompts"
+            prompts_dir = (
+                Path(grammar_dir) if grammar_dir else Path(__file__).resolve().parents[2] / "reasoning" / "prompts"
+            )
 
         grammar_path = prompts_dir / self.GRAMMAR_FILENAME
 
@@ -193,22 +195,16 @@ Output JSON array now:
 
         start = text.find("[")
         if start == -1:
-            raise OpsPlanningError(
-                f"No JSON array found in response:\n{text[:200]}"
-            )
+            raise OpsPlanningError(f"No JSON array found in response:\n{text[:200]}")
 
         decoder = json.JSONDecoder()
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise OpsPlanningError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise OpsPlanningError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         if not isinstance(data, list):
-            raise OpsPlanningError(
-                f"Expected JSON array, got {type(data).__name__}"
-            )
+            raise OpsPlanningError(f"Expected JSON array, got {type(data).__name__}")
 
         # Split into files and operations
         files: List[Dict[str, Any]] = []
@@ -219,10 +215,12 @@ Output JSON array now:
                 continue
             op_type = item.get("type", "")
             if op_type == "create_file":
-                files.append({
-                    "path": item.get("path", ""),
-                    "content": item.get("content", ""),
-                })
+                files.append(
+                    {
+                        "path": item.get("path", ""),
+                        "content": item.get("content", ""),
+                    }
+                )
             else:
                 operations.append(item)
 

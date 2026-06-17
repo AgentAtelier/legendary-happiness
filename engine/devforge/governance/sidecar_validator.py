@@ -46,11 +46,12 @@ def validate_sidecar(sidecar_path: str, schema_path: str) -> Tuple[bool, str]:
     # Try jsonschema if available, fall back to basic checks
     try:
         from jsonschema import validate, ValidationError
+
         try:
             validate(instance=data, schema=schema)
             return True, "VALID"
         except ValidationError as e:
-            path_str = '.'.join(str(p) for p in e.absolute_path)
+            path_str = ".".join(str(p) for p in e.absolute_path)
             return False, f"Schema violation: {e.message} (path: {path_str})"
     except ImportError:
         return _validate_basic(data)
@@ -92,10 +93,12 @@ def scan_directory(directory: str) -> List[dict]:
                 asset_path = Path(root) / filename
                 sidecar_path = Path(root) / f"{filename}.sidecar.json"
                 if not sidecar_path.exists():
-                    missing.append({
-                        "asset": str(asset_path),
-                        "expected_sidecar": str(sidecar_path),
-                    })
+                    missing.append(
+                        {
+                            "asset": str(asset_path),
+                            "expected_sidecar": str(sidecar_path),
+                        }
+                    )
     return missing
 
 
@@ -162,9 +165,7 @@ def generate_template(pipeline_type: str) -> dict:
 # CLI
 # --------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="DevForge Asset Sidecar Validator (C-07)"
-    )
+    parser = argparse.ArgumentParser(description="DevForge Asset Sidecar Validator (C-07)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     # --- validate ---
@@ -179,9 +180,11 @@ if __name__ == "__main__":
     # --- template ---
     p_tmpl = sub.add_parser("template", help="Generate a blank sidecar template")
     p_tmpl.add_argument(
-        "--type", required=True, dest="pipeline_type",
+        "--type",
+        required=True,
+        dest="pipeline_type",
         choices=["procedural", "diffusion"],
-        help="Pipeline type for the template."
+        help="Pipeline type for the template.",
     )
 
     args = parser.parse_args()

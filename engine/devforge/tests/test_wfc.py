@@ -30,14 +30,17 @@ def _create_steps(plan):
 
 def _prop(plan, suffix, prop):
     for s in plan.steps:
-        if (getattr(s, "step_type", "") == "set_property"
-                and getattr(s, "property", "") == prop
-                and s.node.endswith(suffix)):
+        if (
+            getattr(s, "step_type", "") == "set_property"
+            and getattr(s, "property", "") == prop
+            and s.node.endswith(suffix)
+        ):
             return s.value
     return None
 
 
 # ── Imports ──────────────────────────────────────────────────────
+
 
 class TestWFCImports:
     def test_engine_importable(self):
@@ -51,6 +54,7 @@ class TestWFCImports:
 
 
 # ── Adjacency validation ─────────────────────────────────────────
+
 
 class TestAdjacencyValidation:
     def test_adjacency_is_symmetric(self):
@@ -72,6 +76,7 @@ class TestAdjacencyValidation:
 
 # ── DungeonSpec ──────────────────────────────────────────────────
 
+
 class TestDungeonSpec:
     def test_defaults(self):
         spec = DungeonSpec()
@@ -85,6 +90,7 @@ class TestDungeonSpec:
 
 
 # ── Seed determinism ─────────────────────────────────────────────
+
 
 class TestSeedDeterminism:
     def _names_positions(self, plan):
@@ -113,6 +119,7 @@ class TestSeedDeterminism:
 
 
 # ── Tile compilation ─────────────────────────────────────────────
+
 
 class TestCompileDungeon:
     def test_produces_nodes(self, engine):
@@ -173,6 +180,7 @@ class TestCompileDungeon:
 
 # ── Corridor carving guard ───────────────────────────────────────
 
+
 class TestCorridorCarving:
     def test_carve_preserves_resolved_room_floor(self, engine):
         """A carved doorway must NOT overwrite a cell already resolved to a
@@ -181,12 +189,11 @@ class TestCorridorCarving:
         W, D = 7, 3
         wave = [[set(_ALL_TILES) for _ in range(W)] for _ in range(D)]
         # Horizontal carve site at row 1, col 3: flanking floors at col 1 and 5.
-        wave[1][1] = {"floor"}   # col-2 (left cluster)
-        wave[1][5] = {"floor"}   # col+2 (right cluster)
-        wave[1][2] = {"floor"}   # col-1: a RESOLVED ROOM FLOOR — must survive
+        wave[1][1] = {"floor"}  # col-2 (left cluster)
+        wave[1][5] = {"floor"}  # col+2 (right cluster)
+        wave[1][2] = {"floor"}  # col-1: a RESOLVED ROOM FLOOR — must survive
         engine._carve_corridors(wave, W, D)
-        assert wave[1][2] == {"floor"}, (
-            f"carved doorway overwrote a room floor: {wave[1][2]}")
+        assert wave[1][2] == {"floor"}, f"carved doorway overwrote a room floor: {wave[1][2]}"
 
     def test_carve_through_walls_still_works(self, engine):
         """Carving must still punch a corridor when the gap is walls/unresolved
@@ -195,7 +202,7 @@ class TestCorridorCarving:
         wave = [[set(_ALL_TILES) for _ in range(W)] for _ in range(D)]
         wave[1][1] = {"floor"}
         wave[1][5] = {"floor"}
-        wave[1][2] = {"wall"}     # col-1 is a wall — carving through is allowed
+        wave[1][2] = {"wall"}  # col-1 is a wall — carving through is allowed
         wave[1][3] = set(_ALL_TILES)  # center unresolved
         wave[1][4] = {"wall"}
         engine._carve_corridors(wave, W, D)
@@ -207,6 +214,7 @@ class TestCorridorCarving:
 
 
 # ── small helpers for the mesh test ──────────────────────────────
+
 
 def _has(plan, tile):
     return any(s.name.startswith(tile + "_") for s in _create_steps(plan))

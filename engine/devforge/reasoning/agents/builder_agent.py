@@ -3,7 +3,6 @@ from devforge.compilation.pipeline.operation_generator import OperationGenerator
 
 
 class BuilderAgent(Agent):
-
     def __init__(self):
 
         super().__init__("builder")

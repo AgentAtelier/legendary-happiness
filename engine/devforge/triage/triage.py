@@ -20,9 +20,9 @@ class TriagedError:
     file: str
     line: int
     raw_message: str
-    category: str       # from the table, or "unrecognized"
+    category: str  # from the table, or "unrecognized"
     known_id: str | None  # E01..E20, or None
-    explanation: str    # table entry, or fallback
+    explanation: str  # table entry, or fallback
     fix_hint: str | None
     occurrence_count: int = 1
 

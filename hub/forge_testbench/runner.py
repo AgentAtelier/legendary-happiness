@@ -44,7 +44,9 @@ def _read_env() -> dict[str, str]:
 
 async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
     proc = await asyncio.create_subprocess_exec(
-        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
     )
     try:
         raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
@@ -55,6 +57,7 @@ async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
 
 
 # ── MCP helpers (wired into Context) ────────────────────────────
+
 
 async def _godot_ai_call(tool: str, args: dict | None = None) -> Any:
     from mcp.client.streamable_http import streamablehttp_client
@@ -80,8 +83,7 @@ async def _devforge_call(
     from mcp.client.sse import sse_client
     from mcp import ClientSession
 
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10,
-                          sse_read_timeout=timeout_s + 30) as (r, w):
+    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
             args: dict = {"prompt": prompt, "temperature": temperature}
@@ -90,7 +92,8 @@ async def _devforge_call(
             if skip_cache:
                 args["skip_cache"] = True
             res = await s.call_tool(
-                "apply_spec", args,
+                "apply_spec",
+                args,
                 read_timeout_seconds=timedelta(seconds=timeout_s),
             )
             return __import__("json").loads(res.content[0].text)
@@ -101,12 +104,12 @@ async def _read_artifact(artifact_id: str, timeout_s: int = 30) -> dict:
     from mcp.client.sse import sse_client
     from mcp import ClientSession
 
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10,
-                          sse_read_timeout=timeout_s + 30) as (r, w):
+    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
             res = await s.call_tool(
-                "read_artifact", {"artifact_id": artifact_id},
+                "read_artifact",
+                {"artifact_id": artifact_id},
                 read_timeout_seconds=timedelta(seconds=timeout_s),
             )
             return __import__("json").loads(res.content[0].text)
@@ -118,12 +121,12 @@ async def _devforge_raw_call(tool: str, args: dict, timeout_s: int = 60) -> dict
     from mcp.client.sse import sse_client
     from mcp import ClientSession
 
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10,
-                          sse_read_timeout=timeout_s + 30) as (r, w):
+    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
             res = await s.call_tool(
-                tool, args,
+                tool,
+                args,
                 read_timeout_seconds=timedelta(seconds=timeout_s),
             )
             return __import__("json").loads(res.content[0].text)
@@ -153,28 +156,31 @@ async def _scene_reset() -> None:
     bounce_uid = f"uid://cbounce{uuid.uuid4().hex[:12]}"
     probe_uid = f"uid://cprobe{uuid.uuid4().hex[:12]}"
 
-    bounce_tscn = (
-        f'[gd_scene format=3 uid="{bounce_uid}"]\n\n'
-        '[node name="_bounce" type="Node3D"]\n'
-    )
+    bounce_tscn = f'[gd_scene format=3 uid="{bounce_uid}"]\n\n[node name="_bounce" type="Node3D"]\n'
     probe_tscn = (
         f'[gd_scene format=3 uid="{probe_uid}"]\n\n'
         '[node name="Main" type="Node3D"]\n\n'
         '[node name="MainCamera" type="Camera3D" parent="."]\n'
-        'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\n\n'
+        "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\n\n"
         '[node name="DirectionalLight" type="DirectionalLight3D" parent="."]\n'
-        'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\n'
+        "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\n"
     )
 
     try:
-        await _godot_ai_call("filesystem_manage", {
-            "op": "write_text",
-            "params": {"path": PROBE_BOUNCE_SCENE, "content": bounce_tscn},
-        })
-        await _godot_ai_call("filesystem_manage", {
-            "op": "write_text",
-            "params": {"path": PROBE_SCENE, "content": probe_tscn},
-        })
+        await _godot_ai_call(
+            "filesystem_manage",
+            {
+                "op": "write_text",
+                "params": {"path": PROBE_BOUNCE_SCENE, "content": bounce_tscn},
+            },
+        )
+        await _godot_ai_call(
+            "filesystem_manage",
+            {
+                "op": "write_text",
+                "params": {"path": PROBE_SCENE, "content": probe_tscn},
+            },
+        )
     except Exception:
         pass
 
@@ -195,8 +201,7 @@ async def _scene_reset() -> None:
         roots = [n for n in nodes if n.get("path", "").count("/") == 1]
         if len(roots) != 1:
             raise RuntimeError(
-                f"Probe health check FAILED: {len(roots)} roots found. "
-                f"Close the probe.tscn tab in Godot and re-run."
+                f"Probe health check FAILED: {len(roots)} roots found. Close the probe.tscn tab in Godot and re-run."
             )
         root = roots[0]
         if root.get("name") != "Main":
@@ -205,28 +210,22 @@ async def _scene_reset() -> None:
                 f"expected 'Main'. Close probe.tscn tab in Godot WITHOUT saving."
             )
         if root.get("type") != "Node3D":
-            raise RuntimeError(
-                f"Probe health check FAILED: root type is '{root.get('type')}', "
-                f"expected 'Node3D'."
-            )
+            raise RuntimeError(f"Probe health check FAILED: root type is '{root.get('type')}', expected 'Node3D'.")
         # Verify baseline children
-        kids = [n for n in nodes
-                if n.get("path", "").startswith(root["path"] + "/")
-                and n.get("path", "").count("/") == 2]
+        kids = [
+            n for n in nodes if n.get("path", "").startswith(root["path"] + "/") and n.get("path", "").count("/") == 2
+        ]
         kid_names = {n.get("name") for n in kids}
         expected = _PROBE_BASELINE - {"Main"}
         missing = expected - kid_names
         if missing:
             raise RuntimeError(
-                f"Probe health check FAILED: baseline nodes missing: {sorted(missing)}. "
-                f"Present: {sorted(kid_names)}."
+                f"Probe health check FAILED: baseline nodes missing: {sorted(missing)}. Present: {sorted(kid_names)}."
             )
     except RuntimeError:
         raise
     except Exception as e:
-        raise RuntimeError(
-            f"Probe health check FAILED: cannot read scene hierarchy: {e}"
-        ) from e
+        raise RuntimeError(f"Probe health check FAILED: cannot read scene hierarchy: {e}") from e
 
     # Safety guard: confirm active scene is the probe
     try:
@@ -248,11 +247,9 @@ async def _scene_reset() -> None:
         root_path = roots[0] if roots else "/Main"
         for n in nodes:
             path = n.get("path", "")
-            if path.startswith(root_path + "/") and path.count("/") == 2 \
-                    and n.get("name") not in _PROBE_BASELINE:
+            if path.startswith(root_path + "/") and path.count("/") == 2 and n.get("name") not in _PROBE_BASELINE:
                 try:
-                    await _godot_ai_call("node_manage", {
-                        "op": "delete", "params": {"path": path}})
+                    await _godot_ai_call("node_manage", {"op": "delete", "params": {"path": path}})
                 except Exception:
                     pass
     except Exception:
@@ -275,10 +272,12 @@ async def _restore_main_scene() -> None:
 
 # ── Model swap ──────────────────────────────────────────────────
 
+
 async def _swap_model(alias: str, emit: Callable[[str], None]) -> bool:
     """Transactional model swap. Returns True on success."""
     try:
         from forge_ops import swap_model as _transactional_swap
+
         emit(f"  swapping to {alias} (transactional: pre-flight + llama restart)...")
         code = await _transactional_swap(alias, emit)
         if code != 0:
@@ -292,6 +291,7 @@ async def _swap_model(alias: str, emit: Callable[[str], None]) -> bool:
 
 
 # ── The Runner ──────────────────────────────────────────────────
+
 
 class Runner:
     """Unified test runner. Handles single model, multi-model, and repeat-N."""
@@ -337,8 +337,7 @@ class Runner:
             return Artifact(kind="single", suite=suite or "custom", models=models)
 
         self._log(f"═══ Forge Testbench ═══")
-        self._log(f"Suite: {suite or 'custom'} | Models: {len(models)} | "
-                  f"Tests: {len(test_classes)} | Repeat: {repeat}")
+        self._log(f"Suite: {suite or 'custom'} | Models: {len(models)} | Tests: {len(test_classes)} | Repeat: {repeat}")
         self._log(f"Models: {', '.join(models)}")
         self._log(f"Tests: {', '.join(t.id for t in test_classes)}")
         self._log("")
@@ -349,8 +348,7 @@ class Runner:
                 for tc in test_classes:
                     n = repeat if tc.repeatable else 1
                     self._log(f"  [DRY]   {tc.id} ×{n}")
-            return Artifact(kind="sweep" if len(models) > 1 else "single",
-                           suite=suite or "custom", models=models)
+            return Artifact(kind="sweep" if len(models) > 1 else "single", suite=suite or "custom", models=models)
 
         artifact = Artifact(
             kind="sweep" if len(models) > 1 else "single",
@@ -377,10 +375,9 @@ class Runner:
             ctx = Context(
                 model_alias=model,
                 env=env,
-                _apply_spec=lambda prompt, planner="", temperature=0.2,
-                    skip_cache=False, timeout_s=300: _devforge_call(
-                        prompt, planner=planner, temperature=temperature,
-                        skip_cache=skip_cache, timeout_s=timeout_s),
+                _apply_spec=lambda prompt, planner="", temperature=0.2, skip_cache=False, timeout_s=300: _devforge_call(
+                    prompt, planner=planner, temperature=temperature, skip_cache=skip_cache, timeout_s=timeout_s
+                ),
                 _read_artifact=_read_artifact,
                 _devforge_raw=_devforge_raw_call,
                 _godot_ai_call=_godot_ai_call,
@@ -396,8 +393,7 @@ class Runner:
 
                 for run_i in range(1, n + 1):
                     run_counter += 1
-                    self._log(f"\n▶ [{run_counter}/{total_runs}] "
-                              f"{test.id} (run {run_i}/{n})")
+                    self._log(f"\n▶ [{run_counter}/{total_runs}] {test.id} (run {run_i}/{n})")
 
                     t0 = time.time()
 
@@ -407,40 +403,57 @@ class Runner:
                             await _scene_reset()
                         except RuntimeError as e:
                             self._log(f"  ✗ Scene reset failed: {e}")
-                            artifact.add(Result(
-                                test_id=test.id, category=test.category,
-                                model=model, status="error",
-                                suite=suite, ts=time.strftime("%Y-%m-%d %H:%M:%S"),
-                                run_index=run_i, repeat_count=n,
-                                errors=[f"scene reset: {e}"],
-                            ))
+                            artifact.add(
+                                Result(
+                                    test_id=test.id,
+                                    category=test.category,
+                                    model=model,
+                                    status="error",
+                                    suite=suite,
+                                    ts=time.strftime("%Y-%m-%d %H:%M:%S"),
+                                    run_index=run_i,
+                                    repeat_count=n,
+                                    errors=[f"scene reset: {e}"],
+                                )
+                            )
                             continue
 
                     # Run the test with timeout guard
                     try:
-                        raw = await asyncio.wait_for(
-                            test.run(ctx), timeout=test.timeout_s)
+                        raw = await asyncio.wait_for(test.run(ctx), timeout=test.timeout_s)
                     except asyncio.TimeoutError:
                         self._log(f"  ✗ Timeout after {test.timeout_s}s")
-                        artifact.add(Result(
-                            test_id=test.id, category=test.category,
-                            model=model, status="error",
-                            suite=suite, ts=time.strftime("%Y-%m-%d %H:%M:%S"),
-                            run_index=run_i, repeat_count=n,
-                            errors=[f"timeout after {test.timeout_s}s"],
-                            latency_ms=int((time.time() - t0) * 1000),
-                        ))
+                        artifact.add(
+                            Result(
+                                test_id=test.id,
+                                category=test.category,
+                                model=model,
+                                status="error",
+                                suite=suite,
+                                ts=time.strftime("%Y-%m-%d %H:%M:%S"),
+                                run_index=run_i,
+                                repeat_count=n,
+                                errors=[f"timeout after {test.timeout_s}s"],
+                                latency_ms=int((time.time() - t0) * 1000),
+                            )
+                        )
                         continue
                     except Exception as e:
                         self._log(f"  ✗ Crashed: {type(e).__name__}: {e}")
-                        artifact.add(Result(
-                            test_id=test.id, category=test.category,
-                            model=model, status="error",
-                            suite=suite, ts=time.strftime("%Y-%m-%d %H:%M:%S"),
-                            run_index=run_i, repeat_count=n,
-                            errors=[f"{type(e).__name__}: {e}"],
-                            latency_ms=int((time.time() - t0) * 1000),
-                        ))
+                        artifact.add(
+                            Result(
+                                test_id=test.id,
+                                category=test.category,
+                                model=model,
+                                status="error",
+                                suite=suite,
+                                ts=time.strftime("%Y-%m-%d %H:%M:%S"),
+                                run_index=run_i,
+                                repeat_count=n,
+                                errors=[f"{type(e).__name__}: {e}"],
+                                latency_ms=int((time.time() - t0) * 1000),
+                            )
+                        )
                         continue
 
                     # Score (pure function)
@@ -448,14 +461,20 @@ class Runner:
                         scored = test.score(raw)
                     except Exception as e:
                         self._log(f"  ✗ Scoring crashed: {type(e).__name__}: {e}")
-                        artifact.add(Result(
-                            test_id=test.id, category=test.category,
-                            model=model, status="error",
-                            suite=suite, ts=time.strftime("%Y-%m-%d %H:%M:%S"),
-                            run_index=run_i, repeat_count=n,
-                            errors=[f"score(): {type(e).__name__}: {e}"],
-                            latency_ms=int((time.time() - t0) * 1000),
-                        ))
+                        artifact.add(
+                            Result(
+                                test_id=test.id,
+                                category=test.category,
+                                model=model,
+                                status="error",
+                                suite=suite,
+                                ts=time.strftime("%Y-%m-%d %H:%M:%S"),
+                                run_index=run_i,
+                                repeat_count=n,
+                                errors=[f"score(): {type(e).__name__}: {e}"],
+                                latency_ms=int((time.time() - t0) * 1000),
+                            )
+                        )
                         continue
 
                     latency_ms = int((time.time() - t0) * 1000)
@@ -483,8 +502,7 @@ class Runner:
                     artifact.add(result)
 
                     icon = {"ok": "✓", "partial": "~", "broke": "✗", "error": "✗"}
-                    self._log(f"  [{icon.get(status, '?')} {status}] "
-                              f"({latency_ms}ms) score={scored.score}")
+                    self._log(f"  [{icon.get(status, '?')} {status}] ({latency_ms}ms) score={scored.score}")
 
         # Restore main scene
         await _restore_main_scene()
@@ -498,9 +516,11 @@ class Runner:
         summary_data = artifact.model_summary()
         for model, s in summary_data.items():
             c = s["counts"]
-            self._log(f"  {model}: {c['ok']} ok / {c['partial']} partial / "
-                      f"{c['broke']} broke / {c['error']} error  "
-                      f"(avg score: {s['avg_score']})")
+            self._log(
+                f"  {model}: {c['ok']} ok / {c['partial']} partial / "
+                f"{c['broke']} broke / {c['error']} error  "
+                f"(avg score: {s['avg_score']})"
+            )
 
         return artifact
 

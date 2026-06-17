@@ -34,9 +34,7 @@ from devforge.infrastructure.logger import logger
 
 def _hash_dict(data: dict) -> str:
     """Stable hash of a serializable dict."""
-    return hashlib.md5(
-        json.dumps(data, sort_keys=True, default=str).encode()
-    ).hexdigest()[:12]
+    return hashlib.md5(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
 def normalize_prompt(prompt: str) -> str:
@@ -66,9 +64,7 @@ def _scene_structural_hash(scene: Dict[str, Any]) -> str:
 
     walk(scene)
     items.sort()
-    return hashlib.md5(
-        json.dumps(items, sort_keys=True).encode()
-    ).hexdigest()[:12]
+    return hashlib.md5(json.dumps(items, sort_keys=True).encode()).hexdigest()[:12]
 
 
 class LRUPlanCache:
@@ -84,8 +80,8 @@ class LRUPlanCache:
     SAVE_INTERVAL_S: float = 5.0
 
     def __init__(self, max_entries: int = 100, disk_path: Optional[str] = None):
-        self._entries: Dict[str, dict] = {}       # key → plan
-        self._timestamps: Dict[str, float] = {}   # key → last_access_time
+        self._entries: Dict[str, dict] = {}  # key → plan
+        self._timestamps: Dict[str, float] = {}  # key → last_access_time
         self._max_entries = max_entries
         self._hits: int = 0
         self._misses: int = 0
@@ -144,9 +140,7 @@ class LRUPlanCache:
                 continue
 
             for trigger in triggers:
-                prompt_prefix = hashlib.md5(
-                    normalize_prompt(trigger).encode()
-                ).hexdigest()[:8]
+                prompt_prefix = hashlib.md5(normalize_prompt(trigger).encode()).hexdigest()[:8]
                 # Warm key: prompt-hash only — matches any scene/graph
                 # via the two-tier lookup in get()
                 key = f"{prompt_prefix}:*:*"
@@ -186,9 +180,7 @@ class LRUPlanCache:
             return self._entries[key]
 
         # Tier 2: prompt-only fallback (wildcard scene/graph from warming)
-        prompt_prefix = hashlib.md5(
-            normalize_prompt(prompt).encode()
-        ).hexdigest()[:8]
+        prompt_prefix = hashlib.md5(normalize_prompt(prompt).encode()).hexdigest()[:8]
         wildcard_key = f"{prompt_prefix}:*:*"
         if wildcard_key in self._entries:
             self._timestamps[wildcard_key] = time.time()
@@ -313,13 +305,7 @@ class LRUPlanCache:
         graph: Any,
     ) -> str:
         """Generate a cache key from normalized prompt + structural scene + graph."""
-        prompt_hash = hashlib.md5(
-            normalize_prompt(prompt).encode()
-        ).hexdigest()[:8]
+        prompt_hash = hashlib.md5(normalize_prompt(prompt).encode()).hexdigest()[:8]
         scene_hash = _scene_structural_hash(scene) if scene else "000000000000"
-        graph_hash = (
-            _hash_dict(graph.to_dict())
-            if graph and hasattr(graph, "to_dict")
-            else "000000000000"
-        )
+        graph_hash = _hash_dict(graph.to_dict()) if graph and hasattr(graph, "to_dict") else "000000000000"
         return f"{prompt_hash}:{scene_hash}:{graph_hash}"

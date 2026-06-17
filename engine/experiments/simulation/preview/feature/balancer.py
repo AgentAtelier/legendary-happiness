@@ -5,7 +5,6 @@ from devforge.simulation.preview.auto_balancer import AutoBalancer
 
 
 class BalancerFeature(PreviewFeature):
-
     name = "balancer"
 
     def __init__(self):

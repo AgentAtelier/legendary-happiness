@@ -40,9 +40,7 @@ class SSPPlanner:
         # room_json → SSPEngine.compile_room()
     """
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "ssp_planner.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "ssp_planner.gbnf"
 
     def __init__(
         self,
@@ -140,9 +138,13 @@ class SSPPlanner:
         archetype_ids = ", ".join(self._ssp_engine.archetype_ids)
         # Filter to indoor/furniture assets only (not outdoor plants/rocks)
         indoor_assets = [
-            aid for aid in self._lexicon.asset_ids
-            if not any( tag in c for c in self._lexicon.get(aid).get("category", [])
-                       for tag in ("scatter", "outdoor", "plant", "rock") )
+            aid
+            for aid in self._lexicon.asset_ids
+            if not any(
+                tag in c
+                for c in self._lexicon.get(aid).get("category", [])
+                for tag in ("scatter", "outdoor", "plant", "rock")
+            )
         ]
         asset_ids = ", ".join(indoor_assets) if indoor_assets else ", ".join(self._lexicon.asset_ids)
 
@@ -209,9 +211,7 @@ Output JSON now (no prose, no markdown fences, just the JSON object):
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         return {
             "archetype": data.get("archetype", "kitchen"),

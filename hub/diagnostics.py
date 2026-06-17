@@ -43,35 +43,36 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 def _summarize_nodes(ops: list) -> str:
     """One-line summary of what was built."""
-    names = sorted(set(
-        o.get("name", "") for o in ops
-        if isinstance(o, dict) and o.get("type") == "add_node"
-    ))
-    return f"{len(names)} nodes: {', '.join(names[:8])}" + (
-        f" (+{len(names)-8})" if len(names) > 8 else ""
-    )
+    names = sorted(set(o.get("name", "") for o in ops if isinstance(o, dict) and o.get("type") == "add_node"))
+    return f"{len(names)} nodes: {', '.join(names[:8])}" + (f" (+{len(names) - 8})" if len(names) > 8 else "")
 
 
-async def _apply_with_full_ops(prompt: str, planner: str = "room",
-                              temperature: float = 0.2,
-                              timeout_s: int = 300) -> dict:
+async def _apply_with_full_ops(
+    prompt: str, planner: str = "room", temperature: float = 0.2, timeout_s: int = 300
+) -> dict:
     """Call apply_spec and read the full artifact to get operations.
 
     apply_spec returns a compact summary. The full operations list,
     arch_delta, and stage_latencies are in the artifact fetched via
     read_artifact.
     """
-    summary = await _devforge_call("apply_spec", {
-        "prompt": prompt,
-        "temperature": temperature,
-        "planner": planner,
-        "skip_cache": True,
-    }, timeout_s=timeout_s)
+    summary = await _devforge_call(
+        "apply_spec",
+        {
+            "prompt": prompt,
+            "temperature": temperature,
+            "planner": planner,
+            "skip_cache": True,
+        },
+        timeout_s=timeout_s,
+    )
     aid = summary.get("artifact_id")
     if aid:
         try:
             artifact = await _devforge_call(
-                "read_artifact", {"artifact_id": aid}, timeout_s=30,
+                "read_artifact",
+                {"artifact_id": aid},
+                timeout_s=30,
             )
         except Exception:
             artifact = summary
@@ -88,6 +89,7 @@ async def _apply_with_full_ops(prompt: str, planner: str = "room",
 # ═══════════════════════════════════════════════════════════════════
 # Test 1: Repeat-diversity
 # ═══════════════════════════════════════════════════════════════════
+
 
 async def test_repeat_diversity(emit=print, runs: int = 10) -> dict:
     """Run 'build a kitchen' ×N times with skip_cache=True.
@@ -107,7 +109,8 @@ async def test_repeat_diversity(emit=print, runs: int = 10) -> dict:
 
         try:
             result = await _apply_with_full_ops(
-                "build a kitchen", planner="room",
+                "build a kitchen",
+                planner="room",
             )
             crashed = False
         except Exception as e:
@@ -117,29 +120,26 @@ async def test_repeat_diversity(emit=print, runs: int = 10) -> dict:
         ms = int((time.time() - t0) * 1000)
         after = await _scene_paths()
         ops = result.get("operations", [])
-        node_count = sum(
-            1 for o in ops if isinstance(o, dict) and o.get("type") == "add_node"
+        node_count = sum(1 for o in ops if isinstance(o, dict) and o.get("type") == "add_node")
+
+        emit(f"{node_count} nodes, {ms // 1000}s" + (" CRASHED" if crashed else ""))
+
+        run_data.append(
+            {
+                "run": rn,
+                "node_count": node_count,
+                "node_names": sorted(
+                    set(o.get("name", "") for o in ops if isinstance(o, dict) and o.get("type") == "add_node")
+                ),
+                "_ops": [o for o in ops if isinstance(o, dict)],
+                "_arch_delta": result.get("arch_delta", {}),
+                "nodes_sample": sorted(
+                    set(o.get("name", "") for o in ops if isinstance(o, dict) and o.get("type") == "add_node")
+                ),
+                "latency_ms": ms,
+                "coverage": 100 if not crashed and node_count > 0 else 0,
+            }
         )
-
-        emit(f"{node_count} nodes, {ms//1000}s"
-             + (" CRASHED" if crashed else ""))
-
-        run_data.append({
-            "run": rn,
-            "node_count": node_count,
-            "node_names": sorted(set(
-                o.get("name", "") for o in ops
-                if isinstance(o, dict) and o.get("type") == "add_node"
-            )),
-            "_ops": [o for o in ops if isinstance(o, dict)],
-            "_arch_delta": result.get("arch_delta", {}),
-            "nodes_sample": sorted(set(
-                o.get("name", "") for o in ops
-                if isinstance(o, dict) and o.get("type") == "add_node"
-            )),
-            "latency_ms": ms,
-            "coverage": 100 if not crashed and node_count > 0 else 0,
-        })
 
     emit("")
     diversity = _compute_diversity(run_data)
@@ -175,11 +175,12 @@ async def test_repeat_diversity(emit=print, runs: int = 10) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 
 INTENT_PROMPTS = [
-    ("cramped",   "build a cramped kitchen"),
-    ("spacious",  "build a spacious kitchen"),
+    ("cramped", "build a cramped kitchen"),
+    ("spacious", "build a spacious kitchen"),
     ("abandoned", "build an abandoned kitchen"),
     ("luxurious", "build a luxurious kitchen"),
 ]
+
 
 async def test_intent_sensitivity(emit=print) -> dict:
     """Run 4 adjective variants, measure pairwise output differences.
@@ -199,7 +200,8 @@ async def test_intent_sensitivity(emit=print) -> dict:
 
         try:
             result = await _apply_with_full_ops(
-                prompt, planner="room",
+                prompt,
+                planner="room",
             )
             crashed = False
         except Exception as e:
@@ -208,23 +210,21 @@ async def test_intent_sensitivity(emit=print) -> dict:
 
         ms = int((time.time() - t0) * 1000)
         ops = result.get("operations", [])
-        node_names = sorted(set(
-            o.get("name", "") for o in ops
-            if isinstance(o, dict) and o.get("type") == "add_node"
-        ))
+        node_names = sorted(set(o.get("name", "") for o in ops if isinstance(o, dict) and o.get("type") == "add_node"))
         node_count = len(node_names)
 
-        emit(f"{node_count} nodes in {ms//1000}s"
-             + (" CRASHED" if crashed else ""))
+        emit(f"{node_count} nodes in {ms // 1000}s" + (" CRASHED" if crashed else ""))
 
-        results.append({
-            "label": label,
-            "prompt": prompt,
-            "node_count": node_count,
-            "node_names": node_names,
-            "latency_ms": ms,
-            "crashed": crashed,
-        })
+        results.append(
+            {
+                "label": label,
+                "prompt": prompt,
+                "node_count": node_count,
+                "node_names": node_names,
+                "latency_ms": ms,
+                "crashed": crashed,
+            }
+        )
 
     emit("")
     emit("─── Pairwise Comparison ───")
@@ -237,8 +237,10 @@ async def test_intent_sensitivity(emit=print) -> dict:
             same = ni == nj
             pairs_checked += 1
             icon = "=" if same else "≠"
-            emit(f"  {results[i]['label']:>9} vs {results[j]['label']:<9}  {icon}  "
-                 f"({'IDENTICAL' if same else 'DIFFERENT'})")
+            emit(
+                f"  {results[i]['label']:>9} vs {results[j]['label']:<9}  {icon}  "
+                f"({'IDENTICAL' if same else 'DIFFERENT'})"
+            )
             if not same:
                 pairs_different += 1
 
@@ -277,6 +279,7 @@ CEILING_PROMPT = (
     "upper floors sealed and dusty, living area migrated down to the ground floor"
 )
 
+
 async def test_model_ceiling(emit=print) -> dict:
     """Run the hard relational prompt on the current model.
 
@@ -296,7 +299,9 @@ async def test_model_ceiling(emit=print) -> dict:
 
     try:
         result = await _apply_with_full_ops(
-            CEILING_PROMPT, planner="room", timeout_s=300,
+            CEILING_PROMPT,
+            planner="room",
+            timeout_s=300,
         )
         crashed = False
     except Exception as e:
@@ -305,10 +310,7 @@ async def test_model_ceiling(emit=print) -> dict:
 
     ms = int((time.time() - t0) * 1000)
     ops = result.get("operations", [])
-    node_names = sorted(set(
-        o.get("name", "") for o in ops
-        if isinstance(o, dict) and o.get("type") == "add_node"
-    ))
+    node_names = sorted(set(o.get("name", "") for o in ops if isinstance(o, dict) and o.get("type") == "add_node"))
     errors = result.get("errors", [])
     node_count = len(node_names)
     error_count = len(errors)
@@ -317,10 +319,12 @@ async def test_model_ceiling(emit=print) -> dict:
     emit(f"  Model:        {read_env().get('MODEL_ALIAS', '?')}")
     emit(f"  Nodes built:  {node_count}")
     emit(f"  Errors:       {error_count}")
-    emit(f"  Latency:      {ms//1000}s")
+    emit(f"  Latency:      {ms // 1000}s")
     if node_names:
-        emit(f"  Node names:   {', '.join(node_names[:10])}"
-             + (f" (+{len(node_names)-10})" if len(node_names) > 10 else ""))
+        emit(
+            f"  Node names:   {', '.join(node_names[:10])}"
+            + (f" (+{len(node_names) - 10})" if len(node_names) > 10 else "")
+        )
     if errors:
         emit(f"  Error detail: {errors[:3]}")
 
@@ -356,6 +360,7 @@ async def test_model_ceiling(emit=print) -> dict:
 # CLI
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _cli() -> None:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
 
@@ -366,12 +371,14 @@ def _cli() -> None:
     elif cmd == "ceiling":
         asyncio.run(test_model_ceiling())
     elif cmd == "all":
+
         async def _all():
             await test_repeat_diversity()
             print("\n" + "=" * 60 + "\n")
             await test_intent_sensitivity()
             print("\n" + "=" * 60 + "\n")
             await test_model_ceiling()
+
         asyncio.run(_all())
     else:
         print(__doc__)

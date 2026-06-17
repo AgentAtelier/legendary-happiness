@@ -5,7 +5,6 @@ from devforge.patterns.pattern_expander import PatternExpander
 
 
 class EntityBuilder:
-
     def __init__(self):
 
         self.world = WorldModel()
@@ -20,14 +19,10 @@ class EntityBuilder:
         entities = plan.get("entities", [])
 
         for e in entities:
-
             entity = self.world.create_entity(e["name"])
 
             for comp in e.get("components", []):
-
-                entity.add_component(
-                    Component(comp["type"], comp.get("properties"))
-                )
+                entity.add_component(Component(comp["type"], comp.get("properties")))
 
         # Architecture reasoning
         self.reasoner.apply(self.world)

@@ -45,8 +45,7 @@ class SceneDoctor:
             except Exception as exc:
                 logger.warn(
                     "scene_doctor",
-                    f"Rule {rule_fn.__name__} raised {type(exc).__name__}: "
-                    f"{exc} — skipping",
+                    f"Rule {rule_fn.__name__} raised {type(exc).__name__}: {exc} — skipping",
                 )
 
         # Stable ordering: by rule_id, then node_path

@@ -67,11 +67,11 @@ _TILE_DEFS: Dict[str, dict] = {
 # Adjacency rules: for each tile, which tiles can be next to it.
 # Symmetric: if A allows B, B must also allow A (enforced at init).
 _ADJACENCY: Dict[str, Set[str]] = {
-    "floor":    {"floor", "corridor", "door", "wall"},
-    "wall":     {"wall", "floor", "door", "empty"},
+    "floor": {"floor", "corridor", "door", "wall"},
+    "wall": {"wall", "floor", "door", "empty"},
     "corridor": {"corridor", "floor", "door"},
-    "door":     {"door", "floor", "corridor", "wall"},
-    "empty":    {"empty", "wall"},
+    "door": {"door", "floor", "corridor", "wall"},
+    "empty": {"empty", "wall"},
 }
 
 # All tile types
@@ -84,8 +84,9 @@ _ALL_TILES: Tuple[str, ...] = ("floor", "wall", "corridor", "door", "empty")
 @dataclass
 class DungeonSpec:
     """What kind of dungeon to generate."""
-    width: int = 8         # grid columns
-    depth: int = 8         # grid rows
+
+    width: int = 8  # grid columns
+    depth: int = 8  # grid rows
     tile_size: float = _DEFAULT_TILE_SIZE
     seed: int = _DEFAULT_SEED
 
@@ -108,9 +109,7 @@ class WFCEngine:
         # Validate adjacency symmetry
         for t1 in _ALL_TILES:
             for t2 in _ADJACENCY[t1]:
-                assert t1 in _ADJACENCY[t2], (
-                    f"Adjacency asymmetry: {t1}→{t2} but {t2}↛{t1}"
-                )
+                assert t1 in _ADJACENCY[t2], f"Adjacency asymmetry: {t1}→{t2} but {t2}↛{t1}"
 
     # ── public API ────────────────────────────────────────────────
 
@@ -159,11 +158,13 @@ class WFCEngine:
                 name = f"{tile}_{col}_{row}"
                 node_path = f"{root_path}/{name}"
 
-                steps.append(CreateEntityStep(
-                    name=name,
-                    node_type="MeshInstance3D",
-                    parent=root_path,
-                ))
+                steps.append(
+                    CreateEntityStep(
+                        name=name,
+                        node_type="MeshInstance3D",
+                        parent=root_path,
+                    )
+                )
 
                 # Position: centre of grid cell
                 x = (col + 0.5) * spec.tile_size
@@ -171,57 +172,67 @@ class WFCEngine:
                 height = tile_def["height"]
                 y = height / 2  # sit on ground
 
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="position",
-                    value={"x": x, "y": y, "z": z},
-                ))
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="position",
+                        value={"x": x, "y": y, "z": z},
+                    )
+                )
 
                 # Mesh
                 mesh_type = tile_def["mesh"]
                 if mesh_type == "plane":
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="mesh",
-                        value={
-                            "__class__": "PlaneMesh",
-                            "size": {
-                                "x": spec.tile_size,
-                                "y": spec.tile_size,
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="mesh",
+                            value={
+                                "__class__": "PlaneMesh",
+                                "size": {
+                                    "x": spec.tile_size,
+                                    "y": spec.tile_size,
+                                },
                             },
-                        },
-                    ))
+                        )
+                    )
                 elif mesh_type == "box":
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="mesh",
-                        value={
-                            "__class__": "BoxMesh",
-                            "size": {
-                                "x": spec.tile_size * 0.9,  # slight gap
-                                "y": height,
-                                "z": spec.tile_size * 0.9,
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="mesh",
+                            value={
+                                "__class__": "BoxMesh",
+                                "size": {
+                                    "x": spec.tile_size * 0.9,  # slight gap
+                                    "y": height,
+                                    "z": spec.tile_size * 0.9,
+                                },
                             },
-                        },
-                    ))
+                        )
+                    )
 
                 # Material
                 color = tile_def["color"]
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="material_override",
-                    value={
-                        "__class__": "StandardMaterial3D",
-                        "albedo_color": {
-                            "r": color[0], "g": color[1], "b": color[2], "a": 1.0,
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="material_override",
+                        value={
+                            "__class__": "StandardMaterial3D",
+                            "albedo_color": {
+                                "r": color[0],
+                                "g": color[1],
+                                "b": color[2],
+                                "a": 1.0,
+                            },
                         },
-                    },
-                ))
+                    )
+                )
 
         logger.info(
             "wfc",
-            f"Compiled dungeon: {spec.width}×{spec.depth}, "
-            f"{tile_count} tiles ({spec.tile_size:.1f}m per tile)",
+            f"Compiled dungeon: {spec.width}×{spec.depth}, {tile_count} tiles ({spec.tile_size:.1f}m per tile)",
         )
 
         return DevForgePlan(
@@ -232,16 +243,16 @@ class WFCEngine:
     # ── WFC algorithm ─────────────────────────────────────────────
 
     def _wfc_collapse(
-        self, width: int, depth: int, seed: int,
+        self,
+        width: int,
+        depth: int,
+        seed: int,
     ) -> List[List[str]]:
         """Run WFC to produce a tile map of (depth × width)."""
         rng = random.Random(seed)
 
         # Initialise: every cell can be any tile
-        wave: List[List[Set[str]]] = [
-            [set(_ALL_TILES) for _ in range(width)]
-            for _ in range(depth)
-        ]
+        wave: List[List[Set[str]]] = [[set(_ALL_TILES) for _ in range(width)] for _ in range(depth)]
 
         # ── Initialise edges as walls (scaffold) ──
         for col in range(width):
@@ -321,9 +332,11 @@ class WFCEngine:
     def _collapse_cell(
         self,
         wave: List[List[Set[str]]],
-        col: int, row: int,
+        col: int,
+        row: int,
         tile: str,
-        width: int, depth: int,
+        width: int,
+        depth: int,
     ) -> None:
         """Set a cell to a specific tile and propagate constraints."""
         wave[row][col] = {tile}
@@ -332,8 +345,10 @@ class WFCEngine:
     def _propagate_constraints(
         self,
         wave: List[List[Set[str]]],
-        col: int, row: int,
-        width: int, depth: int,
+        col: int,
+        row: int,
+        width: int,
+        depth: int,
     ) -> None:
         """Propagate adjacency constraints from a cell to its neighbors."""
         cell = wave[row][col]
@@ -358,13 +373,18 @@ class WFCEngine:
                         if len(new_neighbor) == 1:
                             # Recurse to propagate further
                             self._propagate_constraints(
-                                wave, nc, nr, width, depth,
+                                wave,
+                                nc,
+                                nr,
+                                width,
+                                depth,
                             )
 
     def _carve_corridors(
         self,
         wave: List[List[Set[str]]],
-        width: int, depth: int,
+        width: int,
+        depth: int,
     ) -> None:
         """Connect isolated floor regions with corridor paths."""
         # Simple horizontal/vertical connection scan
@@ -376,8 +396,7 @@ class WFCEngine:
                 # If neighbors on both sides are floor → make corridor
                 left = wave[row][col - 2]
                 right = wave[row][col + 2]
-                if (len(left) == 1 and "floor" in left and
-                        len(right) == 1 and "floor" in right):
+                if len(left) == 1 and "floor" in left and len(right) == 1 and "floor" in right:
                     # Don't punch a doorway into a cell already resolved as a
                     # room FLOOR — that fragments the room. Walls / unresolved
                     # cells are fine to carve through (that IS the corridor's
@@ -396,8 +415,7 @@ class WFCEngine:
                     continue
                 top = wave[row - 2][col]
                 bottom = wave[row + 2][col]
-                if (len(top) == 1 and "floor" in top and
-                        len(bottom) == 1 and "floor" in bottom):
+                if len(top) == 1 and "floor" in top and len(bottom) == 1 and "floor" in bottom:
                     # Same floor-preservation guard as the horizontal scan.
                     if any(wave[row + dr][col] == {"floor"} for dr in (-1, 1)):
                         continue

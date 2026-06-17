@@ -37,9 +37,7 @@ class WFCPlanner:
         # dungeon_json → WFCEngine.compile_dungeon()
     """
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "wfc_planner.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "wfc_planner.gbnf"
 
     def __init__(
         self,
@@ -221,9 +219,7 @@ Output JSON now (no prose, no markdown fences, just the JSON object):
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         return {
             "size": data.get("size", {"width": 8, "depth": 8}),

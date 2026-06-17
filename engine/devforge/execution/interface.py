@@ -89,9 +89,7 @@ class Executor(ABC):
         """Human-readable name of this executor backend."""
         ...
 
-    def resolve_property_types(
-        self, sample_values: Dict[str, Any] | None = None
-    ) -> Dict[str, str]:
+    def resolve_property_types(self, sample_values: Dict[str, Any] | None = None) -> Dict[str, str]:
         """Resolve Godot property serialization types.
 
         Performs a one-time round-trip (via ``node_get_properties`` for

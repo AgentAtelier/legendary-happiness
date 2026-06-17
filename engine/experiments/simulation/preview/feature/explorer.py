@@ -5,7 +5,6 @@ from devforge.simulation.preview.scenario_explorer import ScenarioExplorer
 
 
 class ExplorerFeature(PreviewFeature):
-
     name = "explorer"
 
     def __init__(self):
@@ -21,11 +20,7 @@ class ExplorerFeature(PreviewFeature):
 
         ranges = kwargs.get(
             "ranges",
-            {
-                "weather": {
-                    "rain_variation": (0.05, 0.6)
-                }
-            },
+            {"weather": {"rain_variation": (0.05, 0.6)}},
         )
 
         runs = kwargs.get("runs", 50)

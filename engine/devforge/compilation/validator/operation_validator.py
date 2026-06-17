@@ -11,12 +11,11 @@ SUPPORTED_OPERATIONS = {
     "set_property",
     "connect_signal",
     "add_child_scene",
-    "add_action_mapping"
+    "add_action_mapping",
 }
 
 
 class OperationValidator:
-
     def __init__(self, scene: SceneGraph):
         self.scene = scene
 
@@ -30,7 +29,6 @@ class OperationValidator:
         valid = []
 
         for op in operations:
-
             op_type = op.get("type")
 
             if op_type not in SUPPORTED_OPERATIONS:

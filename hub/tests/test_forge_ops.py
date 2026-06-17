@@ -7,9 +7,13 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 
 from forge_ops import (
-    swap_model, get_free_vram, run_cmd_capture,
-    check_drift, reconcile_model,
-    LLAMA_SERVICE, HEALTH_POLL_ATTEMPTS,
+    swap_model,
+    get_free_vram,
+    run_cmd_capture,
+    check_drift,
+    reconcile_model,
+    LLAMA_SERVICE,
+    HEALTH_POLL_ATTEMPTS,
 )
 from forge_models import ApplyError
 
@@ -18,8 +22,7 @@ class TestCheckDrift:
     @pytest.mark.asyncio
     async def test_llama_down_returns_none(self):
         """When llama is down, check_drift returns None."""
-        with patch("forge_ops.read_env") as mock_read, \
-             patch("forge_ops.run_cmd_capture") as mock_cmd:
+        with patch("forge_ops.read_env") as mock_read, patch("forge_ops.run_cmd_capture") as mock_cmd:
             mock_read.return_value = {"LLAMA_PORT": "8002"}
             mock_cmd.return_value = (0, "inactive")
             result = await check_drift()
@@ -28,8 +31,7 @@ class TestCheckDrift:
     @pytest.mark.asyncio
     async def test_no_drift(self):
         """When configured and running match, drift is False."""
-        with patch("forge_ops.read_env") as mock_read, \
-             patch("forge_ops.run_cmd_capture") as mock_cmd:
+        with patch("forge_ops.read_env") as mock_read, patch("forge_ops.run_cmd_capture") as mock_cmd:
             mock_read.return_value = {
                 "LLAMA_PORT": "8002",
                 "MODEL_ALIAS": "test-model",
@@ -58,8 +60,7 @@ class TestCheckDrift:
     @pytest.mark.asyncio
     async def test_drift_detected(self):
         """When configured and running differ, drift is True."""
-        with patch("forge_ops.read_env") as mock_read, \
-             patch("forge_ops.run_cmd_capture") as mock_cmd:
+        with patch("forge_ops.read_env") as mock_read, patch("forge_ops.run_cmd_capture") as mock_cmd:
             mock_read.return_value = {
                 "LLAMA_PORT": "8002",
                 "MODEL_ALIAS": "configured-model",
@@ -93,10 +94,11 @@ class TestReconcile:
         def emit(s: str) -> None:
             lines.append(s)
 
-        with patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002", "MODEL_ALIAS": "test"}), \
-             patch("forge_ops.run_cmd_capture", return_value=(0, "")), \
-             patch("forge_ops._service_is_failed", return_value=False):
-
+        with (
+            patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002", "MODEL_ALIAS": "test"}),
+            patch("forge_ops.run_cmd_capture", return_value=(0, "")),
+            patch("forge_ops._service_is_failed", return_value=False),
+        ):
             with patch("forge_ops.httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
                 mock_client_cls.return_value.__aenter__.return_value = mock_client
@@ -119,11 +121,12 @@ class TestReconcile:
         def emit(s: str) -> None:
             lines.append(s)
 
-        with patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002", "MODEL_ALIAS": "test"}), \
-             patch("forge_ops.run_cmd_capture", return_value=(0, "")), \
-             patch("forge_ops._service_is_failed", return_value=True), \
-             patch("forge_ops.get_service_logs", return_value="segfault"):
-
+        with (
+            patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002", "MODEL_ALIAS": "test"}),
+            patch("forge_ops.run_cmd_capture", return_value=(0, "")),
+            patch("forge_ops._service_is_failed", return_value=True),
+            patch("forge_ops.get_service_logs", return_value="segfault"),
+        ):
             exit_code = await reconcile_model(emit)
             assert exit_code == 1
             assert any("crashed" in l.lower() for l in lines)
@@ -153,6 +156,7 @@ class TestSwapModel:
 
         with patch("forge_ops.plan_apply") as mock_plan:
             from forge_models import ModelError
+
             mock_plan.side_effect = ModelError("ambiguous fragment")
             exit_code = await swap_model("ambig", emit)
             assert exit_code == 1
@@ -177,8 +181,10 @@ class TestSwapModel:
             "devforge_restart": "0",
         }
 
-        with patch("forge_ops.plan_apply", return_value=plan), \
-             patch("forge_ops.get_free_vram", return_value=8 * 1024**3):
+        with (
+            patch("forge_ops.plan_apply", return_value=plan),
+            patch("forge_ops.get_free_vram", return_value=8 * 1024**3),
+        ):
             exit_code = await swap_model("big-model", emit)
             assert exit_code == 1
             assert any("vram" in l.lower() for l in lines)
@@ -214,14 +220,15 @@ class TestSwapModel:
             "devforge_restart": "0",
         }
 
-        with patch("forge_ops.plan_apply", return_value=plan), \
-             patch("forge_ops.get_free_vram", return_value=16 * 1024**3), \
-             patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002"}), \
-             patch("forge_ops.write_env") as mock_write, \
-             patch("forge_ops.run_cmd_capture") as mock_cmd, \
-             patch("forge_ops._service_is_failed", return_value=True), \
-             patch("forge_ops.get_service_logs", return_value="cudaMalloc failed: out of memory"):
-
+        with (
+            patch("forge_ops.plan_apply", return_value=plan),
+            patch("forge_ops.get_free_vram", return_value=16 * 1024**3),
+            patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002"}),
+            patch("forge_ops.write_env") as mock_write,
+            patch("forge_ops.run_cmd_capture") as mock_cmd,
+            patch("forge_ops._service_is_failed", return_value=True),
+            patch("forge_ops.get_service_logs", return_value="cudaMalloc failed: out of memory"),
+        ):
             mock_cmd.return_value = (0, "")
 
             exit_code = await swap_model("test-model", emit)
@@ -257,13 +264,14 @@ class TestSwapModel:
 
         mock_cmd = AsyncMock(side_effect=mock_cmd_side_effect)
 
-        with patch("forge_ops.plan_apply", return_value=plan), \
-             patch("forge_ops.get_free_vram", return_value=16 * 1024**3), \
-             patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002"}), \
-             patch("forge_ops.write_env") as mock_write, \
-             patch("forge_ops.run_cmd_capture", new=mock_cmd), \
-             patch("forge_ops._service_is_failed", return_value=False):
-
+        with (
+            patch("forge_ops.plan_apply", return_value=plan),
+            patch("forge_ops.get_free_vram", return_value=16 * 1024**3),
+            patch("forge_ops.read_env", return_value={"LLAMA_PORT": "8002"}),
+            patch("forge_ops.write_env") as mock_write,
+            patch("forge_ops.run_cmd_capture", new=mock_cmd),
+            patch("forge_ops._service_is_failed", return_value=False),
+        ):
             # Mock httpx to return /health 200 and /props with correct alias
             with patch("forge_ops.httpx.AsyncClient") as mock_client_cls:
                 mock_client = AsyncMock()
@@ -287,29 +295,34 @@ class TestClassifyFailure:
 
     def test_cuda_oom(self):
         from forge_ops import classify_failure
+
         r = classify_failure("cudaMalloc failed: out of memory")
         assert r["cause"] != "unknown"
         assert "VRAM" in r["cause"] or "big" in r["cause"].lower()
 
     def test_segfault(self):
         from forge_ops import classify_failure
+
         r = classify_failure("SIGSEGV: segmentation fault")
         assert r["cause"] != "unknown"
         assert "segfault" in r["cause"].lower() or "crash" in r["cause"].lower()
 
     def test_port_conflict(self):
         from forge_ops import classify_failure
+
         r = classify_failure("address already in use")
         assert r["cause"] != "unknown"
         assert "port" in r["cause"].lower()
 
     def test_unknown_error(self):
         from forge_ops import classify_failure
+
         r = classify_failure("something completely unexpected happened")
         assert r["cause"] == "unknown"
 
     def test_oom_killer(self):
         from forge_ops import classify_failure
+
         r = classify_failure("killed by OOM killer")
         assert r["cause"] != "unknown"
         assert "oom" in r["cause"].lower()
@@ -320,6 +333,7 @@ class TestActionLog:
 
     def test_record_and_retrieve(self):
         from forge_ops import record_action, get_action_history
+
         # Record a test action
         record_action("test", ["test", "arg"], 0, 1.0, output="all good")
         # Should be retrievable
@@ -331,8 +345,8 @@ class TestActionLog:
 
     def test_failed_action_has_classification(self):
         from forge_ops import record_action, get_action_history
-        record_action("test-fail", ["bad"], 1, 0.5,
-                      error="cudaMalloc failed: out of memory")
+
+        record_action("test-fail", ["bad"], 1, 0.5, error="cudaMalloc failed: out of memory")
         history = get_action_history(5)
         found = [h for h in history if h["action"] == "test-fail"]
         assert len(found) > 0

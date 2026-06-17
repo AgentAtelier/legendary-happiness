@@ -27,13 +27,11 @@ class PlanVerifier:
         verified_steps = []
 
         for step in plan.steps:
-
             # ---------------------------------------------
             # Track node creation
             # ---------------------------------------------
 
             if isinstance(step, CreateEntityStep):
-
                 node_path = f"{step.parent}/{step.name}"
 
                 created_nodes.add(node_path)
@@ -47,7 +45,6 @@ class PlanVerifier:
             # ---------------------------------------------
 
             if isinstance(step, CreateScriptStep):
-
                 created_scripts.add(step.path)
 
                 verified_steps.append(step)
@@ -59,7 +56,6 @@ class PlanVerifier:
             # ---------------------------------------------
 
             if isinstance(step, AttachScriptStep):
-
                 if step.script not in created_scripts:
                     continue
 

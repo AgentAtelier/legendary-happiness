@@ -35,9 +35,20 @@ class Result:
     """
 
     __slots__ = (
-        "test_id", "category", "suite", "model", "ts", "run_index",
-        "repeat_count", "status", "score", "metrics", "raw", "errors",
-        "latency_ms", "screenshot",
+        "test_id",
+        "category",
+        "suite",
+        "model",
+        "ts",
+        "run_index",
+        "repeat_count",
+        "status",
+        "score",
+        "metrics",
+        "raw",
+        "errors",
+        "latency_ms",
+        "screenshot",
     )
 
     def __init__(

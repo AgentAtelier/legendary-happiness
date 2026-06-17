@@ -8,9 +8,9 @@ from .base import PlanStep
 # Create Entity
 # ---------------------------------------------------------
 
+
 @dataclass
 class CreateEntityStep(PlanStep):
-
     name: str
     node_type: str
     parent: str
@@ -25,21 +25,23 @@ class CreateEntityStep(PlanStep):
 
     def compile(self) -> List[Dict[str, Any]]:
 
-        return [{
-            "type": "add_node",
-            "parent": self.parent,
-            "node_type": self.node_type,
-            "name": self.name,
-        }]
+        return [
+            {
+                "type": "add_node",
+                "parent": self.parent,
+                "node_type": self.node_type,
+                "name": self.name,
+            }
+        ]
 
 
 # ---------------------------------------------------------
 # Create Script
 # ---------------------------------------------------------
 
+
 @dataclass
 class CreateScriptStep(PlanStep):
-
     path: str
     content: str
 
@@ -52,20 +54,22 @@ class CreateScriptStep(PlanStep):
 
     def compile(self) -> List[Dict[str, Any]]:
 
-        return [{
-            "type": "create_file",
-            "path": self.path,
-            "content": self.content,
-        }]
+        return [
+            {
+                "type": "create_file",
+                "path": self.path,
+                "content": self.content,
+            }
+        ]
 
 
 # ---------------------------------------------------------
 # Attach Script
 # ---------------------------------------------------------
 
+
 @dataclass
 class AttachScriptStep(PlanStep):
-
     node: str
     script: str
 
@@ -78,20 +82,22 @@ class AttachScriptStep(PlanStep):
 
     def compile(self) -> List[Dict[str, Any]]:
 
-        return [{
-            "type": "attach_script",
-            "node": self.node,
-            "script": self.script,
-        }]
+        return [
+            {
+                "type": "attach_script",
+                "node": self.node,
+                "script": self.script,
+            }
+        ]
 
 
 # ---------------------------------------------------------
 # Set Property
 # ---------------------------------------------------------
 
+
 @dataclass
 class SetPropertyStep(PlanStep):
-
     node: str
     property: str
     value: Any
@@ -106,9 +112,11 @@ class SetPropertyStep(PlanStep):
 
     def compile(self) -> List[Dict[str, Any]]:
 
-        return [{
-            "type": "set_property",
-            "node": self.node,
-            "property": self.property,
-            "value": self.value,
-        }]
+        return [
+            {
+                "type": "set_property",
+                "node": self.node,
+                "property": self.property,
+                "value": self.value,
+            }
+        ]

@@ -29,16 +29,12 @@ class TestOriginGuard:
 
     def test_csrf_header_required_on_post(self):
         """POST without the custom CSRF header should get 403."""
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003"},
-                        json={"action": "doctor"})
+        r = client.post("/api/run", headers={"Host": "127.0.0.1:8003"}, json={"action": "doctor"})
         assert r.status_code == 403
 
     def test_csrf_header_present_post_passes(self):
         """POST with the CSRF header should pass the guard (may still fail validation)."""
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"action": "doctor"})
+        r = client.post("/api/run", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"action": "doctor"})
         # 409 means guard passed, job system kicked in
         assert r.status_code in (200, 409)
 
@@ -78,8 +74,7 @@ class TestEndpoints:
         assert r.status_code != 403
 
     def test_logs_unknown_service(self):
-        r = client.get("/api/logs/bogus?n=50",
-                       headers={"Host": "127.0.0.1:8003"})
+        r = client.get("/api/logs/bogus?n=50", headers={"Host": "127.0.0.1:8003"})
         assert r.status_code == 400
 
     def test_doc_endpoint(self):
@@ -103,36 +98,32 @@ class TestEndpoints:
 
 class TestRunEndpoint:
     def test_unknown_action(self):
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"action": "fly-to-moon"})
+        r = client.post(
+            "/api/run", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"action": "fly-to-moon"}
+        )
         assert r.status_code == 400
 
     def test_missing_action(self):
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={})
+        r = client.post("/api/run", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={})
         assert r.status_code == 400
 
     def test_model_action_no_arg(self):
         """model action without arg should 400."""
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"action": "model"})
+        r = client.post("/api/run", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"action": "model"})
         assert r.status_code == 400
 
     def test_model_action_bad_arg(self):
         """model action with invalid fragment should 400."""
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"action": "model", "arg": "../../etc/passwd"})
+        r = client.post(
+            "/api/run",
+            headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
+            json={"action": "model", "arg": "../../etc/passwd"},
+        )
         assert r.status_code == 400
 
     def test_known_action_returns_job_id(self):
         """A known read-only action should return a job ID."""
-        r = client.post("/api/run",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"action": "doctor"})
+        r = client.post("/api/run", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"action": "doctor"})
         # 200 means job accepted; 409 means another job already running
         assert r.status_code in (200, 409)
         if r.status_code == 200:
@@ -143,8 +134,7 @@ class TestRunEndpoint:
 
 class TestStreamEndpoint:
     def test_nonexistent_job_404(self):
-        r = client.get("/api/stream/deadbeef1234",
-                       headers={"Host": "127.0.0.1:8003"})
+        r = client.get("/api/stream/deadbeef1234", headers={"Host": "127.0.0.1:8003"})
         assert r.status_code == 404
 
     def test_existing_job_streams(self):
@@ -157,8 +147,7 @@ class TestStreamEndpoint:
             "t": 9999999999,
         }
         try:
-            r = client.get(f"/api/stream/{job_id}",
-                           headers={"Host": "127.0.0.1:8003"})
+            r = client.get(f"/api/stream/{job_id}", headers={"Host": "127.0.0.1:8003"})
             assert r.status_code == 200
             assert "text/event-stream" in r.headers.get("content-type", "")
         finally:
@@ -167,15 +156,13 @@ class TestStreamEndpoint:
 
 class TestSwapEndpoint:
     def test_missing_fragment(self):
-        r = client.post("/api/swap",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={})
+        r = client.post("/api/swap", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={})
         assert r.status_code == 400
 
     def test_invalid_fragment(self):
-        r = client.post("/api/swap",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"fragment": "../../etc/passwd"})
+        r = client.post(
+            "/api/swap", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"fragment": "../../etc/passwd"}
+        )
         assert r.status_code == 400
 
     @pytest.mark.skip(reason="dispatches live swap against the real stack — use -m live to include")
@@ -186,30 +173,26 @@ class TestSwapEndpoint:
         swap endpoint, which restarts llama and mutates the running stack.
         Run with -m live when the full stack is up.
         """
-        r = client.post("/api/swap",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"fragment": "test-model"})
+        r = client.post(
+            "/api/swap", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"fragment": "test-model"}
+        )
         assert r.status_code in (200, 409)
 
     def test_csrf_required(self):
-        r = client.post("/api/swap",
-                        headers={"Host": "127.0.0.1:8003"},
-                        json={"fragment": "test"})
+        r = client.post("/api/swap", headers={"Host": "127.0.0.1:8003"}, json={"fragment": "test"})
         assert r.status_code == 403
 
 
 class TestConfigSave:
     def test_empty_body(self):
-        r = client.post("/api/config",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"text": ""})
+        r = client.post("/api/config", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"text": ""})
         assert r.status_code == 400
 
     def test_not_a_stack_env(self):
         """Saving something that doesn't look like stack.env should 400."""
-        r = client.post("/api/config",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"text": "hello world"})
+        r = client.post(
+            "/api/config", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"text": "hello world"}
+        )
         assert r.status_code == 400
 
 
@@ -251,20 +234,19 @@ class TestConfigSaveValidation:
 
     def test_invalid_config_rejected(self):
         """Saving something that fails schema validation should 400."""
-        r = client.post("/api/config",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"text": "just some random text\nnot a valid config"})
+        r = client.post(
+            "/api/config",
+            headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
+            json={"text": "just some random text\nnot a valid config"},
+        )
         assert r.status_code == 400
 
     def test_empty_config_rejected(self):
-        r = client.post("/api/config",
-                        headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"},
-                        json={"text": ""})
+        r = client.post("/api/config", headers={"Host": "127.0.0.1:8003", "X-Forge-Hub": "1"}, json={"text": ""})
         assert r.status_code == 400
 
     def test_config_no_csrf_rejected(self):
-        r = client.post("/api/config/restore",
-                        headers={"Host": "127.0.0.1:8003"})
+        r = client.post("/api/config/restore", headers={"Host": "127.0.0.1:8003"})
         assert r.status_code == 403
 
 
@@ -297,18 +279,16 @@ class TestScenarioEndpoints:
         assert "tool_none" in ids
 
     def test_scenarios_run_requires_ids(self):
-        r = client.post("/api/scenarios/run",
-                        json={"ids": []},
-                        headers={"Host": "127.0.0.1:8003",
-                                 "x-forge-hub": "1"})
+        r = client.post("/api/scenarios/run", json={"ids": []}, headers={"Host": "127.0.0.1:8003", "x-forge-hub": "1"})
         assert r.status_code == 400
 
     @pytest.mark.skip(reason="triggers live DevForge apply_spec — use only with stack running")
     def test_scenarios_run_returns_job(self):
-        r = client.post("/api/scenarios/run",
-                        json={"ids": ["no_dup_camera"]},
-                        headers={"Host": "127.0.0.1:8003",
-                                 "x-forge-hub": "1"})
+        r = client.post(
+            "/api/scenarios/run",
+            json={"ids": ["no_dup_camera"]},
+            headers={"Host": "127.0.0.1:8003", "x-forge-hub": "1"},
+        )
         assert r.status_code == 200
         data = r.json()
         assert "job" in data
@@ -325,8 +305,7 @@ class TestScenarioEndpoints:
         assert r.status_code == 400
 
     def test_scorecards_compare_with_params(self):
-        r = client.get("/api/scorecards/compare?model_a=gemma&model_b=qwen",
-                       headers={"Host": "127.0.0.1:8003"})
+        r = client.get("/api/scorecards/compare?model_a=gemma&model_b=qwen", headers={"Host": "127.0.0.1:8003"})
         assert r.status_code == 200
         data = r.json()
         # May have error if no scorecards, which is fine
@@ -338,6 +317,7 @@ class TestScenarioModule:
 
     def test_scenario_catalog(self):
         from scenarios import SCENARIOS, SCENARIO_BY_ID
+
         assert len(SCENARIOS) >= 10
         # Verify unique IDs
         ids = [s.id for s in SCENARIOS]
@@ -348,6 +328,7 @@ class TestScenarioModule:
 
     def test_scenario_to_dict(self):
         from scenarios import SCENARIOS
+
         s = SCENARIOS[0]
         d = s.to_dict()
         assert d["id"] == s.id
@@ -357,32 +338,45 @@ class TestScenarioModule:
 
     def test_scenario_tags(self):
         from scenarios import SCENARIOS
+
         # at least one regression scenario
         reg = [s for s in SCENARIOS if s.category == "regression"]
         assert len(reg) >= 1, "Need at least one regression scenario"
 
     def test_scenario_assertion_types(self):
         from scenarios import SCENARIOS
-        valid_types = {"node_exists", "node_not_exists", "node_type", "has_mesh",
-                       "has_script", "no_extra_nodes", "no_duplicate_cameras", "no_errors"}
+
+        valid_types = {
+            "node_exists",
+            "node_not_exists",
+            "node_type",
+            "has_mesh",
+            "has_script",
+            "no_extra_nodes",
+            "no_duplicate_cameras",
+            "no_errors",
+        }
         for s in SCENARIOS:
             for a in s.assertions_raw:
                 assert a["type"] in valid_types, f"Unknown assertion type: {a['type']}"
 
     def test_scenario_cleanup_types(self):
         from scenarios import SCENARIOS
+
         for s in SCENARIOS:
             for c in s.cleanup_raw:
                 assert c["type"] in ("delete_node",), f"Unknown cleanup type: {c['type']}"
 
     def test_tool_call_probes(self):
         from scenarios import TOOL_CALL_PROBES
+
         assert len(TOOL_CALL_PROBES) >= 4
         ids = [p["id"] for p in TOOL_CALL_PROBES]
         assert "tool_none" in ids  # the negative-test probe
 
     def test_config_hash(self):
         from scenarios import _config_hash
+
         h = _config_hash()
         assert len(h) == 8
         # Should be stable for same config
@@ -391,6 +385,7 @@ class TestScenarioModule:
 
     def test_list_scorecards(self):
         from scenarios import list_scorecards
+
         cards = list_scorecards()
         assert isinstance(cards, list)
         for c in cards:
@@ -399,27 +394,35 @@ class TestScenarioModule:
 
     def test_get_scorecard_nonexistent(self):
         from scenarios import get_scorecard
+
         r = get_scorecard(model="nonexistent-model-xyz")
         assert r is None
 
     def test_compare_scorecards_no_data(self):
         from scenarios import compare_scorecards
+
         r = compare_scorecards("nonexistent1", "nonexistent2")
         assert "error" in r or "rows" in r
 
     def test_diff_snapshots(self):
         from scenarios import _diff_snapshots
+
         before = {"/Main/Ground": {"name": "Ground", "type": "MeshInstance3D"}}
-        after = {"/Main/Ground": {"name": "Ground", "type": "MeshInstance3D"},
-                 "/Main/Cube": {"name": "Cube", "type": "MeshInstance3D"}}
+        after = {
+            "/Main/Ground": {"name": "Ground", "type": "MeshInstance3D"},
+            "/Main/Cube": {"name": "Cube", "type": "MeshInstance3D"},
+        }
         diff = _diff_snapshots(before, after)
         assert len(diff) == 1
         assert "+Cube" in diff[0] or "+/Main/Cube" in diff[0]
 
     def test_diff_snapshots_delete(self):
         from scenarios import _diff_snapshots
-        before = {"/Main/Ground": {"name": "Ground", "type": "MeshInstance3D"},
-                  "/Main/Cube": {"name": "Cube", "type": "MeshInstance3D"}}
+
+        before = {
+            "/Main/Ground": {"name": "Ground", "type": "MeshInstance3D"},
+            "/Main/Cube": {"name": "Cube", "type": "MeshInstance3D"},
+        }
         after = {"/Main/Ground": {"name": "Ground", "type": "MeshInstance3D"}}
         diff = _diff_snapshots(before, after)
         assert len(diff) == 1
@@ -455,9 +458,10 @@ class TestNormalizedShape:
         """The canonical normalizer the frontend mirrors must yield the keys the
         Testing tab's renderScorecard depends on."""
         from forge_score import normalize_result
-        card = normalize_result("gauntlet",
-                                {"coverage": 83, "metrics": {"nodes": "3/25"}},
-                                target="current", label="G7")
+
+        card = normalize_result(
+            "gauntlet", {"coverage": 83, "metrics": {"nodes": "3/25"}}, target="current", label="G7"
+        )
         assert set(card) >= {"suite", "target", "label", "score", "verdict", "metrics"}
         assert card["verdict"] in ("pass", "partial", "fail")
 
@@ -468,8 +472,12 @@ class TestNav:
         assert 'data-tab="testing"' in html
         # old testing tabs folded out of the nav (precise to nav <button> markup;
         # dormant JS string refs to old tabs are removed in Task 11 cleanup)
-        for gone in ('<button data-tab="bench"', '<button data-tab="score"',
-                     '<button data-tab="shootout"', '<button data-tab="gauntlet"'):
+        for gone in (
+            '<button data-tab="bench"',
+            '<button data-tab="score"',
+            '<button data-tab="shootout"',
+            '<button data-tab="gauntlet"',
+        ):
             assert gone not in html, f"{gone} should be removed from nav"
         # survivors
         for keep in ("overview", "testing", "models", "config", "activity", "doc"):

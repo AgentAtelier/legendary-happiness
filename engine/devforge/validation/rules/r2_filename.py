@@ -24,8 +24,7 @@ class R2Filename(Rule):
             return [
                 Violation(
                     rule_id="R2_FILENAME",
-                    message=f"Filename '{basename}' does not match snake_case "
-                    f"convention (^[a-z][a-z0-9_]*\\.gd$)",
+                    message=f"Filename '{basename}' does not match snake_case convention (^[a-z][a-z0-9_]*\\.gd$)",
                     severity="critical",
                     action="block_merge",
                 )

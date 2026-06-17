@@ -7,7 +7,6 @@ from devforge.infrastructure.logger import logger
 
 
 class GraphUpdater:
-
     def __init__(self, graph: SystemGraph):
         self.graph = graph
 

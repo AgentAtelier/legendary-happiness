@@ -23,9 +23,9 @@ from typing import Any
 class NodeFilter:
     """Filter criteria for batch node matching."""
 
-    node_type: str | None = None    # exact Godot type, e.g. "OmniLight3D"
+    node_type: str | None = None  # exact Godot type, e.g. "OmniLight3D"
     name_contains: str | None = None  # case-insensitive substring
-    under_path: str | None = None   # subtree root, e.g. "/root/Main/Enemies"
+    under_path: str | None = None  # subtree root, e.g. "/root/Main/Enemies"
 
 
 # ── Convenience phrase regexes ──────────────────────────────────
@@ -56,10 +56,7 @@ def parse_query(query: str) -> NodeFilter:
     """
     query = query.strip()
     if not query:
-        raise ValueError(
-            "Empty query — use structured syntax: "
-            "type:NodeType name~substring under:/root/Path"
-        )
+        raise ValueError("Empty query — use structured syntax: type:NodeType name~substring under:/root/Path")
 
     # Try convenience phrasings first
     for pattern, template in _CONVENIENCE_PATTERNS:
@@ -83,16 +80,10 @@ def parse_query(query: str) -> NodeFilter:
         elif token.startswith("under:"):
             filter_kwargs["under_path"] = token[6:]
         else:
-            raise ValueError(
-                f"Unknown token '{token}'. Valid forms: "
-                f"type:<GodotType>  name~<substring>  under:<path>"
-            )
+            raise ValueError(f"Unknown token '{token}'. Valid forms: type:<GodotType>  name~<substring>  under:<path>")
 
     if not filter_kwargs:
-        raise ValueError(
-            "No filter criteria in query. Use: "
-            "type:<GodotType>  name~<substring>  under:<path>"
-        )
+        raise ValueError("No filter criteria in query. Use: type:<GodotType>  name~<substring>  under:<path>")
 
     return NodeFilter(**filter_kwargs)
 
@@ -121,10 +112,7 @@ def match_nodes(scene_tree: dict, f: NodeFilter) -> list[str]:
 
         # Subtree filter: path prefix
         if f.under_path is not None:
-            if not (
-                node.path == f.under_path
-                or node.path.startswith(f.under_path + "/")
-            ):
+            if not (node.path == f.under_path or node.path.startswith(f.under_path + "/")):
                 continue
 
         matched.append(node.path)
@@ -134,9 +122,7 @@ def match_nodes(scene_tree: dict, f: NodeFilter) -> list[str]:
     return matched
 
 
-def build_batch_ops(
-    paths: list[str], property: str, value: Any
-) -> list[dict]:
+def build_batch_ops(paths: list[str], property: str, value: Any) -> list[dict]:
     """Build ``set_property`` operation dicts for matched node paths.
 
     Returns one operation per path, ordered the same as *paths*.

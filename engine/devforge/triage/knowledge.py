@@ -15,15 +15,14 @@ from dataclasses import dataclass
 class KnownError:
     """A classified Godot error pattern."""
 
-    id: str          # "E01".."E20"
-    pattern: str     # regex, matched with re.IGNORECASE
-    category: str    # see categories below
+    id: str  # "E01".."E20"
+    pattern: str  # regex, matched with re.IGNORECASE
+    category: str  # see categories below
     explanation: str  # 1-2 sentences: what this means in Godot terms
-    fix_hint: str    # 1 sentence: the usual fix
+    fix_hint: str  # 1 sentence: the usual fix
 
 
 KNOWN_ERRORS: list[KnownError] = [
-
     # ── null_access ─────────────────────────────────────────────
     KnownError(
         id="E01",
@@ -36,7 +35,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Check the variable type at the call site — it may need a cast or the node path may resolve to the wrong type.",
     ),
-
     KnownError(
         id="E02",
         pattern=r"(?:Invalid get index|Attempt to call function)\s.*(?:on a null instance|on base: 'Nil')",
@@ -48,7 +46,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Add a null check before the call, verify the node path in get_node(), or ensure @onready variables are initialized.",
     ),
-
     KnownError(
         id="E11",
         pattern=r"Attempt to call function\s+'\w+'\s+in base\s+'previously freed'",
@@ -60,7 +57,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Check is_instance_valid(obj) before using the reference, or use signals to detect deletion.",
     ),
-
     # ── missing_member ──────────────────────────────────────────
     KnownError(
         id="E04",
@@ -73,7 +69,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Verify the member name matches the class definition. If it's a custom property, check the script is attached to the correct node.",
     ),
-
     # ── parse_error ─────────────────────────────────────────────
     KnownError(
         id="E03",
@@ -85,18 +80,13 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Declare the variable with 'var' before using it, or check for a typo in the name.",
     ),
-
     KnownError(
         id="E08",
         pattern=r"Parse Error:\s*(?:Expected|Unexpected)\s",
         category="parse_error",
-        explanation=(
-            "The GDScript parser found a syntax error. The script cannot run "
-            "until the syntax is fixed."
-        ),
+        explanation=("The GDScript parser found a syntax error. The script cannot run until the syntax is fixed."),
         fix_hint="Check the line mentioned in the error for missing parentheses, brackets, colons, or indentation issues.",
     ),
-
     KnownError(
         id="E13",
         pattern=r"(?:Cyclic reference|Could not resolve class|Could not find type)",
@@ -107,7 +97,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Check class_name declarations and preload/load paths. Break cycles by using a base class or signals instead of direct references.",
     ),
-
     KnownError(
         id="E17",
         pattern=r"Cannot assign.*(?:onready|@onready)",
@@ -119,7 +108,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Move the assignment into _ready() or use a regular variable instead of @onready.",
     ),
-
     # ── type_error ──────────────────────────────────────────────
     KnownError(
         id="E07",
@@ -131,29 +119,20 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Check the argument type — you may need to cast with 'as', use int()/float()/str(), or wrap in the expected type.",
     ),
-
     KnownError(
         id="E15",
         pattern=r"Division by zero",
         category="type_error",
-        explanation=(
-            "A math operation tried to divide by zero. This crashes the "
-            "current script execution."
-        ),
+        explanation=("A math operation tried to divide by zero. This crashes the current script execution."),
         fix_hint="Add a guard: if divisor != 0: before the division. Check for zero-length vectors with length() > 0.",
     ),
-
     KnownError(
         id="E16",
         pattern=r"Out of bounds get index",
         category="type_error",
-        explanation=(
-            "An array or PackedArray index is outside the valid range "
-            "(negative or >= size())."
-        ),
+        explanation=("An array or PackedArray index is outside the valid range (negative or >= size())."),
         fix_hint="Check array.size() before indexing, or iterate with 'for item in array' instead of by index.",
     ),
-
     # ── node_path ───────────────────────────────────────────────
     KnownError(
         id="E05",
@@ -166,7 +145,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Verify the node path relative to the calling node. Use %UniqueName in the scene or absolute paths ($/root/Main/Target).",
     ),
-
     KnownError(
         id="E20",
         pattern=r"Condition\s+\"!is_inside_tree\(\)\"\s+is true",
@@ -177,7 +155,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Use call_deferred() to delay the operation until the node is in the tree, or move the logic to _ready() or _enter_tree().",
     ),
-
     # ── signal ──────────────────────────────────────────────────
     KnownError(
         id="E06",
@@ -190,7 +167,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Check for duplicate connect() calls, or use CONNECT_ONE_SHOT as the last argument to signal.connect().",
     ),
-
     KnownError(
         id="E14",
         pattern=r"emit_signal:\s*Signal\s+\"(\w+)\"\s+doesn't exist",
@@ -201,7 +177,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Declare the signal with 'signal signal_name' at the top of the script, or check for a typo in the emit_signal() call.",
     ),
-
     # ── physics ─────────────────────────────────────────────────
     KnownError(
         id="E09",
@@ -215,7 +190,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Move the physics call to _physics_process(delta). Use _process() only for visual/logic updates that don't need fixed-rate physics.",
     ),
-
     # ── resource ────────────────────────────────────────────────
     KnownError(
         id="E10",
@@ -227,7 +201,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Check the file path (case-sensitive on some platforms). Use 'res://' prefix for project-relative paths. Verify the file exists on disk.",
     ),
-
     KnownError(
         id="E18",
         pattern=r"Viewport Texture must be set to use it",
@@ -238,7 +211,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Assign a SubViewport to the texture's viewport_path, or check that the camera is rendering to the correct viewport.",
     ),
-
     # ── other ───────────────────────────────────────────────────
     KnownError(
         id="E12",
@@ -250,7 +222,6 @@ KNOWN_ERRORS: list[KnownError] = [
         ),
         fix_hint="Assign the return value to a variable, or explicitly discard it: 'var _ = func_call()' if you truly don't need it.",
     ),
-
     KnownError(
         id="E19",
         pattern=r"(?:RID allocation leak|ObjectDB instances leaked at exit)",

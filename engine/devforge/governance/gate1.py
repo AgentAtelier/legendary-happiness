@@ -24,12 +24,13 @@ EXIT_CODE_GATE1_FAIL = 10
 @dataclass
 class Violation:
     """A single contract violation."""
+
     rule_id: str
-    severity: str          # "critical", "high", "warning"
+    severity: str  # "critical", "high", "warning"
     file_path: str
     line_number: Optional[int]
     description: str
-    action: str            # "block_merge", "flag_for_review"
+    action: str  # "block_merge", "flag_for_review"
 
     def to_dict(self) -> dict:
         return {
@@ -45,9 +46,10 @@ class Violation:
 @dataclass
 class SignatureChange:
     """Detected change in a public method signature."""
+
     file_path: str
     function_name: str
-    change_type: str    # "return_type_changed", "params_changed", "removed", "added"
+    change_type: str  # "return_type_changed", "params_changed", "removed", "added"
     before: Optional[str]
     after: Optional[str]
     line_number: Optional[int]
@@ -56,6 +58,7 @@ class SignatureChange:
 @dataclass
 class Gate1Result:
     """Complete Gate 1 validation result."""
+
     passed: bool
     violations: List[Violation] = field(default_factory=list)
     warnings: List[Violation] = field(default_factory=list)
@@ -89,8 +92,13 @@ class Gate1Result:
             "exception_count": self.exception_count,
             "exception_ceiling": self.exception_ceiling,
             "signature_changes": [
-                {"file": s.file_path, "function": s.function_name,
-                 "change": s.change_type, "before": s.before, "after": s.after}
+                {
+                    "file": s.file_path,
+                    "function": s.function_name,
+                    "change": s.change_type,
+                    "before": s.before,
+                    "after": s.after,
+                }
                 for s in self.signature_changes
             ],
             "violations": [v.to_dict() for v in self.violations],
@@ -173,34 +181,38 @@ def _check_boundary_rules(
             imp_layer = _get_file_layer(imp_rel, contracts)
 
             if imp_layer in rule.get("forbidden_imports", []):
-                violations.append(Violation(
-                    rule_id=rule["id"],
-                    severity=rule.get("severity", "critical"),
-                    file_path=analysis.file_path,
-                    line_number=imp.line_number,
-                    description=(
-                        f"Layer '{file_layer}' imports from forbidden layer '{imp_layer}': "
-                        f"{imp.kind}(\"{imp.path}\") — {rule['description']}"
-                    ),
-                    action=rule.get("action", "block_merge"),
-                ))
+                violations.append(
+                    Violation(
+                        rule_id=rule["id"],
+                        severity=rule.get("severity", "critical"),
+                        file_path=analysis.file_path,
+                        line_number=imp.line_number,
+                        description=(
+                            f"Layer '{file_layer}' imports from forbidden layer '{imp_layer}': "
+                            f'{imp.kind}("{imp.path}") — {rule["description"]}'
+                        ),
+                        action=rule.get("action", "block_merge"),
+                    )
+                )
 
         # Check forbidden_patterns (path substring)
         for imp in analysis.imports:
             imp_rel = _resolve_import_path(imp.path)
             for pattern in rule.get("forbidden_patterns", []):
                 if pattern in imp_rel:
-                    violations.append(Violation(
-                        rule_id=rule["id"],
-                        severity=rule.get("severity", "critical"),
-                        file_path=analysis.file_path,
-                        line_number=imp.line_number,
-                        description=(
-                            f"Import matches forbidden pattern '{pattern}': "
-                            f"{imp.kind}(\"{imp.path}\") — {rule['description']}"
-                        ),
-                        action=rule.get("action", "block_merge"),
-                    ))
+                    violations.append(
+                        Violation(
+                            rule_id=rule["id"],
+                            severity=rule.get("severity", "critical"),
+                            file_path=analysis.file_path,
+                            line_number=imp.line_number,
+                            description=(
+                                f"Import matches forbidden pattern '{pattern}': "
+                                f'{imp.kind}("{imp.path}") — {rule["description"]}'
+                            ),
+                            action=rule.get("action", "block_merge"),
+                        )
+                    )
 
     return violations
 
@@ -222,17 +234,19 @@ def _check_return_types(
         forbidden = set(rule.get("forbidden_return_types", []))
         for func in analysis.public_functions:
             if func.return_type and func.return_type in forbidden:
-                violations.append(Violation(
-                    rule_id=rule["id"],
-                    severity="critical",
-                    file_path=analysis.file_path,
-                    line_number=func.line_number,
-                    description=(
-                        f"Public method '{func.name}()' returns forbidden type "
-                        f"'{func.return_type}' — {rule['description']}"
-                    ),
-                    action="block_merge",
-                ))
+                violations.append(
+                    Violation(
+                        rule_id=rule["id"],
+                        severity="critical",
+                        file_path=analysis.file_path,
+                        line_number=func.line_number,
+                        description=(
+                            f"Public method '{func.name}()' returns forbidden type "
+                            f"'{func.return_type}' — {rule['description']}"
+                        ),
+                        action="block_merge",
+                    )
+                )
 
     return violations
 
@@ -250,18 +264,20 @@ def _check_protected_files(
         rel = _resolve_import_path(f)
         if rel in protected:
             touched.append(rel)
-            violations.append(Violation(
-                rule_id="PROTECTED",
-                severity="critical",
-                file_path=rel,
-                line_number=None,
-                description=(
-                    f"Protected file '{rel}' in diff. "
-                    f"Requires Architectural Change Proposal. "
-                    f"Must never appear in coder-model scope lock."
-                ),
-                action="block_merge",
-            ))
+            violations.append(
+                Violation(
+                    rule_id="PROTECTED",
+                    severity="critical",
+                    file_path=rel,
+                    line_number=None,
+                    description=(
+                        f"Protected file '{rel}' in diff. "
+                        f"Requires Architectural Change Proposal. "
+                        f"Must never appear in coder-model scope lock."
+                    ),
+                    action="block_merge",
+                )
+            )
 
     return touched, violations
 
@@ -285,14 +301,16 @@ def _check_unparsed_constructs(
     """Flag analyzer parse warnings as review items."""
     warnings = []
     for pw in analysis.warnings:
-        warnings.append(Violation(
-            rule_id="PARSE_WARNING",
-            severity="warning",
-            file_path=analysis.file_path,
-            line_number=pw.line_number,
-            description=f"[{pw.category}] {pw.message}",
-            action="flag_for_review",
-        ))
+        warnings.append(
+            Violation(
+                rule_id="PARSE_WARNING",
+                severity="warning",
+                file_path=analysis.file_path,
+                line_number=pw.line_number,
+                description=f"[{pw.category}] {pw.message}",
+                action="flag_for_review",
+            )
+        )
     return warnings
 
 
@@ -316,27 +334,31 @@ def compare_signatures(
     for name in before_funcs:
         if name not in after_funcs:
             f = before_funcs[name]
-            changes.append(SignatureChange(
-                file_path=after.file_path,
-                function_name=name,
-                change_type="removed",
-                before=f"-> {f.return_type}" if f.return_type else "(no return type)",
-                after=None,
-                line_number=f.line_number,
-            ))
+            changes.append(
+                SignatureChange(
+                    file_path=after.file_path,
+                    function_name=name,
+                    change_type="removed",
+                    before=f"-> {f.return_type}" if f.return_type else "(no return type)",
+                    after=None,
+                    line_number=f.line_number,
+                )
+            )
 
     # Added functions
     for name in after_funcs:
         if name not in before_funcs:
             f = after_funcs[name]
-            changes.append(SignatureChange(
-                file_path=after.file_path,
-                function_name=name,
-                change_type="added",
-                before=None,
-                after=f"-> {f.return_type}" if f.return_type else "(no return type)",
-                line_number=f.line_number,
-            ))
+            changes.append(
+                SignatureChange(
+                    file_path=after.file_path,
+                    function_name=name,
+                    change_type="added",
+                    before=None,
+                    after=f"-> {f.return_type}" if f.return_type else "(no return type)",
+                    line_number=f.line_number,
+                )
+            )
 
     # Changed signatures
     for name in before_funcs:
@@ -346,24 +368,28 @@ def compare_signatures(
         af = after_funcs[name]
 
         if bf.return_type != af.return_type:
-            changes.append(SignatureChange(
-                file_path=after.file_path,
-                function_name=name,
-                change_type="return_type_changed",
-                before=f"-> {bf.return_type}" if bf.return_type else "(none)",
-                after=f"-> {af.return_type}" if af.return_type else "(none)",
-                line_number=af.line_number,
-            ))
+            changes.append(
+                SignatureChange(
+                    file_path=after.file_path,
+                    function_name=name,
+                    change_type="return_type_changed",
+                    before=f"-> {bf.return_type}" if bf.return_type else "(none)",
+                    after=f"-> {af.return_type}" if af.return_type else "(none)",
+                    line_number=af.line_number,
+                )
+            )
 
         if bf.param_types != af.param_types:
-            changes.append(SignatureChange(
-                file_path=after.file_path,
-                function_name=name,
-                change_type="params_changed",
-                before=str(bf.param_types),
-                after=str(af.param_types),
-                line_number=af.line_number,
-            ))
+            changes.append(
+                SignatureChange(
+                    file_path=after.file_path,
+                    function_name=name,
+                    change_type="params_changed",
+                    before=str(bf.param_types),
+                    after=str(af.param_types),
+                    line_number=af.line_number,
+                )
+            )
 
     return changes
 
@@ -422,7 +448,7 @@ def run_gate1(
 
     # Normalize to project-relative paths
     rel_changed = []
-    for f in (changed_files or []):
+    for f in changed_files or []:
         if Path(f).is_absolute():
             try:
                 rel_changed.append(str(Path(f).relative_to(root)))
@@ -472,17 +498,19 @@ def run_gate1(
 
     # Exception ceiling
     if cp.is_ceiling_exceeded():
-        result.violations.append(Violation(
-            rule_id="C-12",
-            severity="critical",
-            file_path="contracts/architectural_contracts.yaml",
-            line_number=None,
-            description=(
-                f"Exception ceiling exceeded: {cp.get_exception_count()} > "
-                f"{cp.get_exception_ceiling()}. Full contract rewrite required (C-12)."
-            ),
-            action="block_merge",
-        ))
+        result.violations.append(
+            Violation(
+                rule_id="C-12",
+                severity="critical",
+                file_path="contracts/architectural_contracts.yaml",
+                line_number=None,
+                description=(
+                    f"Exception ceiling exceeded: {cp.get_exception_count()} > "
+                    f"{cp.get_exception_ceiling()}. Full contract rewrite required (C-12)."
+                ),
+                action="block_merge",
+            )
+        )
 
     # Final pass/fail
     result.passed = len(result.blocking_violations) == 0
@@ -491,7 +519,7 @@ def run_gate1(
     logger.info(
         "gate1",
         f"Gate 1 {status}: {len(result.violations)} violations, "
-        f"{len(result.warnings)} warnings, {result.unparsed_constructs} unparsed"
+        f"{len(result.warnings)} warnings, {result.unparsed_constructs} unparsed",
     )
 
     return result

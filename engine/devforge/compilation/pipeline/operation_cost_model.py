@@ -63,7 +63,6 @@ class OperationCostModel:
         safe: List[Dict] = []
 
         for op in operations:
-
             if self.cost(op) > threshold:
                 continue
 

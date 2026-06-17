@@ -6,7 +6,6 @@ from devforge.learning.learning_record import LearningRecord
 
 
 class LearningStore:
-
     def __init__(self, path="devforge_learning.json"):
 
         self.path = Path(path)
@@ -28,6 +27,4 @@ class LearningStore:
 
         data.append(record.__dict__)
 
-        self.path.write_text(
-            json.dumps(data, indent=2)
-        )
+        self.path.write_text(json.dumps(data, indent=2))

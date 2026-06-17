@@ -35,7 +35,7 @@ MODELS_DIR = HOME / "models"
 ENVFILE = HOME / ".config/forge-stack/stack.env"
 REGISTRY = HOME / ".config/forge-stack/models.json"
 
-GIB = 1024 ** 3
+GIB = 1024**3
 
 # Scan cache: avoids re-scanning GGUF files within a single request.
 # A swap calls scan() up to 3 times (file resolution, plan_apply,
@@ -46,7 +46,9 @@ _SCAN_CACHE_TTL = 2.0  # seconds — long enough for one swap, short enough to n
 
 # arch (gguf general.architecture, prefix match) → DevForge prompt template
 TEMPLATE_BY_ARCH: list[tuple[str, str]] = [
-    ("qwen", "chatml"), ("yi", "chatml"), ("internlm", "chatml"),
+    ("qwen", "chatml"),
+    ("yi", "chatml"),
+    ("internlm", "chatml"),
     ("gemma", "gemma"),
 ]
 # arch prefix → extra llama-server args
@@ -56,23 +58,31 @@ EXTRA_ARGS_BY_ARCH: list[tuple[str, str]] = [
     ("gemma", "--swa-full"),
 ]
 CTX_CANDIDATES = [32768, 16384, 8192, 4096]
-KV_BYTES_PER_EL = 1.07          # q8_0 KV cache
-OVERHEAD = 0.8 * GIB            # compute graph + buffers (estimate)
-RESERVE = 0.4 * GIB             # desktop/display headroom
+KV_BYTES_PER_EL = 1.07  # q8_0 KV cache
+OVERHEAD = 0.8 * GIB  # compute graph + buffers (estimate)
+RESERVE = 0.4 * GIB  # desktop/display headroom
 
 # Conservative safety margin added in Phase 2 — the old estimator
 # reported "tight, fits 15.0/16.0G" for Gemma 26B @ ctx 32768 but
 # cudaMalloc failed at runtime. This margin kicks in before we write
 # any config.
-FIT_SAFETY_MARGIN = 0.6 * GIB   # measured: real allocation ~0.5G over estimate
+FIT_SAFETY_MARGIN = 0.6 * GIB  # measured: real allocation ~0.5G over estimate
 
 
 # ── GGUF header parsing (metadata only, never reads tensors) ─────
 
 _SCALARS: dict[int, tuple[str, int]] = {
-    0: ("<B", 1), 1: ("<b", 1), 2: ("<H", 2), 3: ("<h", 2),
-    4: ("<I", 4), 5: ("<i", 4), 6: ("<f", 4), 7: ("<B", 1),
-    10: ("<Q", 8), 11: ("<q", 8), 12: ("<d", 8),
+    0: ("<B", 1),
+    1: ("<b", 1),
+    2: ("<H", 2),
+    3: ("<h", 2),
+    4: ("<I", 4),
+    5: ("<i", 4),
+    6: ("<f", 4),
+    7: ("<B", 1),
+    10: ("<Q", 8),
+    11: ("<q", 8),
+    12: ("<d", 8),
 }
 
 
@@ -82,7 +92,7 @@ def parse_gguf(path: Path) -> dict[str, Any]:
     with open(path, "rb") as f:
         if f.read(4) != b"GGUF":
             return meta
-        struct.unpack("<I", f.read(4))   # version
+        struct.unpack("<I", f.read(4))  # version
         _, n_kv = struct.unpack("<QQ", f.read(16))
 
         def rstr(want: bool) -> str | None:
@@ -143,8 +153,7 @@ def detect(path: Path) -> dict[str, Any]:
     heads = g("attention.head_count") or 32
     if isinstance(heads, list):
         heads = heads[0]
-    head_dim = g("attention.key_length") or (
-        (g("embedding_length") or 4096) // max(int(heads), 1))
+    head_dim = g("attention.key_length") or ((g("embedding_length") or 4096) // max(int(heads), 1))
     kv_heads = g("attention.head_count_kv")
     if not isinstance(kv_heads, int):
         kv_heads = 8  # unknown/per-layer — conservative guess
@@ -156,8 +165,7 @@ def detect(path: Path) -> dict[str, Any]:
     # deduplicated — many GGUFs repeat the size inside the basename.
     basename = str(m.get("general.basename") or m.get("general.name") or path.stem)
     size_label = str(m.get("general.size_label") or "")
-    finetune = re.sub(r"-?(it|instruct|chat)$", "",
-                      str(m.get("general.finetune") or ""), flags=re.I)
+    finetune = re.sub(r"-?(it|instruct|chat)$", "", str(m.get("general.finetune") or ""), flags=re.I)
     quant = ""
     qm = re.search(r"(i?q\d[_a-z0-9]*?)(?:\.gguf)?$", path.name.lower())
     if qm:
@@ -171,8 +179,7 @@ def detect(path: Path) -> dict[str, Any]:
             name += f"-{p}"
     template = next((t for p, t in TEMPLATE_BY_ARCH if arch.startswith(p)), None)
     extra = " ".join(a for p, a in EXTRA_ARGS_BY_ARCH if arch.startswith(p))
-    sampling = {k.split(".")[-1]: round(float(v), 2) for k, v in m.items()
-                if k.startswith("general.sampling.")}
+    sampling = {k.split(".")[-1]: round(float(v), 2) for k, v in m.items() if k.startswith("general.sampling.")}
     return {
         "alias": name,
         "arch": arch or "unknown",
@@ -193,9 +200,14 @@ def detect(path: Path) -> dict[str, Any]:
 # memory) is over-counted 2x, so the estimator wrongly calls a fitting
 # context "spills" and the hub swap pre-flight falsely refuses it.
 _KV_CACHE_SCALE = {
-    "f16": 2.0, "f32": 4.0, "bf16": 2.0,
-    "q8_0": 1.0, "q5_1": 0.69, "q5_0": 0.66,
-    "q4_1": 0.56, "q4_0": 0.53,
+    "f16": 2.0,
+    "f32": 4.0,
+    "bf16": 2.0,
+    "q8_0": 1.0,
+    "q5_1": 0.69,
+    "q5_0": 0.66,
+    "q4_1": 0.56,
+    "q4_0": 0.53,
 }
 
 
@@ -259,8 +271,7 @@ def scan() -> list[dict[str, Any]]:
     kv_scale = kv_scale_from_args(env.get("LLAMA_BASE_ARGS", ""))
     current = Path(env.get("MODEL", "")).name
     out, seen_aliases, changed = [], set(), False
-    files = sorted(p for p in MODELS_DIR.glob("**/*.gguf")
-                   if not re.search(r"-0000[2-9]-of-", p.name))
+    files = sorted(p for p in MODELS_DIR.glob("**/*.gguf") if not re.search(r"-0000[2-9]-of-", p.name))
     for p in files:
         key = p.name
         entry = reg.get(key, {})
@@ -280,9 +291,17 @@ def scan() -> list[dict[str, Any]]:
         f = fit(det, vram, kv_scale)
         if "ctx" in entry.get("overrides", {}):
             f = {**f, "ctx": int(entry["overrides"]["ctx"]), "status": f["status"] + " (ctx overridden)"}
-        out.append({"file": key, "path": str(p), "current": p.name == current,
-                    "fit": f, "vram_gb": round(vram / GIB, 1),
-                    "overrides": entry.get("overrides", {}), **eff})
+        out.append(
+            {
+                "file": key,
+                "path": str(p),
+                "current": p.name == current,
+                "fit": f,
+                "vram_gb": round(vram / GIB, 1),
+                "overrides": entry.get("overrides", {}),
+                **eff,
+            }
+        )
     if changed:
         save_registry(reg)
     _SCAN_CACHE["ts"] = time.time()
@@ -298,8 +317,7 @@ class ModelError(Exception):
 def find(fragment: str) -> dict[str, Any]:
     """Match one model by filename or alias fragment. Raises ModelError on ambiguity."""
     models = scan()
-    hits = [m for m in models if fragment.lower() in m["file"].lower()
-            or fragment.lower() in m["alias"]]
+    hits = [m for m in models if fragment.lower() in m["file"].lower() or fragment.lower() in m["alias"]]
     if len(hits) == 1:
         return hits[0]
     if not hits:
@@ -343,16 +361,17 @@ def plan_apply(fragment: str) -> dict[str, Any]:
         "LLAMA_ARGS": args,
     }
 
-    devforge_restart = "1" if (m["template"] != old_template
-                               or not old_ctx_match
-                               or int(old_ctx_match.group(1)) != ctx) else "0"
+    devforge_restart = (
+        "1" if (m["template"] != old_template or not old_ctx_match or int(old_ctx_match.group(1)) != ctx) else "0"
+    )
 
     env_plan = plan_env(ENVFILE, updates)
 
     fit_warning = None
     if m["fit"]["status"] == "spills":
-        fit_warning = (f"exceeds VRAM — will spill to system RAM and run slower. "
-                       f"Consider: forge-model set {m['alias']} ctx=8192")
+        fit_warning = (
+            f"exceeds VRAM — will spill to system RAM and run slower. Consider: forge-model set {m['alias']} ctx=8192"
+        )
 
     return {
         "model": {

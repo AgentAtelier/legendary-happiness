@@ -33,22 +33,22 @@ def list_schemas(directory: str | None = None) -> list[dict]:
     for f in sorted(path.glob("*.schema.json")):
         try:
             s = _load_schema_file(str(f))
-            schemas.append({
-                "name": s.name,
-                "version": s.version,
-                "description": s.description,
-                "field_count": len(s.fields),
-                "required_fields": s.required_fields(),
-            })
+            schemas.append(
+                {
+                    "name": s.name,
+                    "version": s.version,
+                    "description": s.description,
+                    "field_count": len(s.fields),
+                    "required_fields": s.required_fields(),
+                }
+            )
         except Exception as exc:
             logger.warn("lorekeeper", f"Skipping {f.name}: {exc}")
 
     return sorted(schemas, key=lambda s: s["name"])
 
 
-def load_schema(
-    name: str, directory: str | None = None
-) -> SchemaDefinition | None:
+def load_schema(name: str, directory: str | None = None) -> SchemaDefinition | None:
     """Load a schema by name from disk."""
     directory = directory or DEFAULT_SCHEMA_DIR
     filepath = os.path.join(directory, f"{name}.schema.json")

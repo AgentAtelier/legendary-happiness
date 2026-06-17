@@ -12,7 +12,6 @@ except ImportError:
 
 
 class ClaudeClient:
-
     def __init__(
         self,
         api_key: str | None = None,
@@ -43,9 +42,7 @@ class ClaudeClient:
             )
             # content can carry non-text blocks (e.g. thinking) first —
             # take the first text block, not blindly content[0]
-            content = next(
-                (b.text for b in response.content if b.type == "text"), ""
-            )
+            content = next((b.text for b in response.content if b.type == "text"), "")
             logger.info("claude_client", "Response received", response_len=len(content))
             return content
         except Exception as exc:

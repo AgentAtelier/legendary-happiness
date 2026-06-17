@@ -29,10 +29,10 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── The 4 qwen models (small→big swap order) ────────────────────
 SWEEP_MODELS = [
-    {"alias": "qwen3-5-4b",      "label": "qwen3-5-4b"},
+    {"alias": "qwen3-5-4b", "label": "qwen3-5-4b"},
     {"alias": "qwen3-5-9b-q8-0", "label": "qwen3-5-9b"},
-    {"alias": "qwen3-14b-q6-k",  "label": "qwen3-14b"},
-    {"alias": "qwen3-6-27b",     "label": "qwen3-6-27b"},
+    {"alias": "qwen3-14b-q6-k", "label": "qwen3-14b"},
+    {"alias": "qwen3-6-27b", "label": "qwen3-6-27b"},
 ]
 
 # ── The 5 locked discriminating tests ────────────────────────────
@@ -56,7 +56,9 @@ TEST_SETS: dict[str, str] = {
 
 async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
     proc = await asyncio.create_subprocess_exec(
-        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
     )
     try:
         raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
@@ -152,7 +154,7 @@ def render_matrix(artifact: dict) -> str:
                 continue
             mean = cell.get("mean_coverage", 0)
             std = cell.get("stddev_coverage", 0)
-            best = (mean == best_per_row[tid] and mean > 0)
+            best = mean == best_per_row[tid] and mean > 0
             cc = color_cell(mean, best)
             star = "★" if best else " "
             cell_str = f"{mean:>3d} ±{std:>2d}{star}"
@@ -171,7 +173,7 @@ def render_matrix(artifact: dict) -> str:
                 lat_vals.append(cell["mean_latency_ms"])
         if lat_vals:
             avg_lat = sum(lat_vals) / len(lat_vals)
-            lat_row += f"  {avg_lat/1000:>4.1f}s{'':>{COL_W - 7}}"
+            lat_row += f"  {avg_lat / 1000:>4.1f}s{'':>{COL_W - 7}}"
         else:
             lat_row += f" {'—':>{COL_W}s}"
     lines.append(lat_row)
@@ -204,7 +206,9 @@ async def run_sweep(emit=lambda s: print(s), dry: bool = False) -> dict:
         dry: If True, print what WOULD happen without running.
     """
     emit("═══ Multi-Model Sweep ═══")
-    emit(f"Models: {len(SWEEP_MODELS)}  |  Tests: {len(SWEEP_TESTS)}  |  Runs: 10  |  Total: {len(SWEEP_MODELS) * len(SWEEP_TESTS) * 10}")
+    emit(
+        f"Models: {len(SWEEP_MODELS)}  |  Tests: {len(SWEEP_TESTS)}  |  Runs: 10  |  Total: {len(SWEEP_MODELS) * len(SWEEP_TESTS) * 10}"
+    )
     emit("")
 
     if dry:
@@ -249,7 +253,10 @@ async def run_sweep(emit=lambda s: print(s), dry: bool = False) -> dict:
 
             try:
                 card = await run_gauntlet(
-                    set_id, emit=emit, only=[tid], runs=10,
+                    set_id,
+                    emit=emit,
+                    only=[tid],
+                    runs=10,
                 )
                 # Extract per-test stats from the gauntlet result
                 if "results" in card:

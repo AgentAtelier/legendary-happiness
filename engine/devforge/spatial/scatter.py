@@ -39,6 +39,7 @@ _JITTER_FRACTION: float = 0.5  # fraction of cell size to jitter by
 @dataclass
 class KeepOutZone:
     """Exclusion rectangle on the XZ plane."""
+
     x: float
     z: float
     w: float
@@ -48,6 +49,7 @@ class KeepOutZone:
 @dataclass
 class SpeciesSpec:
     """What and how many to place."""
+
     asset_id: str
     count: int
     min_spacing: float  # minimum distance between same-species instances
@@ -56,6 +58,7 @@ class SpeciesSpec:
 @dataclass
 class ScatterRegion:
     """The area to fill with scattered objects."""
+
     width: float
     depth: float
     keep_out: List[KeepOutZone] = field(default_factory=list)
@@ -160,14 +163,16 @@ class ScatterEngine:
             )
 
             for i, (x, z) in enumerate(positions):
-                node_name = f"{sp.asset_id}_{i+1}"
+                node_name = f"{sp.asset_id}_{i + 1}"
                 node_path = f"{root_path}/{node_name}"
 
-                steps.append(CreateEntityStep(
-                    name=node_name,
-                    node_type="MeshInstance3D",
-                    parent=root_path,
-                ))
+                steps.append(
+                    CreateEntityStep(
+                        name=node_name,
+                        node_type="MeshInstance3D",
+                        parent=root_path,
+                    )
+                )
 
                 # Greybox appearance from lexicon
                 mesh_type = "cylinder"
@@ -180,47 +185,59 @@ class ScatterEngine:
                     height = float(asset.get("height", height))
 
                 # Position: centre of footprint, sitting on ground
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="position",
-                    value={"x": x, "y": height / 2, "z": z},
-                ))
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="position",
+                        value={"x": x, "y": height / 2, "z": z},
+                    )
+                )
 
                 if mesh_type == "sphere":
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="mesh",
-                        value={
-                            "__class__": "SphereMesh",
-                            "radius": radius,
-                            "height": radius * 2,
-                        },
-                    ))
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="mesh",
+                            value={
+                                "__class__": "SphereMesh",
+                                "radius": radius,
+                                "height": radius * 2,
+                            },
+                        )
+                    )
                 else:
                     # cylinder or box
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="mesh",
-                        value={
-                            "__class__": "CylinderMesh" if mesh_type == "cylinder" else "BoxMesh",
-                            **(  # cylinder
-                                {"top_radius": radius, "bottom_radius": radius, "height": height}
-                                if mesh_type == "cylinder" else
-                                {"size": {"x": radius * 2, "y": height, "z": radius * 2}}
-                            ),
-                        },
-                    ))
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="mesh",
+                            value={
+                                "__class__": "CylinderMesh" if mesh_type == "cylinder" else "BoxMesh",
+                                # cylinder
+                                **(
+                                    {"top_radius": radius, "bottom_radius": radius, "height": height}
+                                    if mesh_type == "cylinder"
+                                    else {"size": {"x": radius * 2, "y": height, "z": radius * 2}}
+                                ),
+                            },
+                        )
+                    )
 
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="material_override",
-                    value={
-                        "__class__": "StandardMaterial3D",
-                        "albedo_color": {
-                            "r": color[0], "g": color[1], "b": color[2], "a": 1.0,
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="material_override",
+                        value={
+                            "__class__": "StandardMaterial3D",
+                            "albedo_color": {
+                                "r": color[0],
+                                "g": color[1],
+                                "b": color[2],
+                                "a": 1.0,
+                            },
                         },
-                    },
-                ))
+                    )
+                )
 
             total_placed += len(positions)
 
@@ -301,8 +318,7 @@ class ScatterEngine:
                 margin_z = ko.z - item_radius
                 margin_w = ko.w + item_radius * 2
                 margin_d = ko.d + item_radius * 2
-                if (margin_x <= x <= margin_x + margin_w and
-                        margin_z <= z <= margin_z + margin_d):
+                if margin_x <= x <= margin_x + margin_w and margin_z <= z <= margin_z + margin_d:
                     return False
 
             # Distance to existing points
@@ -336,8 +352,13 @@ class ScatterEngine:
             # No valid seed — fall back to jittered grid
             logger.warn("scatter", "Poisson-disk failed to seed; falling back to jittered grid")
             return self._jittered_grid_sample(
-                width, depth, min_radius, keep_out_zones,
-                item_radius, count, rng,
+                width,
+                depth,
+                min_radius,
+                keep_out_zones,
+                item_radius,
+                count,
+                rng,
             )
 
         active: List[int] = [0]  # indices into points
@@ -370,14 +391,19 @@ class ScatterEngine:
         if len(points) < count:
             logger.info(
                 "scatter",
-                f"Poisson-disk placed {len(points)}/{count}; "
-                f"filling remainder with jittered grid",
+                f"Poisson-disk placed {len(points)}/{count}; filling remainder with jittered grid",
             )
             remaining = count - len(points)
             existing = set(points)
             extra = self._jittered_grid_sample(
-                width, depth, min_radius, keep_out_zones,
-                item_radius, remaining, rng, existing_positions=existing,
+                width,
+                depth,
+                min_radius,
+                keep_out_zones,
+                item_radius,
+                remaining,
+                rng,
+                existing_positions=existing,
             )
             points.extend(extra)
 
@@ -422,8 +448,10 @@ class ScatterEngine:
                 # Keep-out check (with item_radius margin)
                 blocked = False
                 for ko in keep_out_zones:
-                    if (ko.x - item_radius <= cx <= ko.x + ko.w + item_radius and
-                            ko.z - item_radius <= cz <= ko.z + ko.d + item_radius):
+                    if (
+                        ko.x - item_radius <= cx <= ko.x + ko.w + item_radius
+                        and ko.z - item_radius <= cz <= ko.z + ko.d + item_radius
+                    ):
                         blocked = True
                         break
                 if blocked:

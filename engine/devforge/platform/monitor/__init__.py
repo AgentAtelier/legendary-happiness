@@ -45,6 +45,7 @@ from typing import Any
 
 # ── Event Types ─────────────────────────────────────────────────────
 
+
 class EventType(str, Enum):
     # Request lifecycle
     TRACE_START = "trace_start"
@@ -95,6 +96,7 @@ class Severity(str, Enum):
 
 
 # ── Trace Object ────────────────────────────────────────────────────
+
 
 class Trace:
     """Represents a single request flowing through the pipeline."""
@@ -152,6 +154,7 @@ CREATE INDEX IF NOT EXISTS idx_traces_status ON traces(status);
 
 # ── Monitor Class ───────────────────────────────────────────────────
 
+
 class Monitor:
     """Central monitoring hub.  One instance per server process."""
 
@@ -190,10 +193,17 @@ class Monitor:
         self._emit(trace, EventType.TRACE_START, Severity.INFO, f"Request: {prompt[:100]}")
         return trace
 
-    def end_trace(self, trace: Trace, *, status: str = "complete",
-                  files_count: int = 0, ops_count: int = 0,
-                  ops_passed: int = 0, ops_failed: int = 0,
-                  llm_time_ms: int = 0) -> None:
+    def end_trace(
+        self,
+        trace: Trace,
+        *,
+        status: str = "complete",
+        files_count: int = 0,
+        ops_count: int = 0,
+        ops_passed: int = 0,
+        ops_failed: int = 0,
+        llm_time_ms: int = 0,
+    ) -> None:
         """Mark a trace as finished."""
         end_time = time.time()
         total_ms = int((end_time - trace.start_time) * 1000)
@@ -204,146 +214,215 @@ class Monitor:
                    files_count=?, ops_count=?, ops_passed=?, ops_failed=?,
                    llm_time_ms=?, total_time_ms=?
                    WHERE trace_id=?""",
-                (end_time, status, trace.intent or "", files_count, ops_count,
-                 ops_passed, ops_failed, llm_time_ms, total_ms, trace.trace_id),
+                (
+                    end_time,
+                    status,
+                    trace.intent or "",
+                    files_count,
+                    ops_count,
+                    ops_passed,
+                    ops_failed,
+                    llm_time_ms,
+                    total_ms,
+                    trace.trace_id,
+                ),
             )
-        self._emit(trace, EventType.TRACE_END, Severity.INFO,
-                    f"Completed in {total_ms}ms: {status}")
+        self._emit(trace, EventType.TRACE_END, Severity.INFO, f"Completed in {total_ms}ms: {status}")
 
     # ── Pipeline event loggers ──────────────────────────────────────
 
-    def log_context_built(self, trace: Trace, *,
-                          scene_nodes: int = 0, scripts_found: int = 0,
-                          api_sections: int = 0, game_model_entities: int = 0,
-                          prompt_length: int = 0) -> None:
-        self._emit(trace, EventType.CONTEXT_BUILT, Severity.INFO,
-                   f"Context: {scene_nodes} nodes, {scripts_found} scripts, "
-                   f"{api_sections} API refs, {prompt_length} chars total",
-                   data={
-                       "scene_nodes": scene_nodes,
-                       "scripts_found": scripts_found,
-                       "api_sections": api_sections,
-                       "game_model_entities": game_model_entities,
-                       "prompt_length": prompt_length,
-                   })
+    def log_context_built(
+        self,
+        trace: Trace,
+        *,
+        scene_nodes: int = 0,
+        scripts_found: int = 0,
+        api_sections: int = 0,
+        game_model_entities: int = 0,
+        prompt_length: int = 0,
+    ) -> None:
+        self._emit(
+            trace,
+            EventType.CONTEXT_BUILT,
+            Severity.INFO,
+            f"Context: {scene_nodes} nodes, {scripts_found} scripts, "
+            f"{api_sections} API refs, {prompt_length} chars total",
+            data={
+                "scene_nodes": scene_nodes,
+                "scripts_found": scripts_found,
+                "api_sections": api_sections,
+                "game_model_entities": game_model_entities,
+                "prompt_length": prompt_length,
+            },
+        )
 
-    def log_llm_request(self, trace: Trace, *,
-                        prompt_text: str = "", prompt_tokens_est: int = 0,
-                        model: str = "", multi_step: bool = False,
-                        step_name: str = "") -> None:
-        self._emit(trace, EventType.LLM_REQUEST, Severity.INFO,
-                   f"LLM request: ~{prompt_tokens_est} tokens, model={model}"
-                   + (f", step={step_name}" if step_name else ""),
-                   data={
-                       "prompt_text": prompt_text[:5000],  # Truncate for storage
-                       "prompt_tokens_est": prompt_tokens_est,
-                       "model": model,
-                       "multi_step": multi_step,
-                       "step_name": step_name,
-                   })
+    def log_llm_request(
+        self,
+        trace: Trace,
+        *,
+        prompt_text: str = "",
+        prompt_tokens_est: int = 0,
+        model: str = "",
+        multi_step: bool = False,
+        step_name: str = "",
+    ) -> None:
+        self._emit(
+            trace,
+            EventType.LLM_REQUEST,
+            Severity.INFO,
+            f"LLM request: ~{prompt_tokens_est} tokens, model={model}" + (f", step={step_name}" if step_name else ""),
+            data={
+                "prompt_text": prompt_text[:5000],  # Truncate for storage
+                "prompt_tokens_est": prompt_tokens_est,
+                "model": model,
+                "multi_step": multi_step,
+                "step_name": step_name,
+            },
+        )
 
-    def log_llm_response(self, trace: Trace, *,
-                         raw_response: str = "", elapsed_ms: int = 0,
-                         response_tokens_est: int = 0,
-                         step_name: str = "") -> None:
-        self._emit(trace, EventType.LLM_RESPONSE, Severity.INFO,
-                   f"LLM response: {elapsed_ms}ms, ~{response_tokens_est} tokens"
-                   + (f", step={step_name}" if step_name else ""),
-                   data={
-                       "raw_response": raw_response[:5000],
-                       "elapsed_ms": elapsed_ms,
-                       "response_tokens_est": response_tokens_est,
-                       "step_name": step_name,
-                   })
+    def log_llm_response(
+        self,
+        trace: Trace,
+        *,
+        raw_response: str = "",
+        elapsed_ms: int = 0,
+        response_tokens_est: int = 0,
+        step_name: str = "",
+    ) -> None:
+        self._emit(
+            trace,
+            EventType.LLM_RESPONSE,
+            Severity.INFO,
+            f"LLM response: {elapsed_ms}ms, ~{response_tokens_est} tokens"
+            + (f", step={step_name}" if step_name else ""),
+            data={
+                "raw_response": raw_response[:5000],
+                "elapsed_ms": elapsed_ms,
+                "response_tokens_est": response_tokens_est,
+                "step_name": step_name,
+            },
+        )
 
-    def log_llm_error(self, trace: Trace, *, error: str = "",
-                      attempt: int = 1) -> None:
-        self._emit(trace, EventType.LLM_ERROR, Severity.ERROR,
-                   f"LLM error (attempt {attempt}): {error}",
-                   data={"error": error, "attempt": attempt})
+    def log_llm_error(self, trace: Trace, *, error: str = "", attempt: int = 1) -> None:
+        self._emit(
+            trace,
+            EventType.LLM_ERROR,
+            Severity.ERROR,
+            f"LLM error (attempt {attempt}): {error}",
+            data={"error": error, "attempt": attempt},
+        )
 
-    def log_parse_result(self, trace: Trace, *,
-                         files_count: int = 0, ops_count: int = 0,
-                         parse_errors: list[str] | None = None,
-                         step_name: str = "") -> None:
+    def log_parse_result(
+        self,
+        trace: Trace,
+        *,
+        files_count: int = 0,
+        ops_count: int = 0,
+        parse_errors: list[str] | None = None,
+        step_name: str = "",
+    ) -> None:
         severity = Severity.WARNING if parse_errors else Severity.INFO
-        self._emit(trace, EventType.PARSE_RESULT, severity,
-                   f"Parsed: {files_count} files, {ops_count} operations"
-                   + (f" ({len(parse_errors)} errors)" if parse_errors else ""),
-                   data={
-                       "files_count": files_count,
-                       "ops_count": ops_count,
-                       "parse_errors": parse_errors or [],
-                       "step_name": step_name,
-                   })
+        self._emit(
+            trace,
+            EventType.PARSE_RESULT,
+            severity,
+            f"Parsed: {files_count} files, {ops_count} operations"
+            + (f" ({len(parse_errors)} errors)" if parse_errors else ""),
+            data={
+                "files_count": files_count,
+                "ops_count": ops_count,
+                "parse_errors": parse_errors or [],
+                "step_name": step_name,
+            },
+        )
 
-    def log_validation(self, trace: Trace, *,
-                       total: int = 0, passed: int = 0, rejected: int = 0,
-                       rejection_reasons: list[str] | None = None) -> None:
+    def log_validation(
+        self,
+        trace: Trace,
+        *,
+        total: int = 0,
+        passed: int = 0,
+        rejected: int = 0,
+        rejection_reasons: list[str] | None = None,
+    ) -> None:
         severity = Severity.WARNING if rejected > 0 else Severity.INFO
-        self._emit(trace, EventType.VALIDATION, severity,
-                   f"Validation: {passed}/{total} passed, {rejected} rejected",
-                   data={
-                       "total": total,
-                       "passed": passed,
-                       "rejected": rejected,
-                       "rejection_reasons": rejection_reasons or [],
-                   })
+        self._emit(
+            trace,
+            EventType.VALIDATION,
+            severity,
+            f"Validation: {passed}/{total} passed, {rejected} rejected",
+            data={
+                "total": total,
+                "passed": passed,
+                "rejected": rejected,
+                "rejection_reasons": rejection_reasons or [],
+            },
+        )
 
-    def log_validation_rejected(self, trace: Trace, *,
-                                operation: dict | None = None,
-                                reason: str = "") -> None:
-        self._emit(trace, EventType.VALIDATION_REJECTED, Severity.WARNING,
-                   f"Rejected: {operation.get('type', '?')} — {reason}",
-                   data={"operation": operation or {}, "reason": reason})
+    def log_validation_rejected(self, trace: Trace, *, operation: dict | None = None, reason: str = "") -> None:
+        self._emit(
+            trace,
+            EventType.VALIDATION_REJECTED,
+            Severity.WARNING,
+            f"Rejected: {operation.get('type', '?')} — {reason}",
+            data={"operation": operation or {}, "reason": reason},
+        )
 
-    def log_ordering(self, trace: Trace, *,
-                     order: list[str] | None = None) -> None:
-        self._emit(trace, EventType.ORDERING, Severity.DEBUG,
-                   f"Operation order: {' → '.join(order or [])}",
-                   data={"order": order or []})
+    def log_ordering(self, trace: Trace, *, order: list[str] | None = None) -> None:
+        self._emit(
+            trace,
+            EventType.ORDERING,
+            Severity.DEBUG,
+            f"Operation order: {' → '.join(order or [])}",
+            data={"order": order or []},
+        )
 
-    def log_execution_result(self, trace: Trace, *,
-                             op_type: str = "", op_name: str = "",
-                             status: str = "ok", error: str = "") -> None:
+    def log_execution_result(
+        self, trace: Trace, *, op_type: str = "", op_name: str = "", status: str = "ok", error: str = ""
+    ) -> None:
         event = EventType.EXECUTION_SUCCESS if status == "ok" else EventType.EXECUTION_FAILURE
         severity = Severity.INFO if status == "ok" else Severity.ERROR
-        self._emit(trace, event, severity,
-                   f"{'✓' if status == 'ok' else '✗'} {op_type} {op_name}"
-                   + (f" — {error}" if error else ""),
-                   data={"op_type": op_type, "op_name": op_name,
-                          "status": status, "error": error})
+        self._emit(
+            trace,
+            event,
+            severity,
+            f"{'✓' if status == 'ok' else '✗'} {op_type} {op_name}" + (f" — {error}" if error else ""),
+            data={"op_type": op_type, "op_name": op_name, "status": status, "error": error},
+        )
 
-    def log_repair(self, trace: Trace, *, attempt: int = 1,
-                   failed_op: dict | None = None,
-                   error: str = "", result_ops: int = 0) -> None:
-        self._emit(trace, EventType.REPAIR_REQUESTED, Severity.WARNING,
-                   f"Repair attempt {attempt}: {error}",
-                   data={"attempt": attempt, "failed_op": failed_op or {},
-                          "error": error, "result_ops": result_ops})
+    def log_repair(
+        self, trace: Trace, *, attempt: int = 1, failed_op: dict | None = None, error: str = "", result_ops: int = 0
+    ) -> None:
+        self._emit(
+            trace,
+            EventType.REPAIR_REQUESTED,
+            Severity.WARNING,
+            f"Repair attempt {attempt}: {error}",
+            data={"attempt": attempt, "failed_op": failed_op or {}, "error": error, "result_ops": result_ops},
+        )
 
-    def log_model_learned(self, trace: Trace, *,
-                          new_entities: int = 0, new_systems: int = 0,
-                          new_interactions: int = 0) -> None:
-        self._emit(trace, EventType.MODEL_LEARNED, Severity.INFO,
-                   f"Learned: {new_entities} entities, {new_systems} systems, "
-                   f"{new_interactions} interactions",
-                   data={"new_entities": new_entities, "new_systems": new_systems,
-                          "new_interactions": new_interactions})
+    def log_model_learned(
+        self, trace: Trace, *, new_entities: int = 0, new_systems: int = 0, new_interactions: int = 0
+    ) -> None:
+        self._emit(
+            trace,
+            EventType.MODEL_LEARNED,
+            Severity.INFO,
+            f"Learned: {new_entities} entities, {new_systems} systems, {new_interactions} interactions",
+            data={"new_entities": new_entities, "new_systems": new_systems, "new_interactions": new_interactions},
+        )
 
-    def log_warning(self, trace: Trace | None, message: str,
-                    data: dict | None = None) -> None:
+    def log_warning(self, trace: Trace | None, message: str, data: dict | None = None) -> None:
         self._emit(trace, EventType.WARNING, Severity.WARNING, message, data=data or {})
 
-    def log_error(self, trace: Trace | None, message: str,
-                  data: dict | None = None) -> None:
+    def log_error(self, trace: Trace | None, message: str, data: dict | None = None) -> None:
         self._emit(trace, EventType.ERROR, Severity.ERROR, message, data=data or {})
 
     # ── Internal event writer ───────────────────────────────────────
 
-    def _emit(self, trace: Trace | None, event_type: EventType,
-              severity: Severity, message: str,
-              data: dict | None = None) -> None:
+    def _emit(
+        self, trace: Trace | None, event_type: EventType, severity: Severity, message: str, data: dict | None = None
+    ) -> None:
         trace_id = trace.trace_id if trace else "system"
         prompt = trace.prompt if trace else ""
         now = time.time()
@@ -358,8 +437,7 @@ class Monitor:
             conn.execute(
                 "INSERT INTO events (trace_id, timestamp, event_type, severity, message, data, prompt, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (trace_id, now, event_type.value, severity.value, message,
-                 json.dumps(data or {}), prompt, created),
+                (trace_id, now, event_type.value, severity.value, message, json.dumps(data or {}), prompt, created),
             )
 
     # ── Analytics queries ───────────────────────────────────────────
@@ -367,17 +445,13 @@ class Monitor:
     def get_recent_traces(self, limit: int = 20) -> list[dict]:
         """Get the most recent request traces."""
         with self._conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM traces ORDER BY start_time DESC LIMIT ?", (limit,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM traces ORDER BY start_time DESC LIMIT ?", (limit,)).fetchall()
             return [dict(r) for r in rows]
 
     def get_trace_events(self, trace_id: str) -> list[dict]:
         """Get all events for a specific trace."""
         with self._conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM events WHERE trace_id=? ORDER BY timestamp", (trace_id,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM events WHERE trace_id=? ORDER BY timestamp", (trace_id,)).fetchall()
             return [dict(r) for r in rows]
 
     def get_failure_analysis(self) -> dict[str, Any]:
@@ -428,9 +502,7 @@ class Monitor:
                    FROM events WHERE event_type='llm_response'"""
             ).fetchone()
 
-            error_count = conn.execute(
-                "SELECT COUNT(*) as c FROM events WHERE event_type='llm_error'"
-            ).fetchone()
+            error_count = conn.execute("SELECT COUNT(*) as c FROM events WHERE event_type='llm_error'").fetchone()
 
             return {
                 "avg_response_ms": int(resp_rows["avg_ms"] or 0) if resp_rows else 0,

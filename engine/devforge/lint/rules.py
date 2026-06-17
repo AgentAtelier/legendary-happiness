@@ -16,8 +16,8 @@ from devforge.lore.schema import SchemaDefinition
 class LintFinding:
     """A single content quality issue found by the linter."""
 
-    rule_id: str        # "L01", "L02", etc.
-    severity: str       # "ERROR" | "WARNING" | "INFO"
+    rule_id: str  # "L01", "L02", etc.
+    severity: str  # "ERROR" | "WARNING" | "INFO"
     entry_index: int
     entry_id: str
     field: str | None
@@ -38,6 +38,7 @@ class LintFinding:
 
 # ── Rule implementations ────────────────────────────────────────
 
+
 def check_duplicate_ids(
     entries: list[dict],
     id_field: str = "id",
@@ -55,33 +56,31 @@ def check_duplicate_ids(
             if empty_count == 1:
                 first_empty_idx = i
             elif empty_count >= 2:
-                findings.append(LintFinding(
-                    rule_id="L01",
-                    severity="ERROR",
-                    entry_index=i,
-                    entry_id="<empty>",
-                    field=id_field,
-                    message=(
-                        f"Duplicate (empty) {id_field} — "
-                        f"first empty entry at index {first_empty_idx}"
-                    ),
-                    suggestion="Give every entry a unique, non-empty id.",
-                ))
+                findings.append(
+                    LintFinding(
+                        rule_id="L01",
+                        severity="ERROR",
+                        entry_index=i,
+                        entry_id="<empty>",
+                        field=id_field,
+                        message=(f"Duplicate (empty) {id_field} — first empty entry at index {first_empty_idx}"),
+                        suggestion="Give every entry a unique, non-empty id.",
+                    )
+                )
             continue
 
         if eid in seen:
-            findings.append(LintFinding(
-                rule_id="L01",
-                severity="ERROR",
-                entry_index=i,
-                entry_id=eid,
-                field=id_field,
-                message=(
-                    f"Duplicate {id_field} '{eid}' — "
-                    f"first seen at entry {seen[eid]}"
-                ),
-                suggestion=f"Ensure every {id_field} value is unique within the file.",
-            ))
+            findings.append(
+                LintFinding(
+                    rule_id="L01",
+                    severity="ERROR",
+                    entry_index=i,
+                    entry_id=eid,
+                    field=id_field,
+                    message=(f"Duplicate {id_field} '{eid}' — first seen at entry {seen[eid]}"),
+                    suggestion=f"Ensure every {id_field} value is unique within the file.",
+                )
+            )
         else:
             seen[eid] = i
 
@@ -107,39 +106,45 @@ def check_naming_convention(
 
         # ── ID convention check ──
         if eid and not compiled.match(eid):
-            findings.append(LintFinding(
-                rule_id="L02",
-                severity="WARNING",
-                entry_index=i,
-                entry_id=eid,
-                field=id_field,
-                message=f"ID '{eid}' does not match {pattern_label} convention ({pattern}).",
-                suggestion=f"Rename the {id_field} to follow {pattern_label}.",
-            ))
+            findings.append(
+                LintFinding(
+                    rule_id="L02",
+                    severity="WARNING",
+                    entry_index=i,
+                    entry_id=eid,
+                    field=id_field,
+                    message=f"ID '{eid}' does not match {pattern_label} convention ({pattern}).",
+                    suggestion=f"Rename the {id_field} to follow {pattern_label}.",
+                )
+            )
 
         # ── Name field check ──
         if name_field:
             name = entry.get(name_field)
             if name is None:
-                findings.append(LintFinding(
-                    rule_id="L03",
-                    severity="ERROR",
-                    entry_index=i,
-                    entry_id=eid,
-                    field=name_field,
-                    message=f"'{name_field}' is null/None.",
-                    suggestion=f"Provide a {name_field} for this entry.",
-                ))
+                findings.append(
+                    LintFinding(
+                        rule_id="L03",
+                        severity="ERROR",
+                        entry_index=i,
+                        entry_id=eid,
+                        field=name_field,
+                        message=f"'{name_field}' is null/None.",
+                        suggestion=f"Provide a {name_field} for this entry.",
+                    )
+                )
             elif isinstance(name, str) and not name.strip():
-                findings.append(LintFinding(
-                    rule_id="L03",
-                    severity="ERROR",
-                    entry_index=i,
-                    entry_id=eid,
-                    field=name_field,
-                    message=f"'{name_field}' is empty or whitespace-only.",
-                    suggestion=f"Provide a non-empty {name_field}.",
-                ))
+                findings.append(
+                    LintFinding(
+                        rule_id="L03",
+                        severity="ERROR",
+                        entry_index=i,
+                        entry_id=eid,
+                        field=name_field,
+                        message=f"'{name_field}' is empty or whitespace-only.",
+                        suggestion=f"Provide a non-empty {name_field}.",
+                    )
+                )
 
     return findings
 
@@ -174,25 +179,29 @@ def check_empty_required(
                 continue
 
             if value is None:
-                findings.append(LintFinding(
-                    rule_id="L04",
-                    severity=severity,
-                    entry_index=i,
-                    entry_id=eid,
-                    field=key,
-                    message=f"Field '{key}' is null/None.",
-                    suggestion=f"Provide a non-empty value for '{key}'.",
-                ))
+                findings.append(
+                    LintFinding(
+                        rule_id="L04",
+                        severity=severity,
+                        entry_index=i,
+                        entry_id=eid,
+                        field=key,
+                        message=f"Field '{key}' is null/None.",
+                        suggestion=f"Provide a non-empty value for '{key}'.",
+                    )
+                )
             elif isinstance(value, str) and not value.strip():
-                findings.append(LintFinding(
-                    rule_id="L04",
-                    severity=severity,
-                    entry_index=i,
-                    entry_id=eid,
-                    field=key,
-                    message=f"Field '{key}' is empty or whitespace-only.",
-                    suggestion=f"Provide a non-empty value for '{key}' or mark it optional.",
-                ))
+                findings.append(
+                    LintFinding(
+                        rule_id="L04",
+                        severity=severity,
+                        entry_index=i,
+                        entry_id=eid,
+                        field=key,
+                        message=f"Field '{key}' is empty or whitespace-only.",
+                        suggestion=f"Provide a non-empty value for '{key}' or mark it optional.",
+                    )
+                )
 
     return findings
 
@@ -218,21 +227,19 @@ def check_mismatched_keys(
             if key == id_field:
                 continue
             if key not in known_keys:
-                findings.append(LintFinding(
-                    rule_id="L05",
-                    severity="WARNING",
-                    entry_index=i,
-                    entry_id=eid,
-                    field=key,
-                    message=(
-                        f"Key '{key}' is not defined in schema "
-                        f"'{schema.name}' — possibly a typo or orphaned field."
-                    ),
-                    suggestion=(
-                        f"Correct the field name or add '{key}' "
-                        f"to the schema definition."
-                    ),
-                ))
+                findings.append(
+                    LintFinding(
+                        rule_id="L05",
+                        severity="WARNING",
+                        entry_index=i,
+                        entry_id=eid,
+                        field=key,
+                        message=(
+                            f"Key '{key}' is not defined in schema '{schema.name}' — possibly a typo or orphaned field."
+                        ),
+                        suggestion=(f"Correct the field name or add '{key}' to the schema definition."),
+                    )
+                )
 
     return findings
 
@@ -264,17 +271,16 @@ def check_duplicate_ids_cross_file(
     for i, entry in enumerate(entries):
         eid = str(entry.get(id_field, ""))
         if eid and eid in id_to_source:
-            findings.append(LintFinding(
-                rule_id="L06",
-                severity="ERROR",
-                entry_index=i,
-                entry_id=eid,
-                field=id_field,
-                message=(
-                    f"ID '{eid}' already exists in {id_to_source[eid]} — "
-                    f"duplicate across data files."
-                ),
-                suggestion=f"Use a unique {id_field} value across all files of this schema.",
-            ))
+            findings.append(
+                LintFinding(
+                    rule_id="L06",
+                    severity="ERROR",
+                    entry_index=i,
+                    entry_id=eid,
+                    field=id_field,
+                    message=(f"ID '{eid}' already exists in {id_to_source[eid]} — duplicate across data files."),
+                    suggestion=f"Use a unique {id_field} value across all files of this schema.",
+                )
+            )
 
     return findings

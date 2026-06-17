@@ -32,35 +32,35 @@ _DEFAULT_DISTRICTS: int = 5
 
 # District type → colour
 _DISTRICT_COLORS: Dict[str, List[float]] = {
-    "residential":   [0.35, 0.55, 0.85],  # blue-grey
-    "commercial":    [0.90, 0.45, 0.30],  # warm orange
-    "industrial":    [0.55, 0.50, 0.45],  # grey
-    "park":          [0.30, 0.65, 0.35],  # green
-    "civic":         [0.85, 0.80, 0.55],  # sandstone
-    "waterfront":    [0.25, 0.50, 0.70],  # deep blue
-    "default":       [0.60, 0.55, 0.50],  # neutral earth
+    "residential": [0.35, 0.55, 0.85],  # blue-grey
+    "commercial": [0.90, 0.45, 0.30],  # warm orange
+    "industrial": [0.55, 0.50, 0.45],  # grey
+    "park": [0.30, 0.65, 0.35],  # green
+    "civic": [0.85, 0.80, 0.55],  # sandstone
+    "waterfront": [0.25, 0.50, 0.70],  # deep blue
+    "default": [0.60, 0.55, 0.50],  # neutral earth
 }
 
 # Building dimensions per district type (min/max width, depth, height)
 _BUILDING_DIMS: Dict[str, Tuple[float, float, float, float, float]] = {
-    "residential":   (2.0, 4.0, 2.0, 3.0, 2.0, 3.0),
-    "commercial":    (3.0, 6.0, 2.5, 4.0, 3.0, 6.0),
-    "industrial":    (4.0, 8.0, 3.0, 5.0, 3.0, 8.0),
-    "park":          (1.0, 2.0, 1.0, 2.0, 1.0, 2.0),
-    "civic":         (4.0, 8.0, 3.0, 6.0, 4.0, 10.0),
-    "waterfront":    (2.0, 5.0, 2.0, 4.0, 2.0, 5.0),
-    "default":       (2.0, 4.0, 2.0, 3.0, 2.0, 4.0),
+    "residential": (2.0, 4.0, 2.0, 3.0, 2.0, 3.0),
+    "commercial": (3.0, 6.0, 2.5, 4.0, 3.0, 6.0),
+    "industrial": (4.0, 8.0, 3.0, 5.0, 3.0, 8.0),
+    "park": (1.0, 2.0, 1.0, 2.0, 1.0, 2.0),
+    "civic": (4.0, 8.0, 3.0, 6.0, 4.0, 10.0),
+    "waterfront": (2.0, 5.0, 2.0, 4.0, 2.0, 5.0),
+    "default": (2.0, 4.0, 2.0, 3.0, 2.0, 4.0),
 }
 
 # Buildings per district
 _BUILDINGS_PER_DISTRICT: Dict[str, Tuple[int, int]] = {
-    "residential":   (4, 8),
-    "commercial":    (2, 5),
-    "industrial":    (1, 3),
-    "park":          (1, 3),
-    "civic":         (1, 2),
-    "waterfront":    (2, 4),
-    "default":       (2, 4),
+    "residential": (4, 8),
+    "commercial": (2, 5),
+    "industrial": (1, 3),
+    "park": (1, 3),
+    "civic": (1, 2),
+    "waterfront": (2, 4),
+    "default": (2, 4),
 }
 
 
@@ -70,8 +70,9 @@ _BUILDINGS_PER_DISTRICT: Dict[str, Tuple[int, int]] = {
 @dataclass
 class TownSpec:
     """What kind of town to generate."""
-    width: int = 80        # region width in metres
-    depth: int = 80        # region depth in metres
+
+    width: int = 80  # region width in metres
+    depth: int = 80  # region depth in metres
     districts: int = _DEFAULT_DISTRICTS
     tile_size: float = _DEFAULT_TILE_SIZE
     seed: int = _DEFAULT_SEED
@@ -146,9 +147,7 @@ class VoronoiEngine:
                 cell_map[row][col] = best_i
 
         # Identify road cells (where neighbors differ)
-        road: List[List[bool]] = [
-            [False] * cols for _ in range(rows)
-        ]
+        road: List[List[bool]] = [[False] * cols for _ in range(rows)]
         for row in range(rows):
             for col in range(cols):
                 d = cell_map[row][col]
@@ -190,9 +189,16 @@ class VoronoiEngine:
                 cz_base = (row + 0.5) * spec.tile_size
                 jx = rng.uniform(-0.3, 0.3) * spec.tile_size
                 jz = rng.uniform(-0.3, 0.3) * spec.tile_size
-                district_buildings[i].append((
-                    cx_base + jx, cz_base + jz, bw, bd, bh, color,
-                ))
+                district_buildings[i].append(
+                    (
+                        cx_base + jx,
+                        cz_base + jz,
+                        bw,
+                        bd,
+                        bh,
+                        color,
+                    )
+                )
                 placed += 1
 
         # ── Compile into plan ──
@@ -200,34 +206,45 @@ class VoronoiEngine:
         node_count = 0
 
         # Single shared ground plane for the entire town
-        steps.append(CreateEntityStep(
-            name="TownGround",
-            node_type="MeshInstance3D",
-            parent=root_path,
-        ))
-        steps.append(SetPropertyStep(
-            node=f"{root_path}/TownGround",
-            property="position",
-            value={"x": spec.width / 2, "y": -0.01, "z": spec.depth / 2},
-        ))
-        steps.append(SetPropertyStep(
-            node=f"{root_path}/TownGround",
-            property="mesh",
-            value={
-                "__class__": "PlaneMesh",
-                "size": {"x": spec.width, "y": spec.depth},
-            },
-        ))
-        steps.append(SetPropertyStep(
-            node=f"{root_path}/TownGround",
-            property="material_override",
-            value={
-                "__class__": "StandardMaterial3D",
-                "albedo_color": {
-                    "r": 0.28, "g": 0.42, "b": 0.22, "a": 1.0,
+        steps.append(
+            CreateEntityStep(
+                name="TownGround",
+                node_type="MeshInstance3D",
+                parent=root_path,
+            )
+        )
+        steps.append(
+            SetPropertyStep(
+                node=f"{root_path}/TownGround",
+                property="position",
+                value={"x": spec.width / 2, "y": -0.01, "z": spec.depth / 2},
+            )
+        )
+        steps.append(
+            SetPropertyStep(
+                node=f"{root_path}/TownGround",
+                property="mesh",
+                value={
+                    "__class__": "PlaneMesh",
+                    "size": {"x": spec.width, "y": spec.depth},
                 },
-            },
-        ))
+            )
+        )
+        steps.append(
+            SetPropertyStep(
+                node=f"{root_path}/TownGround",
+                property="material_override",
+                value={
+                    "__class__": "StandardMaterial3D",
+                    "albedo_color": {
+                        "r": 0.28,
+                        "g": 0.42,
+                        "b": 0.22,
+                        "a": 1.0,
+                    },
+                },
+            )
+        )
         node_count += 1
 
         # Road tiles
@@ -240,37 +257,48 @@ class VoronoiEngine:
                     cx = (col + 0.5) * spec.tile_size
                     cz = (row + 0.5) * spec.tile_size
 
-                    steps.append(CreateEntityStep(
-                        name=name,
-                        node_type="MeshInstance3D",
-                        parent=root_path,
-                    ))
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="position",
-                        value={"x": cx, "y": 0.02, "z": cz},
-                    ))
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="mesh",
-                        value={
-                            "__class__": "PlaneMesh",
-                            "size": {
-                                "x": spec.tile_size,
-                                "y": spec.tile_size,
+                    steps.append(
+                        CreateEntityStep(
+                            name=name,
+                            node_type="MeshInstance3D",
+                            parent=root_path,
+                        )
+                    )
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="position",
+                            value={"x": cx, "y": 0.02, "z": cz},
+                        )
+                    )
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="mesh",
+                            value={
+                                "__class__": "PlaneMesh",
+                                "size": {
+                                    "x": spec.tile_size,
+                                    "y": spec.tile_size,
+                                },
                             },
-                        },
-                    ))
-                    steps.append(SetPropertyStep(
-                        node=node_path,
-                        property="material_override",
-                        value={
-                            "__class__": "StandardMaterial3D",
-                            "albedo_color": {
-                                "r": 0.25, "g": 0.24, "b": 0.23, "a": 1.0,
+                        )
+                    )
+                    steps.append(
+                        SetPropertyStep(
+                            node=node_path,
+                            property="material_override",
+                            value={
+                                "__class__": "StandardMaterial3D",
+                                "albedo_color": {
+                                    "r": 0.25,
+                                    "g": 0.24,
+                                    "b": 0.23,
+                                    "a": 1.0,
+                                },
                             },
-                        },
-                    ))
+                        )
+                    )
                     road_step += 1
 
         node_count += road_step
@@ -282,37 +310,45 @@ class VoronoiEngine:
                 name = f"bld_{dtype}_{i}_{bi}"
                 node_path = f"{root_path}/{name}"
 
-                steps.append(CreateEntityStep(
-                    name=name,
-                    node_type="MeshInstance3D",
-                    parent=root_path,
-                ))
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="position",
-                    value={"x": bx, "y": bh / 2, "z": bz},
-                ))
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="mesh",
-                    value={
-                        "__class__": "BoxMesh",
-                        "size": {"x": bw, "y": bh, "z": bd},
-                    },
-                ))
-                steps.append(SetPropertyStep(
-                    node=node_path,
-                    property="material_override",
-                    value={
-                        "__class__": "StandardMaterial3D",
-                        "albedo_color": {
-                            "r": bcolor[0] * 0.8,
-                            "g": bcolor[1] * 0.8,
-                            "b": bcolor[2] * 0.8,
-                            "a": 1.0,
+                steps.append(
+                    CreateEntityStep(
+                        name=name,
+                        node_type="MeshInstance3D",
+                        parent=root_path,
+                    )
+                )
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="position",
+                        value={"x": bx, "y": bh / 2, "z": bz},
+                    )
+                )
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="mesh",
+                        value={
+                            "__class__": "BoxMesh",
+                            "size": {"x": bw, "y": bh, "z": bd},
                         },
-                    },
-                ))
+                    )
+                )
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="material_override",
+                        value={
+                            "__class__": "StandardMaterial3D",
+                            "albedo_color": {
+                                "r": bcolor[0] * 0.8,
+                                "g": bcolor[1] * 0.8,
+                                "b": bcolor[2] * 0.8,
+                                "a": 1.0,
+                            },
+                        },
+                    )
+                )
                 node_count += 1
 
         logger.info(
@@ -323,8 +359,7 @@ class VoronoiEngine:
         )
 
         return DevForgePlan(
-            goal=f"Voronoi town: {spec.width}×{spec.depth}m, "
-                 f"{spec.districts} districts ({node_count} nodes)",
+            goal=f"Voronoi town: {spec.width}×{spec.depth}m, {spec.districts} districts ({node_count} nodes)",
             steps=steps,
         )
 
@@ -337,7 +372,7 @@ class VoronoiEngine:
             return [(spec.width / 2, spec.depth / 2)]
 
         # Approximate grid: sqrt(N) cells per axis
-        grid_cols = max(1, int(n ** 0.5))
+        grid_cols = max(1, int(n**0.5))
         grid_rows = max(1, (n + grid_cols - 1) // grid_cols)
         cell_w = spec.width / grid_cols
         cell_d = spec.depth / grid_rows
@@ -351,10 +386,12 @@ class VoronoiEngine:
             # Jitter within cell (keep 10% margin from edges)
             jx = rng.uniform(-0.35, 0.35) * cell_w
             jz = rng.uniform(-0.35, 0.35) * cell_d
-            seeds.append((
-                max(cell_w * 0.1, min(spec.width - cell_w * 0.1, cx + jx)),
-                max(cell_d * 0.1, min(spec.depth - cell_d * 0.1, cz + jz)),
-            ))
+            seeds.append(
+                (
+                    max(cell_w * 0.1, min(spec.width - cell_w * 0.1, cx + jx)),
+                    max(cell_d * 0.1, min(spec.depth - cell_d * 0.1, cz + jz)),
+                )
+            )
 
         return seeds
 

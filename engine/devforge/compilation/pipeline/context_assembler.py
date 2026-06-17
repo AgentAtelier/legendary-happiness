@@ -26,9 +26,10 @@ def _get_token_counter():
     """
     try:
         from devforge.infrastructure.llm.router import LLMRouter
+
         llm = LLMRouter.get()
-        backend = getattr(llm, '_backend', None)
-        if backend and hasattr(backend, 'tokenize'):
+        backend = getattr(llm, "_backend", None)
+        if backend and hasattr(backend, "tokenize"):
             return backend.tokenize
     except Exception:
         logger.warning("context_assembler", "token_counter unavailable")
@@ -37,7 +38,6 @@ def _get_token_counter():
 
 
 class ContextAssembler:
-
     MAX_HISTORY = 5
     MAX_RECENT_OPERATIONS = 20
 
@@ -80,7 +80,9 @@ class ContextAssembler:
     # ------------------------------------------------------------------
 
     def assemble(
-        self, scene_tree: Dict, prompt: str,
+        self,
+        scene_tree: Dict,
+        prompt: str,
         minimal: bool = False,
         signatures_only: bool = False,
     ) -> str:
@@ -225,9 +227,7 @@ class ContextAssembler:
             return "\n".join(lines)
 
         # Extract keywords from prompt (3+ char words, lowercase)
-        keywords = {
-            w.lower() for w in re.findall(r"[a-zA-Z_]{3,}", prompt)
-        }
+        keywords = {w.lower() for w in re.findall(r"[a-zA-Z_]{3,}", prompt)}
 
         # Score each file by relevance
         scored: list[tuple[int, Path, str]] = []

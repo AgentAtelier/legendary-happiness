@@ -41,7 +41,9 @@ class Context:
     # ── DevForge pipeline ────────────────────────────────────────
 
     async def apply_spec(
-        self, prompt: str, *,
+        self,
+        prompt: str,
+        *,
         planner: str = "room",
         temperature: float = 0.2,
         timeout_s: int = 300,
@@ -61,9 +63,7 @@ class Context:
             raise RuntimeError("read_artifact not wired into Context")
         return await self._read_artifact(artifact_id, timeout_s=timeout_s)
 
-    async def devforge_call(
-        self, tool: str, args: dict | None = None, timeout_s: int = 60
-    ) -> dict:
+    async def devforge_call(self, tool: str, args: dict | None = None, timeout_s: int = 60) -> dict:
         """Call any DevForge MCP tool (validate_spec, get_scene, etc.)."""
         if self._devforge_raw is None:
             raise RuntimeError("devforge_raw not wired into Context")

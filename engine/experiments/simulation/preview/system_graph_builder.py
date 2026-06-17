@@ -8,13 +8,11 @@ from .system_graph import SystemGraph
 
 
 class SystemGraphBuilder:
-
     def build(self, engine) -> dict:
 
         graph = SystemGraph()
 
         for system in engine.systems:
-
             inputs = getattr(system, "inputs", [])
 
             outputs = getattr(system, "outputs", [])

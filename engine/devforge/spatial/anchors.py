@@ -45,14 +45,14 @@ class AnchorResolver:
     _DIRECTIONS: Dict[str, Vec3] = {
         "north": _vec(0, 0, -1),
         "south": _vec(0, 0, 1),
-        "east":  _vec(1, 0, 0),
-        "west":  _vec(-1, 0, 0),
-        "up":    _vec(0, 1, 0),
-        "down":  _vec(0, -1, 0),
+        "east": _vec(1, 0, 0),
+        "west": _vec(-1, 0, 0),
+        "up": _vec(0, 1, 0),
+        "down": _vec(0, -1, 0),
     }
 
     # Expression pattern: $param or $param op number
-    _EXPR_RE = re.compile(r'\$(\w+)\s*(?:([+\-*/])\s*([\d.]+))?')
+    _EXPR_RE = re.compile(r"\$(\w+)\s*(?:([+\-*/])\s*([\d.]+))?")
 
     def __init__(
         self,
@@ -77,8 +77,7 @@ class AnchorResolver:
         entry = self._anchors.get(anchor_id)
         if entry is None:
             raise ValueError(
-                f"Anchor '{anchor_id}' not found in pattern anchors. "
-                f"Available: {sorted(self._anchors.keys())}"
+                f"Anchor '{anchor_id}' not found in pattern anchors. Available: {sorted(self._anchors.keys())}"
             )
 
         raw = entry.get("position", [0, 0, 0])
@@ -106,9 +105,7 @@ class AnchorResolver:
         from the object's surface.
         """
         if len(chain) < 3:
-            raise ValueError(
-                f"Chain requires [object, direction, distance], got {chain}"
-            )
+            raise ValueError(f"Chain requires [object, direction, distance], got {chain}")
 
         obj_name = str(chain[0])
         direction = str(chain[1]).lower()
@@ -128,10 +125,7 @@ class AnchorResolver:
 
         dir_vec = self._DIRECTIONS.get(direction)
         if dir_vec is None:
-            raise ValueError(
-                f"Unknown direction '{direction}'. "
-                f"Valid: {sorted(self._DIRECTIONS.keys())}"
-            )
+            raise ValueError(f"Unknown direction '{direction}'. Valid: {sorted(self._DIRECTIONS.keys())}")
 
         result = {
             "x": origin["x"],
@@ -158,9 +152,7 @@ class AnchorResolver:
 
         return result
 
-    def register_placed(
-        self, name: str, position: Vec3, footprint: dict | None = None
-    ) -> None:
+    def register_placed(self, name: str, position: Vec3, footprint: dict | None = None) -> None:
         """Register a placed object so it can be used as a chain target."""
         self._resolved[name] = position
 

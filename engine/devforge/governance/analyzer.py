@@ -36,8 +36,9 @@ from devforge.infrastructure.logger import logger
 @dataclass
 class ParseWarning:
     """Emitted when the analyzer encounters something it cannot fully parse."""
+
     line_number: int
-    category: str       # "multiline", "complex_type", "nested_scope", "syntax"
+    category: str  # "multiline", "complex_type", "nested_scope", "syntax"
     raw_line: str
     message: str
 
@@ -45,8 +46,9 @@ class ParseWarning:
 @dataclass
 class GDImport:
     """A reference to another file via preload(), load(), or extends."""
-    kind: str           # "preload", "load", or "extends"
-    path: str           # The referenced path (may be res:// prefixed)
+
+    kind: str  # "preload", "load", or "extends"
+    path: str  # The referenced path (may be res:// prefixed)
     line_number: int
     raw_line: str
 
@@ -54,6 +56,7 @@ class GDImport:
 @dataclass
 class GDFunction:
     """A function/method declaration."""
+
     name: str
     is_public: bool
     return_type: Optional[str]
@@ -61,13 +64,14 @@ class GDFunction:
     line_number: int
     raw_line: str
     is_static: bool = False
-    scope: str = "top"          # "top" or "inner:ClassName"
+    scope: str = "top"  # "top" or "inner:ClassName"
     has_parse_warning: bool = False
 
 
 @dataclass
 class GDSignal:
     """A signal declaration."""
+
     name: str
     line_number: int
     parameters: List[str] = field(default_factory=list)
@@ -76,16 +80,18 @@ class GDSignal:
 @dataclass
 class GDVariable:
     """A variable or constant declaration."""
+
     name: str
-    kind: str           # "var", "const", "@onready var", "@export var"
+    kind: str  # "var", "const", "@onready var", "@export var"
     type_hint: Optional[str]
-    value_path: Optional[str]   # If assigned via preload/load
+    value_path: Optional[str]  # If assigned via preload/load
     line_number: int
 
 
 @dataclass
 class GDInnerClass:
     """An inner class declaration."""
+
     name: str
     extends: Optional[str]
     line_number: int
@@ -95,6 +101,7 @@ class GDInnerClass:
 @dataclass
 class GDFileAnalysis:
     """Complete structural analysis of a single GDScript file."""
+
     file_path: str
     class_name: Optional[str] = None
     extends: Optional[str] = None
@@ -129,11 +136,12 @@ class GDFileAnalysis:
 @dataclass
 class LogicalLine:
     """A logical line after preprocessing (may span multiple raw lines)."""
+
     text: str
     start_line: int
     end_line: int
-    indent: int         # Number of leading tabs (GDScript standard indent)
-    raw: str            # Original text for error reporting
+    indent: int  # Number of leading tabs (GDScript standard indent)
+    raw: str  # Original text for error reporting
 
 
 def _preprocess(lines: List[str]) -> Tuple[List[LogicalLine], List[ParseWarning]]:
@@ -203,31 +211,37 @@ def _preprocess(lines: List[str]) -> Tuple[List[LogicalLine], List[ParseWarning]
             paren_depth += code.count("(") - code.count(")")
             if paren_depth <= 0:
                 # Parentheses closed — emit joined line
-                logical_lines.append(LogicalLine(
-                    text=join_buffer.strip(),
-                    start_line=join_start_line,
-                    end_line=line_num,
-                    indent=_count_indent(lines[join_start_line - 1]),
-                    raw=join_raw,
-                ))
+                logical_lines.append(
+                    LogicalLine(
+                        text=join_buffer.strip(),
+                        start_line=join_start_line,
+                        end_line=line_num,
+                        indent=_count_indent(lines[join_start_line - 1]),
+                        raw=join_raw,
+                    )
+                )
                 join_buffer = ""
                 join_raw = ""
                 paren_depth = 0
             elif line_num - join_start_line > 10:
                 # Safety: don't join more than 10 lines
-                warnings.append(ParseWarning(
-                    line_number=join_start_line,
-                    category="multiline",
-                    raw_line=join_raw[:200],
-                    message=f"Multiline construct exceeds 10 lines (started at line {join_start_line}). Partial parse.",
-                ))
-                logical_lines.append(LogicalLine(
-                    text=join_buffer.strip(),
-                    start_line=join_start_line,
-                    end_line=line_num,
-                    indent=_count_indent(lines[join_start_line - 1]),
-                    raw=join_raw,
-                ))
+                warnings.append(
+                    ParseWarning(
+                        line_number=join_start_line,
+                        category="multiline",
+                        raw_line=join_raw[:200],
+                        message=f"Multiline construct exceeds 10 lines (started at line {join_start_line}). Partial parse.",
+                    )
+                )
+                logical_lines.append(
+                    LogicalLine(
+                        text=join_buffer.strip(),
+                        start_line=join_start_line,
+                        end_line=line_num,
+                        indent=_count_indent(lines[join_start_line - 1]),
+                        raw=join_raw,
+                    )
+                )
                 join_buffer = ""
                 join_raw = ""
                 paren_depth = 0
@@ -243,22 +257,26 @@ def _preprocess(lines: List[str]) -> Tuple[List[LogicalLine], List[ParseWarning]
             continue
 
         # --- Emit single logical line ---
-        logical_lines.append(LogicalLine(
-            text=code.strip(),
-            start_line=line_num,
-            end_line=line_num,
-            indent=indent,
-            raw=raw,
-        ))
+        logical_lines.append(
+            LogicalLine(
+                text=code.strip(),
+                start_line=line_num,
+                end_line=line_num,
+                indent=indent,
+                raw=raw,
+            )
+        )
 
     # Flush any remaining join buffer
     if join_buffer:
-        warnings.append(ParseWarning(
-            line_number=join_start_line,
-            category="multiline",
-            raw_line=join_buffer[:200],
-            message="Unclosed parentheses at end of file.",
-        ))
+        warnings.append(
+            ParseWarning(
+                line_number=join_start_line,
+                category="multiline",
+                raw_line=join_buffer[:200],
+                message="Unclosed parentheses at end of file.",
+            )
+        )
 
     return logical_lines, warnings
 
@@ -304,37 +322,37 @@ def _count_indent(line: str) -> int:
 # --------------------------------------------------------------------------
 
 # Compiled patterns (used after preprocessing, so lines are clean)
-RE_EXTENDS_CLASS = re.compile(r'^extends\s+(\w+)')
+RE_EXTENDS_CLASS = re.compile(r"^extends\s+(\w+)")
 RE_EXTENDS_PATH = re.compile(r'^extends\s+"([^"]+)"')
 RE_EXTENDS_PRELOAD = re.compile(r'^extends\s+preload\(\s*"([^"]+)"\s*\)')
-RE_CLASS_NAME = re.compile(r'^class_name\s+(\w+)')
-RE_INNER_CLASS = re.compile(r'^class\s+(\w+)(?:\s+extends\s+(\w+))?\s*:')
-RE_SIGNAL = re.compile(r'^signal\s+(\w+)(?:\(([^)]*)\))?')
+RE_CLASS_NAME = re.compile(r"^class_name\s+(\w+)")
+RE_INNER_CLASS = re.compile(r"^class\s+(\w+)(?:\s+extends\s+(\w+))?\s*:")
+RE_SIGNAL = re.compile(r"^signal\s+(\w+)(?:\(([^)]*)\))?")
 RE_PRELOAD = re.compile(r'preload\(\s*"([^"]+)"\s*\)')
 RE_LOAD = re.compile(r'(?<!\w)load\(\s*"([^"]+)"\s*\)')
 
 # Function: static? func name(params) -> ReturnType:
 # After multiline joining, this is always on one logical line
 RE_FUNC = re.compile(
-    r'^(?P<static>static\s+)?'
-    r'func\s+'
-    r'(?P<name>\w+)'
-    r'\s*\((?P<params>[^)]*)\)'
-    r'(?:\s*->\s*(?P<ret>[^:]+?))?'
-    r'\s*:'
+    r"^(?P<static>static\s+)?"
+    r"func\s+"
+    r"(?P<name>\w+)"
+    r"\s*\((?P<params>[^)]*)\)"
+    r"(?:\s*->\s*(?P<ret>[^:]+?))?"
+    r"\s*:"
 )
 
 # Variable: [@decorator] var/const name [: Type] [= value]
 RE_VAR = re.compile(
-    r'^(?P<deco>@\w+\s+)?'
-    r'(?P<kind>var|const)\s+'
-    r'(?P<name>\w+)'
-    r'(?:\s*:\s*(?P<type>[^=]+?))?'
-    r'(?:\s*=\s*(?P<value>.+))?$'
+    r"^(?P<deco>@\w+\s+)?"
+    r"(?P<kind>var|const)\s+"
+    r"(?P<name>\w+)"
+    r"(?:\s*:\s*(?P<type>[^=]+?))?"
+    r"(?:\s*=\s*(?P<value>.+))?$"
 )
 
 # Type annotation parsing (handles Array[Type], Dictionary[K, V], etc.)
-RE_TYPE_SIMPLE = re.compile(r'^(\w+)(?:\[([^\]]+)\])?$')
+RE_TYPE_SIMPLE = re.compile(r"^(\w+)(?:\[([^\]]+)\])?$")
 
 
 def _parse_type_annotation(raw: str) -> str:
@@ -395,7 +413,7 @@ def _extract_param_type(param: str) -> str:
     """Extract type from a single parameter declaration like 'name: Type = default'."""
     # Remove default value
     if "=" in param:
-        param = param[:param.index("=")].strip()
+        param = param[: param.index("=")].strip()
 
     # Extract type after colon
     if ":" in param:
@@ -431,12 +449,14 @@ def _extract(
         if m:
             cls_name = m.group(1)
             cls_extends = m.group(2)
-            result.inner_classes.append(GDInnerClass(
-                name=cls_name,
-                extends=cls_extends,
-                line_number=line_num,
-                indent_level=ll.indent,
-            ))
+            result.inner_classes.append(
+                GDInnerClass(
+                    name=cls_name,
+                    extends=cls_extends,
+                    line_number=line_num,
+                    indent_level=ll.indent,
+                )
+            )
             current_scope = f"inner:{cls_name}"
             scope_indent = ll.indent
             continue
@@ -489,25 +509,29 @@ def _extract(
             raw_ret = m.group("ret")
             if raw_ret and ("[" in raw_ret or "," in raw_ret):
                 # Complex generic — flag for review but still extract base type
-                result.warnings.append(ParseWarning(
-                    line_number=line_num,
-                    category="complex_type",
-                    raw_line=ll.raw[:200] if isinstance(ll.raw, str) else str(ll.raw)[:200],
-                    message=f"Complex return type '{raw_ret.strip()}' — base type '{return_type}' extracted, verify manually.",
-                ))
+                result.warnings.append(
+                    ParseWarning(
+                        line_number=line_num,
+                        category="complex_type",
+                        raw_line=ll.raw[:200] if isinstance(ll.raw, str) else str(ll.raw)[:200],
+                        message=f"Complex return type '{raw_ret.strip()}' — base type '{return_type}' extracted, verify manually.",
+                    )
+                )
                 has_warning = True
 
-            result.functions.append(GDFunction(
-                name=name,
-                is_public=not name.startswith("_"),
-                return_type=return_type,
-                param_types=param_types,
-                line_number=line_num,
-                raw_line=ll.raw[:200] if isinstance(ll.raw, str) else str(ll.raw)[:200],
-                is_static=is_static,
-                scope=current_scope,
-                has_parse_warning=has_warning,
-            ))
+            result.functions.append(
+                GDFunction(
+                    name=name,
+                    is_public=not name.startswith("_"),
+                    return_type=return_type,
+                    param_types=param_types,
+                    line_number=line_num,
+                    raw_line=ll.raw[:200] if isinstance(ll.raw, str) else str(ll.raw)[:200],
+                    is_static=is_static,
+                    scope=current_scope,
+                    has_parse_warning=has_warning,
+                )
+            )
             continue
 
         # --- var/const ---
@@ -534,10 +558,15 @@ def _extract(
                 value_path = lm.group(1)
                 result.imports.append(GDImport("load", value_path, line_num, ll.raw))
 
-            result.variables.append(GDVariable(
-                name=name, kind=kind, type_hint=type_hint,
-                value_path=value_path, line_number=line_num,
-            ))
+            result.variables.append(
+                GDVariable(
+                    name=name,
+                    kind=kind,
+                    type_hint=type_hint,
+                    value_path=value_path,
+                    line_number=line_num,
+                )
+            )
             continue
 
         # --- Catch preload/load in any other context ---
@@ -592,7 +621,7 @@ def analyze_file(file_path: str) -> GDFileAnalysis:
     logger.debug(
         "analyzer",
         f"Analyzed {file_path}: {len(result.functions)} functions, "
-        f"{len(result.imports)} imports, {len(result.warnings)} warnings"
+        f"{len(result.imports)} imports, {len(result.warnings)} warnings",
     )
 
     return result

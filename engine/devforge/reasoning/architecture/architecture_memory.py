@@ -26,7 +26,6 @@ class ArchitectureMemory:
         matches: List[str] = []
 
         for node in self.graph.nodes.values():
-
             if node.type.value != "system":
                 continue
 

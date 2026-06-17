@@ -37,7 +37,6 @@ FORGEBORN_PROMPTS = [
         "Add a DirectionalLight3D with a cold pale color for the sun. "
         "Add a WorldEnvironment node for atmosphere.",
     ),
-
     # ── Phase 2: Player Character ──
     (
         "2. Player Character",
@@ -46,14 +45,12 @@ FORGEBORN_PROMPTS = [
         "Add a SpringArm3D child with a Camera3D for third-person view. "
         "Create a Player.gd script with WASD movement (speed 4.0) and gravity.",
     ),
-
     # ── Phase 3: UI Layer ──
     (
         "3. UI — Warmth Bar",
         "Add a CanvasLayer named UI with a ProgressBar named WarmthBar (max value 100, "
         "current value 100). Position it at the top of the screen.",
     ),
-
     # ── Phase 4: Campfire ──
     (
         "4. Campfire with Heat Zone",
@@ -62,7 +59,6 @@ FORGEBORN_PROMPTS = [
         "Create a Campfire.gd script that connects HeatZone's body_entered and "
         "body_exited signals to call set_near_fire(true/false) on any body that has that method.",
     ),
-
     # ── Phase 5: Warmth System ──
     (
         "5. Warmth System",
@@ -72,7 +68,6 @@ FORGEBORN_PROMPTS = [
         "Add a set_near_fire(bool) method. Add a near_fire bool variable. "
         "If warmth reaches 0, change scene to res://Froze.tscn.",
     ),
-
     # ── Phase 6: Win Condition ──
     (
         "6. Cabin — Win Condition",
@@ -80,7 +75,6 @@ FORGEBORN_PROMPTS = [
         "Create a simple script that connects body_entered: when a body enters that has "
         "set_near_fire method, change scene to res://Made_It.tscn.",
     ),
-
     # ── Phase 7: End Screens ──
     (
         "7. Win/Lose Screens",
@@ -88,7 +82,6 @@ FORGEBORN_PROMPTS = [
         "centered on screen, white text on dark background. "
         "Create Made_It.tscn: same structure but the Label says 'You made it.'",
     ),
-
     # ── Phase 8: Atmosphere Tuning ──
     (
         "8. Atmosphere",
@@ -101,6 +94,7 @@ FORGEBORN_PROMPTS = [
 
 # ── Builder ────────────────────────────────────────────────────
 
+
 class ForgebornBuilder:
     """Builds the Forgeborn game by running the prompt sequence."""
 
@@ -109,8 +103,7 @@ class ForgebornBuilder:
         self._results: list[dict] = []
         self._scene: dict | None = None
 
-    async def build(self, start_at: int = 0, dry_run: bool = False,
-                    stop_on_failure: bool = False):
+    async def build(self, start_at: int = 0, dry_run: bool = False, stop_on_failure: bool = False):
         """Run all prompts in sequence, starting from start_at (0-indexed)."""
         print("=" * 70)
         print("Forgeborn — First Cold — Game Build")
@@ -157,8 +150,7 @@ class ForgebornBuilder:
                 ok = len(errors) == 0 and exec_ok
 
                 if ok:
-                    print(f"  ✅ OK ({elapsed:.1f}s) — "
-                          f"{len(ops)} ops, {len(files)} files")
+                    print(f"  ✅ OK ({elapsed:.1f}s) — {len(ops)} ops, {len(files)} files")
                 else:
                     print(f"  ⚠️  ISSUES ({elapsed:.1f}s)")
                     for err in errors:
@@ -182,26 +174,30 @@ class ForgebornBuilder:
                 except Exception:
                     pass
 
-                self._results.append({
-                    "label": label,
-                    "ok": ok,
-                    "elapsed": elapsed,
-                    "ops_count": len(ops),
-                    "files_count": len(files),
-                    "errors": errors,
-                })
+                self._results.append(
+                    {
+                        "label": label,
+                        "ok": ok,
+                        "elapsed": elapsed,
+                        "ops_count": len(ops),
+                        "files_count": len(files),
+                        "errors": errors,
+                    }
+                )
 
             except Exception as exc:
                 elapsed = time.time() - start
                 print(f"  ❌ CRASH ({elapsed:.1f}s): {exc}")
-                self._results.append({
-                    "label": label,
-                    "ok": False,
-                    "elapsed": elapsed,
-                    "ops_count": 0,
-                    "files_count": 0,
-                    "error": str(exc),
-                })
+                self._results.append(
+                    {
+                        "label": label,
+                        "ok": False,
+                        "elapsed": elapsed,
+                        "ops_count": 0,
+                        "files_count": 0,
+                        "error": str(exc),
+                    }
+                )
 
             # Stop on failure if flag is set
             if stop_on_failure and not ok:
@@ -214,8 +210,7 @@ class ForgebornBuilder:
         fail_count = len(self._results) - ok_count
 
         print(f"\n{'=' * 70}")
-        print(f"Build complete: {ok_count}/{len(self._results)} steps OK "
-              f"({total_elapsed:.0f}s total)")
+        print(f"Build complete: {ok_count}/{len(self._results)} steps OK ({total_elapsed:.0f}s total)")
         print(f"{'=' * 70}")
 
         return fail_count == 0
@@ -223,12 +218,11 @@ class ForgebornBuilder:
 
 # ── Main ───────────────────────────────────────────────────────
 
+
 async def main():
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Forgeborn 'First Cold' Game Build"
-    )
+    parser = argparse.ArgumentParser(description="Forgeborn 'First Cold' Game Build")
     parser.add_argument(
         "--mcp-url",
         default="http://localhost:8000/mcp",
@@ -248,8 +242,7 @@ async def main():
     args = parser.parse_args()
 
     builder = ForgebornBuilder(args.mcp_url)
-    ok = await builder.build(start_at=args.start_at, dry_run=args.dry_run,
-                             stop_on_failure=args.stop_on_failure)
+    ok = await builder.build(start_at=args.start_at, dry_run=args.dry_run, stop_on_failure=args.stop_on_failure)
     sys.exit(0 if ok else 1)
 
 

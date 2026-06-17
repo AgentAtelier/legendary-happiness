@@ -26,10 +26,15 @@ class ContractsParser:
     """Read-only parser for architectural_contracts.yaml."""
 
     REQUIRED_KEYS = [
-        "schema_version", "layers", "boundary_rules",
-        "return_type_rules", "protected_files",
-        "permitted_singletons", "exception_ceiling",
-        "exceptions", "hard_constraints",
+        "schema_version",
+        "layers",
+        "boundary_rules",
+        "return_type_rules",
+        "protected_files",
+        "permitted_singletons",
+        "exception_ceiling",
+        "exceptions",
+        "hard_constraints",
     ]
 
     def __init__(self, path: str):
@@ -142,19 +147,19 @@ class ContractsParser:
 # CLI
 # --------------------------------------------------------------------------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="DevForge Architectural Contracts Parser"
-    )
+    parser = argparse.ArgumentParser(description="DevForge Architectural Contracts Parser")
     parser.add_argument("path", help="Path to architectural_contracts.yaml")
-    parser.add_argument(
-        "--summary", action="store_true",
-        help="Print a summary of the contracts file."
-    )
+    parser.add_argument("--summary", action="store_true", help="Print a summary of the contracts file.")
     parser.add_argument(
         "--section",
         choices=[
-            "boundary_rules", "return_type_rules", "protected_files",
-            "singletons", "exceptions", "hard_constraints", "layers",
+            "boundary_rules",
+            "return_type_rules",
+            "protected_files",
+            "singletons",
+            "exceptions",
+            "hard_constraints",
+            "layers",
         ],
         help="Print a specific section as JSON.",
     )

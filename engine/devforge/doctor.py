@@ -62,10 +62,11 @@ def check_config():
     if errs:
         _report(FAIL, "Runtime config", "; ".join(errs))
     else:
-        _report(PASS, "Runtime config",
-                f"backend={config.llm_backend}, "
-                f"budget={config.context_token_budget}, "
-                f"timeout={config.llm_timeout_s}s")
+        _report(
+            PASS,
+            "Runtime config",
+            f"backend={config.llm_backend}, budget={config.context_token_budget}, timeout={config.llm_timeout_s}s",
+        )
     return config
 
 
@@ -77,19 +78,14 @@ def check_llama(config):
         effective_context_budget,
     )
 
-    client = LlamaClient(
-        endpoint=config.llama_endpoint, timeout_s=config.llm_timeout_s
-    )
+    client = LlamaClient(endpoint=config.llama_endpoint, timeout_s=config.llm_timeout_s)
     props = client.server_props()
     if not props:
-        _report(FAIL, "llama.cpp /props",
-                f"unreachable at {config.llama_endpoint} — is llama-server running?")
+        _report(FAIL, "llama.cpp /props", f"unreachable at {config.llama_endpoint} — is llama-server running?")
         return None
 
     n_ctx = props["n_ctx"]
-    _report(PASS, "llama.cpp server",
-            f"alias='{props['model_alias']}', n_ctx={n_ctx}, "
-            f"slots={props['total_slots']}")
+    _report(PASS, "llama.cpp server", f"alias='{props['model_alias']}', n_ctx={n_ctx}, slots={props['total_slots']}")
 
     # ── Prompt-template vs model-alias heuristic check ──────
     # WARN only: the user may have a deliberate reason (e.g. testing).
@@ -103,39 +99,45 @@ def check_llama(config):
     mismatch_hints = _MISMATCH_TABLE.get(configured_template, [])
     for hint in mismatch_hints:
         if hint in alias_lower:
-            _report(WARN, "Prompt template mismatch",
-                    f"model alias '{props['model_alias']}' vs prompt template "
-                    f"'{configured_template}' — set DEVFORGE_PROMPT_TEMPLATE")
+            _report(
+                WARN,
+                "Prompt template mismatch",
+                f"model alias '{props['model_alias']}' vs prompt template "
+                f"'{configured_template}' — set DEVFORGE_PROMPT_TEMPLATE",
+            )
             break
 
-    effective = effective_context_budget(
-        n_ctx, config.llama_max_tokens, config.context_token_budget
-    )
+    effective = effective_context_budget(n_ctx, config.llama_max_tokens, config.context_token_budget)
     math_line = (
         f"n_ctx {n_ctx} - generation {config.llama_max_tokens} "
         f"- overhead {PROMPT_OVERHEAD_TOKENS} → context budget {effective}"
     )
     if effective < MIN_USEFUL_CONTEXT_TOKENS:
-        _report(WARN, "Context budget", math_line
-                + f" (< {MIN_USEFUL_CONTEXT_TOKENS}: raise --ctx-size or "
-                "lower DEVFORGE_LLAMA_MAX_TOKENS)")
+        _report(
+            WARN,
+            "Context budget",
+            math_line + f" (< {MIN_USEFUL_CONTEXT_TOKENS}: raise --ctx-size or lower DEVFORGE_LLAMA_MAX_TOKENS)",
+        )
     elif effective < config.context_token_budget:
-        _report(PASS, "Context budget",
-                math_line + " (auto-clamped at startup)")
+        _report(PASS, "Context budget", math_line + " (auto-clamped at startup)")
     else:
         _report(PASS, "Context budget", math_line)
 
     if props["total_slots"] > 1:
-        _report(WARN, "Server slots",
-                f"--parallel {props['total_slots']} splits the KV cache; "
-                "DevForge serializes requests — --parallel 1 gives the "
-                "largest per-request window")
+        _report(
+            WARN,
+            "Server slots",
+            f"--parallel {props['total_slots']} splits the KV cache; "
+            "DevForge serializes requests — --parallel 1 gives the "
+            "largest per-request window",
+        )
     return client
 
 
 def check_grammar():
     try:
         from devforge.knowledge.scene.godot_node_types import generate_grammar_file
+
         path = generate_grammar_file()
         _report(PASS, "Grammar generation", path)
     except Exception as exc:
@@ -146,9 +148,12 @@ def check_godot_ai(config):
     if _http_alive(config.godot_ai_mcp_url):
         _report(PASS, "godot-ai MCP", config.godot_ai_mcp_url)
     else:
-        _report(WARN, "godot-ai MCP",
-                f"no answer at {config.godot_ai_mcp_url} — live execution "
-                "and integration tests unavailable (unit pipeline still works)")
+        _report(
+            WARN,
+            "godot-ai MCP",
+            f"no answer at {config.godot_ai_mcp_url} — live execution "
+            "and integration tests unavailable (unit pipeline still works)",
+        )
 
 
 def check_devforge_mcp():
@@ -156,19 +161,17 @@ def check_devforge_mcp():
     if _http_alive(url):
         _report(PASS, "DevForge MCP", "something is listening on port 8001")
     else:
-        _report(WARN, "DevForge MCP",
-                "port 8001 not answering — start with "
-                "python -m devforge.platform.mcp_server")
+        _report(WARN, "DevForge MCP", "port 8001 not answering — start with python -m devforge.platform.mcp_server")
 
 
 def check_game_root(config):
     from pathlib import Path
+
     root = Path(config.game_root)
     if root.is_dir():
         _report(PASS, "game_root", str(root.resolve()))
     else:
-        _report(WARN, "game_root",
-                f"{config.game_root} does not exist — code context will be empty")
+        _report(WARN, "game_root", f"{config.game_root} does not exist — code context will be empty")
 
 
 def check_deps():
@@ -179,8 +182,7 @@ def check_deps():
         except ImportError:
             missing.append(mod)
     if missing:
-        _report(FAIL, "Dependencies",
-                f"missing: {', '.join(missing)} — pip install -r devforge/requirements.txt")
+        _report(FAIL, "Dependencies", f"missing: {', '.join(missing)} — pip install -r devforge/requirements.txt")
     else:
         _report(PASS, "Dependencies", "all imports resolve")
 
@@ -229,18 +231,19 @@ def warm_and_probe_cache(client) -> None:
     ms1 = t1.get("prompt_ms", 0.0)
     n2 = t2.get("prompt_n", 0)
     ms2 = t2.get("prompt_ms", 0.0)
-    _report(PASS, "Model warmed",
-            f"static prefix primed ({n1} tokens, {ms1:.0f}ms prefill)")
+    _report(PASS, "Model warmed", f"static prefix primed ({n1} tokens, {ms1:.0f}ms prefill)")
 
     if n1 > 0 and n2 <= max(8, n1 * 0.1):
-        _report(PASS, "Prompt-cache reuse",
-                f"second call reprocessed only {n2}/{n1} tokens ({ms2:.0f}ms)")
+        _report(PASS, "Prompt-cache reuse", f"second call reprocessed only {n2}/{n1} tokens ({ms2:.0f}ms)")
     else:
-        _report(WARN, "Prompt-cache reuse",
-                f"second call reprocessed {n2}/{n1} tokens — prefix reuse "
-                "is NOT working. On Gemma this is usually sliding-window "
-                "attention: add --swa-full to llama-server (costs VRAM, "
-                "buys big prefill savings per turn)")
+        _report(
+            WARN,
+            "Prompt-cache reuse",
+            f"second call reprocessed {n2}/{n1} tokens — prefix reuse "
+            "is NOT working. On Gemma this is usually sliding-window "
+            "attention: add --swa-full to llama-server (costs VRAM, "
+            "buys big prefill savings per turn)",
+        )
 
 
 def main(argv: list[str]) -> int:
@@ -258,8 +261,7 @@ def main(argv: list[str]) -> int:
     if client and warm:
         warm_and_probe_cache(client)
     elif client:
-        print("  (run with --warm to warm the model and measure "
-              "prompt-cache reuse)")
+        print("  (run with --warm to warm the model and measure prompt-cache reuse)")
 
     print("─" * 50)
     if _failures:

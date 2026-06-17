@@ -73,10 +73,7 @@ class DevForgePluginExecutor(Executor):
             ctx.scene_snapshot = scene
 
         # Mark all as pending — results come back via /report
-        pending_results = [
-            {"operation": op, "success": True, "status": "pending"}
-            for op in operations
-        ]
+        pending_results = [{"operation": op, "success": True, "status": "pending"} for op in operations]
 
         logger.info(
             "executor.plugin",
@@ -141,9 +138,7 @@ class DevForgePluginExecutor(Executor):
     # Serialization round-trip (one-time)
     # ------------------------------------------------------------------
 
-    def resolve_property_types(
-        self, sample_values: Dict[str, Any] | None = None
-    ) -> Dict[str, str]:
+    def resolve_property_types(self, sample_values: Dict[str, Any] | None = None) -> Dict[str, str]:
         """Store property type mappings from a one-time Godot round-trip.
 
         Called once during startup/configuration to learn how Godot

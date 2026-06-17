@@ -33,7 +33,7 @@ class Artifact:
         results: list[Result] | None = None,
         meta: dict | None = None,
     ) -> None:
-        self.kind = kind           # "single" | "sweep" | "repeat"
+        self.kind = kind  # "single" | "sweep" | "repeat"
         self.suite = suite
         self.models = models
         self.ts = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -130,14 +130,16 @@ class Artifact:
                 continue
             try:
                 data = json.loads(fp.read_text())
-                runs.append({
-                    "ts_slug": d.name,
-                    "ts": data.get("ts"),
-                    "kind": data.get("kind"),
-                    "suite": data.get("suite"),
-                    "models": data.get("models"),
-                    "result_count": len(data.get("results", [])),
-                })
+                runs.append(
+                    {
+                        "ts_slug": d.name,
+                        "ts": data.get("ts"),
+                        "kind": data.get("kind"),
+                        "suite": data.get("suite"),
+                        "models": data.get("models"),
+                        "result_count": len(data.get("results", [])),
+                    }
+                )
             except Exception:
                 continue
             if len(runs) >= limit:

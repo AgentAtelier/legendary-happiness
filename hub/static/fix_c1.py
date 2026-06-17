@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fix C1: make /api/tools/history use in-memory cache."""
 
-PATH = '/home/mrg/dev/games/Forge/hub/hub.py'
+PATH = "/home/mrg/dev/games/Forge/hub/hub.py"
 
 with open(PATH) as f:
     content = f.read()
@@ -9,12 +9,12 @@ with open(PATH) as f:
 changes = 0
 
 # 1. Add module-level tool-call cache near the _jobs dict
-old_jobs = '_jobs: dict[str, dict] = {}'
+old_jobs = "_jobs: dict[str, dict] = {}"
 new_jobs = '_jobs: dict[str, dict] = {}\n_tool_results: dict = {"probes": [], "summary": {}, "ts": ""}'
 if old_jobs in content:
     content = content.replace(old_jobs, new_jobs)
     changes += 1
-    print('Added _tool_results cache')
+    print("Added _tool_results cache")
 
 # 2. In the /api/tools/run _runner, store result in cache
 # Find "job[\"tool_result\"] = result" and add cache save
@@ -23,7 +23,7 @@ new_store = 'job["tool_result"] = result\n            _tool_results.update({"pro
 if old_store in content:
     content = content.replace(old_store, new_store)
     changes += 1
-    print('Added cache save to /api/tools/run')
+    print("Added cache save to /api/tools/run")
 
 # 3. Replace /api/tools/history body to prefer in-memory cache
 # Find the endpoint and replace its body
@@ -31,10 +31,10 @@ old_hist_search = '@app.get("/api/tools/history")'
 idx = content.find(old_hist_search)
 if idx >= 0:
     # Find the end of this function (next @app or end of file)
-    next_app = content.find('\n@app.', idx + 1)
+    next_app = content.find("\n@app.", idx + 1)
     if next_app < 0:
         next_app = len(content)
-    
+
     new_body = '''@app.get("/api/tools/history")
 async def api_tools_history():
     """Return the most recent tool-call probe result."""
@@ -58,11 +58,11 @@ async def api_tools_history():
 
     content = content[:idx] + new_body + content[next_app:]
     changes += 1
-    print('Replaced /api/tools/history body')
+    print("Replaced /api/tools/history body")
 else:
-    print('WARNING: /api/tools/history not found')
+    print("WARNING: /api/tools/history not found")
 
-with open(PATH, 'w') as f:
+with open(PATH, "w") as f:
     f.write(content)
 
-print(f'Done: {changes} changes applied')
+print(f"Done: {changes} changes applied")

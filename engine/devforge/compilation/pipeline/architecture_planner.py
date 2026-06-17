@@ -20,12 +20,14 @@ from devforge.infrastructure.logger import logger
 
 class PlanningError(Exception):
     """LLM planning failed — retryable."""
+
     pass
 
 
 # ------------------------------------------------------------------
 # Deterministic planner — pattern-based pre-routing
 # ------------------------------------------------------------------
+
 
 class DeterministicPlanner:
     """Resolves common requests without calling the LLM.
@@ -38,14 +40,10 @@ class DeterministicPlanner:
 
     # Rename: "rename Player to Hero" or "rename node Player to Hero"
     # Anchored to prompt start (full-prompt rename commands).
-    RENAME_RE = re.compile(
-        r"^rename\s+(?:node\s+)?(.+?)\s+to\s+(.+)$", re.IGNORECASE
-    )
+    RENAME_RE = re.compile(r"^rename\s+(?:node\s+)?(.+?)\s+to\s+(.+)$", re.IGNORECASE)
     # Delete: "delete node Player" or "remove Enemy"
     # Anchored to prompt start (full-prompt delete commands).
-    DELETE_RE = re.compile(
-        r"^(?:delete|remove)\s+(?:node\s+)?(.+)$", re.IGNORECASE
-    )
+    DELETE_RE = re.compile(r"^(?:delete|remove)\s+(?:node\s+)?(.+)$", re.IGNORECASE)
     # Mid-prompt rename: "Create X, then rename it to Y" or
     # "Create X, then rename X to Y" (Bug 2, 2026-06-14).
     #
@@ -127,10 +125,7 @@ class DeterministicPlanner:
             for trigger in pat.get("triggers", []):
                 # Multi-word triggers (e.g. "playable character") are handled
                 # by re.escape() on the trigger portion.
-                pattern = (
-                    r"^" + _SHORT_PROMPT_VERBS
-                    + r"\s+(a\s+|an\s+)?" + re.escape(trigger) + r"\s*$"
-                )
+                pattern = r"^" + _SHORT_PROMPT_VERBS + r"\s+(a\s+|an\s+)?" + re.escape(trigger) + r"\s*$"
                 if re.match(pattern, norm):
                     logger.info(
                         "det_planner",
@@ -156,8 +151,8 @@ class ArchitecturePlanner:
 
     def __init__(self, cache: Optional[Any] = None, grammar_path: Optional[str] = None):
         """Args:
-            cache: Optional LRUPlanCache instance.
-            grammar_path: Path to GBNF grammar for JSON output constraint.
+        cache: Optional LRUPlanCache instance.
+        grammar_path: Path to GBNF grammar for JSON output constraint.
         """
         self._cache = cache
         self._grammar_path = grammar_path
@@ -205,10 +200,7 @@ class ArchitecturePlanner:
                     name = getattr(node, "name", None) or getattr(node, "id", None)
                     if name:
                         existing.add(name)
-                det["entities"] = [
-                    e for e in det.get("entities", [])
-                    if e.get("name") not in existing
-                ]
+                det["entities"] = [e for e in det.get("entities", []) if e.get("name") not in existing]
             logger.info(
                 "arch_planner",
                 "Deterministic path — skipping LLM",

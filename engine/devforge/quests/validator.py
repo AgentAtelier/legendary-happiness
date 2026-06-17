@@ -19,15 +19,17 @@ def quests_from_data(data: list[dict]) -> list[QuestNode]:
     """
     nodes: list[QuestNode] = []
     for entry in data:
-        nodes.append(QuestNode(
-            id=str(entry.get("id", "")),
-            name=entry.get("name", ""),
-            prerequisites=_list_str(entry.get("prerequisites", [])),
-            required_items=_list_str(entry.get("required_items", [])),
-            grants_items=_list_str(entry.get("grants_items", [])),
-            required_flags=_list_str(entry.get("required_flags", [])),
-            sets_flags=_list_str(entry.get("sets_flags", [])),
-        ))
+        nodes.append(
+            QuestNode(
+                id=str(entry.get("id", "")),
+                name=entry.get("name", ""),
+                prerequisites=_list_str(entry.get("prerequisites", [])),
+                required_items=_list_str(entry.get("required_items", [])),
+                grants_items=_list_str(entry.get("grants_items", [])),
+                required_flags=_list_str(entry.get("required_flags", [])),
+                sets_flags=_list_str(entry.get("sets_flags", [])),
+            )
+        )
     return nodes
 
 

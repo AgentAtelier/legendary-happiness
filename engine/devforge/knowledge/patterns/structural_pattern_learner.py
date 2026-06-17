@@ -12,7 +12,6 @@ from devforge.knowledge.system_graph.system_graph import (
 
 @dataclass
 class LearnedPattern:
-
     name: str
     nodes: List[str]
     relations: List[str]
@@ -36,7 +35,6 @@ class StructuralPatternLearner:
         discovered = self._detect_entity_script_patterns(graph)
 
         for pattern in discovered:
-
             if pattern.name not in self.patterns:
                 self.patterns[pattern.name] = pattern
 
@@ -52,7 +50,6 @@ class StructuralPatternLearner:
         patterns: List[LearnedPattern] = []
 
         for edge in graph.edges:
-
             if edge.type != EdgeType.USES:
                 continue
 
@@ -62,11 +59,7 @@ class StructuralPatternLearner:
             if not source or not target:
                 continue
 
-            if (
-                source.type == NodeType.ENTITY
-                and target.type == NodeType.SCRIPT
-            ):
-
+            if source.type == NodeType.ENTITY and target.type == NodeType.SCRIPT:
                 pattern_name = "EntityControllerPattern"
 
                 pattern = LearnedPattern(
@@ -91,7 +84,6 @@ class StructuralPatternLearner:
         lines = ["## Learned Patterns"]
 
         for p in self.patterns.values():
-
             lines.append(f"- {p.name}")
             lines.append(f"  nodes: {p.nodes}")
             lines.append(f"  relations: {p.relations}")

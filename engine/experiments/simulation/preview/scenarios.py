@@ -74,7 +74,6 @@ class ScenarioRunner:
 
         # apply parameter overrides
         for system_name, params in scenario.parameter_overrides.items():
-
             for param, value in params.items():
                 self.engine.set_parameter(system_name, param, value)
 
@@ -101,7 +100,6 @@ class ScenarioRunner:
         results = []
 
         for scenario in scenarios:
-
             result = self.run_scenario(scenario)
 
             results.append(result)

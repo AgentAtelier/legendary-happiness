@@ -50,9 +50,7 @@ def read_env() -> dict[str, str]:
 
 
 async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
-    proc = await asyncio.create_subprocess_exec(
-        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
-    )
+    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
     try:
         raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except asyncio.TimeoutError:
@@ -94,14 +92,12 @@ async def _devforge_call(tool: str, args: dict | None = None, timeout_s: int = 2
     from mcp.client.sse import sse_client
     from mcp import ClientSession
 
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10,
-                          sse_read_timeout=timeout_s + 30) as (r, w):
+    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
             if tool == "__list__":
                 return await s.list_tools()
-            res = await s.call_tool(tool, args or {},
-                                    read_timeout_seconds=timedelta(seconds=timeout_s))
+            res = await s.call_tool(tool, args or {}, read_timeout_seconds=timedelta(seconds=timeout_s))
             return json.loads(res.content[0].text)
 
 
@@ -152,10 +148,16 @@ async def t_llama_tools() -> dict:
     payload = {
         "model": env.get("MODEL_ALIAS", "model"),
         "messages": [{"role": "user", "content": "Read the scene hierarchy."}],
-        "tools": [{"type": "function", "function": {
-            "name": "mcp__godot-ai__scene_get_hierarchy",
-            "description": "list scene nodes",
-            "parameters": {"type": "object", "properties": {}}}}],
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "mcp__godot-ai__scene_get_hierarchy",
+                    "description": "list scene nodes",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ],
         "temperature": 0.2,
     }
     async with httpx.AsyncClient(timeout=180) as c:
@@ -164,8 +166,9 @@ async def t_llama_tools() -> dict:
     if ch["finish_reason"] == "tool_calls" and ch["message"].get("tool_calls"):
         name = ch["message"]["tool_calls"][0]["function"]["name"]
         return _ok(f"model emitted a native tool call ({name})")
-    return _fail("model did NOT emit a tool call for an obvious tool task — "
-                 "this model may be unsuitable for agent mode")
+    return _fail(
+        "model did NOT emit a tool call for an obvious tool task — this model may be unsuitable for agent mode"
+    )
 
 
 async def t_llama_caps() -> dict:
@@ -173,8 +176,9 @@ async def t_llama_caps() -> dict:
     args = env.get("LLAMA_ARGS", "")
     missing = [f for f in ("--n-predict", "--reasoning-budget") if f not in args]
     if missing:
-        return _fail(f"stack.env LLAMA_ARGS missing {missing} — one runaway request "
-                     "can block the whole chain (seen June 12)")
+        return _fail(
+            f"stack.env LLAMA_ARGS missing {missing} — one runaway request can block the whole chain (seen June 12)"
+        )
     return _ok("runaway guards present in LLAMA_ARGS")
 
 
@@ -183,8 +187,11 @@ async def t_llama_nothink() -> dict:
     if "qwen" not in env.get("MODEL_ALIAS", "").lower():
         return _skip("only applies to Qwen models (current model has no /no_think switch)")
     port = env.get("LLAMA_PORT", "8002")
-    payload = {"model": env.get("MODEL_ALIAS"), "temperature": 0.7,
-               "messages": [{"role": "user", "content": "Name one Godot node type. /no_think"}]}
+    payload = {
+        "model": env.get("MODEL_ALIAS"),
+        "temperature": 0.7,
+        "messages": [{"role": "user", "content": "Name one Godot node type. /no_think"}],
+    }
     async with httpx.AsyncClient(timeout=120) as c:
         r = await c.post(f"http://127.0.0.1:{port}/v1/chat/completions", json=payload)
     msg = r.json()["choices"][0]["message"]
@@ -208,7 +215,9 @@ async def t_llama_chat_content() -> dict:
             {"role": "system", "content": "You are a fiction writer. Write the story directly."},
             {"role": "user", "content": "Write a short 120-word story about an old clockmaker."},
         ],
-        "temperature": 1.0, "max_tokens": 400, "stream": False,
+        "temperature": 1.0,
+        "max_tokens": 400,
+        "stream": False,
     }
     async with httpx.AsyncClient(timeout=120) as c:
         r = await c.post(f"http://127.0.0.1:{port}/v1/chat/completions", json=payload)
@@ -218,9 +227,11 @@ async def t_llama_chat_content() -> dict:
     if len(content) > 50:
         return _ok(f"chat returned {len(content)} chars of content (finish={ch.get('finish_reason')})")
     if reasoning:
-        return _fail(f"EMPTY content but {len(reasoning)} chars of reasoning — thinking trap. "
-                     "The model is writing into the think channel and never answering. "
-                     'Fix: LLAMA_ARG_CHAT_TEMPLATE_KWARGS=\'{"enable_thinking": false}\' in stack.env')
+        return _fail(
+            f"EMPTY content but {len(reasoning)} chars of reasoning — thinking trap. "
+            "The model is writing into the think channel and never answering. "
+            "Fix: LLAMA_ARG_CHAT_TEMPLATE_KWARGS='{\"enable_thinking\": false}' in stack.env"
+        )
     return _fail(f"chat returned almost no content (finish={ch.get('finish_reason')})")
 
 
@@ -245,8 +256,10 @@ async def t_godotai_bind() -> dict:
     if re.search(r"0\.0\.0\.0:8000\b", out):
         return _ok("listening on 0.0.0.0 (reachable from the Odysseus container)")
     if re.search(r"127\.0\.0\.1:8000\b", out):
-        return _fail("loopback-only — Odysseus (docker) cannot reach it. A plugin-spawned "
-                     "server won the race; run: stack up (it adopts/replaces it)")
+        return _fail(
+            "loopback-only — Odysseus (docker) cannot reach it. A plugin-spawned "
+            "server won the race; run: stack up (it adopts/replaces it)"
+        )
     return _fail("nothing listening on :8000")
 
 
@@ -278,15 +291,40 @@ async def t_godotai_guard() -> dict:
     code, _ = await _sh("docker", "ps", "-q", "-f", f"name={ODY_CONTAINER}")
     if not _:
         return _skip("Odysseus container not running")
-    _, ip_out = await _sh("docker", "exec", ODY_CONTAINER, "curl", "-s", "-o", "/dev/null",
-                          "-w", "%{http_code}", "-m", "5", "http://172.17.0.1:8000/godot-ai/status")
-    _, dns_out = await _sh("docker", "exec", ODY_CONTAINER, "curl", "-s", "-o", "/dev/null",
-                           "-w", "%{http_code}", "-m", "5",
-                           "http://host.docker.internal:8000/godot-ai/status")
+    _, ip_out = await _sh(
+        "docker",
+        "exec",
+        ODY_CONTAINER,
+        "curl",
+        "-s",
+        "-o",
+        "/dev/null",
+        "-w",
+        "%{http_code}",
+        "-m",
+        "5",
+        "http://172.17.0.1:8000/godot-ai/status",
+    )
+    _, dns_out = await _sh(
+        "docker",
+        "exec",
+        ODY_CONTAINER,
+        "curl",
+        "-s",
+        "-o",
+        "/dev/null",
+        "-w",
+        "%{http_code}",
+        "-m",
+        "5",
+        "http://host.docker.internal:8000/godot-ai/status",
+    )
     if ip_out.strip() == "200" and dns_out.strip() == "403":
         return _ok("container reaches it via IP (200); DNS name correctly rejected (403)")
-    return _fail(f"IP→{ip_out.strip()} (want 200), DNS→{dns_out.strip()} (want 403). "
-                 "If IP failed: check GODOT_AI_ALLOW_HOSTS in stack.env")
+    return _fail(
+        f"IP→{ip_out.strip()} (want 200), DNS→{dns_out.strip()} (want 403). "
+        "If IP failed: check GODOT_AI_ALLOW_HOSTS in stack.env"
+    )
 
 
 # ── devforge layer ───────────────────────────────────────────────
@@ -307,8 +345,10 @@ async def t_devforge_scene() -> dict:
     kids = scene.get("children")
     if isinstance(kids, list) and len(kids) > 0:
         return _ok(f"nested tree OK — root '{scene.get('name')}' with {len(kids)} children")
-    return _fail("scene tree has no children array — flat-list regression "
-                 "(DevForge would plan against an empty scene and duplicate cameras/lights)")
+    return _fail(
+        "scene tree has no children array — flat-list regression "
+        "(DevForge would plan against an empty scene and duplicate cameras/lights)"
+    )
 
 
 async def t_devforge_apply() -> dict:
@@ -316,14 +356,13 @@ async def t_devforge_apply() -> dict:
     is visible (has a mesh) and that NOTHING unrequested was added, then
     delete it. Slow (one real LLM plan)."""
     d = await _devforge_call(
-        "apply_spec", {"prompt": "Add a MeshInstance3D named BenchMarker to the current scene"},
-        timeout_s=240)
+        "apply_spec", {"prompt": "Add a MeshInstance3D named BenchMarker to the current scene"}, timeout_s=240
+    )
     if d.get("error_count", 0) or d.get("errors"):
         return _fail(f"apply_spec errors: {d.get('errors')}")
     art = await _devforge_call("read_artifact", {"artifact_id": d["artifact_id"]}, timeout_s=30)
     ops = art.get("operations", [])
-    extras = [o for o in ops if o.get("type") == "add_node"
-              and o.get("name") not in ("BenchMarker",)]
+    extras = [o for o in ops if o.get("type") == "add_node" and o.get("name") not in ("BenchMarker",)]
     problems = []
     if extras:
         problems.append(f"unrequested nodes added: {[o.get('name') for o in extras]}")
@@ -335,9 +374,16 @@ async def t_devforge_apply() -> dict:
     if not plist.get("mesh"):
         problems.append("node created WITHOUT a mesh (invisible-node regression)")
     # cleanup regardless
-    await _godot_ai_call("batch_execute", {"commands": [
-        {"command": "delete_node", "params": {"path": "/Main/BenchMarker"}},
-        {"command": "save_scene", "params": {}}], "undo": True})
+    await _godot_ai_call(
+        "batch_execute",
+        {
+            "commands": [
+                {"command": "delete_node", "params": {"path": "/Main/BenchMarker"}},
+                {"command": "save_scene", "params": {}},
+            ],
+            "undo": True,
+        },
+    )
     if problems:
         return _fail("; ".join(problems))
     return _ok(f"created visible node via LLM plan ({d.get('applied')} ops), cleaned up")
@@ -356,19 +402,19 @@ async def t_ody_up() -> dict:
 
 
 async def t_ody_mcp() -> dict:
-    code, started = await _sh("docker", "inspect", ODY_CONTAINER,
-                              "--format", "{{.State.StartedAt}}")
+    code, started = await _sh("docker", "inspect", ODY_CONTAINER, "--format", "{{.State.StartedAt}}")
     if code != 0:
         return _fail("container not running")
-    code, logs = await _sh("docker", "logs", ODY_CONTAINER, "--since",
-                           started.strip(), timeout=20)
+    code, logs = await _sh("docker", "logs", ODY_CONTAINER, "--since", started.strip(), timeout=20)
     have_g = "MCP server connected: godot-ai" in logs
     have_d = "MCP server connected: DevForge" in logs
     if have_g and have_d:
         return _ok("godot-ai (41) and DevForge (30) connected this boot")
     missing = [n for n, ok_ in (("godot-ai", have_g), ("DevForge", have_d)) if not ok_]
-    return _fail(f"{missing} NOT connected — Odysseus only connects at startup. "
-                 f"Fix: make sure the servers are up, then docker restart {ODY_CONTAINER}")
+    return _fail(
+        f"{missing} NOT connected — Odysseus only connects at startup. "
+        f"Fix: make sure the servers are up, then docker restart {ODY_CONTAINER}"
+    )
 
 
 async def t_ody_persona() -> dict:
@@ -380,15 +426,19 @@ async def t_ody_persona() -> dict:
     # system_prompt was EMPTY — the model had schemas but zero strategy and
     # looped on read-only tools. Check the prompt body too.
     if len(c.get("system_prompt") or "") < 1000:
-        problems.append(f"system_prompt is {len(c.get('system_prompt') or '')} chars "
-                        "(should be the ~3.9k Godot strategy prompt) — restore from the "
-                        "'Godot Developer' template or the vault doc")
+        problems.append(
+            f"system_prompt is {len(c.get('system_prompt') or '')} chars "
+            "(should be the ~3.9k Godot strategy prompt) — restore from the "
+            "'Godot Developer' template or the vault doc"
+        )
     if not c.get("character_name"):
         problems.append("character_name empty (persona chip won't show)")
     suf = c.get("inject_suffix", "")
     if "mcp" not in suf.lower():
-        problems.append("'MCP' missing from inject_suffix — LOAD-BEARING: without it "
-                        "tool retrieval never runs and the model gets 3 generic tools")
+        problems.append(
+            "'MCP' missing from inject_suffix — LOAD-BEARING: without it "
+            "tool retrieval never runs and the model gets 3 generic tools"
+        )
     if "/no_think" not in suf:
         problems.append("/no_think missing from inject_suffix (mandatory at low temp for Qwen)")
     t = float(c.get("temperature", 1.0))
@@ -397,14 +447,15 @@ async def t_ody_persona() -> dict:
     if int(c.get("max_tokens", 0)) != 0:
         problems.append("max_tokens should be 0 (server-side --n-predict already caps)")
     if problems:
-        return _fail("; ".join(problems) + ". NOTE: an admin-UI persona save overwrites "
-                     "presets.json — restore from Obsidian Vault/odysseus-godot-persona.md")
+        return _fail(
+            "; ".join(problems) + ". NOTE: an admin-UI persona save overwrites "
+            "presets.json — restore from Obsidian Vault/odysseus-godot-persona.md"
+        )
     return _ok(f"enabled, temp {t}, /no_think + 'MCP' present")
 
 
 async def t_ody_endpoint() -> dict:
-    code, out = await _sh("sqlite3", str(APPDB),
-                          "SELECT base_url, supports_tools FROM model_endpoints;")
+    code, out = await _sh("sqlite3", str(APPDB), "SELECT base_url, supports_tools FROM model_endpoints;")
     if code != 0:
         return _fail(f"cannot read app.db: {out.strip()}")
     rows = [r for r in out.strip().splitlines() if r]
@@ -421,8 +472,9 @@ async def t_ody_endpoint() -> dict:
 async def t_ody_reach() -> dict:
     env = read_env()
     port = env.get("LLAMA_PORT", "8002")
-    code, out = await _sh("docker", "exec", ODY_CONTAINER, "curl", "-s", "-m", "5",
-                          f"http://host.docker.internal:{port}/health")
+    code, out = await _sh(
+        "docker", "exec", ODY_CONTAINER, "curl", "-s", "-m", "5", f"http://host.docker.internal:{port}/health"
+    )
     if code == 0 and "ok" in out:
         return _ok("container reaches llama via host.docker.internal")
     return _fail(f"container→llama failed: {out.strip()[:120]} — is llama bound to 0.0.0.0?")
@@ -441,8 +493,7 @@ async def t_ody_retrieval() -> dict:
         f"tools = idx.get_tools_for_query({query!r}, 8) if idx else set()\n"
         "print(json.dumps(sorted(tools)))\n"
     )
-    code, out = await _sh("docker", "exec", ODY_CONTAINER, "python", "-c", script,
-                          timeout=90)
+    code, out = await _sh("docker", "exec", ODY_CONTAINER, "python", "-c", script, timeout=90)
     if code != 0:
         return _fail(f"probe failed inside container: {out.strip()[:200]}")
     try:
@@ -452,87 +503,199 @@ async def t_ody_retrieval() -> dict:
     godot = [t for t in tools if t.startswith("mcp__")]
     if "mcp__devforge__apply_spec" in tools:
         return _ok(f"apply_spec retrieved. MCP tools in top-k: {godot}")
-    return _fail(f"apply_spec NOT in retrieval for the cube request — the model won't see it. "
-                 f"Retrieved MCP tools: {godot or 'NONE'}. "
-                 f"Fix: enrich DevForge tool descriptions / persona inject vocabulary, "
-                 f"then docker restart {ODY_CONTAINER}")
+    return _fail(
+        f"apply_spec NOT in retrieval for the cube request — the model won't see it. "
+        f"Retrieved MCP tools: {godot or 'NONE'}. "
+        f"Fix: enrich DevForge tool descriptions / persona inject vocabulary, "
+        f"then docker restart {ODY_CONTAINER}"
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────
 
 TESTS: list[dict] = [
     # llama
-    dict(id="llama.health", layer="llama", speed="fast", fn=t_llama_health,
-         title="Server alive",
-         desc="The model server answers on its port. Red = nothing else can work; run 'stack up'."),
-    dict(id="llama.props", layer="llama", speed="fast", fn=t_llama_props,
-         title="Serving the configured model",
-         desc="The model in memory matches stack.env. Red = config was edited without a llama restart."),
-    dict(id="llama.caps", layer="llama", speed="fast", fn=t_llama_caps,
-         title="Runaway guards configured",
-         desc="Generation and thinking caps are set. Red = one bad request can freeze every client for minutes."),
-    dict(id="llama.grammar", layer="llama", speed="slow", fn=t_llama_grammar,
-         title="Grammar enforcement",
-         desc="The server can force exact output formats. Red = DevForge's plans become unconstrained text (silent corruption)."),
-    dict(id="llama.tools", layer="llama", speed="slow", fn=t_llama_tools,
-         title="Native tool calling",
-         desc="The current model emits structured tool calls. Red = this model can't drive agent mode at all."),
-    dict(id="llama.nothink", layer="llama", speed="slow", fn=t_llama_nothink,
-         title="/no_think switch (Qwen only)",
-         desc="The thinking-off switch works. Skipped on non-Qwen models."),
-    dict(id="llama.chat_content", layer="llama", speed="slow", fn=t_llama_chat_content,
-         title="Chat returns content, not a thinking essay",
-         desc="A chat request must produce an actual answer, not dump everything into the "
-              "hidden think channel and stall (the June 13 'empty story / corporate essay' bug). "
-              "Red = enable thinking-off in stack.env."),
+    dict(
+        id="llama.health",
+        layer="llama",
+        speed="fast",
+        fn=t_llama_health,
+        title="Server alive",
+        desc="The model server answers on its port. Red = nothing else can work; run 'stack up'.",
+    ),
+    dict(
+        id="llama.props",
+        layer="llama",
+        speed="fast",
+        fn=t_llama_props,
+        title="Serving the configured model",
+        desc="The model in memory matches stack.env. Red = config was edited without a llama restart.",
+    ),
+    dict(
+        id="llama.caps",
+        layer="llama",
+        speed="fast",
+        fn=t_llama_caps,
+        title="Runaway guards configured",
+        desc="Generation and thinking caps are set. Red = one bad request can freeze every client for minutes.",
+    ),
+    dict(
+        id="llama.grammar",
+        layer="llama",
+        speed="slow",
+        fn=t_llama_grammar,
+        title="Grammar enforcement",
+        desc="The server can force exact output formats. Red = DevForge's plans become unconstrained text (silent corruption).",
+    ),
+    dict(
+        id="llama.tools",
+        layer="llama",
+        speed="slow",
+        fn=t_llama_tools,
+        title="Native tool calling",
+        desc="The current model emits structured tool calls. Red = this model can't drive agent mode at all.",
+    ),
+    dict(
+        id="llama.nothink",
+        layer="llama",
+        speed="slow",
+        fn=t_llama_nothink,
+        title="/no_think switch (Qwen only)",
+        desc="The thinking-off switch works. Skipped on non-Qwen models.",
+    ),
+    dict(
+        id="llama.chat_content",
+        layer="llama",
+        speed="slow",
+        fn=t_llama_chat_content,
+        title="Chat returns content, not a thinking essay",
+        desc="A chat request must produce an actual answer, not dump everything into the "
+        "hidden think channel and stall (the June 13 'empty story / corporate essay' bug). "
+        "Red = enable thinking-off in stack.env.",
+    ),
     # godot-ai
-    dict(id="godotai.status", layer="godot-ai", speed="fast", fn=t_godotai_status,
-         title="Server up + version matches plugin",
-         desc="The editor bridge is running and version-compatible. Red = the editor won't adopt it."),
-    dict(id="godotai.bind", layer="godot-ai", speed="fast", fn=t_godotai_bind,
-         title="Reachable from Docker",
-         desc="Bound to all interfaces, not just localhost. Red = Odysseus can't use any Godot tool."),
-    dict(id="godotai.tools", layer="godot-ai", speed="fast", fn=t_godotai_tools,
-         title="Tool surface complete",
-         desc="All ~41 tools are registered."),
-    dict(id="godotai.editor", layer="godot-ai", speed="fast", fn=t_godotai_editor,
-         title="Editor adopted the server",
-         desc="The Godot editor is connected and ready. Skipped if the editor isn't running."),
-    dict(id="godotai.scene", layer="godot-ai", speed="fast", fn=t_godotai_scene,
-         title="Live scene read",
-         desc="A real scene tree comes back. Red = no scene open, or the editor link is broken."),
-    dict(id="godotai.guard", layer="godot-ai", speed="fast", fn=t_godotai_guard,
-         title="Container access + security guard",
-         desc="The Odysseus container reaches godot-ai by IP, and DNS-name access is correctly blocked (anti-rebinding)."),
+    dict(
+        id="godotai.status",
+        layer="godot-ai",
+        speed="fast",
+        fn=t_godotai_status,
+        title="Server up + version matches plugin",
+        desc="The editor bridge is running and version-compatible. Red = the editor won't adopt it.",
+    ),
+    dict(
+        id="godotai.bind",
+        layer="godot-ai",
+        speed="fast",
+        fn=t_godotai_bind,
+        title="Reachable from Docker",
+        desc="Bound to all interfaces, not just localhost. Red = Odysseus can't use any Godot tool.",
+    ),
+    dict(
+        id="godotai.tools",
+        layer="godot-ai",
+        speed="fast",
+        fn=t_godotai_tools,
+        title="Tool surface complete",
+        desc="All ~41 tools are registered.",
+    ),
+    dict(
+        id="godotai.editor",
+        layer="godot-ai",
+        speed="fast",
+        fn=t_godotai_editor,
+        title="Editor adopted the server",
+        desc="The Godot editor is connected and ready. Skipped if the editor isn't running.",
+    ),
+    dict(
+        id="godotai.scene",
+        layer="godot-ai",
+        speed="fast",
+        fn=t_godotai_scene,
+        title="Live scene read",
+        desc="A real scene tree comes back. Red = no scene open, or the editor link is broken.",
+    ),
+    dict(
+        id="godotai.guard",
+        layer="godot-ai",
+        speed="fast",
+        fn=t_godotai_guard,
+        title="Container access + security guard",
+        desc="The Odysseus container reaches godot-ai by IP, and DNS-name access is correctly blocked (anti-rebinding).",
+    ),
     # devforge
-    dict(id="devforge.tools", layer="devforge", speed="fast", fn=t_devforge_tools,
-         title="MCP server + apply_spec present",
-         desc="DevForge answers over SSE with its full tool set."),
-    dict(id="devforge.scene", layer="devforge", speed="fast", fn=t_devforge_scene,
-         title="Scene tree is nested (not flat)",
-         desc="Regression check: DevForge must see the real scene, or it duplicates cameras/lights."),
-    dict(id="devforge.apply", layer="devforge", speed="slow", fn=t_devforge_apply,
-         title="Full pipeline write (LLM plan → editor)",
-         desc="Creates a test node via the real LLM pipeline, checks it's visible and nothing extra was added, deletes it. ~1 min."),
+    dict(
+        id="devforge.tools",
+        layer="devforge",
+        speed="fast",
+        fn=t_devforge_tools,
+        title="MCP server + apply_spec present",
+        desc="DevForge answers over SSE with its full tool set.",
+    ),
+    dict(
+        id="devforge.scene",
+        layer="devforge",
+        speed="fast",
+        fn=t_devforge_scene,
+        title="Scene tree is nested (not flat)",
+        desc="Regression check: DevForge must see the real scene, or it duplicates cameras/lights.",
+    ),
+    dict(
+        id="devforge.apply",
+        layer="devforge",
+        speed="slow",
+        fn=t_devforge_apply,
+        title="Full pipeline write (LLM plan → editor)",
+        desc="Creates a test node via the real LLM pipeline, checks it's visible and nothing extra was added, deletes it. ~1 min.",
+    ),
     # odysseus
-    dict(id="odysseus.up", layer="odysseus", speed="fast", fn=t_ody_up,
-         title="Web app running",
-         desc="The Odysseus container answers on :7000."),
-    dict(id="odysseus.mcp", layer="odysseus", speed="fast", fn=t_ody_mcp,
-         title="Both MCP servers connected THIS boot",
-         desc="Odysseus only connects at startup — if a server was down then, its tools are missing until a container restart."),
-    dict(id="odysseus.persona", layer="odysseus", speed="fast", fn=t_ody_persona,
-         title="Persona invariants",
-         desc="Godot Developer preset enabled with the load-bearing settings ('MCP' word, /no_think, low temp). Red = a UI save clobbered it."),
-    dict(id="odysseus.endpoint", layer="odysseus", speed="fast", fn=t_ody_endpoint,
-         title="Model endpoint records clean",
-         desc="supports_tools flag set; no bogus endpoints."),
-    dict(id="odysseus.reach", layer="odysseus", speed="fast", fn=t_ody_reach,
-         title="Container reaches llama",
-         desc="Docker→host networking for the model server works."),
-    dict(id="odysseus.retrieval", layer="odysseus", speed="slow", fn=t_ody_retrieval,
-         title="Tool retrieval surfaces apply_spec",
-         desc="Asks Odysseus's own tool index what it would give the model for a cube request (with the live persona). THE test for 'model never saw the right tools'. ~30 s."),
+    dict(
+        id="odysseus.up",
+        layer="odysseus",
+        speed="fast",
+        fn=t_ody_up,
+        title="Web app running",
+        desc="The Odysseus container answers on :7000.",
+    ),
+    dict(
+        id="odysseus.mcp",
+        layer="odysseus",
+        speed="fast",
+        fn=t_ody_mcp,
+        title="Both MCP servers connected THIS boot",
+        desc="Odysseus only connects at startup — if a server was down then, its tools are missing until a container restart.",
+    ),
+    dict(
+        id="odysseus.persona",
+        layer="odysseus",
+        speed="fast",
+        fn=t_ody_persona,
+        title="Persona invariants",
+        desc="Godot Developer preset enabled with the load-bearing settings ('MCP' word, /no_think, low temp). Red = a UI save clobbered it.",
+    ),
+    dict(
+        id="odysseus.endpoint",
+        layer="odysseus",
+        speed="fast",
+        fn=t_ody_endpoint,
+        title="Model endpoint records clean",
+        desc="supports_tools flag set; no bogus endpoints.",
+    ),
+    dict(
+        id="odysseus.reach",
+        layer="odysseus",
+        speed="fast",
+        fn=t_ody_reach,
+        title="Container reaches llama",
+        desc="Docker→host networking for the model server works.",
+    ),
+    dict(
+        id="odysseus.retrieval",
+        layer="odysseus",
+        speed="slow",
+        fn=t_ody_retrieval,
+        title="Tool retrieval surfaces apply_spec",
+        desc="Asks Odysseus's own tool index what it would give the model for a cube request (with the live persona). THE test for 'model never saw the right tools'. ~30 s.",
+    ),
 ]
 
 DEFAULT_BUNDLES = {
@@ -601,8 +764,9 @@ async def run_tests(ids: list[str], emit: Callable[[str], None]) -> dict:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     out = DATA_DIR / f"run-{time.strftime('%Y%m%d-%H%M%S')}.json"
     out.write_text(json.dumps(run, indent=2))
-    emit(f"— {counts['pass']} pass / {counts['fail']} fail / {counts['skip']} skip "
-         f"({run['model']}) → saved {out.name} —")
+    emit(
+        f"— {counts['pass']} pass / {counts['fail']} fail / {counts['skip']} skip ({run['model']}) → saved {out.name} —"
+    )
     return run
 
 
@@ -612,10 +776,15 @@ def history(limit: int = 30) -> list[dict]:
     for f in sorted(DATA_DIR.glob("run-*.json"), reverse=True)[:limit]:
         try:
             d = json.loads(f.read_text())
-            runs.append({"file": f.name, "ts": d.get("ts"), "model": d.get("model"),
-                         "counts": d.get("counts"),
-                         "failed": [t["id"] for t in d.get("tests", [])
-                                    if t.get("status") in ("fail", "error")]})
+            runs.append(
+                {
+                    "file": f.name,
+                    "ts": d.get("ts"),
+                    "model": d.get("model"),
+                    "counts": d.get("counts"),
+                    "failed": [t["id"] for t in d.get("tests", []) if t.get("status") in ("fail", "error")],
+                }
+            )
         except Exception:
             continue
     return runs
@@ -637,10 +806,7 @@ def history(limit: int = 30) -> list[dict]:
 PROBE_SCENE = "res://probe.tscn"
 PROBE_BOUNCE_SCENE = "res://probe_bounce.tscn"
 PROBE_BASE_SCENE = "res://scenes/main.tscn"
-PROBE_BOUNCE_TSCN = (
-    '[gd_scene format=3 uid="uid://cprobebounce0001"]\n\n'
-    '[node name="_bounce" type="Node3D"]\n'
-)
+PROBE_BOUNCE_TSCN = '[gd_scene format=3 uid="uid://cprobebounce0001"]\n\n[node name="_bounce" type="Node3D"]\n'
 # Baseline: root + Camera3D + DirectionalLight3D — a "complete" 3D scene so
 # completeness injects nothing, scenarios assert no_extra_nodes cleanly, and the
 # accumulation-vs-injection tradeoff (the 50%↔58% flip-flop) is resolved.
@@ -648,9 +814,9 @@ PROBE_SCENE_TSCN = (
     '[gd_scene format=3 uid="uid://cprobebench0001"]\n\n'
     '[node name="Main" type="Node3D"]\n\n'
     '[node name="MainCamera" type="Camera3D" parent="."]\n'
-    'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\n\n'
+    "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\n\n"
     '[node name="DirectionalLight" type="DirectionalLight3D" parent="."]\n'
-    'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\n'
+    "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\n"
 )
 # Nodes that ARE expected in the baseline — everything else is a scenario artifact
 # that gets removed on reset.
@@ -675,8 +841,7 @@ def _probe(verdict: str, summary: str, thresholds: str = "", **data: Any) -> dic
     verdict ∈ {works, degraded, broken, skip}. `data` is whatever numbers /
     samples / artifacts make the verdict interpretable.
     """
-    return {"verdict": verdict, "summary": summary, "thresholds": thresholds,
-            "data": data}
+    return {"verdict": verdict, "summary": summary, "thresholds": thresholds, "data": data}
 
 
 def _worst(verdicts: list[str]) -> str:
@@ -687,12 +852,11 @@ def _worst(verdicts: list[str]) -> str:
 
 # ── probe scene helpers + per-run pipeline capture ────────────────
 
+
 async def _scene_paths() -> set[str]:
     """Flat set of node paths in the live editor scene."""
     h = await _godot_ai_call("scene_get_hierarchy", {"depth": 10})
     return {n["path"] for n in h.get("nodes", []) if isinstance(n, dict) and n.get("path")}
-
-
 
 
 async def _probe_scene_reset() -> None:
@@ -713,20 +877,24 @@ async def _probe_scene_reset() -> None:
     # the stale tab instead of loading from disk. Fresh UIDs on every reset force
     # a clean load.
     fresh_bounce_uid = f"uid://cbounce{uuid.uuid4().hex[:12]}"
-    fresh_bounce_tscn = PROBE_BOUNCE_TSCN.replace(
-        "uid://cprobebounce0001", fresh_bounce_uid)
+    fresh_bounce_tscn = PROBE_BOUNCE_TSCN.replace("uid://cprobebounce0001", fresh_bounce_uid)
     fresh_probe_uid = f"uid://cprobe{uuid.uuid4().hex[:12]}"
-    fresh_probe_tscn = PROBE_SCENE_TSCN.replace(
-        "uid://cprobebench0001", fresh_probe_uid)
+    fresh_probe_tscn = PROBE_SCENE_TSCN.replace("uid://cprobebench0001", fresh_probe_uid)
     try:
-        await _godot_ai_call("filesystem_manage", {
-            "op": "write_text", "params": {"path": PROBE_BOUNCE_SCENE,
-                                         "content": fresh_bounce_tscn},
-        })
-        await _godot_ai_call("filesystem_manage", {
-            "op": "write_text", "params": {"path": PROBE_SCENE,
-                                         "content": fresh_probe_tscn},
-        })
+        await _godot_ai_call(
+            "filesystem_manage",
+            {
+                "op": "write_text",
+                "params": {"path": PROBE_BOUNCE_SCENE, "content": fresh_bounce_tscn},
+            },
+        )
+        await _godot_ai_call(
+            "filesystem_manage",
+            {
+                "op": "write_text",
+                "params": {"path": PROBE_SCENE, "content": fresh_probe_tscn},
+            },
+        )
     except Exception:
         pass
 
@@ -772,15 +940,16 @@ async def _probe_scene_reset() -> None:
             )
         if root_type != "Node3D":
             raise RuntimeError(
-                f"probe health check FAILED: root type is '{root_type}', "
-                f"expected 'Node3D'. Scene may be corrupted."
+                f"probe health check FAILED: root type is '{root_type}', expected 'Node3D'. Scene may be corrupted."
             )
         # Count baseline children — with baked Camera3D + DirectionalLight3D,
         # we expect exactly 2 children at depth 2. Uses depth=2 (above) so
         # children ARE included in the response.
-        baseline_kids = [n for n in nodes
-                         if n.get("path", "").startswith(root.get("path", "") + "/")
-                         and n.get("path", "").count("/") == 2]
+        baseline_kids = [
+            n
+            for n in nodes
+            if n.get("path", "").startswith(root.get("path", "") + "/") and n.get("path", "").count("/") == 2
+        ]
         baseline_names = {n.get("name") for n in baseline_kids}
         expected = _PROBE_BASELINE_NODES - {"Main"}  # Main is the root, not a child
         missing = expected - baseline_names
@@ -828,8 +997,7 @@ async def _probe_scene_reset() -> None:
         root_path = roots[0] if roots else "/Main"
         for n in nodes:
             path = n.get("path", "")
-            if path.startswith(root_path + "/") and path.count("/") == 2 \
-                    and n.get("name") not in _PROBE_BASELINE_NODES:
+            if path.startswith(root_path + "/") and path.count("/") == 2 and n.get("name") not in _PROBE_BASELINE_NODES:
                 try:
                     await _godot_ai_call("node_manage", {"op": "delete", "params": {"path": path}})
                 except Exception:
@@ -865,28 +1033,41 @@ async def _pipeline_capture() -> dict:
         except Exception:
             artifact = raw
     after = await _scene_paths()
-    data = {"raw": raw, "artifact": artifact, "before": before, "after": after,
-            "apply_ms": apply_ms, "model": read_env().get("MODEL_ALIAS", "?")}
+    data = {
+        "raw": raw,
+        "artifact": artifact,
+        "before": before,
+        "after": after,
+        "apply_ms": apply_ms,
+        "model": read_env().get("MODEL_ALIAS", "?"),
+    }
     _PIPELINE_CACHE["data"] = data
     return data
 
 
 # ── Layer 1: llama ───────────────────────────────────────────────
 
+
 async def p_llama_throughput() -> dict:
     env = read_env()
     port = env.get("LLAMA_PORT", "8002")
-    payload = {"prompt": "<|im_start|>user\nWrite one paragraph about a blacksmith's forge."
-                         "<|im_end|>\n<|im_start|>assistant\n",
-               "n_predict": 200, "temperature": 0.7}
+    payload = {
+        "prompt": "<|im_start|>user\nWrite one paragraph about a blacksmith's forge."
+        "<|im_end|>\n<|im_start|>assistant\n",
+        "n_predict": 200,
+        "temperature": 0.7,
+    }
     async with httpx.AsyncClient(timeout=120) as c:
         j = (await c.post(f"http://127.0.0.1:{port}/completion", json=payload)).json()
     t = j.get("timings", {})
     tps = round(t.get("predicted_per_second", 0), 1)
-    data = dict(tok_per_sec=tps, gen_tok=t.get("predicted_n"),
-                prompt_tok=t.get("prompt_n"),
-                ttft_ms=round(t.get("prompt_ms", 0)),
-                gen_ms=round(t.get("predicted_ms", 0)))
+    data = dict(
+        tok_per_sec=tps,
+        gen_tok=t.get("predicted_n"),
+        prompt_tok=t.get("prompt_n"),
+        ttft_ms=round(t.get("prompt_ms", 0)),
+        gen_ms=round(t.get("predicted_ms", 0)),
+    )
     if not tps:
         return _probe("broken", "no timings — server did not generate", "tok/s ≥15 works", **data)
     v = "works" if tps >= 15 else ("degraded" if tps >= 5 else "broken")
@@ -904,16 +1085,13 @@ async def p_llama_context() -> dict:
     m = re.search(r"--ctx-size\s+(\d+)", env.get("LLAMA_ARGS", ""))
     configured = int(m.group(1)) if m else None
     km = re.search(r"--cache-type-k\s+(\S+)", env.get("LLAMA_ARGS", ""))
-    data = dict(n_ctx_loaded=loaded, configured_ctx=configured,
-                kv_cache=(km.group(1) if km else "f16"),
-                model_alias=alias)
+    data = dict(
+        n_ctx_loaded=loaded, configured_ctx=configured, kv_cache=(km.group(1) if km else "f16"), model_alias=alias
+    )
     if alias != want:
-        return _probe("broken", f"serving '{alias}', config wants '{want}'",
-                      "alias must match", **data)
+        return _probe("broken", f"serving '{alias}', config wants '{want}'", "alias must match", **data)
     if configured and loaded < configured:
-        return _probe("degraded",
-                      f"ctx clamped to {loaded} (config asked {configured})",
-                      "loaded==configured", **data)
+        return _probe("degraded", f"ctx clamped to {loaded} (config asked {configured})", "loaded==configured", **data)
     return _probe("works", f"ctx {loaded} ({data['kv_cache']} KV)", "loaded==configured", **data)
 
 
@@ -922,19 +1100,21 @@ async def p_llama_grammar() -> dict:
     port = env.get("LLAMA_PORT", "8002")
     # Single-line alternation (multi-line GBNF can be silently dropped on this
     # stack) — the model MUST emit exactly one of the two tokens.
-    payload = {"prompt": "<|im_start|>user\nPick a word.<|im_end|>\n<|im_start|>assistant\n",
-               "n_predict": 8, "temperature": 1.2,
-               "grammar": 'root ::= "FORGE" | "ANVIL"'}
+    payload = {
+        "prompt": "<|im_start|>user\nPick a word.<|im_end|>\n<|im_start|>assistant\n",
+        "n_predict": 8,
+        "temperature": 1.2,
+        "grammar": 'root ::= "FORGE" | "ANVIL"',
+    }
     async with httpx.AsyncClient(timeout=60) as c:
         out = (await c.post(f"http://127.0.0.1:{port}/completion", json=payload)).json().get("content", "")
     honored = out.strip() in ("FORGE", "ANVIL")
     data = dict(raw_output=out, honored=honored)
     if honored:
-        return _probe("works", f"grammar enforced exactly → {out.strip()!r}",
-                      "output ∈ {FORGE,ANVIL}", **data)
-    return _probe("broken",
-                  f"grammar NOT enforced → {out!r} — DevForge plans run unconstrained",
-                  "output ∈ {FORGE,ANVIL}", **data)
+        return _probe("works", f"grammar enforced exactly → {out.strip()!r}", "output ∈ {FORGE,ANVIL}", **data)
+    return _probe(
+        "broken", f"grammar NOT enforced → {out!r} — DevForge plans run unconstrained", "output ∈ {FORGE,ANVIL}", **data
+    )
 
 
 async def p_llama_thinking() -> dict:
@@ -949,53 +1129,80 @@ async def p_llama_thinking() -> dict:
     is_qwen = "qwen" in env.get("MODEL_ALIAS", "").lower()
     # Append the same switch the persona uses; harmless on non-Qwen models.
     content_msg = "Name one Godot 3D node type in one word." + (" /no_think" if is_qwen else "")
-    payload = {"model": env.get("MODEL_ALIAS", "model"), "temperature": 0.2, "max_tokens": 400,
-               "messages": [{"role": "user", "content": content_msg}]}
+    payload = {
+        "model": env.get("MODEL_ALIAS", "model"),
+        "temperature": 0.2,
+        "max_tokens": 400,
+        "messages": [{"role": "user", "content": content_msg}],
+    }
     async with httpx.AsyncClient(timeout=120) as c:
         ch = (await c.post(f"http://127.0.0.1:{port}/v1/chat/completions", json=payload)).json()["choices"][0]
     content = ch["message"].get("content") or ""
     reasoning = ch["message"].get("reasoning_content") or ""
-    data = dict(model_is_qwen=is_qwen, no_think_sent=is_qwen,
-                content_chars=len(content), reasoning_chars=len(reasoning),
-                finish_reason=ch.get("finish_reason"), content_sample=content[:80])
+    data = dict(
+        model_is_qwen=is_qwen,
+        no_think_sent=is_qwen,
+        content_chars=len(content),
+        reasoning_chars=len(reasoning),
+        finish_reason=ch.get("finish_reason"),
+        content_sample=content[:80],
+    )
     if len(content) < 3:
-        return _probe("broken",
-                      f"empty answer ({len(reasoning)} chars reasoning) — thinking trap even with "
-                      f"{'/no_think' if is_qwen else 'plain chat'}",
-                      "/no_think → direct answer, no reasoning leak", **data)
+        return _probe(
+            "broken",
+            f"empty answer ({len(reasoning)} chars reasoning) — thinking trap even with "
+            f"{'/no_think' if is_qwen else 'plain chat'}",
+            "/no_think → direct answer, no reasoning leak",
+            **data,
+        )
     if is_qwen and len(reasoning) > 50:
-        return _probe("degraded",
-                      f"/no_think ignored — {len(reasoning)} chars leaked to think channel",
-                      "/no_think → direct answer, no reasoning leak", **data)
-    return _probe("works", f"answered directly in {len(content)} chars (reasoning {len(reasoning)})",
-                  "/no_think → direct answer, no reasoning leak", **data)
+        return _probe(
+            "degraded",
+            f"/no_think ignored — {len(reasoning)} chars leaked to think channel",
+            "/no_think → direct answer, no reasoning leak",
+            **data,
+        )
+    return _probe(
+        "works",
+        f"answered directly in {len(content)} chars (reasoning {len(reasoning)})",
+        "/no_think → direct answer, no reasoning leak",
+        **data,
+    )
 
 
 async def p_llama_tools() -> dict:
     env = read_env()
     port = env.get("LLAMA_PORT", "8002")
-    payload = {"model": env.get("MODEL_ALIAS", "model"), "temperature": 0.2,
-               "messages": [{"role": "user", "content": "Read the scene hierarchy."}],
-               "tools": [{"type": "function", "function": {
-                   "name": "scene_get_hierarchy", "description": "list scene nodes",
-                   "parameters": {"type": "object", "properties": {}}}}]}
+    payload = {
+        "model": env.get("MODEL_ALIAS", "model"),
+        "temperature": 0.2,
+        "messages": [{"role": "user", "content": "Read the scene hierarchy."}],
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "scene_get_hierarchy",
+                    "description": "list scene nodes",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ],
+    }
     async with httpx.AsyncClient(timeout=180) as c:
         ch = (await c.post(f"http://127.0.0.1:{port}/v1/chat/completions", json=payload)).json()["choices"][0]
     calls = ch["message"].get("tool_calls") or []
     name = calls[0]["function"]["name"] if calls else None
     text = ch["message"].get("content") or ""
-    data = dict(emitted_tool_call=bool(calls), tool_name=name,
-                finish_reason=ch.get("finish_reason"))
+    data = dict(emitted_tool_call=bool(calls), tool_name=name, finish_reason=ch.get("finish_reason"))
     if calls:
         return _probe("works", f"native tool call → {name}", "structured tool_call", **data)
     if "scene_get_hierarchy" in text:
-        return _probe("degraded", "named the tool in prose but no structured call",
-                      "structured tool_call", **data)
-    return _probe("broken", "no tool intent — unsuitable for agent mode",
-                  "structured tool_call", **data)
+        return _probe("degraded", "named the tool in prose but no structured call", "structured tool_call", **data)
+    return _probe("broken", "no tool intent — unsuitable for agent mode", "structured tool_call", **data)
 
 
 # ── Layer 2: DevForge ────────────────────────────────────────────
+
 
 async def p_devforge_plan() -> dict:
     cap = await _pipeline_capture()
@@ -1011,28 +1218,51 @@ async def p_devforge_plan() -> dict:
     compile_ms = stages.get("compilation", 0)
     plan_retries_val = art.get("plan_retries", 0)
     truncated = art.get("truncated", False)
-    data = dict(entity_count=len(entities), names=names, types=types,
-                systems=len(delta.get("systems", []) or []), parents=delta.get("parents", {}),
-                apply_ms=apply_ms, model=model,
-                plan_stage_ms=plan_stage_ms, compile_ms=compile_ms,
-                plan_retries=plan_retries_val, stage_latencies=stages,
-                truncated=truncated)
+    data = dict(
+        entity_count=len(entities),
+        names=names,
+        types=types,
+        systems=len(delta.get("systems", []) or []),
+        parents=delta.get("parents", {}),
+        apply_ms=apply_ms,
+        model=model,
+        plan_stage_ms=plan_stage_ms,
+        compile_ms=compile_ms,
+        plan_retries=plan_retries_val,
+        stage_latencies=stages,
+        truncated=truncated,
+    )
     if not entities:
-        return _probe("broken", "planner produced an EMPTY delta (0 entities)",
-                      "≥3 entities w/ valid types, planning <60s", **data)
+        return _probe(
+            "broken",
+            "planner produced an EMPTY delta (0 entities)",
+            "≥3 entities w/ valid types, planning <60s",
+            **data,
+        )
     if len(entities) < 3:
-        return _probe("degraded", f"only {len(entities)} of 3 expected entities: {names}",
-                      "≥3 entities w/ valid types, planning <60s", **data)
+        return _probe(
+            "degraded",
+            f"only {len(entities)} of 3 expected entities: {names}",
+            "≥3 entities w/ valid types, planning <60s",
+            **data,
+        )
     # Correct, but flag a slow planner — the model/DevForge-fit mismatch. The
     # 22B prose model (Cydonia) plans correctly but takes ~100s; qwen3-14b is
     # ~3× faster. For heavy building, swap to qwen3 in the hub first.
     if apply_ms > 60000:
-        return _probe("degraded",
-                      f"planned {len(entities)} entities but SLOW ({apply_ms//1000}s on '{model}') — "
-                      f"swap to qwen3-14b for fast building",
-                      "≥3 entities w/ valid types, planning <60s", **data)
-    return _probe("works", f"planned {len(entities)} entities in {apply_ms//1000}s: {names}",
-                  "≥3 entities w/ valid types, planning <60s", **data)
+        return _probe(
+            "degraded",
+            f"planned {len(entities)} entities but SLOW ({apply_ms // 1000}s on '{model}') — "
+            f"swap to qwen3-14b for fast building",
+            "≥3 entities w/ valid types, planning <60s",
+            **data,
+        )
+    return _probe(
+        "works",
+        f"planned {len(entities)} entities in {apply_ms // 1000}s: {names}",
+        "≥3 entities w/ valid types, planning <60s",
+        **data,
+    )
 
 
 async def p_devforge_compile() -> dict:
@@ -1045,23 +1275,41 @@ async def p_devforge_compile() -> dict:
     parents = {o.get("name"): o.get("parent") for o in adds}
     bad = {n: p for n, p in parents.items() if p and not str(p).startswith("/root/Main")}
     covered = sorted({o.get("name") for o in requested} & PROBE_EXPECTED)
-    data = dict(op_count=len(ops), requested_ops=[o.get("name") for o in requested],
-                scaffold_ops=[o.get("name") for o in adds if o.get("name") in scaffold],
-                parents=parents, bad_parents=bad,
-                coverage=f"{len(covered)}/{len(PROBE_EXPECTED)}")
+    data = dict(
+        op_count=len(ops),
+        requested_ops=[o.get("name") for o in requested],
+        scaffold_ops=[o.get("name") for o in adds if o.get("name") in scaffold],
+        parents=parents,
+        bad_parents=bad,
+        coverage=f"{len(covered)}/{len(PROBE_EXPECTED)}",
+    )
     if bad:
-        return _probe("degraded", f"{len(bad)} op(s) with non-/root/Main parents: {bad}",
-                      "requested ops present, parented /root/Main", **data)
+        return _probe(
+            "degraded",
+            f"{len(bad)} op(s) with non-/root/Main parents: {bad}",
+            "requested ops present, parented /root/Main",
+            **data,
+        )
     if not requested:
-        return _probe("broken",
-                      "compiler emitted ONLY scaffolding (camera/light) — none of "
-                      f"{sorted(PROBE_EXPECTED)} requested",
-                      "requested ops present, parented /root/Main", **data)
+        return _probe(
+            "broken",
+            f"compiler emitted ONLY scaffolding (camera/light) — none of {sorted(PROBE_EXPECTED)} requested",
+            "requested ops present, parented /root/Main",
+            **data,
+        )
     if set(covered) >= PROBE_EXPECTED:
-        return _probe("works", f"all {sorted(PROBE_EXPECTED)} compiled under /root/Main",
-                      "requested ops present, parented /root/Main", **data)
-    return _probe("degraded", f"only {covered} of {sorted(PROBE_EXPECTED)} compiled",
-                  "requested ops present, parented /root/Main", **data)
+        return _probe(
+            "works",
+            f"all {sorted(PROBE_EXPECTED)} compiled under /root/Main",
+            "requested ops present, parented /root/Main",
+            **data,
+        )
+    return _probe(
+        "degraded",
+        f"only {covered} of {sorted(PROBE_EXPECTED)} compiled",
+        "requested ops present, parented /root/Main",
+        **data,
+    )
 
 
 async def p_devforge_execute() -> dict:
@@ -1075,28 +1323,42 @@ async def p_devforge_execute() -> dict:
     added_names = {p.rsplit("/", 1)[-1] for p in added}
     built = sorted(added_names & PROBE_EXPECTED)
     truncated = art.get("truncated", False)
-    data = dict(applied=applied, operations_total=total, error_count=len(errors),
-                errors=errors[:5], nodes_added=added,
-                requested_built=built, coverage=f"{len(built)}/{len(PROBE_EXPECTED)}",
-                before_n=len(cap["before"]), after_n=len(cap["after"]),
-                plan_retries=art.get("plan_retries", 0),
-                repair_count=art.get("repair_count", 0),
-                completeness_added=art.get("completeness_added", 0),
-                truncated=truncated)
+    data = dict(
+        applied=applied,
+        operations_total=total,
+        error_count=len(errors),
+        errors=errors[:5],
+        nodes_added=added,
+        requested_built=built,
+        coverage=f"{len(built)}/{len(PROBE_EXPECTED)}",
+        before_n=len(cap["before"]),
+        after_n=len(cap["after"]),
+        plan_retries=art.get("plan_retries", 0),
+        repair_count=art.get("repair_count", 0),
+        completeness_added=art.get("completeness_added", 0),
+        truncated=truncated,
+    )
     if errors:
-        return _probe("broken" if not added else "degraded",
-                      f"{len(errors)} execution error(s): {errors[:2]}",
-                      "requested nodes built, 0 errors", **data)
+        return _probe(
+            "broken" if not added else "degraded",
+            f"{len(errors)} execution error(s): {errors[:2]}",
+            "requested nodes built, 0 errors",
+            **data,
+        )
     if set(built) >= PROBE_EXPECTED:
-        return _probe("works", f"built all {built}, +{len(added)} nodes, 0 errors",
-                      "requested nodes built, 0 errors", **data)
+        return _probe(
+            "works", f"built all {built}, +{len(added)} nodes, 0 errors", "requested nodes built, 0 errors", **data
+        )
     if built:
-        return _probe("degraded", f"built only {built} of {sorted(PROBE_EXPECTED)}",
-                      "requested nodes built, 0 errors", **data)
-    return _probe("degraded",
-                  f"applied {applied} op(s) but NONE requested — only scaffolding "
-                  f"(+{len(added)} nodes: {added})",
-                  "requested nodes built, 0 errors", **data)
+        return _probe(
+            "degraded", f"built only {built} of {sorted(PROBE_EXPECTED)}", "requested nodes built, 0 errors", **data
+        )
+    return _probe(
+        "degraded",
+        f"applied {applied} op(s) but NONE requested — only scaffolding (+{len(added)} nodes: {added})",
+        "requested nodes built, 0 errors",
+        **data,
+    )
 
 
 async def p_devforge_completeness() -> dict:
@@ -1106,23 +1368,35 @@ async def p_devforge_completeness() -> dict:
     cap = await _pipeline_capture()
     art = cap["artifact"] if isinstance(cap["artifact"], dict) else {}
     ops = [o for o in art.get("operations", []) if isinstance(o, dict)]
-    injected = [o for o in ops if o.get("type") == "add_node"
-                and o.get("node_type") in ("DirectionalLight3D", "Camera3D")
-                and o.get("name") in ("DirectionalLight", "MainCamera")]
+    injected = [
+        o
+        for o in ops
+        if o.get("type") == "add_node"
+        and o.get("node_type") in ("DirectionalLight3D", "Camera3D")
+        and o.get("name") in ("DirectionalLight", "MainCamera")
+    ]
     parents = {o.get("name"): o.get("parent") for o in injected}
     bad = {n: p for n, p in parents.items() if p and not str(p).startswith("/root/Main")}
     errors = cap["raw"].get("errors") or []
     root_errs = [e for e in errors if "not found in scene" in str(e)]
-    data = dict(injected=parents, bad_parents=bad, parent_errors=root_errs,
-                completeness_added=art.get("completeness_added", 0))
+    data = dict(
+        injected=parents, bad_parents=bad, parent_errors=root_errs, completeness_added=art.get("completeness_added", 0)
+    )
     if bad or root_errs:
-        return _probe("broken", f"injected node with invalid parent: {bad or root_errs}",
-                      "injected nodes parented at /root/Main", **data)
+        return _probe(
+            "broken",
+            f"injected node with invalid parent: {bad or root_errs}",
+            "injected nodes parented at /root/Main",
+            **data,
+        )
     if not injected:
-        return _probe("degraded", "no auto-injection observed (light may already exist)",
-                      "injected nodes parented at /root/Main", **data)
-    return _probe("works", f"auto-injected {parents} at valid parent",
-                  "injected nodes parented at /root/Main", **data)
+        return _probe(
+            "degraded",
+            "no auto-injection observed (light may already exist)",
+            "injected nodes parented at /root/Main",
+            **data,
+        )
+    return _probe("works", f"auto-injected {parents} at valid parent", "injected nodes parented at /root/Main", **data)
 
 
 async def p_devforge_validate() -> dict:
@@ -1133,21 +1407,17 @@ async def p_devforge_validate() -> dict:
         {"type": "add_node", "parent": "/root/Main", "node_type": "Node3D", "name": "Good"},
         {"type": "add_node", "parent": "/root/Ghost", "node_type": "Node3D", "name": "Bad"},
     ]
-    res = await _devforge_call("validate_spec",
-                               {"operations": ops, "scene_tree": scene}, timeout_s=30)
+    res = await _devforge_call("validate_spec", {"operations": ops, "scene_tree": scene}, timeout_s=30)
     valid_n = res.get("valid_count")
     err_n = res.get("error_count")
     errors = res.get("errors", [])
     caught = any("Ghost" in str(e) for e in errors)
     data = dict(valid_count=valid_n, error_count=err_n, errors=errors, caught_bad_parent=caught)
     if valid_n == 1 and caught:
-        return _probe("works", "accepted the valid op, rejected the bad parent",
-                      "good→valid, bad→error", **data)
+        return _probe("works", "accepted the valid op, rejected the bad parent", "good→valid, bad→error", **data)
     if valid_n == 2:
-        return _probe("degraded", "accepted BOTH ops — missed the nonexistent parent",
-                      "good→valid, bad→error", **data)
-    return _probe("broken", f"validator rejected the valid op (valid={valid_n})",
-                  "good→valid, bad→error", **data)
+        return _probe("degraded", "accepted BOTH ops — missed the nonexistent parent", "good→valid, bad→error", **data)
+    return _probe("broken", f"validator rejected the valid op (valid={valid_n})", "good→valid, bad→error", **data)
 
 
 async def p_devforge_roundtrip() -> dict:
@@ -1159,22 +1429,25 @@ async def p_devforge_roundtrip() -> dict:
 
     def _count(node):
         n = 1
-        for ch in (node.get("children") or []):
+        for ch in node.get("children") or []:
             n += _count(ch)
         return n
+
     df_n = _count(scene) if isinstance(scene, dict) and scene.get("name") else 0
-    data = dict(devforge_nodes=df_n, godot_nodes=len(godot),
-                devforge_root=scene.get("name") if isinstance(scene, dict) else None)
+    data = dict(
+        devforge_nodes=df_n,
+        godot_nodes=len(godot),
+        devforge_root=scene.get("name") if isinstance(scene, dict) else None,
+    )
     if df_n == 0:
         return _probe("broken", "DevForge returned no scene tree", "counts match", **data)
     if df_n == len(godot):
-        return _probe("works", f"both see {df_n} nodes (root '{data['devforge_root']}')",
-                      "counts match", **data)
-    return _probe("degraded", f"DevForge sees {df_n}, godot-ai sees {len(godot)}",
-                  "counts match", **data)
+        return _probe("works", f"both see {df_n} nodes (root '{data['devforge_root']}')", "counts match", **data)
+    return _probe("degraded", f"DevForge sees {df_n}, godot-ai sees {len(godot)}", "counts match", **data)
 
 
 # ── Layer 3: godot-ai (editor bridge) ────────────────────────────
+
 
 async def p_godotai_latency() -> dict:
     """Write round-trip: create a node, verify it, delete it — with timings."""
@@ -1191,8 +1464,9 @@ async def p_godotai_latency() -> dict:
     if not verified:
         return _probe("broken", "node_create did not produce the node", "verified, <1.5s round-trip", **data)
     v = "works" if rt < 1500 else ("degraded" if rt < 5000 else "broken")
-    return _probe(v, f"create {create_ms} + delete {delete_ms} ms round-trip",
-                  "verified · <1.5s works · <5s degraded", **data)
+    return _probe(
+        v, f"create {create_ms} + delete {delete_ms} ms round-trip", "verified · <1.5s works · <5s degraded", **data
+    )
 
 
 async def p_godotai_fidelity() -> dict:
@@ -1201,17 +1475,16 @@ async def p_godotai_fidelity() -> dict:
     h = await _godot_ai_call("scene_get_hierarchy", {"depth": 10})
     nodes = h.get("nodes", [])
     root = nodes[0].get("name") if nodes else None
-    data = dict(node_count=len(nodes), root=root, has_more=h.get("has_more"),
-                sample=[n.get("path") for n in nodes[:5]])
+    data = dict(node_count=len(nodes), root=root, has_more=h.get("has_more"), sample=[n.get("path") for n in nodes[:5]])
     if not nodes:
-        return _probe("broken", "empty hierarchy — no scene or broken editor link",
-                      "≥1 node, named root", **data)
+        return _probe("broken", "empty hierarchy — no scene or broken editor link", "≥1 node, named root", **data)
     if root != "Main":
         return _probe("degraded", f"root is '{root}', expected 'Main'", "≥1 node, named root", **data)
     return _probe("works", f"{len(nodes)} nodes, root '{root}'", "≥1 node, named root", **data)
 
 
 # ── Layer 4: Godot runtime ───────────────────────────────────────
+
 
 async def p_runtime_launch() -> dict:
     """Does the game actually RUN? Launch the disposable scene, poll FPS until
@@ -1222,8 +1495,7 @@ async def p_runtime_launch() -> dict:
     capture_ready = False
     polls = 0
     try:
-        await _godot_ai_call("project_run",
-                             {"mode": "custom", "scene": PROBE_SCENE, "autosave": False})
+        await _godot_ai_call("project_run", {"mode": "custom", "scene": PROBE_SCENE, "autosave": False})
         launched = True
         # Poll up to ~9s: the running game needs a moment before its monitors
         # report and game_capture_ready flips true.
@@ -1235,8 +1507,9 @@ async def p_runtime_launch() -> dict:
             except Exception:
                 pass
             try:
-                mon = await _godot_ai_call("editor_manage",
-                                           {"op": "monitors_get", "params": {"monitors": ["time/fps"]}})
+                mon = await _godot_ai_call(
+                    "editor_manage", {"op": "monitors_get", "params": {"monitors": ["time/fps"]}}
+                )
                 mdata = mon.get("data", mon)
                 if isinstance(mdata, dict):
                     fps = mdata.get("time/fps", 0) or 0
@@ -1245,8 +1518,7 @@ async def p_runtime_launch() -> dict:
             if fps and fps > 0:
                 break
     except Exception as e:
-        return _probe("broken", f"failed to launch: {e}", "FPS>0, no errors",
-                      launched=launched, fps=fps)
+        return _probe("broken", f"failed to launch: {e}", "FPS>0, no errors", launched=launched, fps=fps)
     finally:
         try:
             await _godot_ai_call("project_manage", {"op": "stop"})
@@ -1256,31 +1528,48 @@ async def p_runtime_launch() -> dict:
     if fps and fps > 0:
         return _probe("works", f"running at {fps} FPS (after {polls} poll(s))", "FPS>0, no errors", **data)
     if capture_ready or launched:
-        return _probe("degraded",
-                      "launched + capture ready but FPS monitor read 0 (editor monitor quirk)"
-                      if capture_ready else "launched but FPS stayed 0",
-                      "FPS>0, no errors", **data)
+        return _probe(
+            "degraded",
+            "launched + capture ready but FPS monitor read 0 (editor monitor quirk)"
+            if capture_ready
+            else "launched but FPS stayed 0",
+            "FPS>0, no errors",
+            **data,
+        )
     return _probe("broken", "did not launch", "FPS>0, no errors", **data)
 
 
 # ── Layer 5: Odysseus (product consumer) ─────────────────────────
+
 
 async def p_ody_persona() -> dict:
     """The live persona is the configured strategy prompt, not a clobbered husk."""
     try:
         c = json.loads(PRESETS.read_text()).get("custom", {})
     except Exception as e:
-        return _probe("broken", f"can't read presets.json: {e}", "enabled, ~3.9k prompt", )
+        return _probe(
+            "broken",
+            f"can't read presets.json: {e}",
+            "enabled, ~3.9k prompt",
+        )
     sp = c.get("system_prompt") or ""
     suf = c.get("inject_suffix", "") or ""
     temp = float(c.get("temperature", 1.0))
-    data = dict(enabled=bool(c.get("enabled")), system_prompt_chars=len(sp),
-                temperature=temp, has_mcp="mcp" in suf.lower(),
-                has_nothink="/no_think" in suf, character_name=c.get("character_name"))
+    data = dict(
+        enabled=bool(c.get("enabled")),
+        system_prompt_chars=len(sp),
+        temperature=temp,
+        has_mcp="mcp" in suf.lower(),
+        has_nothink="/no_think" in suf,
+        character_name=c.get("character_name"),
+    )
     if not c.get("enabled") or len(sp) < 1000:
-        return _probe("broken",
-                      f"persona husk — enabled={data['enabled']}, prompt {len(sp)} chars",
-                      "enabled, ~3.9k prompt, 'MCP'+/no_think", **data)
+        return _probe(
+            "broken",
+            f"persona husk — enabled={data['enabled']}, prompt {len(sp)} chars",
+            "enabled, ~3.9k prompt, 'MCP'+/no_think",
+            **data,
+        )
     minor = []
     if not data["has_mcp"]:
         minor.append("'MCP' missing from inject_suffix (tool retrieval won't run)")
@@ -1290,8 +1579,12 @@ async def p_ody_persona() -> dict:
         minor.append(f"temp {temp} > 0.35")
     if minor:
         return _probe("degraded", "; ".join(minor), "enabled, ~3.9k prompt, 'MCP'+/no_think", **data)
-    return _probe("works", f"enabled, {len(sp)} char prompt, temp {temp}, MCP+/no_think",
-                  "enabled, ~3.9k prompt, 'MCP'+/no_think", **data)
+    return _probe(
+        "works",
+        f"enabled, {len(sp)} char prompt, temp {temp}, MCP+/no_think",
+        "enabled, ~3.9k prompt, 'MCP'+/no_think",
+        **data,
+    )
 
 
 async def p_ody_retrieval() -> dict:
@@ -1329,90 +1622,180 @@ async def p_ody_retrieval() -> dict:
     )
     code, out = await _sh("docker", "exec", ODY_CONTAINER, "python", "-c", script, timeout=90)
     if code != 0:
-        return _probe("broken", f"retrieval probe failed in container: {out.strip()[:120]}",
-                      "apply_spec retrievable (or index warm)")
+        return _probe(
+            "broken",
+            f"retrieval probe failed in container: {out.strip()[:120]}",
+            "apply_spec retrievable (or index warm)",
+        )
     try:
         res = json.loads(out.strip().splitlines()[-1])
     except Exception:
-        return _probe("broken", f"unparseable retrieval output: {out.strip()[:120]}",
-                      "apply_spec retrievable (or index warm)")
+        return _probe(
+            "broken", f"unparseable retrieval output: {out.strip()[:120]}", "apply_spec retrievable (or index warm)"
+        )
     tools = res.get("retrieved", [])
     mcp = [t for t in tools if t.startswith("mcp__")]
-    data = dict(retrieved=tools, mcp_tools=mcp,
-                apply_spec_present="mcp__devforge__apply_spec" in tools,
-                mcp_in_collection=res.get("mcp_in_collection"),
-                lane_counts=res.get("lane_counts"), error=res.get("error"))
+    data = dict(
+        retrieved=tools,
+        mcp_tools=mcp,
+        apply_spec_present="mcp__devforge__apply_spec" in tools,
+        mcp_in_collection=res.get("mcp_in_collection"),
+        lane_counts=res.get("lane_counts"),
+        error=res.get("error"),
+    )
     if data["apply_spec_present"]:
-        return _probe("works", f"apply_spec retrieved (MCP in top-k: {mcp})",
-                      "apply_spec retrievable", **data)
+        return _probe("works", f"apply_spec retrieved (MCP in top-k: {mcp})", "apply_spec retrievable", **data)
     if not res.get("mcp_in_collection"):
-        return _probe("degraded",
-                      "MCP tools not yet in the index — they index on the first agent chat "
-                      "after a restart (run one chat turn to warm it)",
-                      "apply_spec retrievable (or index warm)", **data)
+        return _probe(
+            "degraded",
+            "MCP tools not yet in the index — they index on the first agent chat "
+            "after a restart (run one chat turn to warm it)",
+            "apply_spec retrievable (or index warm)",
+            **data,
+        )
     if mcp:
-        return _probe("degraded", f"MCP tools indexed but apply_spec not in top-k: {mcp}",
-                      "apply_spec retrievable", **data)
-    return _probe("broken", "MCP tools indexed but none retrieved for a build query",
-                  "apply_spec retrievable", **data)
+        return _probe(
+            "degraded", f"MCP tools indexed but apply_spec not in top-k: {mcp}", "apply_spec retrievable", **data
+        )
+    return _probe("broken", "MCP tools indexed but none retrieved for a build query", "apply_spec retrievable", **data)
 
 
 # ── probe registry + runner ──────────────────────────────────────
 
 PROBES: list[dict] = [
     # Layer 1 — llama
-    dict(id="llama.throughput", layer="llama", speed="fast", fn=p_llama_throughput,
-         title="Generation throughput",
-         desc="Tokens/sec and time-to-first-token for a fixed completion."),
-    dict(id="llama.context", layer="llama", speed="fast", fn=p_llama_context,
-         title="Context window actually loaded",
-         desc="The n_ctx in memory vs what stack.env configured (catches silent clamping)."),
-    dict(id="llama.grammar", layer="llama", speed="fast", fn=p_llama_grammar,
-         title="Grammar enforcement",
-         desc="Does the server hold output to a GBNF grammar? The planner depends on it."),
-    dict(id="llama.thinking", layer="llama", speed="slow", fn=p_llama_thinking,
-         title="Answer vs hidden reasoning",
-         desc="Content chars vs reasoning chars — catches the thinking-trap (empty answer)."),
-    dict(id="llama.tools", layer="llama", speed="slow", fn=p_llama_tools,
-         title="Native tool calling",
-         desc="Does the model emit a structured tool call for an obvious tool task?"),
+    dict(
+        id="llama.throughput",
+        layer="llama",
+        speed="fast",
+        fn=p_llama_throughput,
+        title="Generation throughput",
+        desc="Tokens/sec and time-to-first-token for a fixed completion.",
+    ),
+    dict(
+        id="llama.context",
+        layer="llama",
+        speed="fast",
+        fn=p_llama_context,
+        title="Context window actually loaded",
+        desc="The n_ctx in memory vs what stack.env configured (catches silent clamping).",
+    ),
+    dict(
+        id="llama.grammar",
+        layer="llama",
+        speed="fast",
+        fn=p_llama_grammar,
+        title="Grammar enforcement",
+        desc="Does the server hold output to a GBNF grammar? The planner depends on it.",
+    ),
+    dict(
+        id="llama.thinking",
+        layer="llama",
+        speed="slow",
+        fn=p_llama_thinking,
+        title="Answer vs hidden reasoning",
+        desc="Content chars vs reasoning chars — catches the thinking-trap (empty answer).",
+    ),
+    dict(
+        id="llama.tools",
+        layer="llama",
+        speed="slow",
+        fn=p_llama_tools,
+        title="Native tool calling",
+        desc="Does the model emit a structured tool call for an obvious tool task?",
+    ),
     # Layer 2 — DevForge
-    dict(id="devforge.plan", layer="devforge", speed="slow", fn=p_devforge_plan,
-         title="Planner architecture delta",
-         desc="The entities/types the planner produces for a fixed prompt (shares one apply_spec)."),
-    dict(id="devforge.compile", layer="devforge", speed="slow", fn=p_devforge_compile,
-         title="Compiler operations + parent paths",
-         desc="The add_node ops the compiler emits and whether they parent under /root/Main."),
-    dict(id="devforge.completeness", layer="devforge", speed="slow", fn=p_devforge_completeness,
-         title="Completeness injector parents",
-         desc="Auto-injected camera/light must use a valid /root/Main parent (regression guard)."),
-    dict(id="devforge.execute", layer="devforge", speed="slow", fn=p_devforge_execute,
-         title="Full apply_spec execution",
-         desc="ops applied, errors, and the actual nodes added to the scene."),
-    dict(id="devforge.validate", layer="devforge", speed="fast", fn=p_devforge_validate,
-         title="Validator accept/reject",
-         desc="Deterministic: accepts a valid op, rejects a nonexistent parent. No LLM."),
-    dict(id="devforge.roundtrip", layer="devforge", speed="fast", fn=p_devforge_roundtrip,
-         title="Scene view parity",
-         desc="DevForge's scene tree matches godot-ai's for the same live scene."),
+    dict(
+        id="devforge.plan",
+        layer="devforge",
+        speed="slow",
+        fn=p_devforge_plan,
+        title="Planner architecture delta",
+        desc="The entities/types the planner produces for a fixed prompt (shares one apply_spec).",
+    ),
+    dict(
+        id="devforge.compile",
+        layer="devforge",
+        speed="slow",
+        fn=p_devforge_compile,
+        title="Compiler operations + parent paths",
+        desc="The add_node ops the compiler emits and whether they parent under /root/Main.",
+    ),
+    dict(
+        id="devforge.completeness",
+        layer="devforge",
+        speed="slow",
+        fn=p_devforge_completeness,
+        title="Completeness injector parents",
+        desc="Auto-injected camera/light must use a valid /root/Main parent (regression guard).",
+    ),
+    dict(
+        id="devforge.execute",
+        layer="devforge",
+        speed="slow",
+        fn=p_devforge_execute,
+        title="Full apply_spec execution",
+        desc="ops applied, errors, and the actual nodes added to the scene.",
+    ),
+    dict(
+        id="devforge.validate",
+        layer="devforge",
+        speed="fast",
+        fn=p_devforge_validate,
+        title="Validator accept/reject",
+        desc="Deterministic: accepts a valid op, rejects a nonexistent parent. No LLM.",
+    ),
+    dict(
+        id="devforge.roundtrip",
+        layer="devforge",
+        speed="fast",
+        fn=p_devforge_roundtrip,
+        title="Scene view parity",
+        desc="DevForge's scene tree matches godot-ai's for the same live scene.",
+    ),
     # Layer 3 — godot-ai
-    dict(id="godotai.latency", layer="godot-ai", speed="fast", fn=p_godotai_latency,
-         title="Write round-trip latency",
-         desc="Time to create + verify + delete a node through the editor bridge."),
-    dict(id="godotai.fidelity", layer="godot-ai", speed="fast", fn=p_godotai_fidelity,
-         title="Scene tree fidelity",
-         desc="The editor returns a faithful, walkable hierarchy with a named root."),
+    dict(
+        id="godotai.latency",
+        layer="godot-ai",
+        speed="fast",
+        fn=p_godotai_latency,
+        title="Write round-trip latency",
+        desc="Time to create + verify + delete a node through the editor bridge.",
+    ),
+    dict(
+        id="godotai.fidelity",
+        layer="godot-ai",
+        speed="fast",
+        fn=p_godotai_fidelity,
+        title="Scene tree fidelity",
+        desc="The editor returns a faithful, walkable hierarchy with a named root.",
+    ),
     # Layer 4 — runtime
-    dict(id="runtime.launch", layer="runtime", speed="slow", fn=p_runtime_launch,
-         title="Game actually runs",
-         desc="Launches the disposable scene and reads FPS — proves the project boots."),
+    dict(
+        id="runtime.launch",
+        layer="runtime",
+        speed="slow",
+        fn=p_runtime_launch,
+        title="Game actually runs",
+        desc="Launches the disposable scene and reads FPS — proves the project boots.",
+    ),
     # Layer 5 — odysseus
-    dict(id="odysseus.persona", layer="odysseus", speed="fast", fn=p_ody_persona,
-         title="Live persona is the real prompt",
-         desc="The active persona is the full strategy prompt with MCP/no_think, not a husk."),
-    dict(id="odysseus.retrieval", layer="odysseus", speed="slow", fn=p_ody_retrieval,
-         title="Tool retrieval surfaces apply_spec",
-         desc="Odysseus's tool index returns apply_spec for a build request (else the model can't build)."),
+    dict(
+        id="odysseus.persona",
+        layer="odysseus",
+        speed="fast",
+        fn=p_ody_persona,
+        title="Live persona is the real prompt",
+        desc="The active persona is the full strategy prompt with MCP/no_think, not a husk.",
+    ),
+    dict(
+        id="odysseus.retrieval",
+        layer="odysseus",
+        speed="slow",
+        fn=p_ody_retrieval,
+        title="Tool retrieval surfaces apply_spec",
+        desc="Odysseus's tool index returns apply_spec for a build request (else the model can't build).",
+    ),
 ]
 
 
@@ -1435,7 +1818,7 @@ async def run_probes(ids: list[str], emit: Callable[[str], None]) -> dict:
     total = len(ordered)
     for i, pid in enumerate(ordered):
         p = by_id[pid]
-        emit(f"[probe:run] {i+1}/{total} {pid}")
+        emit(f"[probe:run] {i + 1}/{total} {pid}")
         emit(f"▶ {pid} — {p['title']}")
         t0 = time.time()
         try:
@@ -1448,7 +1831,7 @@ async def run_probes(ids: list[str], emit: Callable[[str], None]) -> dict:
         v = res.get("verdict", "broken")
         counts[v] = counts.get(v, 0) + 1
         by_layer.setdefault(p["layer"], []).append(v)
-        emit(f"  [{v.upper()}] ({ms} ms) {res.get('summary','')}")
+        emit(f"  [{v.upper()}] ({ms} ms) {res.get('summary', '')}")
     # If any DevForge/runtime probe touched the disposable probe scene, leave
     # the editor back on the real game scene.
     if any(by_id[i]["layer"] in ("devforge", "godot-ai", "runtime") for i in ordered):
@@ -1462,8 +1845,9 @@ async def run_probes(ids: list[str], emit: Callable[[str], None]) -> dict:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     out = DATA_DIR / f"probe-{time.strftime('%Y%m%d-%H%M%S')}.json"
     out.write_text(json.dumps(run, indent=2))
-    emit(f"[probe:done] {counts['works']} works / {counts['degraded']} degraded / "
-         f"{counts['broken']} broken → {out.name}")
+    emit(
+        f"[probe:done] {counts['works']} works / {counts['degraded']} degraded / {counts['broken']} broken → {out.name}"
+    )
     return run
 
 
@@ -1473,8 +1857,15 @@ def probe_history(limit: int = 30) -> list[dict]:
     for f in sorted(DATA_DIR.glob("probe-*.json"), reverse=True)[:limit]:
         try:
             d = json.loads(f.read_text())
-            runs.append({"file": f.name, "ts": d.get("ts"), "model": d.get("model"),
-                         "counts": d.get("counts"), "layer_rollup": d.get("layer_rollup")})
+            runs.append(
+                {
+                    "file": f.name,
+                    "ts": d.get("ts"),
+                    "model": d.get("model"),
+                    "counts": d.get("counts"),
+                    "layer_rollup": d.get("layer_rollup"),
+                }
+            )
         except Exception:
             continue
     return runs
@@ -1490,6 +1881,7 @@ PROBE_BUNDLES = {
 
 # ── CLI ──────────────────────────────────────────────────────────
 
+
 def _cli() -> None:
     """Standalone runner. Default action is the deep probe suite.
 
@@ -1499,6 +1891,7 @@ def _cli() -> None:
       python bench.py --list
     """
     import sys
+
     args = sys.argv[1:]
 
     if "--list" in args:

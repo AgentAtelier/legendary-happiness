@@ -6,7 +6,6 @@ from typing import Dict
 
 
 class FeatureRegistry:
-
     def __init__(self):
 
         self._features: Dict[str, object] = {}

@@ -138,6 +138,7 @@ _recent_prompts: list[str] = []
 # Request Models
 # ------------------------------------------------------------
 
+
 class GenerateRequest(BaseModel):
     prompt: str
     scene_tree: dict[str, Any]
@@ -151,13 +152,13 @@ class ReportRequest(BaseModel):
 # Utilities
 # ------------------------------------------------------------
 
+
 def _dedupe_files(files: list[dict]) -> list[dict]:
 
     seen = set()
     result = []
 
     for f in files:
-
         path = f.get("path")
 
         if not path:
@@ -178,7 +179,6 @@ def _dedupe_operations(ops: list[dict]) -> list[dict]:
     result = []
 
     for op in ops:
-
         key = tuple(sorted(op.items()))
 
         if key in seen:
@@ -203,6 +203,7 @@ def _save_graph():
 # Health
 # ------------------------------------------------------------
 
+
 @app.get("/")
 def health():
 
@@ -217,13 +218,13 @@ def health():
 # Generate
 # ------------------------------------------------------------
 
+
 @app.post("/generate")
 def generate(req: GenerateRequest):
 
     trace = monitor.begin_trace(req.prompt)
 
     try:
-
         start = time.time()
 
         scene_tree = req.scene_tree
@@ -278,8 +279,7 @@ def generate(req: GenerateRequest):
             if attempt == max_retries:
                 monitor.log_error(
                     trace,
-                    f"Planning failed after {attempt} attempts: "
-                    + "; ".join(retry_errors),
+                    f"Planning failed after {attempt} attempts: " + "; ".join(retry_errors),
                 )
                 monitor.end_trace(trace, status="error")
                 return {
@@ -289,14 +289,8 @@ def generate(req: GenerateRequest):
                 }
 
             # Escalation: trim context on retry, feed back error
-            retry_prompt = (
-                f"{req.prompt}\n\n"
-                f"The previous plan failed: {retry_errors[-1]}. "
-                f"Fix only those issues."
-            )
-            retry_context = assembler.assemble(
-                scene_tree, retry_prompt, minimal=(attempt >= 2)
-            )
+            retry_prompt = f"{req.prompt}\n\nThe previous plan failed: {retry_errors[-1]}. Fix only those issues."
+            retry_context = assembler.assemble(scene_tree, retry_prompt, minimal=(attempt >= 2))
             monitor.log_step(
                 trace,
                 f"planning_retry_{attempt}",
@@ -337,10 +331,7 @@ def generate(req: GenerateRequest):
         )
 
         if errors:
-
-            monitor.log_warning(trace, "validation_failed", {
-                "errors": errors
-            })
+            monitor.log_warning(trace, "validation_failed", {"errors": errors})
 
         # ------------------------------------------------
         # Architecture validation
@@ -349,26 +340,19 @@ def generate(req: GenerateRequest):
         arch_issues = _arch_validator.validate(_system_graph)
 
         if arch_issues:
-
             _snapshot_manager.restore_last(_system_graph)
 
-            monitor.log_warning(trace, "architecture_rollback", {
-                "issues": arch_issues
-            })
+            monitor.log_warning(trace, "architecture_rollback", {"issues": arch_issues})
 
         # ------------------------------------------------
         # Track files
         # ------------------------------------------------
 
         for f in files:
-
             path = f.get("path")
 
             if path:
-                _world_state.register_file(
-                    path,
-                    created_by_step="prompt"
-                )
+                _world_state.register_file(path, created_by_step="prompt")
 
         _world_state.save(REPO_ROOT)
 
@@ -406,20 +390,17 @@ def generate(req: GenerateRequest):
         }
 
     except Exception as exc:
-
         monitor.log_error(trace, f"Generate failed: {exc}")
 
         monitor.end_trace(trace, status="error")
 
-        return {
-            "files": [],
-            "operations": []
-        }
+        return {"files": [], "operations": []}
 
 
 # ------------------------------------------------------------
 # Report
 # ------------------------------------------------------------
+
 
 @app.post("/report")
 def report(req: ReportRequest):
@@ -428,7 +409,6 @@ def report(req: ReportRequest):
     failures = 0
 
     for r in req.results:
-
         status = r.get("status")
 
         if status == "ok":
@@ -437,11 +417,9 @@ def report(req: ReportRequest):
             failures += 1
 
     if _session_log:
-
         last = _session_log[-1]
 
         if successes > 0:
-
             for op in last.get("operations", []):
                 _system_graph_updater.apply_operation(op)
 
@@ -457,6 +435,7 @@ def report(req: ReportRequest):
 # ------------------------------------------------------------
 # Status
 # ------------------------------------------------------------
+
 
 @app.get("/status")
 def status():

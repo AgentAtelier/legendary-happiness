@@ -27,11 +27,19 @@ ENVFILE = HOME / ".config/forge-stack/stack.env"
 
 # Phase 6: stack.env schema
 REQUIRED_KEYS = [
-    "LLAMA_BIN", "MODEL", "MODEL_ALIAS", "LLAMA_PORT",
-    "LLAMA_BASE_ARGS", "LLAMA_ARGS",
-    "GODOT_BIN", "GAME_PROJECT",
-    "DEVFORGE_DIR", "MCP_PORT", "DEVFORGE_PROMPT_TEMPLATE",
-    "ODYSSEUS_DIR", "ODYSSEUS_URL",
+    "LLAMA_BIN",
+    "MODEL",
+    "MODEL_ALIAS",
+    "LLAMA_PORT",
+    "LLAMA_BASE_ARGS",
+    "LLAMA_ARGS",
+    "GODOT_BIN",
+    "GAME_PROJECT",
+    "DEVFORGE_DIR",
+    "MCP_PORT",
+    "DEVFORGE_PROMPT_TEMPLATE",
+    "ODYSSEUS_DIR",
+    "ODYSSEUS_URL",
     "GODOT_AI_PORT",
 ]
 
@@ -169,8 +177,9 @@ def validate_env(text: str) -> list[str]:
     base_args = env.get("LLAMA_BASE_ARGS", "")
     for cap in REQUIRED_SAFETY_CAPS:
         if cap not in base_args:
-            errors.append(f"LLAMA_BASE_ARGS is missing safety cap: {cap} "
-                          f"(without it, one runaway request blocks the whole chain)")
+            errors.append(
+                f"LLAMA_BASE_ARGS is missing safety cap: {cap} (without it, one runaway request blocks the whole chain)"
+            )
 
     # Port numbers should be numeric
     port_keys = ["LLAMA_PORT", "MCP_PORT", "GODOT_AI_PORT"]

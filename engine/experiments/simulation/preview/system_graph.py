@@ -8,7 +8,6 @@ from typing import Dict, List, Set, Any
 
 @dataclass
 class SystemNode:
-
     name: str
     inputs: Set[str]
     outputs: Set[str]
@@ -43,14 +42,11 @@ class SystemGraph:
         edges = []
 
         for a in self.nodes.values():
-
             for b in self.nodes.values():
-
                 if a.name == b.name:
                     continue
 
                 if a.outputs.intersection(b.inputs):
-
                     edges.append(
                         {
                             "from": a.name,

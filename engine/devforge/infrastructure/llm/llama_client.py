@@ -20,7 +20,7 @@ PROMPT_TEMPLATES: dict[str, dict] = {
     # Gemma has no system role — chat() folds system text into the user turn
     "gemma": {
         "user_wrap": "<start_of_turn>user\n{prompt}<end_of_turn>\n<start_of_turn>model\n",
-        "system_wrap": None,   # fold into user turn as "[Instructions]\n{system}\n\n"
+        "system_wrap": None,  # fold into user turn as "[Instructions]\n{system}\n\n"
     },
     # ChatML (Qwen3, and most Qwen/Yi/InternLM family models)
     # NOTE: Qwen3 may emit ``<think>...</think>`` blocks —
@@ -56,8 +56,7 @@ def normalize_gbnf(text: str) -> str:
         if stripped.startswith("|"):
             # Attach to the most recent rule line (skip blanks/comments)
             i = len(out) - 1
-            while i >= 0 and (not out[i].strip()
-                              or out[i].lstrip().startswith("#")):
+            while i >= 0 and (not out[i].strip() or out[i].lstrip().startswith("#")):
                 i -= 1
             if i >= 0:
                 out[i] = out[i].rstrip() + " " + stripped
@@ -72,6 +71,7 @@ class BudgetExceededError(RuntimeError):
     Distinct from other RuntimeErrors so callers can treat it as
     terminal — no amount of retrying will help.
     """
+
     pass
 
 
@@ -101,9 +101,7 @@ def apply_server_limits(config, client: "LlamaClient") -> None:
         return
 
     n_ctx = props["n_ctx"]
-    effective = effective_context_budget(
-        n_ctx, config.llama_max_tokens, config.context_token_budget
-    )
+    effective = effective_context_budget(n_ctx, config.llama_max_tokens, config.context_token_budget)
     if effective < config.context_token_budget:
         logger.warn(
             "llama_client",
@@ -154,13 +152,10 @@ def apply_server_limits(config, client: "LlamaClient") -> None:
 # ContextVar so concurrent apply_spec calls in the same process
 # don't overwrite each other's turn_id.  Read directly at
 # request-build time — no shared mutable backend attribute.
-_turn_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "llm_turn_id", default=None
-)
+_turn_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("llm_turn_id", default=None)
 
 
 class LlamaClient:
-
     def __init__(
         self,
         endpoint: str = "http://localhost:8080",
@@ -172,8 +167,7 @@ class LlamaClient:
     ):
         if prompt_template not in VALID_PROMPT_TEMPLATES:
             raise ValueError(
-                f"Unknown prompt_template '{prompt_template}'. "
-                f"Valid options: {sorted(VALID_PROMPT_TEMPLATES)}"
+                f"Unknown prompt_template '{prompt_template}'. Valid options: {sorted(VALID_PROMPT_TEMPLATES)}"
             )
 
         self.endpoint = endpoint.rstrip("/")
@@ -218,8 +212,7 @@ class LlamaClient:
         """
         # Wrap using the active prompt template
         formatted = self._wrap(prompt)
-        return self._generate_impl(formatted, grammar=grammar,
-                                   temperature=temperature, top_p=top_p, top_k=top_k)
+        return self._generate_impl(formatted, grammar=grammar, temperature=temperature, top_p=top_p, top_k=top_k)
 
     def _generate_impl(
         self,
@@ -289,10 +282,7 @@ class LlamaClient:
                 content = data.get("content", "")
 
                 # Detect truncation — n_predict limit reached before completion
-                stopped_by_limit = (
-                    data.get("stopped_limit", False)
-                    or data.get("stop_type") == "limit"
-                )
+                stopped_by_limit = data.get("stopped_limit", False) or data.get("stop_type") == "limit"
                 self.last_truncated = bool(stopped_by_limit)
                 if self.last_truncated:
                     logger.warn(
@@ -324,10 +314,7 @@ class LlamaClient:
             except requests.ConnectionError as ce:
                 last_conn_error = ce
                 if attempt == 2:
-                    raise RuntimeError(
-                        f"Cannot connect to llama.cpp at {self.endpoint}. "
-                        "Is the server running?"
-                    )
+                    raise RuntimeError(f"Cannot connect to llama.cpp at {self.endpoint}. Is the server running?")
                 logger.warn(
                     "llama_client",
                     f"Connection refused — retrying ({attempt}/2)",
@@ -335,9 +322,7 @@ class LlamaClient:
                 time.sleep(0.5)
             except requests.Timeout:
                 if attempt == 2:
-                    raise RuntimeError(
-                        f"LLM request timed out after {self.timeout_s}s"
-                    )
+                    raise RuntimeError(f"LLM request timed out after {self.timeout_s}s")
                 logger.warn(
                     "llama_client",
                     f"Request timed out — retrying ({attempt}/2)",
@@ -346,9 +331,7 @@ class LlamaClient:
             except requests.HTTPError as he:
                 # 429 = budget exceeded — terminal, never retry
                 if he.response is not None and he.response.status_code == 429:
-                    raise BudgetExceededError(
-                        f"Token budget exceeded: {he.response.text}"
-                    ) from he
+                    raise BudgetExceededError(f"Token budget exceeded: {he.response.text}") from he
                 raise RuntimeError(f"LLM HTTP error: {he}")
             except Exception as exc:
                 raise RuntimeError(f"LLM request failed: {exc}")
@@ -405,8 +388,7 @@ class LlamaClient:
         prompt_parts.append(tmpl["user_wrap"].format(prompt=user_text))
         prompt = "".join(prompt_parts)
 
-        return self._generate_impl(prompt, grammar=grammar,
-                                   temperature=temperature, top_p=top_p, top_k=top_k)
+        return self._generate_impl(prompt, grammar=grammar, temperature=temperature, top_p=top_p, top_k=top_k)
 
     # ------------------------------------------------------------------
     # Gemma chat template
@@ -513,9 +495,7 @@ class LlamaClient:
             # produce for this prompt; anything else means grammars are
             # being ignored server-wide.
             sentinel = "DEVFORGE-GRAMMAR-OK"
-            out = self.generate(
-                "Say hello.", grammar=f'root ::= "{sentinel}"'
-            ).strip()
+            out = self.generate("Say hello.", grammar=f'root ::= "{sentinel}"').strip()
             if out != sentinel:
                 logger.error(
                     "llama_client",
@@ -534,8 +514,7 @@ class LlamaClient:
             if not out.lstrip().startswith("{"):
                 logger.error(
                     "llama_client",
-                    "GRAMMAR NOT ENFORCED — loaded grammar failed to "
-                    "parse server-side (output not grammar-shaped)",
+                    "GRAMMAR NOT ENFORCED — loaded grammar failed to parse server-side (output not grammar-shaped)",
                     got=out[:120],
                 )
                 return False

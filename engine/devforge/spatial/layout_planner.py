@@ -27,9 +27,7 @@ class LayoutPlanningError(Exception):
 class LayoutPlanner:
     """Generates layout JSON from natural language prompts."""
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "layout_planner.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "layout_planner.gbnf"
 
     def __init__(
         self,
@@ -105,14 +103,11 @@ class LayoutPlanner:
             if gf.exists():
                 raw = gf.read_text(encoding="utf-8")
                 self._grammar_text = raw.replace("\r\n", "\n").strip()
-                logger.info("layout_planner",
-                    f"Loaded grammar from {self._grammar_path}")
+                logger.info("layout_planner", f"Loaded grammar from {self._grammar_path}")
             else:
-                logger.warn("layout_planner",
-                    f"Grammar not found: {self._grammar_path}")
+                logger.warn("layout_planner", f"Grammar not found: {self._grammar_path}")
         except Exception as exc:
-            logger.error("layout_planner",
-                f"Failed to load grammar: {exc}")
+            logger.error("layout_planner", f"Failed to load grammar: {exc}")
 
     def _build_prompt(self, context: str, prompt: str) -> str:
         """Build the layout planner prompt."""

@@ -56,9 +56,7 @@ class GeneratedSystem(SimulationSystem):
         # Example rule-based simulation
 
         for rule in self.logic.get("rules", []):
-
             if rule["type"] == "environment_delta":
-
                 key = rule["target"]
 
                 delta = rule.get("delta", 0)
@@ -66,11 +64,9 @@ class GeneratedSystem(SimulationSystem):
                 world.environment[key] = world.environment.get(key, 0) + delta
 
             elif rule["type"] == "event_probability":
-
                 import random
 
                 if random.random() < rule.get("chance", 0):
-
                     world.record_event(
                         rule.get("event", "event"),
                         {},
@@ -111,7 +107,6 @@ class PreviewAdapter:
         result = []
 
         for system in systems:
-
             result.append(self.create_system(system))
 
         return result

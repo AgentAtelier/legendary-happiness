@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Helpers ─────────────────────────────────────────────────────
 
+
 def _make_template_json(slug="test_template", **overrides) -> dict:
     """Build a minimal template dict for testing."""
     data = {
@@ -35,6 +36,7 @@ def _make_template_json(slug="test_template", **overrides) -> dict:
 
 # ── template_from_dict ──────────────────────────────────────────
 
+
 def test_template_from_dict_minimal() -> None:
     """Minimal template dict parses correctly."""
     from devforge.forge.template_ir import template_from_dict
@@ -51,14 +53,14 @@ def test_template_from_dict_with_slots() -> None:
     """Template with slots parses correctly."""
     from devforge.forge.template_ir import template_from_dict
 
-    t = template_from_dict(_make_template_json(
-        slots=[
-            {"name": "speed", "type": "float", "default": 5.0,
-             "description": "Walk speed"},
-            {"name": "enabled", "type": "bool", "default": True,
-             "description": "Enable system"},
-        ]
-    ))
+    t = template_from_dict(
+        _make_template_json(
+            slots=[
+                {"name": "speed", "type": "float", "default": 5.0, "description": "Walk speed"},
+                {"name": "enabled", "type": "bool", "default": True, "description": "Enable system"},
+            ]
+        )
+    )
     assert len(t.slots) == 2
     assert t.slots[0].name == "speed"
     assert t.slots[0].type == "float"
@@ -68,6 +70,7 @@ def test_template_from_dict_with_slots() -> None:
 
 
 # ── resolve_slot_values ─────────────────────────────────────────
+
 
 def test_resolve_defaults_when_none_provided() -> None:
     """All slots use defaults when no values provided."""
@@ -116,6 +119,7 @@ def test_resolve_rejects_wrong_type() -> None:
 
 # ── substitute_slots ────────────────────────────────────────────
 
+
 def test_substitute_slots_replaces_placeholders() -> None:
     """{{var}} placeholders are replaced with values."""
     from devforge.forge.template_ir import substitute_slots
@@ -135,13 +139,13 @@ def test_substitute_unknown_slot_left_as_is() -> None:
 
 # ── substitute_operations ───────────────────────────────────────
 
+
 def test_substitute_operations_deep() -> None:
     """Slot values are substituted in nested operation dicts."""
     from devforge.forge.template_ir import substitute_operations
 
     ops = [
-        {"type": "set_property", "node": "{{player_path}}",
-         "property": "speed", "value": "{{walk_speed}}"},
+        {"type": "set_property", "node": "{{player_path}}", "property": "speed", "value": "{{walk_speed}}"},
     ]
     result = substitute_operations(
         ops,
@@ -152,6 +156,7 @@ def test_substitute_operations_deep() -> None:
 
 
 # ── template engine: list / load ────────────────────────────────
+
 
 def test_list_templates_scans_directory() -> None:
     """list_templates scans for .template.json files."""
@@ -186,18 +191,24 @@ def test_preview_template_shows_operations() -> None:
     from devforge.forge.template_ir import template_from_dict
     from devforge.forge.template_engine import preview_template
 
-    t = template_from_dict(_make_template_json(
-        slug="fps",
-        name="FPS",
-        slots=[
-            {"name": "height", "type": "float", "default": 1.7,
-             "description": "Camera height"},
-        ],
-        operations=[
-            {"type": "add_node", "parent": "/root/Main", "node_type": "Camera3D", "name": "Camera"},
-            {"type": "set_property", "node": "/root/Main/Camera", "property": "position", "value": {"x": 0, "y": "{{height}}", "z": 0}},
-        ],
-    ))
+    t = template_from_dict(
+        _make_template_json(
+            slug="fps",
+            name="FPS",
+            slots=[
+                {"name": "height", "type": "float", "default": 1.7, "description": "Camera height"},
+            ],
+            operations=[
+                {"type": "add_node", "parent": "/root/Main", "node_type": "Camera3D", "name": "Camera"},
+                {
+                    "type": "set_property",
+                    "node": "/root/Main/Camera",
+                    "property": "position",
+                    "value": {"x": 0, "y": "{{height}}", "z": 0},
+                },
+            ],
+        )
+    )
     preview = preview_template(t, {"height": 2.0})
     assert preview["slug"] == "fps"
     assert preview["operation_count"] == 2
@@ -207,10 +218,7 @@ def test_preview_template_shows_operations() -> None:
 
 # ── Real templates (WO-006) ─────────────────────────────────────
 
-_template_dir = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "forge", "templates"
-)
+_template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forge", "templates")
 
 
 def test_fps_controller_template_loads() -> None:
@@ -266,10 +274,16 @@ def test_list_templates_finds_all_real() -> None:
     results = list_templates(directory=_template_dir)
     slugs = {r["slug"] for r in results}
     expected = {
-        "fps_controller", "save_system", "interaction_system",
-        "inventory_system", "quest_system", "dialogue_ui",
-        "day_night_cycle", "world_streaming_cell",
-        "npc_schedule", "lootable_container",
+        "fps_controller",
+        "save_system",
+        "interaction_system",
+        "inventory_system",
+        "quest_system",
+        "dialogue_ui",
+        "day_night_cycle",
+        "world_streaming_cell",
+        "npc_schedule",
+        "lootable_container",
     }
     assert slugs >= expected, f"Missing: {expected - slugs}"
     assert all(r["slot_count"] > 0 for r in results)
@@ -314,6 +328,7 @@ def test_fps_controller_rejects_wrong_type() -> None:
 
 
 # ── WO-006 expansion: 7 new templates ───────────────────────────
+
 
 def test_inventory_system_template_loads() -> None:
     """The real inventory_system template loads from disk."""
@@ -469,9 +484,13 @@ def test_all_templates_resolve_defaults() -> None:
     if not os.path.isdir(_template_dir):
         return
     slugs = [
-        "inventory_system", "quest_system", "dialogue_ui",
-        "day_night_cycle", "world_streaming_cell",
-        "npc_schedule", "lootable_container",
+        "inventory_system",
+        "quest_system",
+        "dialogue_ui",
+        "day_night_cycle",
+        "world_streaming_cell",
+        "npc_schedule",
+        "lootable_container",
     ]
     for slug in slugs:
         t = load_template(slug, directory=_template_dir)
@@ -488,13 +507,16 @@ def _overwrite_fixture():
     from devforge.forge.template_ir import Template, TemplateScript
 
     template = Template(
-        slug="t", name="T", description="d",
+        slug="t",
+        name="T",
+        description="d",
         scripts=[TemplateScript(path="scripts/health.gd", content="extends Node")],
         operations=[{"type": "add_node", "parent": "Sys", "node_type": "Node", "name": "H"}],
     )
     executor = MagicMock()
     executor.execute.return_value = ExecutionResult(
-        success=True, results=[{"success": True}],
+        success=True,
+        results=[{"success": True}],
     )
     return template, executor
 
@@ -505,12 +527,19 @@ def test_required_input_actions_detected() -> None:
     from devforge.forge.template_ir import Template, TemplateScript
 
     t = Template(
-        slug="t", name="T", description="d",
-        scripts=[TemplateScript(path="a.gd", content=(
-            'if Input.is_action_pressed("sprint"): pass\n'
-            'if Input.is_action_just_pressed("ui_accept"): pass\n'
-            'var v = Input.get_vector("move_left", "move_right", "move_forward", "move_back")\n'
-        ))],
+        slug="t",
+        name="T",
+        description="d",
+        scripts=[
+            TemplateScript(
+                path="a.gd",
+                content=(
+                    'if Input.is_action_pressed("sprint"): pass\n'
+                    'if Input.is_action_just_pressed("ui_accept"): pass\n'
+                    'var v = Input.get_vector("move_left", "move_right", "move_forward", "move_back")\n'
+                ),
+            )
+        ],
     )
     actions = required_input_actions(t)
     assert actions == ["move_back", "move_forward", "move_left", "move_right", "sprint"]
@@ -534,7 +563,10 @@ def test_apply_refuses_overwriting_existing_script() -> None:
 
     template, executor = _overwrite_fixture()
     result = instantiate_template(
-        template, None, "/root/Main", executor,
+        template,
+        None,
+        "/root/Main",
+        executor,
         file_exists=lambda p: True,
     )
     assert result["success"] is False
@@ -548,7 +580,10 @@ def test_apply_refuses_when_existence_unverifiable() -> None:
 
     template, executor = _overwrite_fixture()
     result = instantiate_template(
-        template, None, "/root/Main", executor,
+        template,
+        None,
+        "/root/Main",
+        executor,
         file_exists=lambda p: None,
     )
     assert result["success"] is False
@@ -561,7 +596,10 @@ def test_apply_proceeds_when_files_absent() -> None:
 
     template, executor = _overwrite_fixture()
     result = instantiate_template(
-        template, None, "/root/Main", executor,
+        template,
+        None,
+        "/root/Main",
+        executor,
         file_exists=lambda p: False,
     )
     assert result["success"] is True
@@ -574,7 +612,10 @@ def test_apply_overwrite_flag_bypasses_check() -> None:
 
     template, executor = _overwrite_fixture()
     result = instantiate_template(
-        template, None, "/root/Main", executor,
+        template,
+        None,
+        "/root/Main",
+        executor,
         file_exists=lambda p: True,
         overwrite_files=True,
     )

@@ -5,7 +5,6 @@ from devforge.simulation.preview.balance_report import BalanceReport
 
 
 class ReportFeature(PreviewFeature):
-
     name = "report"
 
     def __init__(self):

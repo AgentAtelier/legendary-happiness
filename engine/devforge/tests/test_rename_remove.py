@@ -49,17 +49,21 @@ def test_compiler_rename_resolves_case_insensitively() -> None:
     from devforge.knowledge.scene.scene_graph import SceneGraph
 
     delta = {
-        "systems": [], "entities": [], "connections": [],
+        "systems": [],
+        "entities": [],
+        "connections": [],
         "_rename": {"from": "player", "to": "Hero"},
     }
     plan = ArchitectureCompiler().compile(delta, scene=SceneGraph(SCENE))
     ops = plan.compile_all()["operations"]
 
-    assert ops == [{
-        "type": "rename_node",
-        "node": "/root/Main/Player",
-        "new_name": "Hero",
-    }]
+    assert ops == [
+        {
+            "type": "rename_node",
+            "node": "/root/Main/Player",
+            "new_name": "Hero",
+        }
+    ]
 
 
 def test_compiler_remove_emits_op() -> None:
@@ -67,7 +71,9 @@ def test_compiler_remove_emits_op() -> None:
     from devforge.knowledge.scene.scene_graph import SceneGraph
 
     delta = {
-        "systems": [], "entities": [], "connections": [],
+        "systems": [],
+        "entities": [],
+        "connections": [],
         "_remove": "Enemy",
     }
     plan = ArchitectureCompiler().compile(delta, scene=SceneGraph(SCENE))
@@ -95,7 +101,9 @@ def test_validator_rejects_unknown_target() -> None:
     from devforge.knowledge.scene.scene_graph import SceneGraph
 
     delta = {
-        "systems": [], "entities": [], "connections": [],
+        "systems": [],
+        "entities": [],
+        "connections": [],
         "_remove": "Ghost",
     }
     plan = ArchitectureCompiler().compile(delta, scene=SceneGraph(SCENE))
@@ -110,16 +118,22 @@ def test_executor_translates_to_godot_ai_commands() -> None:
     """Ops map to godot-ai's plugin command names and param keys."""
     from devforge.execution.godot_ai_mcp import GodotAIMCPExecutor
 
-    commands = GodotAIMCPExecutor._translate_ops_to_commands([
-        {"type": "remove_node", "node": "/root/Main/Enemy"},
-        {"type": "rename_node", "node": "/root/Main/Player", "new_name": "Hero"},
-    ])
+    commands = GodotAIMCPExecutor._translate_ops_to_commands(
+        [
+            {"type": "remove_node", "node": "/root/Main/Enemy"},
+            {"type": "rename_node", "node": "/root/Main/Player", "new_name": "Hero"},
+        ]
+    )
 
     assert commands == [
         {"command": "delete_node", "params": {"path": "/root/Main/Enemy"}},
-        {"command": "rename_node", "params": {
-            "path": "/root/Main/Player", "new_name": "Hero",
-        }},
+        {
+            "command": "rename_node",
+            "params": {
+                "path": "/root/Main/Player",
+                "new_name": "Hero",
+            },
+        },
     ]
 
 

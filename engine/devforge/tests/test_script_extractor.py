@@ -43,7 +43,8 @@ def test_allows_relative_scripts_path() -> None:
 def test_fallback_uses_content_hash() -> None:
     """The fallback filename uses a content-based hash, not Python's salted hash."""
     from devforge.compilation.pipeline.script_extractor import (
-        _sanitize_path, extract,
+        _sanitize_path,
+        extract,
     )
 
     # Extract with a simple GDScript snippet

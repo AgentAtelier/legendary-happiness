@@ -20,12 +20,15 @@ def _empty_props(_path: str) -> dict | None:
 def _props_with(values: dict[str, dict | None]):
     """Return a props_lookup that returns *values* keyed by node path,
     or None for paths not in the dict."""
+
     def lookup(path: str) -> dict | None:
         return values.get(path)
+
     return lookup
 
 
 # ── Test data ───────────────────────────────────────────────────
+
 
 def _tree(name: str = "Main", type_: str = "Node3D", *children: dict) -> dict:
     """Convenience: build a scene-tree dict."""
@@ -39,14 +42,19 @@ def _leaf(name: str, type_: str = "Node3D") -> dict:
 
 # ── R1: CollisionShape3D parent must be CollisionObject3D ────────
 
+
 def test_r1_fires_when_shape_under_plain_node() -> None:
     """R1 fires for a CollisionShape3D whose parent is not a
     CollisionObject3D subclass."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
-        _tree("BadParent", "Node3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
+        _tree(
+            "BadParent",
+            "Node3D",
             _leaf("BadShape", "CollisionShape3D"),
         ),
     )
@@ -62,8 +70,12 @@ def test_r1_passes_when_shape_under_collision_object() -> None:
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
-        _tree("Player", "CharacterBody3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
+        _tree(
+            "Player",
+            "CharacterBody3D",
             _leaf("Shape", "CollisionShape3D"),
         ),
     )
@@ -74,13 +86,18 @@ def test_r1_passes_when_shape_under_collision_object() -> None:
 
 # ── R2: CollisionObject must have a shape child ─────────────────
 
+
 def test_r2_fires_when_collision_object_has_no_shape() -> None:
     """R2 fires for a CharacterBody3D with no shape child."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
-        _tree("Enemy", "CharacterBody3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
+        _tree(
+            "Enemy",
+            "CharacterBody3D",
             _leaf("Sprite", "Sprite3D"),
         ),
     )
@@ -96,8 +113,12 @@ def test_r2_passes_when_collision_polygon_child_exists() -> None:
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
-        _tree("Floor", "StaticBody3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
+        _tree(
+            "Floor",
+            "StaticBody3D",
             _leaf("Bounds", "CollisionPolygon3D"),
         ),
     )
@@ -108,12 +129,15 @@ def test_r2_passes_when_collision_polygon_child_exists() -> None:
 
 # ── R3: single Camera3D must be current ─────────────────────────
 
+
 def test_r3_reports_skipped_when_no_props_lookup() -> None:
     """R3 returns INFO 'skipped' when props_lookup is None."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
         _leaf("MainCamera", "Camera3D"),
     )
     violations = doctor.audit(tree)
@@ -127,10 +151,16 @@ def test_r3_fires_when_camera_not_current() -> None:
     """R3 fires when props_lookup returns current=False for the only camera."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
-    doctor = SceneDoctor(props_lookup=_props_with({
-        "/root/Main/MainCamera": {"current": False},
-    }))
-    tree = _tree("Main", "Node3D",
+    doctor = SceneDoctor(
+        props_lookup=_props_with(
+            {
+                "/root/Main/MainCamera": {"current": False},
+            }
+        )
+    )
+    tree = _tree(
+        "Main",
+        "Node3D",
         _leaf("MainCamera", "Camera3D"),
     )
     violations = doctor.audit(tree)
@@ -143,10 +173,16 @@ def test_r3_passes_when_camera_is_current() -> None:
     """R3 passes when the only camera has current=True."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
-    doctor = SceneDoctor(props_lookup=_props_with({
-        "/root/Main/MainCamera": {"current": True},
-    }))
-    tree = _tree("Main", "Node3D",
+    doctor = SceneDoctor(
+        props_lookup=_props_with(
+            {
+                "/root/Main/MainCamera": {"current": True},
+            }
+        )
+    )
+    tree = _tree(
+        "Main",
+        "Node3D",
         _leaf("MainCamera", "Camera3D"),
     )
     violations = doctor.audit(tree)
@@ -156,14 +192,21 @@ def test_r3_passes_when_camera_is_current() -> None:
 
 # ── R4: MeshInstance3D must have mesh ───────────────────────────
 
+
 def test_r4_fires_when_mesh_is_none() -> None:
     """R4 fires when props_lookup returns mesh=None."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
-    doctor = SceneDoctor(props_lookup=_props_with({
-        "/root/Main/Ground": {"mesh": None},
-    }))
-    tree = _tree("Main", "Node3D",
+    doctor = SceneDoctor(
+        props_lookup=_props_with(
+            {
+                "/root/Main/Ground": {"mesh": None},
+            }
+        )
+    )
+    tree = _tree(
+        "Main",
+        "Node3D",
         _leaf("Ground", "MeshInstance3D"),
     )
     violations = doctor.audit(tree)
@@ -176,10 +219,16 @@ def test_r4_passes_when_mesh_is_set() -> None:
     """R4 passes when mesh is not None."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
-    doctor = SceneDoctor(props_lookup=_props_with({
-        "/root/Main/Wall": {"mesh": "res://wall.tres"},
-    }))
-    tree = _tree("Main", "Node3D",
+    doctor = SceneDoctor(
+        props_lookup=_props_with(
+            {
+                "/root/Main/Wall": {"mesh": "res://wall.tres"},
+            }
+        )
+    )
+    tree = _tree(
+        "Main",
+        "Node3D",
         _leaf("Wall", "MeshInstance3D"),
     )
     violations = doctor.audit(tree)
@@ -189,13 +238,18 @@ def test_r4_passes_when_mesh_is_set() -> None:
 
 # ── R5: no duplicate sibling names ──────────────────────────────
 
+
 def test_r5_fires_for_duplicate_sibling_names() -> None:
     """R5 fires when two siblings share the same name."""
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
-        _tree("Enemies", "Node3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
+        _tree(
+            "Enemies",
+            "Node3D",
             _leaf("Enemy", "CharacterBody3D"),
             _leaf("Enemy", "CharacterBody3D"),
         ),
@@ -212,7 +266,9 @@ def test_r5_passes_for_same_name_in_different_parents() -> None:
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
         _tree("A", "Node3D", _leaf("Shared", "Node3D")),
         _tree("B", "Node3D", _leaf("Shared", "Node3D")),
     )
@@ -222,6 +278,7 @@ def test_r5_passes_for_same_name_in_different_parents() -> None:
 
 
 # ── Edge cases ──────────────────────────────────────────────────
+
 
 def test_malformed_node_does_not_raise() -> None:
     """A child dict without a 'type' key does not crash the auditor."""
@@ -248,8 +305,12 @@ def test_determinism_same_tree_twice() -> None:
     from devforge.auditing.scene_doctor import SceneDoctor
 
     doctor = SceneDoctor(props_lookup=None)
-    tree = _tree("Main", "Node3D",
-        _tree("Player", "CharacterBody3D",
+    tree = _tree(
+        "Main",
+        "Node3D",
+        _tree(
+            "Player",
+            "CharacterBody3D",
             _leaf("Shape", "CollisionShape3D"),
             _leaf("Cam", "Camera3D"),
         ),

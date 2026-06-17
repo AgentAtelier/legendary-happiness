@@ -7,8 +7,15 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from forge_models import (
-    fit, detect, plan_apply, ModelError,
-    GIB, OVERHEAD, RESERVE, FIT_SAFETY_MARGIN, KV_BYTES_PER_EL,
+    fit,
+    detect,
+    plan_apply,
+    ModelError,
+    GIB,
+    OVERHEAD,
+    RESERVE,
+    FIT_SAFETY_MARGIN,
+    KV_BYTES_PER_EL,
     CTX_CANDIDATES,
 )
 
@@ -217,51 +224,75 @@ class TestDetect:
 class TestPlanApply:
     def test_missing_base_args(self):
         """plan_apply should error when LLAMA_BASE_ARGS is missing."""
-        with patch("forge_models.read_env") as mock_read, \
-             patch("forge_models.scan") as mock_scan:
+        with patch("forge_models.read_env") as mock_read, patch("forge_models.scan") as mock_scan:
             mock_read.return_value = {}
-            mock_scan.return_value = [{
-                "file": "test.gguf", "alias": "test", "path": "/tmp/test.gguf",
-                "arch": "gemma", "template": "gemma", "template_known": True,
-                "size_bytes": 10 * GIB, "moe": False, "extra_args": "",
-                "fit": {"status": "fits", "ctx": 16384, "need_gb": 10.0},
-                "sampling_hint": {},
-            }]
+            mock_scan.return_value = [
+                {
+                    "file": "test.gguf",
+                    "alias": "test",
+                    "path": "/tmp/test.gguf",
+                    "arch": "gemma",
+                    "template": "gemma",
+                    "template_known": True,
+                    "size_bytes": 10 * GIB,
+                    "moe": False,
+                    "extra_args": "",
+                    "fit": {"status": "fits", "ctx": 16384, "need_gb": 10.0},
+                    "sampling_hint": {},
+                }
+            ]
             plan = plan_apply("test")
             assert "error" in plan
 
     def test_missing_safety_cap(self):
         """plan_apply should refuse when --n-predict is missing from base args."""
-        with patch("forge_models.read_env") as mock_read, \
-             patch("forge_models.scan") as mock_scan:
+        with patch("forge_models.read_env") as mock_read, patch("forge_models.scan") as mock_scan:
             mock_read.return_value = {"LLAMA_BASE_ARGS": "--host 0.0.0.0"}
-            mock_scan.return_value = [{
-                "file": "test.gguf", "alias": "test", "path": "/tmp/test.gguf",
-                "arch": "gemma", "template": "gemma", "template_known": True,
-                "size_bytes": 10 * GIB, "moe": False, "extra_args": "",
-                "fit": {"status": "fits", "ctx": 16384, "need_gb": 10.0},
-                "sampling_hint": {},
-            }]
+            mock_scan.return_value = [
+                {
+                    "file": "test.gguf",
+                    "alias": "test",
+                    "path": "/tmp/test.gguf",
+                    "arch": "gemma",
+                    "template": "gemma",
+                    "template_known": True,
+                    "size_bytes": 10 * GIB,
+                    "moe": False,
+                    "extra_args": "",
+                    "fit": {"status": "fits", "ctx": 16384, "need_gb": 10.0},
+                    "sampling_hint": {},
+                }
+            ]
             plan = plan_apply("test")
             assert "error" in plan
 
     def test_successful_plan(self):
         """A successful plan_apply returns env_changes and model info."""
-        with patch("forge_models.read_env") as mock_read, \
-             patch("forge_models.scan") as mock_scan, \
-             patch("forge_models.plan_env") as mock_plan_env:
+        with (
+            patch("forge_models.read_env") as mock_read,
+            patch("forge_models.scan") as mock_scan,
+            patch("forge_models.plan_env") as mock_plan_env,
+        ):
             mock_read.return_value = {
                 "LLAMA_BASE_ARGS": "--host 0.0.0.0 --n-predict 4096",
                 "LLAMA_ARGS": '"--host 0.0.0.0 --n-predict 4096 --ctx-size 8192"',
                 "DEVFORGE_PROMPT_TEMPLATE": "gemma",
             }
-            mock_scan.return_value = [{
-                "file": "test.gguf", "alias": "test", "path": "/tmp/test.gguf",
-                "arch": "gemma", "template": "gemma", "template_known": True,
-                "size_bytes": 10 * GIB, "moe": False, "extra_args": "--swa-full",
-                "fit": {"status": "fits", "ctx": 16384, "need_gb": 12.0},
-                "sampling_hint": {},
-            }]
+            mock_scan.return_value = [
+                {
+                    "file": "test.gguf",
+                    "alias": "test",
+                    "path": "/tmp/test.gguf",
+                    "arch": "gemma",
+                    "template": "gemma",
+                    "template_known": True,
+                    "size_bytes": 10 * GIB,
+                    "moe": False,
+                    "extra_args": "--swa-full",
+                    "fit": {"status": "fits", "ctx": 16384, "need_gb": 12.0},
+                    "sampling_hint": {},
+                }
+            ]
             mock_plan_env.return_value = {"changes": {}, "new_keys": []}
 
             plan = plan_apply("test")
@@ -273,19 +304,29 @@ class TestPlanApply:
 
     def test_spills_warning(self):
         """A model that spills should produce a fit_warning."""
-        with patch("forge_models.read_env") as mock_read, \
-             patch("forge_models.scan") as mock_scan, \
-             patch("forge_models.plan_env") as mock_plan_env:
+        with (
+            patch("forge_models.read_env") as mock_read,
+            patch("forge_models.scan") as mock_scan,
+            patch("forge_models.plan_env") as mock_plan_env,
+        ):
             mock_read.return_value = {
                 "LLAMA_BASE_ARGS": "--host 0.0.0.0 --n-predict 4096",
             }
-            mock_scan.return_value = [{
-                "file": "big.gguf", "alias": "big", "path": "/tmp/big.gguf",
-                "arch": "gemma", "template": "gemma", "template_known": True,
-                "size_bytes": 20 * GIB, "moe": False, "extra_args": "",
-                "fit": {"status": "spills", "ctx": 32768, "need_gb": 22.0},
-                "sampling_hint": {},
-            }]
+            mock_scan.return_value = [
+                {
+                    "file": "big.gguf",
+                    "alias": "big",
+                    "path": "/tmp/big.gguf",
+                    "arch": "gemma",
+                    "template": "gemma",
+                    "template_known": True,
+                    "size_bytes": 20 * GIB,
+                    "moe": False,
+                    "extra_args": "",
+                    "fit": {"status": "spills", "ctx": 32768, "need_gb": 22.0},
+                    "sampling_hint": {},
+                }
+            ]
             mock_plan_env.return_value = {"changes": {}, "new_keys": []}
 
             plan = plan_apply("big")
@@ -299,16 +340,17 @@ class TestPlanApply:
 # pre-quoted value, producing `""...--swa-full""` on disk → llama
 # rejected it as an invalid argument and every swap failed + rolled back.
 
+
 def _seed_stack_env(tmp_path):
     p = tmp_path / "stack.env"
     p.write_text(
-        'LLAMA_BIN=/x/llama-server\n'
-        'MODEL=/m/old.gguf\n'
-        'MODEL_ALIAS=old\n'
-        'LLAMA_PORT=8002\n'
+        "LLAMA_BIN=/x/llama-server\n"
+        "MODEL=/m/old.gguf\n"
+        "MODEL_ALIAS=old\n"
+        "LLAMA_PORT=8002\n"
         'LLAMA_BASE_ARGS="--host 0.0.0.0 --n-predict 4096"\n'
         'LLAMA_ARGS="--host 0.0.0.0 --n-predict 4096 --ctx-size 8192"\n'
-        'DEVFORGE_PROMPT_TEMPLATE=gemma\n'
+        "DEVFORGE_PROMPT_TEMPLATE=gemma\n"
     )
     return p
 
@@ -345,14 +387,16 @@ def test_llama_args_roundtrip_no_double_quotes(tmp_path, monkeypatch):
 # hub swap pre-flight falsely refuses it). ──
 def test_kv_scale_from_args():
     import forge_models as fm
+
     assert fm.kv_scale_from_args("--cache-type-k q4_0 --cache-type-v q4_0") == 0.53
     assert fm.kv_scale_from_args("--cache-type-k q8_0") == 1.0
     assert fm.kv_scale_from_args("--cache-type-k f16") == 2.0
-    assert fm.kv_scale_from_args("--ngl 99") == 1.0   # unspecified → baseline
+    assert fm.kv_scale_from_args("--ngl 99") == 1.0  # unspecified → baseline
 
 
 def test_fit_q4_cache_doubles_context():
     import forge_models as fm
+
     # a model that fits 8k at q8 should fit ~16k at q4 (half the KV cost)
     d = {"size_bytes": int(12.4 * fm.GIB), "kv_per_tok": 122716, "ctx_train": 32768}
     vram = 16368 * 1024 * 1024

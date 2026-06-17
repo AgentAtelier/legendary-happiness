@@ -38,10 +38,10 @@ OUTPUT_BASE = HUB_DIR / "data" / "multi-model-bench"
 
 # All 4 Qwen models, smallest→largest
 QWEN_MODELS = [
-    {"alias": "qwen3-5-4b",      "label": "qwen3-5-4b"},
+    {"alias": "qwen3-5-4b", "label": "qwen3-5-4b"},
     {"alias": "qwen3-5-9b-q8-0", "label": "qwen3-5-9b"},
-    {"alias": "qwen3-14b-q6-k",  "label": "qwen3-14b"},
-    {"alias": "qwen3-6-27b",     "label": "qwen3-6-27b"},
+    {"alias": "qwen3-14b-q6-k", "label": "qwen3-14b"},
+    {"alias": "qwen3-6-27b", "label": "qwen3-6-27b"},
 ]
 
 RUNS = 3  # model-dependent test repetitions
@@ -59,6 +59,7 @@ MODEL_TESTS = [
 # ═══════════════════════════════════════════════════════════════════
 #  Helpers
 # ═══════════════════════════════════════════════════════════════════
+
 
 def log(msg: str = "", **kwargs) -> None:
     print(msg, flush=True, **kwargs)
@@ -84,7 +85,8 @@ def read_env() -> dict[str, str]:
 
 async def run_cmd(cmd: str, timeout: int = 600) -> tuple[int, str]:
     proc = await asyncio.create_subprocess_shell(
-        cmd, stdout=asyncio.subprocess.PIPE,
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
     try:
@@ -97,6 +99,7 @@ async def run_cmd(cmd: str, timeout: int = 600) -> tuple[int, str]:
 
 def parse_pytest_summary(output: str) -> dict:
     import re
+
     m = re.search(r"(\d+) passed", output)
     passed = int(m.group(1)) if m else 0
     m = re.search(r"(\d+) failed", output)
@@ -110,6 +113,7 @@ def parse_pytest_summary(output: str) -> dict:
 #  Phase 1: Unit tests (once)
 # ═══════════════════════════════════════════════════════════════════
 
+
 async def run_unit_tests(outdir: Path) -> dict:
     log("\n═══ Phase 1: Unit Tests (shared across all models) ═══")
 
@@ -118,8 +122,8 @@ async def run_unit_tests(outdir: Path) -> dict:
 
     suites = [
         ("DevForge Core", f"cd {DEVFORGE_DIR} && .venv/bin/python -m pytest devforge/tests/ -v -q"),
-        ("Forge Hub",     f"cd {HUB_DIR} && .venv/bin/python -m pytest tests/ -v -q"),
-        ("Odysseus",      f"cd {ODYSSEUS_DIR} && .venv/bin/python -m pytest tests/ -q"),
+        ("Forge Hub", f"cd {HUB_DIR} && .venv/bin/python -m pytest tests/ -v -q"),
+        ("Odysseus", f"cd {ODYSSEUS_DIR} && .venv/bin/python -m pytest tests/ -q"),
     ]
 
     results = {}
@@ -138,7 +142,7 @@ async def run_unit_tests(outdir: Path) -> dict:
         (outdir / f"unit-{safe}.log").write_text(output)
 
         status = "OK" if code == 0 else f"FAIL(code={code})"
-        log(f"{status}  {elapsed//1000}s  ({summary['passed']}p/{summary['failed']}f/{summary['skipped']}s)")
+        log(f"{status}  {elapsed // 1000}s  ({summary['passed']}p/{summary['failed']}f/{summary['skipped']}s)")
 
     (outdir / "unit-tests.json").write_text(json.dumps(results, indent=2))
     return results
@@ -147,6 +151,7 @@ async def run_unit_tests(outdir: Path) -> dict:
 # ═══════════════════════════════════════════════════════════════════
 #  Phase 2: Per-model model-dependent tests
 # ═══════════════════════════════════════════════════════════════════
+
 
 async def run_model_round(model: dict, model_dir: Path) -> dict:
     """Swap to model, run all model-dependent tests 3×, return results."""
@@ -160,6 +165,7 @@ async def run_model_round(model: dict, model_dir: Path) -> dict:
     try:
         sys.path.insert(0, str(HUB_DIR))
         from forge_ops import swap_model
+
         code = await swap_model(alias, lambda m: log(f"    {m}"))
     except Exception as e:
         log(f"  ✗ Swap failed: {e}")
@@ -172,7 +178,7 @@ async def run_model_round(model: dict, model_dir: Path) -> dict:
 
     env = read_env()
     current = env.get("MODEL_ALIAS", "?")
-    log(f"  ✓ Loaded: {current} ({swap_ms//1000}s)")
+    log(f"  ✓ Loaded: {current} ({swap_ms // 1000}s)")
 
     # ── Run tests 3× each ──
     test_results: dict[str, Any] = {}
@@ -201,7 +207,7 @@ async def run_model_round(model: dict, model_dir: Path) -> dict:
             elapsed = int((time.time() - t0) * 1000)
             result["elapsed_ms"] = elapsed
             test_results.setdefault(test_name, {})[run_label] = result
-            log(f"{elapsed//1000}s")
+            log(f"{elapsed // 1000}s")
 
     return {
         "model": label,
@@ -216,8 +222,7 @@ async def _run_diagnostics(test_cli: str, outdir: Path) -> dict:
     diag_dir = HUB_DIR / "data" / "diagnostics"
     diag_dir.mkdir(parents=True, exist_ok=True)
 
-    code, output = await run_cmd(
-        f"cd {HUB_DIR} && .venv/bin/python diagnostics.py {test_cli}", timeout=600)
+    code, output = await run_cmd(f"cd {HUB_DIR} && .venv/bin/python diagnostics.py {test_cli}", timeout=600)
 
     # Copy latest diagnostic file
     latest = None
@@ -236,8 +241,12 @@ async def _run_diagnostics(test_cli: str, outdir: Path) -> dict:
         except Exception:
             data = {"parse_error": str(latest)}
 
-    return {"test": f"diagnostics:{test_cli}", "exit_code": code, "result": data,
-            "log": str(outdir / f"diagnostics-{test_cli}.log")}
+    return {
+        "test": f"diagnostics:{test_cli}",
+        "exit_code": code,
+        "result": data,
+        "log": str(outdir / f"diagnostics-{test_cli}.log"),
+    }
 
 
 async def _run_probes(outdir: Path) -> dict:
@@ -245,8 +254,7 @@ async def _run_probes(outdir: Path) -> dict:
     bench_dir = HUB_DIR / "data" / "bench"
     bench_dir.mkdir(parents=True, exist_ok=True)
 
-    code, output = await run_cmd(
-        f"cd {HUB_DIR} && .venv/bin/python bench.py", timeout=600)
+    code, output = await run_cmd(f"cd {HUB_DIR} && .venv/bin/python bench.py", timeout=600)
 
     latest = None
     if bench_dir.exists():
@@ -264,15 +272,17 @@ async def _run_probes(outdir: Path) -> dict:
         except Exception:
             data = {"parse_error": str(latest)}
 
-    return {"test": "probes:all", "exit_code": code, "result": data,
-            "log": str(outdir / "probes-all.log")}
+    return {"test": "probes:all", "exit_code": code, "result": data, "log": str(outdir / "probes-all.log")}
 
 
-GAUNTLET_KEY_TESTS = ["G7_integration", "G5_scripts_signals", "G8_adversarial",
-                       "B1_small_house", "S4_adjacency"]
-GAUNTLET_KEY_SETS = {"G7_integration": "capability-v1", "G5_scripts_signals": "capability-v1",
-                     "G8_adversarial": "capability-v1", "B1_small_house": "building-v1",
-                     "S4_adjacency": "spatial-v1"}
+GAUNTLET_KEY_TESTS = ["G7_integration", "G5_scripts_signals", "G8_adversarial", "B1_small_house", "S4_adjacency"]
+GAUNTLET_KEY_SETS = {
+    "G7_integration": "capability-v1",
+    "G5_scripts_signals": "capability-v1",
+    "G8_adversarial": "capability-v1",
+    "B1_small_house": "building-v1",
+    "S4_adjacency": "spatial-v1",
+}
 
 
 async def _run_gauntlet_key(outdir: Path) -> dict:
@@ -310,13 +320,13 @@ async def _run_gauntlet_key(outdir: Path) -> dict:
             latest = files[0]
             shutil.copy2(latest, outdir / latest.name)
 
-    return {"test": "gauntlet:key", "results": results,
-            "log": str(outdir / "gauntlet-key.log")}
+    return {"test": "gauntlet:key", "results": results, "log": str(outdir / "gauntlet-key.log")}
 
 
 # ═══════════════════════════════════════════════════════════════════
 #  Phase 3: Cross-model comparison
 # ═══════════════════════════════════════════════════════════════════
+
 
 def build_comparison(all_model_results: dict) -> dict:
     """Build model×test coverage matrix."""
@@ -400,7 +410,7 @@ def render_comparison_table(comparison: dict) -> str:
     COL_W = 16
     header = f"{'':22s}"
     for m in models:
-        header += f"  {m[:COL_W-2]:>{COL_W}s}"
+        header += f"  {m[: COL_W - 2]:>{COL_W}s}"
     lines.append(header)
     lines.append("─" * len(header))
 
@@ -417,9 +427,9 @@ def render_comparison_table(comparison: dict) -> str:
             nodes = cell.get("mean_nodes")
             if cov is not None:
                 marker = "★" if cov == best and best is not None and cov > 0 else " "
-                row += f"  {cov:>5.1f}%{marker:>1s}{'':>{COL_W-8}s}"
+                row += f"  {cov:>5.1f}%{marker:>1s}{'':>{COL_W - 8}s}"
             elif nodes is not None:
-                row += f"  {nodes:>4.0f}n{'':>{COL_W-6}s}"
+                row += f"  {nodes:>4.0f}n{'':>{COL_W - 6}s}"
             else:
                 row += f"  {'—':>{COL_W}s}"
         lines.append(row)
@@ -448,6 +458,7 @@ def render_comparison_table(comparison: dict) -> str:
 # ═══════════════════════════════════════════════════════════════════
 #  Main
 # ═══════════════════════════════════════════════════════════════════
+
 
 async def main() -> None:
     args = set(sys.argv[1:])
@@ -513,7 +524,7 @@ async def main() -> None:
         model_dir.mkdir(parents=True, exist_ok=True)
 
         log(f"\n{'═' * 60}")
-        log(f"── Model {mi+1}/{len(models_to_run)}: {label} ──")
+        log(f"── Model {mi + 1}/{len(models_to_run)}: {label} ──")
         log(f"{'═' * 60}")
 
         model_result = await run_model_round(model, model_dir)
@@ -521,8 +532,7 @@ async def main() -> None:
         manifest["models_tested"] = list(all_model_results.keys())
 
         # Save per-model result immediately
-        (outdir / "models" / label / "result.json").write_text(
-            json.dumps(model_result, indent=2, default=str))
+        (outdir / "models" / label / "result.json").write_text(json.dumps(model_result, indent=2, default=str))
 
         # Save intermediate manifest
         manifest["models"] = all_model_results

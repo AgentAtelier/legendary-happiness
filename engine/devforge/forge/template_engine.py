@@ -43,13 +43,15 @@ def list_templates(directory: str | None = None) -> list[dict]:
     for f in sorted(path.glob("*.template.json")):
         try:
             t = _load_template_file(str(f))
-            templates.append({
-                "slug": t.slug,
-                "name": t.name,
-                "description": t.description,
-                "slot_count": len(t.slots),
-                "script_count": len(t.scripts),
-            })
+            templates.append(
+                {
+                    "slug": t.slug,
+                    "name": t.name,
+                    "description": t.description,
+                    "slot_count": len(t.slots),
+                    "script_count": len(t.scripts),
+                }
+            )
         except Exception as exc:
             logger.warn(
                 "template_engine",
@@ -59,9 +61,7 @@ def list_templates(directory: str | None = None) -> list[dict]:
     return sorted(templates, key=lambda t: t["name"])
 
 
-def load_template(
-    slug: str, directory: str | None = None
-) -> Template | None:
+def load_template(slug: str, directory: str | None = None) -> Template | None:
     """Load a template by slug from disk.
 
     Returns None if the template file doesn't exist or can't be parsed.
@@ -101,9 +101,7 @@ def required_input_actions(template: Template) -> list[str]:
         actions.update(_INPUT_ACTION_RE.findall(s.content))
         for group in _INPUT_VECTOR_RE.findall(s.content):
             actions.update(group)
-    return sorted(
-        a for a in actions if not a.startswith(_BUILTIN_ACTION_PREFIX)
-    )
+    return sorted(a for a in actions if not a.startswith(_BUILTIN_ACTION_PREFIX))
 
 
 def preview_template(
@@ -134,16 +132,16 @@ def preview_template(
 
     script_previews: list[dict] = []
     for s in template.scripts:
-        script_previews.append({
-            "path": s.path,
-            "content_preview": substitute_slots(s.content, resolved)[:200] + "..."
+        script_previews.append(
+            {
+                "path": s.path,
+                "content_preview": substitute_slots(s.content, resolved)[:200] + "..."
                 if len(s.content) > 200
                 else substitute_slots(s.content, resolved),
-        })
+            }
+        )
 
-    collision_scoped = [
-        _scope_path(cp, parent_path) for cp in template.collision_check
-    ]
+    collision_scoped = [_scope_path(cp, parent_path) for cp in template.collision_check]
 
     return {
         "slug": template.slug,
@@ -216,10 +214,12 @@ def instantiate_template(
     # Build files from substituted scripts
     files: list[dict] = []
     for s in template.scripts:
-        files.append({
-            "path": s.path,
-            "content": substitute_slots(s.content, resolved),
-        })
+        files.append(
+            {
+                "path": s.path,
+                "content": substitute_slots(s.content, resolved),
+            }
+        )
 
     # File-overwrite protection (safe by default)
     if files and not overwrite_files and file_exists is not None:
@@ -252,9 +252,12 @@ def instantiate_template(
 
     # Execute
     from devforge.execution.interface import ExecutionResult
+
     try:
         exec_result: ExecutionResult = executor.execute(
-            parent_scoped_ops, files, None,
+            parent_scoped_ops,
+            files,
+            None,
         )
         result_dict = exec_result.to_dict()
         result_dict["applied_count"] = result_dict.get("success_count", 0)

@@ -87,7 +87,7 @@ elapsed = time.time() - start
 print(f"  Files: {len(result.files)}")
 print(f"  Operations: {len(result.operations)}")
 print(f"  Errors: {len(result.errors)}")
-print(f"  Elapsed: {elapsed*1000:.0f}ms")
+print(f"  Elapsed: {elapsed * 1000:.0f}ms")
 
 # Verify stage latencies
 stages = result.stage_latencies
@@ -96,8 +96,15 @@ for stage_name in sorted(stages.keys()):
     print(f"    {stage_name}: {stages[stage_name]:.1f}ms")
 
 assert len(stages) > 0, "No stage latencies recorded!"
-expected = {"context_assembly", "architecture_planning", "compilation",
-            "operation_generation", "completeness", "validation", "repair"}
+expected = {
+    "context_assembly",
+    "architecture_planning",
+    "compilation",
+    "operation_generation",
+    "completeness",
+    "validation",
+    "repair",
+}
 actual = set(stages.keys())
 missing = expected - actual
 if missing:
@@ -105,8 +112,10 @@ if missing:
 
 # Verify cache stats
 cache = result.cache_stats
-print(f"\n  Cache: hits={cache.get('hits', 0)}, misses={cache.get('misses', 0)}, "
-      f"hit_rate={cache.get('hit_rate', 0)}, entries={cache.get('entries', 0)}")
+print(
+    f"\n  Cache: hits={cache.get('hits', 0)}, misses={cache.get('misses', 0)}, "
+    f"hit_rate={cache.get('hit_rate', 0)}, entries={cache.get('entries', 0)}"
+)
 assert cache.get("misses", 0) >= 1, f"Expected at least 1 cache miss: {cache}"
 
 # Verify grammar
@@ -118,8 +127,7 @@ if grammar_path:
 gates = result.gate_results
 print(f"  Gate results: {len(gates)} gates")
 for gr in gates:
-    print(f"    {gr.gate_name}: {'PASS' if gr.passed else 'FAIL'} "
-          f"(risk={gr.risk_score}, tier={gr.risk_tier})")
+    print(f"    {gr.gate_name}: {'PASS' if gr.passed else 'FAIL'} (risk={gr.risk_score}, tier={gr.risk_tier})")
 
 # ── 4. Test 2: Second run (cache HIT) ──
 print()
@@ -133,8 +141,7 @@ print(f"  Files: {len(result2.files)}")
 print(f"  Operations: {len(result2.operations)}")
 
 cache2 = result2.cache_stats
-print(f"  Cache: hits={cache2.get('hits', 0)}, misses={cache2.get('misses', 0)}, "
-      f"hit_rate={cache2.get('hit_rate', 0)}")
+print(f"  Cache: hits={cache2.get('hits', 0)}, misses={cache2.get('misses', 0)}, hit_rate={cache2.get('hit_rate', 0)}")
 assert cache2.get("hits", 0) >= 1, f"Expected at least 1 cache hit: {cache2}"
 
 # ── 5. Test 3: Run with trace recording ──
@@ -148,10 +155,13 @@ for i in range(3):
     r = engine.run_pipeline(f"add a door that opens and closes {i}", {"name": "Main", "type": "Node3D", "children": []})
     for stage_name, stage_ms in r.stage_latencies.items():
         monitor.log_step(trace, stage_name, {"elapsed_ms": round(stage_ms, 1)})
-    monitor.end_trace(trace, status="complete",
-                      cache_hits=r.cache_stats.get("hits", 0),
-                      cache_misses=r.cache_stats.get("misses", 0),
-                      cache_hit_rate=r.cache_stats.get("hit_rate", 0))
+    monitor.end_trace(
+        trace,
+        status="complete",
+        cache_hits=r.cache_stats.get("hits", 0),
+        cache_misses=r.cache_stats.get("misses", 0),
+        cache_hit_rate=r.cache_stats.get("hit_rate", 0),
+    )
 
 # Verify /perf stats
 perf = monitor.get_perf_stats()

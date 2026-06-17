@@ -37,8 +37,15 @@ sys.path.insert(0, str(HUB_DIR))
 
 from forge_env import read_env, write_env, ENVFILE  # noqa: E402
 from forge_models import (  # noqa: E402
-    scan, detect, fit, vram_total, GIB,
-    OVERHEAD, RESERVE, FIT_SAFETY_MARGIN, KV_BYTES_PER_EL,
+    scan,
+    detect,
+    fit,
+    vram_total,
+    GIB,
+    OVERHEAD,
+    RESERVE,
+    FIT_SAFETY_MARGIN,
+    KV_BYTES_PER_EL,
     CTX_CANDIDATES,
 )
 
@@ -95,8 +102,7 @@ async def stop_llama() -> None:
         print("  Llama stopped.")
 
 
-async def start_llama(model_path: str, ctx_size: int, base_args: str,
-                      extra_args: str = "") -> tuple[bool, str]:
+async def start_llama(model_path: str, ctx_size: int, base_args: str, extra_args: str = "") -> tuple[bool, str]:
     """Start llama-server with the given model and context size.
     Returns (success, error_message)."""
     # Build args: base + ctx-size
@@ -125,11 +131,14 @@ async def start_llama(model_path: str, ctx_size: int, base_args: str,
     args_str = " ".join(args_list)
     # Single write_env call — combine all updates to avoid overwrite
     alias = Path(model_path).stem
-    write_env(ENVFILE, {
-        "MODEL": model_path,
-        "MODEL_ALIAS": alias,
-        "LLAMA_ARGS": args_str,
-    })
+    write_env(
+        ENVFILE,
+        {
+            "MODEL": model_path,
+            "MODEL_ALIAS": alias,
+            "LLAMA_ARGS": args_str,
+        },
+    )
 
     code, out = await run_cmd("systemctl", "--user", "restart", LLAMA_SERVICE)
     if code != 0:
@@ -143,14 +152,23 @@ async def start_llama(model_path: str, ctx_size: int, base_args: str,
         code_fail, _ = await run_cmd("systemctl", "--user", "is-failed", LLAMA_SERVICE)
         if code_fail == 0:
             logs_code, logs = await run_cmd(
-                "journalctl", "--user", "-u", LLAMA_SERVICE,
-                "-n", "10", "--no-pager", "-o", "cat",
+                "journalctl",
+                "--user",
+                "-u",
+                LLAMA_SERVICE,
+                "-n",
+                "10",
+                "--no-pager",
+                "-o",
+                "cat",
             )
             return False, f"llama crashed during load:\n{logs}"
 
         try:
             proc = await asyncio.create_subprocess_exec(
-                "curl", "-sf", f"http://127.0.0.1:{port}/health",
+                "curl",
+                "-sf",
+                f"http://127.0.0.1:{port}/health",
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -164,8 +182,7 @@ async def start_llama(model_path: str, ctx_size: int, base_args: str,
     return False, f"timeout waiting for /health after {60}s"
 
 
-async def measure_one(model: dict, ctx_size: int, base_args: str,
-                      baseline_vram: int) -> Optional[dict]:
+async def measure_one(model: dict, ctx_size: int, base_args: str, baseline_vram: int) -> Optional[dict]:
     """Load one model at one ctx size and measure peak VRAM.
 
     Returns None if the model won't load (OOM, crash), or a dict with
@@ -236,13 +253,12 @@ def estimate_for_model(model: dict, ctx_size: int, vram_total_bytes: int) -> dic
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="VRAM estimator calibration — measure real model VRAM usage")
+    parser = argparse.ArgumentParser(description="VRAM estimator calibration — measure real model VRAM usage")
     parser.add_argument("--model", help="Only measure models matching this fragment")
-    parser.add_argument("--ctx", type=int, nargs="*",
-                        help=f"Only measure these ctx sizes (default: {CTX_SIZES})")
-    parser.add_argument("--wait", type=int, default=MEASURE_WAIT,
-                        help=f"Seconds to wait for steady state (default: {MEASURE_WAIT})")
+    parser.add_argument("--ctx", type=int, nargs="*", help=f"Only measure these ctx sizes (default: {CTX_SIZES})")
+    parser.add_argument(
+        "--wait", type=int, default=MEASURE_WAIT, help=f"Seconds to wait for steady state (default: {MEASURE_WAIT})"
+    )
     args = parser.parse_args()
 
     ctx_sizes = args.ctx or CTX_SIZES
@@ -271,8 +287,9 @@ async def main() -> None:
 
     models = scan()
     if args.model:
-        models = [m for m in models if args.model.lower() in m["alias"].lower()
-                  or args.model.lower() in m["file"].lower()]
+        models = [
+            m for m in models if args.model.lower() in m["alias"].lower() or args.model.lower() in m["file"].lower()
+        ]
     if not models:
         print("No models found. Check ~/models/ for .gguf files.")
         sys.exit(1)
@@ -280,9 +297,11 @@ async def main() -> None:
     print(f"\nModels to measure: {len(models)}")
     for m in models:
         fit_info = m.get("fit", {})
-        print(f"  {m['alias']}  ({m['size_bytes'] / GIB:.1f} GiB, "
-              f"arch={m.get('arch','?')}, kv_per_tok={m.get('kv_per_tok','?')}, "
-              f"fit: {fit_info.get('need_gb','?')} GiB @ ctx {fit_info.get('ctx','?')})")
+        print(
+            f"  {m['alias']}  ({m['size_bytes'] / GIB:.1f} GiB, "
+            f"arch={m.get('arch', '?')}, kv_per_tok={m.get('kv_per_tok', '?')}, "
+            f"fit: {fit_info.get('need_gb', '?')} GiB @ ctx {fit_info.get('ctx', '?')})"
+        )
 
     # ── Stop llama, measure baseline ─────────────────────────────
 
@@ -290,8 +309,7 @@ async def main() -> None:
     await stop_llama()
     await asyncio.sleep(3)  # let VRAM fully settle
     baseline_vram = read_vram_used()
-    print(f"  Baseline VRAM: {baseline_vram / GIB:.1f} GiB "
-          f"(desktop compositor + system)")
+    print(f"  Baseline VRAM: {baseline_vram / GIB:.1f} GiB (desktop compositor + system)")
 
     results: list[dict] = []
 
@@ -300,18 +318,21 @@ async def main() -> None:
     finally:
         # ── Restore original model ── (ALWAYS, even on crash)
         print(f"\n── Restoring: {original_alias} ──")
-        write_env(ENVFILE, {
-            "MODEL": original_model,
-            "MODEL_ALIAS": original_alias,
-            "LLAMA_ARGS": original_args,
-        })
+        write_env(
+            ENVFILE,
+            {
+                "MODEL": original_model,
+                "MODEL_ALIAS": original_alias,
+                "LLAMA_ARGS": original_args,
+            },
+        )
         await run_cmd("systemctl", "--user", "restart", LLAMA_SERVICE)
         print("  Restart requested — llama will load in background.")
 
     _print_results(results, baseline_vram)
 
-async def _run_measurements(models: list[dict], ctx_sizes: list[int],
-                         base_args: str, baseline_vram: int) -> list[dict]:
+
+async def _run_measurements(models: list[dict], ctx_sizes: list[int], base_args: str, baseline_vram: int) -> list[dict]:
     """Run the measurement loop for all models × ctx sizes."""
     results: list[dict] = []
     vram_total_bytes = vram_total()
@@ -366,11 +387,13 @@ def _print_results(results: list[dict], baseline_vram: int) -> None:
     print("-" * 70)
 
     for r in results:
-        meas = f"{r['measured_gb']:.1f}" if r['measured_gb'] is not None else "  OOM"
-        delta = f"{r['delta_gb']:+.1f}" if r['delta_gb'] is not None else "   —"
+        meas = f"{r['measured_gb']:.1f}" if r["measured_gb"] is not None else "  OOM"
+        delta = f"{r['delta_gb']:+.1f}" if r["delta_gb"] is not None else "   —"
         loaded = "✓" if r.get("loaded") else "✗"
-        print(f"{r['model']:<28} {r['ctx']:>6} {r['estimated_gb']:>5.1f}  "
-              f"{meas:>5}  {delta:>6}  {r['est_status']:>8} {r['budget_gb']:>5.1f} GiB  {loaded}")
+        print(
+            f"{r['model']:<28} {r['ctx']:>6} {r['estimated_gb']:>5.1f}  "
+            f"{meas:>5}  {delta:>6}  {r['est_status']:>8} {r['budget_gb']:>5.1f} GiB  {loaded}"
+        )
 
     print("-" * 70)
     print("Delta = Measured - Estimated. Positive = estimator is conservative (safe).")
@@ -417,19 +440,24 @@ def _print_results(results: list[dict], baseline_vram: int) -> None:
     # Save results
     out_path = HUB_DIR / "data" / "scorecards" / "vram_calibration.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps({
-        "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "gpu_total_gb": round(read_vram_total() / GIB, 1),
-        "baseline_vram_gb": round(baseline_vram / GIB, 1),
-        "constants": {
-            "OVERHEAD_GiB": round(OVERHEAD / GIB, 1),
-            "RESERVE_GiB": round(RESERVE / GIB, 1),
-            "FIT_SAFETY_MARGIN_GiB": round(FIT_SAFETY_MARGIN / GIB, 1),
-            "KV_BYTES_PER_EL": KV_BYTES_PER_EL,
-            "gemma_swa_fudge": 0.45,
-        },
-        "results": results,
-    }, indent=2))
+    out_path.write_text(
+        json.dumps(
+            {
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "gpu_total_gb": round(read_vram_total() / GIB, 1),
+                "baseline_vram_gb": round(baseline_vram / GIB, 1),
+                "constants": {
+                    "OVERHEAD_GiB": round(OVERHEAD / GIB, 1),
+                    "RESERVE_GiB": round(RESERVE / GIB, 1),
+                    "FIT_SAFETY_MARGIN_GiB": round(FIT_SAFETY_MARGIN / GIB, 1),
+                    "KV_BYTES_PER_EL": KV_BYTES_PER_EL,
+                    "gemma_swa_fudge": 0.45,
+                },
+                "results": results,
+            },
+            indent=2,
+        )
+    )
     print(f"\nResults saved to {out_path}")
 
 

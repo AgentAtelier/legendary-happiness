@@ -38,29 +38,56 @@ class RoomIntentPlanner:
         # intent → SSPEngine.compile_room() resolves the descriptor
     """
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "room_intent.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "room_intent.gbnf"
 
     # ── Room type lexicon (for the prompt) ─────────────────────
     ROOM_TYPES = [
-        "kitchen", "living_room", "bedroom", "bathroom", "study",
-        "hallway", "dining_room", "office", "library", "workshop",
-        "cellar", "attic", "porch", "pantry",
+        "kitchen",
+        "living_room",
+        "bedroom",
+        "bathroom",
+        "study",
+        "hallway",
+        "dining_room",
+        "office",
+        "library",
+        "workshop",
+        "cellar",
+        "attic",
+        "porch",
+        "pantry",
     ]
 
     # Distinctive features the LLM can request (engine handles known ones)
     KNOWN_FEATURES = [
-        "secret_passage", "hidden_door", "elevated_platform",
-        "sunken_floor", "skylight", "loft", "fireplace",
-        "bay_window", "walk_in_closet", "dumbwaiter",
+        "secret_passage",
+        "hidden_door",
+        "elevated_platform",
+        "sunken_floor",
+        "skylight",
+        "loft",
+        "fireplace",
+        "bay_window",
+        "walk_in_closet",
+        "dumbwaiter",
     ]
 
     # Mood tags the engine interprets
     KNOWN_MOODS = [
-        "abandoned", "cozy", "grand", "sterile", "cramped_feel",
-        "airy", "dark", "bright", "cluttered_feel", "minimal",
-        "ancient", "pristine", "haunted", "lived_in",
+        "abandoned",
+        "cozy",
+        "grand",
+        "sterile",
+        "cramped_feel",
+        "airy",
+        "dark",
+        "bright",
+        "cluttered_feel",
+        "minimal",
+        "ancient",
+        "pristine",
+        "haunted",
+        "lived_in",
     ]
 
     def __init__(
@@ -166,9 +193,13 @@ class RoomIntentPlanner:
 
         # Indoor assets only (no outdoor scatter objects)
         indoor_assets = [
-            aid for aid in self._lexicon.asset_ids
-            if not any(tag in c for c in self._lexicon.get(aid).get("category", [])
-                       for tag in ("scatter", "outdoor", "plant", "rock"))
+            aid
+            for aid in self._lexicon.asset_ids
+            if not any(
+                tag in c
+                for c in self._lexicon.get(aid).get("category", [])
+                for tag in ("scatter", "outdoor", "plant", "rock")
+            )
         ]
         asset_list = ", ".join(indoor_assets) if indoor_assets else ", ".join(self._lexicon.asset_ids)
 
@@ -262,9 +293,7 @@ Output Intent Descriptor now:
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         # Build the descriptor with defaults for missing fields
         descriptor: Dict = {
@@ -292,16 +321,11 @@ Output Intent Descriptor now:
         # Array fields
         mood_tags = data.get("mood_tags")
         if isinstance(mood_tags, list):
-            descriptor["mood_tags"] = [
-                str(t) for t in mood_tags if isinstance(t, str)
-            ]
+            descriptor["mood_tags"] = [str(t) for t in mood_tags if isinstance(t, str)]
 
         must_have = data.get("must_have")
         if isinstance(must_have, list):
-            valid_assets = [
-                str(a) for a in must_have
-                if isinstance(a, str) and a in self._lexicon.asset_ids
-            ]
+            valid_assets = [str(a) for a in must_have if isinstance(a, str) and a in self._lexicon.asset_ids]
             if len(valid_assets) != len(must_have):
                 invalid = [a for a in must_have if isinstance(a, str) and a not in self._lexicon.asset_ids]
                 logger.warn("room_intent_planner", f"Unknown must_have assets dropped: {invalid}")
@@ -310,9 +334,7 @@ Output Intent Descriptor now:
 
         special_features = data.get("special_features")
         if isinstance(special_features, list):
-            descriptor["special_features"] = [
-                str(f) for f in special_features if isinstance(f, str)
-            ]
+            descriptor["special_features"] = [str(f) for f in special_features if isinstance(f, str)]
 
         # Seed (integer or omit)
         seed = data.get("seed")

@@ -2,7 +2,6 @@ from .preview_scene import PreviewScene
 
 
 class PreviewWorld:
-
     def __init__(self):
         self.scenes = {}
 
@@ -18,11 +17,9 @@ class PreviewWorld:
         scene = self.get_scene(scene_name)
 
         for op in operations:
-
             t = op.get("type")
 
             if t == "add_node":
-
                 scene.add_node(
                     op["parent"],
                     op["name"],
@@ -30,30 +27,18 @@ class PreviewWorld:
                 )
 
             elif t == "remove_node":
-
                 scene.remove_node(op["path"])
 
             elif t == "attach_script":
-
-                scene.attach_script(
-                    op["node"],
-                    op["script"]
-                )
+                scene.attach_script(op["node"], op["script"])
 
             elif t == "set_property":
-
-                scene.set_property(
-                    op["node"],
-                    op["key"],
-                    op["value"]
-                )
+                scene.set_property(op["node"], op["key"], op["value"])
 
             elif t == "add_resource":
-
                 pass
 
             else:
-
                 raise RuntimeError(f"Unknown operation: {t}")
 
         return scene

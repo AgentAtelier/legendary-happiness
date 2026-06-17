@@ -74,8 +74,7 @@ def test_all_modules_import() -> None:
 
     if failures:
         raise AssertionError(
-            f"{len(failures)}/{len(modules)} modules failed to import:\n"
-            + "\n".join(f"  - {f}" for f in failures)
+            f"{len(failures)}/{len(modules)} modules failed to import:\n" + "\n".join(f"  - {f}" for f in failures)
         )
 
     print(f"All {len(modules)} modules imported successfully.")

@@ -67,12 +67,11 @@ class PerformanceSentinel:
         with self._lock:
             self._samples.append(sample)
             if len(self._samples) > self._max_samples:
-                self._samples = self._samples[-self._max_samples:]
+                self._samples = self._samples[-self._max_samples :]
 
         logger.info(
             "sentinel",
-            f"Sample recorded: {len(metrics)} metrics, "
-            f"total samples={len(self._samples)}",
+            f"Sample recorded: {len(metrics)} metrics, total samples={len(self._samples)}",
         )
         return sample
 

@@ -4,7 +4,6 @@ from typing import Any, Dict
 
 @dataclass
 class LearningRecord:
-
     prompt: str
 
     architecture: Dict[str, Any]

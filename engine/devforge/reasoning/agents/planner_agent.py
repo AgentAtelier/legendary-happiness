@@ -2,7 +2,6 @@ from devforge.reasoning.agents.agent import Agent
 
 
 class PlannerAgent(Agent):
-
     def __init__(self):
 
         super().__init__("planner")
@@ -11,9 +10,6 @@ class PlannerAgent(Agent):
 
         graph = context["system_graph"]
 
-        steps = [{"action": "build", "target": node_id}
-                 for node_id in graph.topological_order()]
+        steps = [{"action": "build", "target": node_id} for node_id in graph.topological_order()]
 
-        return {
-            "execution_plan": steps
-        }
+        return {"execution_plan": steps}

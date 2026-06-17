@@ -20,9 +20,7 @@ def test_clamps_when_budget_exceeds_window() -> None:
         effective_context_budget,
     )
 
-    effective = effective_context_budget(
-        n_ctx=12288, llama_max_tokens=4096, configured_budget=24000
-    )
+    effective = effective_context_budget(n_ctx=12288, llama_max_tokens=4096, configured_budget=24000)
     assert effective == 12288 - 4096 - PROMPT_OVERHEAD_TOKENS
     # Sanity: prompt(budget + overhead) + generation fits the window
     assert effective + PROMPT_OVERHEAD_TOKENS + 4096 <= 12288
@@ -31,9 +29,7 @@ def test_clamps_when_budget_exceeds_window() -> None:
 def test_no_clamp_when_budget_fits() -> None:
     from devforge.infrastructure.runtime_config import effective_context_budget
 
-    effective = effective_context_budget(
-        n_ctx=32768, llama_max_tokens=4096, configured_budget=24000
-    )
+    effective = effective_context_budget(n_ctx=32768, llama_max_tokens=4096, configured_budget=24000)
     assert effective == 24000
 
 
@@ -41,9 +37,7 @@ def test_never_negative() -> None:
     """A tiny window must not produce a negative budget."""
     from devforge.infrastructure.runtime_config import effective_context_budget
 
-    effective = effective_context_budget(
-        n_ctx=2048, llama_max_tokens=4096, configured_budget=24000
-    )
+    effective = effective_context_budget(n_ctx=2048, llama_max_tokens=4096, configured_budget=24000)
     assert effective == 0
 
 
@@ -60,7 +54,9 @@ def test_apply_server_limits_mutates_config() -> None:
     config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096)
     client = MagicMock()
     client.server_props.return_value = {
-        "n_ctx": 12288, "total_slots": 1, "model_alias": "gemma-26b",
+        "n_ctx": 12288,
+        "total_slots": 1,
+        "model_alias": "gemma-26b",
     }
 
     apply_server_limits(config, client)

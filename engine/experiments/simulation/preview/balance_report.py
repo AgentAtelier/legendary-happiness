@@ -6,7 +6,6 @@ from typing import Dict, Any
 
 
 class BalanceReport:
-
     """
     Generates a structured design report.
     """
@@ -35,7 +34,6 @@ class BalanceReport:
         summary = {}
 
         for name, metric in metrics.items():
-
             summary[name] = metric.value
 
         return summary

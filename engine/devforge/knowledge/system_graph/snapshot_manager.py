@@ -68,9 +68,7 @@ class ArchitectureSnapshotManager:
     ):
 
         for snap in reversed(self.snapshots):
-
             if snap["label"] == label:
-
                 graph.nodes = copy.deepcopy(snap["nodes"])
                 graph.edges = copy.deepcopy(snap["edges"])
 
@@ -85,7 +83,6 @@ class ArchitectureSnapshotManager:
         result = []
 
         for snap in self.snapshots:
-
             result.append(
                 {
                     "label": snap["label"],

@@ -17,20 +17,14 @@ class PatternExpander:
         expanded = []
 
         for entity in entities:
-
             pattern = self.library.get(entity["name"])
 
             if pattern:
-
-                merged = {
-                    "name": entity["name"],
-                    "components": pattern["components"]
-                }
+                merged = {"name": entity["name"], "components": pattern["components"]}
 
                 expanded.append(merged)
 
             else:
-
                 expanded.append(entity)
 
         plan["entities"] = expanded

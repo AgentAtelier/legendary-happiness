@@ -18,8 +18,8 @@ from devforge.infrastructure.logger import logger
 class PolishFinding:
     """A polish deficiency found during the audit."""
 
-    rule_id: str        # "P1", "P2", etc.
-    severity: str       # "ERROR" | "WARNING" | "INFO"
+    rule_id: str  # "P1", "P2", etc.
+    severity: str  # "ERROR" | "WARNING" | "INFO"
     node_path: str
     message: str
     fix_applied: bool = False
@@ -96,28 +96,32 @@ class PolishPass:
             if props is not None:
                 smoothing_enabled = props.get("position_smoothing/enabled", True)
             if not smoothing_enabled:
-                findings.append(PolishFinding(
-                    rule_id="P1",
-                    severity="WARNING",
-                    node_path=path,
-                    message=(
-                        f"Camera3D '{name}' has position smoothing disabled. "
-                        f"Enabling smoothing improves camera feel."
-                    ),
-                ))
+                findings.append(
+                    PolishFinding(
+                        rule_id="P1",
+                        severity="WARNING",
+                        node_path=path,
+                        message=(
+                            f"Camera3D '{name}' has position smoothing disabled. "
+                            f"Enabling smoothing improves camera feel."
+                        ),
+                    )
+                )
 
         # P2: Camera3D always flagged (screen shake can't be detected
         # automatically — it's about whether the game has a shake system)
         if ntype == "Camera3D":
-            findings.append(PolishFinding(
-                rule_id="P2",
-                severity="WARNING",
-                node_path=path,
-                message=(
-                    f"Camera3D '{name}' — consider adding a screen-shake "
-                    f"system for impacts, explosions, and events."
-                ),
-            ))
+            findings.append(
+                PolishFinding(
+                    rule_id="P2",
+                    severity="WARNING",
+                    node_path=path,
+                    message=(
+                        f"Camera3D '{name}' — consider adding a screen-shake "
+                        f"system for impacts, explosions, and events."
+                    ),
+                )
+            )
 
         # P3: Light with zero energy (needs live props)
         if ntype in ("OmniLight3D", "DirectionalLight3D", "SpotLight3D"):
@@ -127,15 +131,14 @@ class PolishPass:
             elif "light_energy" in node:
                 energy = node.get("light_energy", 0.0)
             if isinstance(energy, (int, float)) and energy == 0:
-                findings.append(PolishFinding(
-                    rule_id="P3",
-                    severity="WARNING",
-                    node_path=path,
-                    message=(
-                        f"{ntype} '{name}' has zero light energy. "
-                        f"Set a non-zero energy to see the light."
-                    ),
-                ))
+                findings.append(
+                    PolishFinding(
+                        rule_id="P3",
+                        severity="WARNING",
+                        node_path=path,
+                        message=(f"{ntype} '{name}' has zero light energy. Set a non-zero energy to see the light."),
+                    )
+                )
 
         # P4: MeshInstance3D without a mesh (needs live props)
         if ntype == "MeshInstance3D":
@@ -145,15 +148,16 @@ class PolishPass:
             elif "mesh" in node:
                 mesh = node.get("mesh")
             if mesh is None or mesh == "" or mesh == "null":
-                findings.append(PolishFinding(
-                    rule_id="P4",
-                    severity="ERROR",
-                    node_path=path,
-                    message=(
-                        f"MeshInstance3D '{name}' has no mesh assigned. "
-                        f"Assign a mesh resource to make it visible."
-                    ),
-                ))
+                findings.append(
+                    PolishFinding(
+                        rule_id="P4",
+                        severity="ERROR",
+                        node_path=path,
+                        message=(
+                            f"MeshInstance3D '{name}' has no mesh assigned. Assign a mesh resource to make it visible."
+                        ),
+                    )
+                )
 
         # P5: UI elements with small default font size
         if ntype in ("Label", "Button", "RichTextLabel"):
@@ -161,16 +165,18 @@ class PolishPass:
             if props is not None:
                 font_size = props.get("theme_override_font_sizes/font_size", 0)
             if font_size == 0 or font_size < 14:
-                findings.append(PolishFinding(
-                    rule_id="P5",
-                    severity="WARNING",
-                    node_path=path,
-                    message=(
-                        f"UI element '{name}' ({ntype}) has font size < 14pt "
-                        f"or uses the default. Larger, custom fonts improve "
-                        f"readability."
-                    ),
-                ))
+                findings.append(
+                    PolishFinding(
+                        rule_id="P5",
+                        severity="WARNING",
+                        node_path=path,
+                        message=(
+                            f"UI element '{name}' ({ntype}) has font size < 14pt "
+                            f"or uses the default. Larger, custom fonts improve "
+                            f"readability."
+                        ),
+                    )
+                )
 
         for child in node.get("children", []):
             self._walk(child, findings, path)
@@ -250,9 +256,7 @@ def run_polish_pass(
 
     logger.info(
         "polish",
-        f"Polish audit: {len(findings)} findings "
-        f"({errors} errors, {warnings} warnings), "
-        f"{fixes_applied} fixes",
+        f"Polish audit: {len(findings)} findings ({errors} errors, {warnings} warnings), {fixes_applied} fixes",
     )
 
     return {

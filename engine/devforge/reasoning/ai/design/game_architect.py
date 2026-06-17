@@ -3,7 +3,6 @@ from devforge.knowledge.default_patterns import load_default_patterns
 
 
 class GameArchitect:
-
     def __init__(self):
 
         self.patterns = load_default_patterns()
@@ -18,7 +17,6 @@ class GameArchitect:
         matches = self.patterns.match(prompt)
 
         for pattern in matches:
-
             for entity in pattern.get("entities", []):
                 graph.add_entity(entity)
 
@@ -26,7 +24,6 @@ class GameArchitect:
                 graph.add_system(system)
 
             for signal in pattern.get("signals", []):
-
                 graph.add_signal(
                     signal["name"],
                     signal["source"],

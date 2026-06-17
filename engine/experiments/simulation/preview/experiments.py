@@ -39,7 +39,6 @@ class ExperimentRunner:
         results: List[ExperimentResult] = []
 
         for scenario in scenarios:
-
             result = self.runner.run_scenario(scenario)
 
             results.append(
@@ -70,10 +69,6 @@ class ExperimentRunner:
         comparison: Dict[str, Dict[str, Any]] = {}
 
         for r in results:
-
-            comparison[r.scenario_name] = {
-                name: metric.value
-                for name, metric in r.metrics.items()
-            }
+            comparison[r.scenario_name] = {name: metric.value for name, metric in r.metrics.items()}
 
         return comparison

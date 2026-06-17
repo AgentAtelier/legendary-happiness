@@ -68,6 +68,7 @@ try:
     from devforge.spatial.voronoi import VoronoiEngine as _VoronoiEngine
     from devforge.spatial.room_intent_planner import RoomIntentPlanner as _RoomIntentPlanner
     from devforge.spatial.lexicon import AssetLexicon as _AssetLexicon
+
     _HAS_SPATIAL = True
 except ImportError:
     pass
@@ -92,12 +93,14 @@ def _clean_rename_target(name: str) -> str:
         return ""
     name = name.strip()
     # Leading articles
-    name = _re.sub(r'^(?:the|a|an)\s+', '', name, flags=_re.IGNORECASE)
+    name = _re.sub(r"^(?:the|a|an)\s+", "", name, flags=_re.IGNORECASE)
     # Trailing node/entity qualifiers
-    name = _re.sub(r'\s+(?:node|entity|object)$', '', name, flags=_re.IGNORECASE)
+    name = _re.sub(r"\s+(?:node|entity|object)$", "", name, flags=_re.IGNORECASE)
     # Trailing punctuation (period, comma, semicolon, colon)
-    name = _re.sub(r'[.,;:]+$', '', name)
+    name = _re.sub(r"[.,;:]+$", "", name)
     return name.strip()
+
+
 _DELETE_INTENT_RE = _re.compile(
     r"(?:then|and)\s+(?:delete|remove)\s+(?:the\s+(?:node|entity)\s+)?(?:it|them)",
     _re.IGNORECASE,
@@ -141,6 +144,7 @@ def _recover_entities_from_prompt(prompt: str) -> list[dict]:
         entities.append(entity)
     return entities
 
+
 # Governance gates (lazy-loaded, optional)
 _HAS_GOVERNANCE = False
 try:
@@ -152,10 +156,10 @@ except ImportError:
     pass
 
 
-
 @dataclass
 class GateResult:
     """Result from a single governance gate."""
+
     gate_name: str
     passed: bool
     violations: List[Dict[str, Any]] = field(default_factory=list)
@@ -167,6 +171,7 @@ class GateResult:
 @dataclass
 class PipelineResult:
     """Result of running the full pipeline."""
+
     files: List[Dict[str, Any]] = field(default_factory=list)
     operations: List[Dict[str, Any]] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
@@ -181,12 +186,12 @@ class PipelineResult:
     stage_latencies: Dict[str, float] = field(default_factory=dict)
     cache_stats: Dict[str, Any] = field(default_factory=dict)
     # Phase 6+: pipeline diagnostics (single source of truth for probes + shootout)
-    plan_retries: int = 0       # how many retries before planner succeeded
-    repair_count: int = 0       # operations fixed by repair engine
-    completeness_added: int = 0 # nodes auto-injected by completeness checker
-    token_used: int = 0         # tokens consumed (from LLM gateway, 0 if unavailable)
+    plan_retries: int = 0  # how many retries before planner succeeded
+    repair_count: int = 0  # operations fixed by repair engine
+    completeness_added: int = 0  # nodes auto-injected by completeness checker
+    token_used: int = 0  # tokens consumed (from LLM gateway, 0 if unavailable)
     # Workstream A2: planner instrumentation
-    truncated: bool = False     # planner output hit n_predict limit
+    truncated: bool = False  # planner output hit n_predict limit
 
 
 class PipelineEngine:
@@ -252,12 +257,15 @@ class PipelineEngine:
             self._voronoi_planner = _VoronoiPlanner()
             self._voronoi_engine = _VoronoiEngine()
             self._room_intent_planner = _RoomIntentPlanner(lexicon, self._ssp_engine)
-            logger.info("pipeline.engine",
+            logger.info(
+                "pipeline.engine",
                 "Layout + building + scatter + SSP + WFC + Voronoi + RoomIntent planners initialised "
-                "(per-request routing ready)")
+                "(per-request routing ready)",
+            )
         else:
-            logger.warn("pipeline.engine",
-                "Spatial module not importable; layout/building/scatter/SSP planners unavailable")
+            logger.warn(
+                "pipeline.engine", "Spatial module not importable; layout/building/scatter/SSP planners unavailable"
+            )
 
         self._compiler = ArchitectureCompiler()
         self._generator = OperationGenerator()
@@ -330,22 +338,21 @@ class PipelineEngine:
             # across apply_spec calls — see RepairEngine.reset docstring)
             self._repair.reset()
 
-# Phase 0: Script extraction (deterministic, no LLM).
+            # Phase 0: Script extraction (deterministic, no LLM).
             # If the user pasted GDScript, lift it into create_file ops and
             # scrub it from the prompt the planner will see. Pre-planner files
             # are merged into the final result after the planner + compiler run.
             t0 = time.perf_counter()
             extracted_files, planner_prompt = extract_scripts(prompt)
             stages["script_extraction"] = (time.perf_counter() - t0) * 1000
-            prompt_scrubbed = (extracted_files and planner_prompt != prompt)
+            prompt_scrubbed = extracted_files and planner_prompt != prompt
 
             # If the entire prompt was GDScript, there is nothing left
             # to plan — return the extracted files without an LLM call.
             if extracted_files and not planner_prompt.strip():
                 logger.info(
                     "pipeline.engine",
-                    f"Prompt fully consumed by script extraction "
-                    f"({len(extracted_files)} file(s)) — skipping planner",
+                    f"Prompt fully consumed by script extraction ({len(extracted_files)} file(s)) — skipping planner",
                 )
                 files: List[Dict[str, Any]] = []
                 seen_paths: set[str] = set()
@@ -368,7 +375,9 @@ class PipelineEngine:
             # forces the signature-only branch of _code_context.
             t0 = time.perf_counter()
             context = self._assembler.assemble(
-                scene, planner_prompt, signatures_only=True,
+                scene,
+                planner_prompt,
+                signatures_only=True,
             )
             stages["context_assembly"] = (time.perf_counter() - t0) * 1000
 
@@ -385,80 +394,106 @@ class PipelineEngine:
             # constrained call). Kept behind the flag for future revisit.
             effective_mode = planner or self._config.planner_mode
             compilation_errors: List[str] = []
-            if (effective_mode == "layout"
-                    and self._layout_planner is not None
-                    and self._spatial_compiler is not None):
+            if effective_mode == "layout" and self._layout_planner is not None and self._spatial_compiler is not None:
                 result = self._run_layout_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
-            elif (effective_mode == "building"
-                  and self._building_planner is not None
-                  and self._bsp_partitioner is not None):
+            elif (
+                effective_mode == "building"
+                and self._building_planner is not None
+                and self._bsp_partitioner is not None
+            ):
                 result = self._run_building_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
-            elif (effective_mode == "scatter"
-                  and self._scatter_planner is not None
-                  and self._scatter_engine is not None):
+            elif effective_mode == "scatter" and self._scatter_planner is not None and self._scatter_engine is not None:
                 result = self._run_scatter_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
-            elif (effective_mode == "ssp"
-                  and self._ssp_planner is not None
-                  and self._ssp_engine is not None
-                  and self._spatial_compiler is not None):
+            elif (
+                effective_mode == "ssp"
+                and self._ssp_planner is not None
+                and self._ssp_engine is not None
+                and self._spatial_compiler is not None
+            ):
                 result = self._run_ssp_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
-            elif (effective_mode == "room"
-                  and self._room_intent_planner is not None
-                  and self._ssp_engine is not None
-                  and self._spatial_compiler is not None):
+            elif (
+                effective_mode == "room"
+                and self._room_intent_planner is not None
+                and self._ssp_engine is not None
+                and self._spatial_compiler is not None
+            ):
                 result = self._run_room_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
-            elif (effective_mode == "wfc"
-                  and self._wfc_planner is not None
-                  and self._wfc_engine is not None):
+            elif effective_mode == "wfc" and self._wfc_planner is not None and self._wfc_engine is not None:
                 result = self._run_wfc_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
-            elif (effective_mode == "voronoi"
-                  and self._voronoi_planner is not None
-                  and self._voronoi_engine is not None):
+            elif effective_mode == "voronoi" and self._voronoi_planner is not None and self._voronoi_engine is not None:
                 result = self._run_voronoi_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
@@ -466,16 +501,24 @@ class PipelineEngine:
                 files, operations, arch_delta, plan_retries = result
             elif effective_mode == "ops" and self._ops_planner is not None:
                 result = self._run_ops_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                 )
                 if isinstance(result, PipelineResult):
                     return result  # error early-return
                 files, operations, arch_delta, plan_retries = result
             else:
                 result = self._run_arch_path(
-                    context, planner_prompt, scene, scene_version,
-                    stages, temperature=temperature,
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
                     skip_cache=skip_cache,
                 )
                 if isinstance(result, PipelineResult):
@@ -534,7 +577,9 @@ class PipelineEngine:
             for gr in gate_results:
                 if not gr.passed:
                     for v in gr.violations:
-                        errors.append(f"[{gr.gate_name}] {v.get('rule_id', '?')}: {v.get('message', v.get('description', ''))}")
+                        errors.append(
+                            f"[{gr.gate_name}] {v.get('rule_id', '?')}: {v.get('message', v.get('description', ''))}"
+                        )
 
             # Cache stats from planner
             cache_stats = self._planner.cache_stats or {}
@@ -551,8 +596,7 @@ class PipelineEngine:
                 if prompt_scrubbed:
                     logger.info(
                         "pipeline.engine",
-                        f"Merged {len(extracted_files)} pre-planner "
-                        f"script(s) into result",
+                        f"Merged {len(extracted_files)} pre-planner script(s) into result",
                     )
 
             return PipelineResult(
@@ -632,9 +676,7 @@ class PipelineEngine:
                 subsystems=subsystems or ["game_logic"],
                 depth=depth,
                 files_modified=len(files),
-                crosses_sim_render=any(
-                    hasattr(gr, "cross_boundary") and gr.cross_boundary for gr in results
-                ),
+                crosses_sim_render=any(hasattr(gr, "cross_boundary") and gr.cross_boundary for gr in results),
             )
             gr = GateResult(
                 gate_name="risk_scoring",
@@ -714,13 +756,13 @@ class PipelineEngine:
                 )
                 break
             except BudgetExceededError:
-                stages["architecture_planning"] = (
-                    time.perf_counter() - t0
-                ) * 1000
+                stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
                 return PipelineResult(
-                    errors=["Token budget exceeded — the LLM Gateway rejected "
-                            "this request because the per-turn token limit "
-                            "was reached."],
+                    errors=[
+                        "Token budget exceeded — the LLM Gateway rejected "
+                        "this request because the per-turn token limit "
+                        "was reached."
+                    ],
                     scene_tree=scene,
                     scene_version=scene_version,
                     stage_latencies=stages,
@@ -728,23 +770,14 @@ class PipelineEngine:
             except OpsPlanningError as ope:
                 retry_errors.append(str(ope))
                 if attempt == max_retries:
-                    stages["architecture_planning"] = (
-                        time.perf_counter() - t0
-                    ) * 1000
+                    stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
                     return PipelineResult(
-                        errors=[
-                            f"Ops planning failed after {attempt} attempts: "
-                            + "; ".join(retry_errors)
-                        ],
+                        errors=[f"Ops planning failed after {attempt} attempts: " + "; ".join(retry_errors)],
                         scene_tree=scene,
                         scene_version=scene_version,
                         stage_latencies=stages,
                     )
-                retry_prompt = (
-                    f"{planner_prompt}\n\n"
-                    f"The previous output failed: {ope}. "
-                    f"Fix only those issues."
-                )
+                retry_prompt = f"{planner_prompt}\n\nThe previous output failed: {ope}. Fix only those issues."
                 logger.info(
                     "pipeline.engine",
                     f"Ops planning retry {attempt}/{max_retries}",
@@ -802,7 +835,11 @@ class PipelineEngine:
         arch_profile = self._config.sampler_profiles.get("arch", {})
         if temperature is not None:
             arch_profile = {**arch_profile, "temperature": temperature}
-        llm_fn = functools.partial(self._llm.generate, grammar=planner_grammar, **arch_profile) if planner_grammar else functools.partial(self._llm.generate, **arch_profile)
+        llm_fn = (
+            functools.partial(self._llm.generate, grammar=planner_grammar, **arch_profile)
+            if planner_grammar
+            else functools.partial(self._llm.generate, **arch_profile)
+        )
 
         arch_delta = None
         retry_errors: List[str] = []
@@ -821,9 +858,7 @@ class PipelineEngine:
                 )
                 break
             except BudgetExceededError:
-                stages["architecture_planning"] = (
-                    time.perf_counter() - t0
-                ) * 1000
+                stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
                 return PipelineResult(
                     errors=[
                         "Token budget exceeded — the LLM Gateway rejected "
@@ -838,35 +873,22 @@ class PipelineEngine:
             except PlanningError as pe:
                 retry_errors.append(str(pe))
                 if attempt == max_retries:
-                    stages["architecture_planning"] = (
-                        time.perf_counter() - t0
-                    ) * 1000
+                    stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
                     return PipelineResult(
-                        errors=[
-                            f"Architecture planning failed after {attempt} "
-                            f"attempts: " + "; ".join(retry_errors)
-                        ],
+                        errors=[f"Architecture planning failed after {attempt} attempts: " + "; ".join(retry_errors)],
                         scene_tree=scene,
                         scene_version=scene_version,
                         stage_latencies=stages,
                     )
-                is_budget_error = (
-                    "budget" in str(pe).lower()
-                    or "token" in str(pe).lower()
-                )
-                retry_prompt = (
-                    f"{planner_prompt}\n\n"
-                    f"The previous plan failed: {pe}. Fix only those issues."
-                )
+                is_budget_error = "budget" in str(pe).lower() or "token" in str(pe).lower()
+                retry_prompt = f"{planner_prompt}\n\nThe previous plan failed: {pe}. Fix only those issues."
                 context = self._assembler.assemble(
-                    scene, retry_prompt,
+                    scene,
+                    retry_prompt,
                     minimal=(attempt >= 2 and is_budget_error),
                     signatures_only=True,
                 )
-                ctx_label = (
-                    "trimmed" if (attempt >= 2 and is_budget_error)
-                    else "full"
-                )
+                ctx_label = "trimmed" if (attempt >= 2 and is_budget_error) else "full"
                 logger.info(
                     "pipeline.engine",
                     f"Planning retry {attempt}/{max_retries} — "
@@ -893,16 +915,14 @@ class PipelineEngine:
             n = node.get("name", "")
             if n:
                 names.add(n)
-            for child in (node.get("children") or []):
+            for child in node.get("children") or []:
                 if isinstance(child, dict):
                     names |= _live_scene_names(child)
             return names
+
         scene_names = _live_scene_names(scene)
 
-        new_entities = [
-            e for e in arch_delta.get("entities", [])
-            if e.get("name") not in scene_names
-        ]
+        new_entities = [e for e in arch_delta.get("entities", []) if e.get("name") not in scene_names]
         dropped = len(arch_delta.get("entities", [])) - len(new_entities)
         if dropped > 0:
             logger.info(
@@ -915,8 +935,10 @@ class PipelineEngine:
         if self._llm.last_truncated:
             logger.warn("pipeline.engine", "Architecture plan was truncated by n_predict")
             return PipelineResult(
-                errors=["Architecture plan truncated — response hit n_predict limit. "
-                        "Try a simpler prompt or raise max_tokens."],
+                errors=[
+                    "Architecture plan truncated — response hit n_predict limit. "
+                    "Try a simpler prompt or raise max_tokens."
+                ],
                 scene_tree=scene,
                 scene_version=scene_version,
                 stage_latencies=stages,
@@ -988,8 +1010,7 @@ class PipelineEngine:
                     rn["to"] = new_clean
                     logger.info(
                         "pipeline.engine",
-                        f"Cleaned planner _rename: '{old_raw}'→'{old_clean}', "
-                        f"'{new_raw}'→'{new_clean}'",
+                        f"Cleaned planner _rename: '{old_raw}'→'{old_clean}', '{new_raw}'→'{new_clean}'",
                     )
             # Strip spurious systems for pure edit prompts — the LLM shouldn't
             # invent scripts for "create then delete" or "create then rename".
@@ -1028,21 +1049,19 @@ class PipelineEngine:
                     arch_delta["entities"] = fresh
                     logger.info(
                         "pipeline.engine",
-                        f"Recovered {len(fresh)} entity(s) the LLM dropped: "
-                        f"{[e.get('name') for e in fresh]}",
+                        f"Recovered {len(fresh)} entity(s) the LLM dropped: {[e.get('name') for e in fresh]}",
                     )
 
         inferred: list[dict] = []
         if not _has_edit_intent:
             inferred = self._compiler.infer_systems(
-                planner_prompt, arch_delta.get("entities", []),
-                arch_delta.get("systems", []))
+                planner_prompt, arch_delta.get("entities", []), arch_delta.get("systems", [])
+            )
         if inferred:
             arch_delta.setdefault("systems", []).extend(inferred)
             logger.info(
                 "pipeline.engine",
-                f"Inferred {len(inferred)} behavior system(s) the planner omitted: "
-                f"{[s['name'] for s in inferred]}",
+                f"Inferred {len(inferred)} behavior system(s) the planner omitted: {[s['name'] for s in inferred]}",
             )
 
         # Phase 3: Compilation
@@ -1057,9 +1076,7 @@ class PipelineEngine:
         # structurally valid but wrong. These errors are surfaced in
         # the pipeline result so callers (gauntlet, scenarios) can count
         # them as validation failures.
-        compilation_errors: List[str] = list(
-            getattr(self._compiler, '_semantic_errors', [])
-        )
+        compilation_errors: List[str] = list(getattr(self._compiler, "_semantic_errors", []))
 
         # Phase 4: Operation Generation
         t0 = time.perf_counter()
@@ -1111,7 +1128,11 @@ class PipelineEngine:
         arch_profile = self._config.sampler_profiles.get("arch", {})
         if temperature is not None:
             arch_profile = {**arch_profile, "temperature": temperature}
-        llm_fn = functools.partial(self._llm.generate, grammar=grammar, **arch_profile) if grammar else functools.partial(self._llm.generate, **arch_profile)
+        llm_fn = (
+            functools.partial(self._llm.generate, grammar=grammar, **arch_profile)
+            if grammar
+            else functools.partial(self._llm.generate, **arch_profile)
+        )
 
         json_result: Dict = {}
         max_retries = self._config.max_plan_retries
@@ -1129,9 +1150,7 @@ class PipelineEngine:
                 )
                 break
             except BudgetExceededError:
-                stages["architecture_planning"] = (
-                    time.perf_counter() - t0
-                ) * 1000
+                stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
                 return PipelineResult(
                     errors=[f"Token budget exceeded during {planner_label} planning."],
                     scene_tree=scene,
@@ -1141,22 +1160,16 @@ class PipelineEngine:
             except Exception as exc:
                 retry_errors.append(str(exc))
                 if attempt == max_retries:
-                    stages["architecture_planning"] = (
-                        time.perf_counter() - t0
-                    ) * 1000
+                    stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
                     return PipelineResult(
                         errors=[
-                            f"{planner_label} planning failed after {attempt} "
-                            f"attempts: " + "; ".join(retry_errors)
+                            f"{planner_label} planning failed after {attempt} attempts: " + "; ".join(retry_errors)
                         ],
                         scene_tree=scene,
                         scene_version=scene_version,
                         stage_latencies=stages,
                     )
-                retry_prompt = (
-                    f"{planner_prompt}\n\n"
-                    f"The previous plan failed: {exc}. Fix only those issues."
-                )
+                retry_prompt = f"{planner_prompt}\n\nThe previous plan failed: {exc}. Fix only those issues."
                 logger.info(
                     "pipeline.engine",
                     f"{planner_label} planning retry {attempt}/{max_retries}",
@@ -1223,7 +1236,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the layout path: layout planner → spatial compiler → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._layout_planner,
             compile_fn=self._spatial_compiler.compile_layout,
             arch_key="_layout",
@@ -1248,7 +1265,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the building path: building planner → BSP partitioner → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._building_planner,
             compile_fn=self._bsp_partitioner.compile_building,
             arch_key="_building",
@@ -1273,7 +1294,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the scatter path: scatter planner → scatter engine → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._scatter_planner,
             compile_fn=self._scatter_engine.compile_garden,
             arch_key="_scatter",
@@ -1298,7 +1323,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the SSP path: SSP planner → SSP engine → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._ssp_planner,
             compile_fn=self._ssp_engine.compile_room,
             arch_key="_ssp",
@@ -1323,7 +1352,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the Voronoi path: Voronoi planner → Voronoi engine → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._voronoi_planner,
             compile_fn=self._voronoi_engine.compile_town,
             arch_key="_voronoi",
@@ -1348,7 +1381,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the WFC path: WFC planner → WFC engine → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._wfc_planner,
             compile_fn=self._wfc_engine.compile_dungeon,
             arch_key="_wfc",
@@ -1373,7 +1410,11 @@ class PipelineEngine:
     ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
         """Run the room path: RoomIntent planner → SSP engine → op generator."""
         return self._run_spatial_path(
-            context, planner_prompt, scene, scene_version, stages,
+            context,
+            planner_prompt,
+            scene,
+            scene_version,
+            stages,
             planner_instance=self._room_intent_planner,
             compile_fn=self._ssp_engine.compile_room,
             arch_key="_room",

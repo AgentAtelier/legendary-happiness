@@ -4,7 +4,6 @@ from typing import Dict
 
 @dataclass
 class WorldState:
-
     time: float = 0.0
 
     entities: Dict[str, dict] = field(default_factory=dict)

@@ -49,8 +49,7 @@ class R5StaticTyping(Rule):
                     violations.append(
                         Violation(
                             rule_id="R5_STATIC_TYPING",
-                            message=f"Function '{func.name}': argument "
-                            f"'{param['name']}' is missing type hint",
+                            message=f"Function '{func.name}': argument '{param['name']}' is missing type hint",
                             line_number=func.line_number,
                             severity="critical",
                             action="block_merge",

@@ -5,7 +5,6 @@ from devforge.simulation.preview.design_critic import DesignCritic
 
 
 class CriticFeature(PreviewFeature):
-
     name = "critic"
 
     def __init__(self):

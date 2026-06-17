@@ -14,6 +14,7 @@ from devforge.spatial.compiler import SpatialCompiler
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def lexicon():
     return AssetLexicon()
@@ -38,16 +39,27 @@ def ssp_with_compiler(compiler):
 
 # ── Archetype catalog tests ──────────────────────────────────────
 
+
 class TestArchetypeCatalog:
     """ROOM_ARCHETYPES constants: structure, completeness, semantics."""
 
     def test_all_fourteen_archetypes_present(self):
         """All 14 archetypes are defined."""
         expected = {
-            "kitchen", "living_room", "bedroom", "bathroom",
-            "study", "hallway", "dining_room",
-            "office", "library", "workshop", "cellar",
-            "attic", "porch", "pantry",
+            "kitchen",
+            "living_room",
+            "bedroom",
+            "bathroom",
+            "study",
+            "hallway",
+            "dining_room",
+            "office",
+            "library",
+            "workshop",
+            "cellar",
+            "attic",
+            "porch",
+            "pantry",
         }
         assert set(ROOM_ARCHETYPES.keys()) == expected
 
@@ -113,6 +125,7 @@ class TestArchetypeCatalog:
 
 # ── compile_room tests ───────────────────────────────────────────
 
+
 class TestCompileRoom:
     """compile_room: archetype defaults, merge logic, edge cases."""
 
@@ -122,10 +135,7 @@ class TestCompileRoom:
             {"archetype": "kitchen"},
             root_path="/root/Main/kitchen",
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Floor, Ceiling, stove, fridge, counter, table
         assert "Floor" in create_names
         assert "Ceiling" in create_names
@@ -153,10 +163,7 @@ class TestCompileRoom:
             },
             root_path="/root/Main/kitchen",
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         assert "sink_north_counter_center" in create_names
         assert "stove_north_counter_center" not in create_names
         # Other defaults still there
@@ -173,10 +180,7 @@ class TestCompileRoom:
             },
             root_path="/root/Main/bedroom",
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Default bedroom: table + cabinet
         assert "table_center_table" in create_names
         assert "cabinet_east_storage" in create_names
@@ -198,12 +202,15 @@ class TestCompileRoom:
             },
             root_path="/root/Main/overridden",
         )
+
         # Extract floor positions
         def floor_pos(plan):
             for s in plan.steps:
-                if (getattr(s, "step_type", "") == "set_property"
-                        and getattr(s, "property", "") == "position"
-                        and "Floor" in getattr(s, "node", "")):
+                if (
+                    getattr(s, "step_type", "") == "set_property"
+                    and getattr(s, "property", "") == "position"
+                    and "Floor" in getattr(s, "node", "")
+                ):
                     return s.value
             return None
 
@@ -229,10 +236,7 @@ class TestCompileRoom:
             },
             root_path="/root/Main/living",
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # corridor pattern should still produce Floor + Ceiling shell
         assert "Floor" in create_names
         assert "Ceiling" in create_names
@@ -243,10 +247,7 @@ class TestCompileRoom:
             {"archetype": "spaceship_bridge"},
             root_path="/root/Main/bridge",
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Kitchen defaults applied
         assert "stove_north_counter_center" in create_names
 
@@ -256,18 +257,13 @@ class TestCompileRoom:
             {},
             root_path="/root/Main/unknown",
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Kitchen assets should appear somewhere (slot names depend on seeded RNG)
         has_stove = any("stove" in n for n in create_names)
         has_fridge = any("fridge" in n for n in create_names)
         has_counter = any("counter" in n for n in create_names)
         has_table = any("table" in n for n in create_names)
-        assert has_stove or has_fridge or has_counter or has_table, (
-            f"No kitchen assets found in: {create_names}"
-        )
+        assert has_stove or has_fridge or has_counter or has_table, f"No kitchen assets found in: {create_names}"
         assert len(plan.steps) > 0
 
     def test_shell_false_no_floor_ceiling(self, ssp_with_compiler):
@@ -277,10 +273,7 @@ class TestCompileRoom:
             root_path="/root/Main/kitchen",
             shell=False,
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         assert "Floor" not in create_names
         assert "Ceiling" not in create_names
         # Furniture still placed
@@ -301,22 +294,16 @@ class TestCompileRoom:
             shell=False,
         )
         # Furniture node names should match (same assets in same slots)
-        base_names = [
-            s.name for s in base.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
-        off_names = [
-            s.name for s in off.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        base_names = [s.name for s in base.steps if getattr(s, "step_type", "") == "create_entity"]
+        off_names = [s.name for s in off.steps if getattr(s, "step_type", "") == "create_entity"]
         assert set(base_names) == set(off_names)
 
         # Positions should differ by ~10 in x and ~5 in z
         def get_positions(plan):
             return [
-                s.value for s in plan.steps
-                if getattr(s, "step_type", "") == "set_property"
-                and getattr(s, "property", "") == "position"
+                s.value
+                for s in plan.steps
+                if getattr(s, "step_type", "") == "set_property" and getattr(s, "property", "") == "position"
             ]
 
         base_pos = get_positions(base)
@@ -364,16 +351,13 @@ class TestCompileRoomIntent:
             root_path="/root/Main/intent_kitchen",
             shell=False,
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Intent path uses category-based assignment (seeded RNG), so assets
         # should appear but slot names differ from legacy's fixed slots
         has_asset = any(
-            a in n for n in create_names
-            for a in ("stove", "fridge", "counter", "sink", "table", "chair",
-                      "cabinet", "shelf")
+            a in n
+            for n in create_names
+            for a in ("stove", "fridge", "counter", "sink", "table", "chair", "cabinet", "shelf")
         )
         assert has_asset, f"No assets found via intent path: {create_names}"
         assert len(plan.steps) > 0
@@ -385,10 +369,7 @@ class TestCompileRoomIntent:
             root_path="/root/Main/legacy_kitchen",
             shell=False,
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Legacy kitchen uses fixed slot names
         assert "stove_north_counter_center" in create_names
         assert "fridge_north_counter_left" in create_names
@@ -400,13 +381,9 @@ class TestCompileRoomIntent:
             root_path="/root/Main/fallback",
             shell=False,
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         has_asset = any(
-            a in n for n in create_names
-            for a in ("stove", "fridge", "counter", "table", "chair", "cabinet", "shelf")
+            a in n for n in create_names for a in ("stove", "fridge", "counter", "table", "chair", "cabinet", "shelf")
         )
         assert has_asset, f"Fallback should produce kitchen assets: {create_names}"
 
@@ -421,7 +398,8 @@ class TestCompileRoomIntent:
         )
         assert len(plan.steps) > 0
         floor_positions = [
-            s.value for s in plan.steps
+            s.value
+            for s in plan.steps
             if getattr(s, "step_type", "") == "set_property"
             and getattr(s, "property", "") == "position"
             and "Floor" in getattr(s, "node", "")
@@ -440,7 +418,8 @@ class TestCompileRoomIntent:
             shell=True,
         )
         floor_positions = [
-            s.value for s in plan.steps
+            s.value
+            for s in plan.steps
             if getattr(s, "step_type", "") == "set_property"
             and getattr(s, "property", "") == "position"
             and "Floor" in getattr(s, "node", "")
@@ -454,18 +433,22 @@ class TestCompileRoomIntent:
         """cramped and spacious produce different floor centers."""
         cramped = ssp_with_compiler.compile_room(
             {"room_type": "kitchen", "size": "cramped", "seed": 1},
-            root_path="/root/Main/A", shell=True,
+            root_path="/root/Main/A",
+            shell=True,
         )
         spacious = ssp_with_compiler.compile_room(
             {"room_type": "kitchen", "size": "spacious", "seed": 1},
-            root_path="/root/Main/B", shell=True,
+            root_path="/root/Main/B",
+            shell=True,
         )
 
         def floor_center(plan):
             for s in plan.steps:
-                if (getattr(s, "step_type", "") == "set_property"
-                        and getattr(s, "property", "") == "position"
-                        and "Floor" in getattr(s, "node", "")):
+                if (
+                    getattr(s, "step_type", "") == "set_property"
+                    and getattr(s, "property", "") == "position"
+                    and "Floor" in getattr(s, "node", "")
+                ):
                     return (s.value.get("x"), s.value.get("z"))
             return None
 
@@ -494,7 +477,8 @@ class TestCompileRoomIntent:
         """abandoned mood applies saturation_scale=0.4, brightness_scale=0.6."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "seed": 1,
+                "room_type": "kitchen",
+                "seed": 1,
                 "mood_tags": ["abandoned"],
             },
             root_path="/root/Main/abandoned",
@@ -507,22 +491,17 @@ class TestCompileRoomIntent:
         """sterile mood → clutter_mult=0.0, so no extra clutter even if clutter=0.8."""
         plan_cluttered = ssp_with_compiler.compile_room(
             {"room_type": "kitchen", "seed": 1, "clutter": 0.8},
-            root_path="/root/Main/cluttered", shell=False,
+            root_path="/root/Main/cluttered",
+            shell=False,
         )
         plan_sterile = ssp_with_compiler.compile_room(
-            {"room_type": "kitchen", "seed": 1, "clutter": 0.8,
-             "mood_tags": ["sterile"]},
-            root_path="/root/Main/sterile", shell=False,
+            {"room_type": "kitchen", "seed": 1, "clutter": 0.8, "mood_tags": ["sterile"]},
+            root_path="/root/Main/sterile",
+            shell=False,
         )
         # sterile should have fewer props (clutter zeroed out)
-        cluttered_names = [
-            s.name for s in plan_cluttered.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
-        sterile_names = [
-            s.name for s in plan_sterile.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        cluttered_names = [s.name for s in plan_cluttered.steps if getattr(s, "step_type", "") == "create_entity"]
+        sterile_names = [s.name for s in plan_sterile.steps if getattr(s, "step_type", "") == "create_entity"]
         assert len(sterile_names) <= len(cluttered_names), (
             f"Sterile ({len(sterile_names)}) should have ≤ props than cluttered ({len(cluttered_names)})"
         )
@@ -540,7 +519,8 @@ class TestCompileRoomIntent:
         """Multiple mood tags stack their modifiers."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "seed": 1,
+                "room_type": "kitchen",
+                "seed": 1,
                 "mood_tags": ["dark", "abandoned"],
             },
             root_path="/root/Main/double_mood",
@@ -559,10 +539,7 @@ class TestCompileRoomIntent:
         )
         # Kitchen requires cooking_surface, food_storage, prep_surface, lighting
         # → 4 required slots. No clutter.
-        create_count = sum(
-            1 for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
+        create_count = sum(1 for s in plan.steps if getattr(s, "step_type", "") == "create_entity")
         assert create_count > 0
 
     def test_clutter_full_more_props(self, ssp_with_compiler):
@@ -572,30 +549,23 @@ class TestCompileRoomIntent:
             root_path="/root/Main/clutter1",
             shell=False,
         )
-        create_count = sum(
-            1 for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
+        create_count = sum(1 for s in plan.steps if getattr(s, "step_type", "") == "create_entity")
         assert create_count > 0
 
     def test_high_clutter_more_than_zero_clutter(self, ssp_with_compiler):
         """clutter=1.0 produces more props than clutter=0.0."""
         low = ssp_with_compiler.compile_room(
             {"room_type": "living_room", "clutter": 0.0, "seed": 1},
-            root_path="/root/Main/low", shell=False,
+            root_path="/root/Main/low",
+            shell=False,
         )
         high = ssp_with_compiler.compile_room(
             {"room_type": "living_room", "clutter": 1.0, "seed": 1},
-            root_path="/root/Main/high", shell=False,
+            root_path="/root/Main/high",
+            shell=False,
         )
-        low_count = sum(
-            1 for s in low.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
-        high_count = sum(
-            1 for s in high.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
+        low_count = sum(1 for s in low.steps if getattr(s, "step_type", "") == "create_entity")
+        high_count = sum(1 for s in high.steps if getattr(s, "step_type", "") == "create_entity")
         assert high_count >= low_count, (
             f"clutter=1.0 ({high_count}) should have >= props than clutter=0.0 ({low_count})"
         )
@@ -606,16 +576,14 @@ class TestCompileRoomIntent:
         """must_have asset appears in the plan."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "seed": 1,
+                "room_type": "kitchen",
+                "seed": 1,
                 "must_have": ["sink"],
             },
             root_path="/root/Main/must_have",
             shell=False,
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         has_sink = any("sink" in n for n in create_names)
         assert has_sink, f"must_have sink not found in: {create_names}"
 
@@ -624,23 +592,19 @@ class TestCompileRoomIntent:
         reject individual assets due to chain dependencies or footprint)."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "bedroom", "seed": 1,
+                "room_type": "bedroom",
+                "seed": 1,
                 "must_have": ["cabinet", "chair"],
             },
             root_path="/root/Main/must_have_multi",
             shell=False,
         )
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # At least one must_have asset should survive compilation;
         # the other may be rejected due to chain dependency or footprint.
         has_cabinet = any("cabinet" in n for n in create_names)
         has_chair = any("chair" in n for n in create_names)
-        assert has_cabinet or has_chair, (
-            f"Neither must_have asset appeared: {create_names}"
-        )
+        assert has_cabinet or has_chair, f"Neither must_have asset appeared: {create_names}"
 
     # ── Special features ──
 
@@ -648,7 +612,8 @@ class TestCompileRoomIntent:
         """fireplace feature compiles without error."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "living_room", "seed": 1,
+                "room_type": "living_room",
+                "seed": 1,
                 "special_features": ["fireplace"],
             },
             root_path="/root/Main/fireplace",
@@ -660,7 +625,8 @@ class TestCompileRoomIntent:
         """secret_passage feature compiles without error."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "study", "seed": 1,
+                "room_type": "study",
+                "seed": 1,
                 "special_features": ["secret_passage"],
             },
             root_path="/root/Main/passage",
@@ -672,7 +638,8 @@ class TestCompileRoomIntent:
         """Unknown feature is logged and skipped — no crash."""
         plan = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "seed": 1,
+                "room_type": "kitchen",
+                "seed": 1,
                 "special_features": ["teleporter", "fireplace"],
             },
             root_path="/root/Main/mixed_features",
@@ -687,65 +654,58 @@ class TestCompileRoomIntent:
         """Same descriptor + same seed → identical slot_fills."""
         p1 = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "size": "normal",
-                "style": "rustic", "seed": 42,
+                "room_type": "kitchen",
+                "size": "normal",
+                "style": "rustic",
+                "seed": 42,
             },
             root_path="/root/Main/A",
             shell=False,
         )
         p2 = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "size": "normal",
-                "style": "rustic", "seed": 42,
+                "room_type": "kitchen",
+                "size": "normal",
+                "style": "rustic",
+                "seed": 42,
             },
             root_path="/root/Main/B",
             shell=False,
         )
-        n1 = sorted(
-            s.name for s in p1.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
-        n2 = sorted(
-            s.name for s in p2.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
+        n1 = sorted(s.name for s in p1.steps if getattr(s, "step_type", "") == "create_entity")
+        n2 = sorted(s.name for s in p2.steps if getattr(s, "step_type", "") == "create_entity")
         assert n1 == n2, f"Same seed should produce identical assets:\n  A: {n1}\n  B: {n2}"
 
     def test_different_seed_different_plan(self, ssp_with_compiler):
         """Different seeds → different slot_fills (statistically near-certain)."""
         p1 = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "size": "normal",
-                "style": "rustic", "seed": 1,
+                "room_type": "kitchen",
+                "size": "normal",
+                "style": "rustic",
+                "seed": 1,
             },
             root_path="/root/Main/seed1",
             shell=False,
         )
         p2 = ssp_with_compiler.compile_room(
             {
-                "room_type": "kitchen", "size": "normal",
-                "style": "rustic", "seed": 999,
+                "room_type": "kitchen",
+                "size": "normal",
+                "style": "rustic",
+                "seed": 999,
             },
             root_path="/root/Main/seed999",
             shell=False,
         )
-        n1 = sorted(
-            s.name for s in p1.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
-        n2 = sorted(
-            s.name for s in p2.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
+        n1 = sorted(s.name for s in p1.steps if getattr(s, "step_type", "") == "create_entity")
+        n2 = sorted(s.name for s in p2.steps if getattr(s, "step_type", "") == "create_entity")
         # Both should produce assets
         assert len(n1) > 0 and len(n2) > 0
         # Different seeds should produce different slot assignments.
         # Statistically near-certain with shuffled slots; if this ever fails,
         # investigate whether the RNG is actually seeded.
-        assert n1 != n2, (
-            f"Different seeds should produce different plans:\n"
-            f"  seed=1:   {n1}\n  seed=999: {n2}"
-        )
+        assert n1 != n2, f"Different seeds should produce different plans:\n  seed=1:   {n1}\n  seed=999: {n2}"
 
     def test_no_seed_uses_room_type_hash(self, ssp_with_compiler):
         """No seed provided → deterministic from room_type hash."""
@@ -759,19 +719,10 @@ class TestCompileRoomIntent:
             root_path="/root/Main/noseed2",
             shell=False,
         )
-        n1 = sorted(
-            s.name for s in p1.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
-        n2 = sorted(
-            s.name for s in p2.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        )
+        n1 = sorted(s.name for s in p1.steps if getattr(s, "step_type", "") == "create_entity")
+        n2 = sorted(s.name for s in p2.steps if getattr(s, "step_type", "") == "create_entity")
         # Same room_type → same seed → same plan
-        assert n1 == n2, (
-            f"Identical descriptors without seed should produce identical plans:\n"
-            f"  A: {n1}\n  B: {n2}"
-        )
+        assert n1 == n2, f"Identical descriptors without seed should produce identical plans:\n  A: {n1}\n  B: {n2}"
 
     # ── Hallway uses corridor pattern ──
 
@@ -804,10 +755,7 @@ class TestCompileRoomIntent:
         )
         assert len(plan.steps) > 0
 
-        create_names = [
-            s.name for s in plan.steps
-            if getattr(s, "step_type", "") == "create_entity"
-        ]
+        create_names = [s.name for s in plan.steps if getattr(s, "step_type", "") == "create_entity"]
         # Should have floor/ceiling (shell) + furniture
         assert "Floor" in create_names
         assert "Ceiling" in create_names
@@ -815,9 +763,7 @@ class TestCompileRoomIntent:
         # fit the assigned slot. At least one must_have asset should appear.
         has_table = any("table" in n for n in create_names)
         has_shelf = any("shelf" in n for n in create_names)
-        assert has_table or has_shelf, (
-            f"Neither must_have asset appeared: {create_names}"
-        )
+        assert has_table or has_shelf, f"Neither must_have asset appeared: {create_names}"
         # Verify some furniture was placed beyond just shell
         non_shell = [n for n in create_names if n not in ("Floor", "Ceiling")]
         assert len(non_shell) > 0, f"No furniture placed: {create_names}"
@@ -844,9 +790,11 @@ class TestCompileRoomIntent:
 
 # ── Import tests ─────────────────────────────────────────────────
 
+
 class TestSSPImports:
     def test_imports_available(self):
         from devforge.spatial.ssp import SSPEngine, ROOM_ARCHETYPES
+
         assert SSPEngine is not None
         assert ROOM_ARCHETYPES is not None
 

@@ -41,6 +41,7 @@ PROMPT_PLAYER = (
 
 # ── Test Runner ────────────────────────────────────────────────
 
+
 class SmokeTest:
     """Runs the integration smoke tests."""
 
@@ -96,8 +97,7 @@ class SmokeTest:
 
         # ── Summary ──
         print(f"\n{'=' * 60}")
-        print(f"Results: {passed} passed, {failed} failed, "
-              f"{passed + failed} total")
+        print(f"Results: {passed} passed, {failed} failed, {passed + failed} total")
         print(f"{'=' * 60}")
 
         return failed == 0
@@ -139,9 +139,9 @@ class SmokeTest:
         # Check that completeness checker added nothing extra
         # (Camera3D already exists from Prompt 1)
         completeness_ops = [
-            op for op in operations
-            if op.get("type") == "add_node"
-            and op.get("node_type") in ("Camera3D", "CollisionShape3D")
+            op
+            for op in operations
+            if op.get("type") == "add_node" and op.get("node_type") in ("Camera3D", "CollisionShape3D")
         ]
 
         return {
@@ -170,9 +170,7 @@ class SmokeTest:
         has_attach_script = "attach_script" in op_types
 
         # Check that a Player.gd script was generated
-        has_player_script = any(
-            "player" in f.get("path", "").lower() for f in files
-        )
+        has_player_script = any("player" in f.get("path", "").lower() for f in files)
 
         return {
             "ok": (
@@ -192,6 +190,7 @@ class SmokeTest:
 
 
 # ── Main ───────────────────────────────────────────────────────
+
 
 async def main():
     import argparse

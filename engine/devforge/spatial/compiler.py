@@ -110,15 +110,20 @@ class SpatialCompiler:
             if not slot_id or not asset_id:
                 continue
             if slot_id not in slot_defs:
-                logger.warn("spatial.compiler",
-                    f"Slot '{slot_id}' not defined in pattern '{pattern_id}'; skipped")
+                logger.warn("spatial.compiler", f"Slot '{slot_id}' not defined in pattern '{pattern_id}'; skipped")
                 continue
 
             slot = slot_defs[slot_id]
             try:
                 slot_steps, placed_name, placed_pos, bb = self._fill_slot(
-                    slot_id, slot, asset_id, resolver, root_path,
-                    bounding_boxes, placed, dims,
+                    slot_id,
+                    slot,
+                    asset_id,
+                    resolver,
+                    root_path,
+                    bounding_boxes,
+                    placed,
+                    dims,
                 )
                 steps.extend(slot_steps)
                 if placed_name:
@@ -126,8 +131,7 @@ class SpatialCompiler:
                     bounding_boxes[placed_name] = bb
                     placed.add(placed_name)
             except (SlotViolation, ValueError) as sv:
-                logger.warn("spatial.compiler",
-                    f"Slot '{slot_id}' failed: {sv}")
+                logger.warn("spatial.compiler", f"Slot '{slot_id}' failed: {sv}")
 
         # 3b. Apply slot_colours (Intent Descriptor style/mood palettes) —
         #     after all slots are placed so we know the final node paths.
@@ -142,17 +146,24 @@ class SpatialCompiler:
             if node_name not in placed:
                 continue
             node_path = f"{root_path}/{node_name}"
-            steps.append(SetPropertyStep(
-                node=node_path, property="material_override",
-                value=_material(colour[0], colour[1], colour[2]),
-            ))
+            steps.append(
+                SetPropertyStep(
+                    node=node_path,
+                    property="material_override",
+                    value=_material(colour[0], colour[1], colour[2]),
+                )
+            )
 
         # 4. Process ARCS overrides
         arcs_overrides = layout_json.get("arcs_overrides", [])
         for override in arcs_overrides:
             try:
                 arc_steps, arc_name, arc_pos, arc_bb = self._process_arcs(
-                    override, resolver, root_path, bounding_boxes, dims,
+                    override,
+                    resolver,
+                    root_path,
+                    bounding_boxes,
+                    dims,
                 )
                 steps.extend(arc_steps)
                 if arc_name:
@@ -160,8 +171,7 @@ class SpatialCompiler:
                     bounding_boxes[arc_name] = arc_bb
                     placed.add(arc_name)
             except (ValueError, SlotViolation) as exc:
-                logger.warn("spatial.compiler",
-                    f"ARCS override failed: {exc}")
+                logger.warn("spatial.compiler", f"ARCS override failed: {exc}")
 
         # 5. Collision-nudge safety pass (already done per-object during
         #    slot fill and ARCS processing — _fill_slot and _process_arcs
@@ -170,12 +180,9 @@ class SpatialCompiler:
         plan = DevForgePlan(goal=f"Spatial layout: {pattern_id}", steps=steps)
         errors = plan.validate()
         if errors:
-            logger.warn("spatial.compiler",
-                f"Plan has {len(errors)} validation warnings", errors=errors)
+            logger.warn("spatial.compiler", f"Plan has {len(errors)} validation warnings", errors=errors)
 
-        logger.info("spatial.compiler",
-            f"Compiled {pattern_id} → {len(steps)} steps, "
-            f"{len(placed)} placed assets")
+        logger.info("spatial.compiler", f"Compiled {pattern_id} → {len(steps)} steps, {len(placed)} placed assets")
         return plan
 
     @property
@@ -189,44 +196,33 @@ class SpatialCompiler:
             name = pat.get("name", pid)
             desc = pat.get("description", "")
             slots = sorted(pat.get("slots", {}).keys())
-            lines.append(
-                f"  {pid}: {name} — {desc}. "
-                f"Slots: {', '.join(slots[:8])}"
-                + ("..." if len(slots) > 8 else "")
-            )
+            lines.append(f"  {pid}: {name} — {desc}. Slots: {', '.join(slots[:8])}" + ("..." if len(slots) > 8 else ""))
         return "\n".join(lines)
 
     # ── internals ───────────────────────────────────────────
 
     def _load_patterns(self) -> None:
         if not self._patterns_dir.exists():
-            logger.warn("spatial.compiler",
-                f"Patterns directory not found: {self._patterns_dir}")
+            logger.warn("spatial.compiler", f"Patterns directory not found: {self._patterns_dir}")
             return
         for yf in sorted(self._patterns_dir.glob("*.yaml")):
             try:
                 pat = yaml.safe_load(yf.read_text(encoding="utf-8"))
                 if isinstance(pat, dict) and "name" in pat:
                     self._patterns[yf.stem] = pat
-                    logger.info("spatial.compiler",
-                        f"Loaded pattern: {yf.stem} ({pat['name']})")
+                    logger.info("spatial.compiler", f"Loaded pattern: {yf.stem} ({pat['name']})")
             except Exception as exc:
-                logger.warn("spatial.compiler",
-                    f"Failed to load {yf}: {exc}")
+                logger.warn("spatial.compiler", f"Failed to load {yf}: {exc}")
 
     def _require_pattern(self, pattern_id: str) -> dict:
         pat = self._patterns.get(pattern_id)
         if pat is None:
             ids = sorted(self._patterns.keys())
-            raise ValueError(
-                f"Pattern '{pattern_id}' not found. Available: {ids}"
-            )
+            raise ValueError(f"Pattern '{pattern_id}' not found. Available: {ids}")
         return pat
 
     @staticmethod
-    def _resolve_dimensions(
-        user_dims: dict, pattern: dict
-    ) -> Dict[str, float]:
+    def _resolve_dimensions(user_dims: dict, pattern: dict) -> Dict[str, float]:
         """Merge user dimensions with pattern defaults."""
         resolved: Dict[str, float] = {}
         for param, spec in pattern.get("parameters", {}).items():
@@ -238,7 +234,10 @@ class SpatialCompiler:
         return resolved
 
     def _build_shell(
-        self, pattern: dict, dims: Dict[str, float], root: str,
+        self,
+        pattern: dict,
+        dims: Dict[str, float],
+        root: str,
         origin: Tuple[float, float] = (0.0, 0.0),
     ) -> List:
         """Create the room's structural nodes (floor, ceiling)."""
@@ -248,9 +247,13 @@ class SpatialCompiler:
             node_type = node_spec.get("type", "MeshInstance3D")
             node_path = f"{root}/{name}"
 
-            steps.append(CreateEntityStep(
-                name=name, node_type=node_type, parent=root,
-            ))
+            steps.append(
+                CreateEntityStep(
+                    name=name,
+                    node_type=node_type,
+                    parent=root,
+                )
+            )
 
             # Position (offset by the world origin so BSP-placed rooms tile)
             raw_pos = node_spec.get("position", [0, 0, 0])
@@ -260,18 +263,23 @@ class SpatialCompiler:
             pos_y = self._eval_shell_expr(raw_pos[1], dims)
             pos_z = self._eval_shell_expr(raw_pos[2], dims) + origin[1]
 
-            steps.append(SetPropertyStep(
-                node=node_path, property="position",
-                value={"x": pos_x, "y": pos_y, "z": pos_z},
-            ))
+            steps.append(
+                SetPropertyStep(
+                    node=node_path,
+                    property="position",
+                    value={"x": pos_x, "y": pos_y, "z": pos_z},
+                )
+            )
 
             # Mesh
             mesh_name = node_spec.get("mesh", "plane")
-            steps.append(SetPropertyStep(
-                node=node_path, property="mesh",
-                value={"__class__": f"{mesh_name.capitalize()}Mesh",
-                       "size": {"x": 10, "y": 10}},
-            ))
+            steps.append(
+                SetPropertyStep(
+                    node=node_path,
+                    property="mesh",
+                    value={"__class__": f"{mesh_name.capitalize()}Mesh", "size": {"x": 10, "y": 10}},
+                )
+            )
 
             # Scale for floor/ceiling planes
             scale = node_spec.get("scale")
@@ -279,18 +287,24 @@ class SpatialCompiler:
                 sx = self._eval_shell_expr(scale[0], dims)
                 sy = self._eval_shell_expr(scale[1], dims)
                 sz = self._eval_shell_expr(scale[2], dims)
-                steps.append(SetPropertyStep(
-                    node=node_path, property="scale",
-                    value={"x": sx, "y": sy, "z": sz},
-                ))
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="scale",
+                        value={"x": sx, "y": sy, "z": sz},
+                    )
+                )
 
             # Color
             color = node_spec.get("color")
             if color and isinstance(color, list) and len(color) == 3:
-                steps.append(SetPropertyStep(
-                    node=node_path, property="material_override",
-                    value=_material(color[0], color[1], color[2]),
-                ))
+                steps.append(
+                    SetPropertyStep(
+                        node=node_path,
+                        property="material_override",
+                        value=_material(color[0], color[1], color[2]),
+                    )
+                )
 
         return steps
 
@@ -314,9 +328,9 @@ class SpatialCompiler:
         if max_fp and not self._lexicon.fits_slot(asset_id, max_fp):
             fp = self._lexicon.footprint(asset_id) or {}
             raise SlotViolation(
-                f"Asset '{asset_id}' ({fp.get('width',0)}×{fp.get('depth',0)}) "
+                f"Asset '{asset_id}' ({fp.get('width', 0)}×{fp.get('depth', 0)}) "
                 f"doesn't fit slot '{slot_id}' "
-                f"(max {max_fp.get('width',0)}×{max_fp.get('depth',0)})"
+                f"(max {max_fp.get('width', 0)}×{max_fp.get('depth', 0)})"
             )
 
         # Resolve position
@@ -429,25 +443,27 @@ class SpatialCompiler:
         for op in ops:
             t = op.get("type", "")
             if t == "add_node":
-                steps.append(CreateEntityStep(
-                    name=op["name"],
-                    node_type=op.get("node_type", "MeshInstance3D"),
-                    parent=op.get("parent", "/root/Main"),  # caller resolves the root
-                ))
+                steps.append(
+                    CreateEntityStep(
+                        name=op["name"],
+                        node_type=op.get("node_type", "MeshInstance3D"),
+                        parent=op.get("parent", "/root/Main"),  # caller resolves the root
+                    )
+                )
             elif t == "set_property":
-                steps.append(SetPropertyStep(
-                    node=op["node"],
-                    property=op["property"],
-                    value=op["value"],
-                ))
+                steps.append(
+                    SetPropertyStep(
+                        node=op["node"],
+                        property=op["property"],
+                        value=op["value"],
+                    )
+                )
         return steps
 
     # ── collision detection ─────────────────────────────────
 
     @staticmethod
-    def _overlaps(
-        pos: dict, bb: dict, existing: Dict[str, dict]
-    ) -> bool:
+    def _overlaps(pos: dict, bb: dict, existing: Dict[str, dict]) -> bool:
         """Check if an AABB at pos overlaps any existing AABB."""
         hw, hd = bb["half_width"], bb["half_depth"]
         for name, other in existing.items():
@@ -461,9 +477,7 @@ class SpatialCompiler:
         return False
 
     @staticmethod
-    def _nudge(
-        pos: dict, bb: dict, existing: Dict[str, dict]
-    ) -> dict:
+    def _nudge(pos: dict, bb: dict, existing: Dict[str, dict]) -> dict:
         """Nudge a position to resolve overlaps (simple iterative push)."""
         hw, hd = bb["half_width"], bb["half_depth"]
         for _ in range(10):
@@ -496,6 +510,7 @@ class SpatialCompiler:
     def _eval_shell_expr(expr: Any, dims: Dict[str, float]) -> float:
         """Evaluate a simple expression like '$width/2' using safe regex."""
         import re
+
         if isinstance(expr, (int, float)):
             return float(expr)
         if isinstance(expr, str):
@@ -504,16 +519,20 @@ class SpatialCompiler:
             for param, val in dims.items():
                 s = s.replace(f"${param}", str(val))
             # Evaluate basic arithmetic: number, op, number
-            m = re.match(r'^\s*([\d.]+)\s*(?:([+\-*/])\s*([\d.]+))?\s*$', s)
+            m = re.match(r"^\s*([\d.]+)\s*(?:([+\-*/])\s*([\d.]+))?\s*$", s)
             if m:
                 a = float(m.group(1))
                 op = m.group(2)
                 if op and m.group(3):
                     b = float(m.group(3))
-                    if op == '+': return a + b
-                    elif op == '-': return a - b
-                    elif op == '*': return a * b
-                    elif op == '/': return a / b if b != 0 else a
+                    if op == "+":
+                        return a + b
+                    elif op == "-":
+                        return a - b
+                    elif op == "*":
+                        return a * b
+                    elif op == "/":
+                        return a / b if b != 0 else a
                 return a
             try:
                 return float(s)

@@ -26,45 +26,48 @@ from typing import List
 # Subsystem weights (Constitution Section VI)
 # --------------------------------------------------------------------------
 SUBSYSTEM_WEIGHTS: dict[str, int] = {
-    "player_survival":    1,
-    "crafting":           1,
-    "recipes":            1,
-    "npc_behaviour":      2,
-    "ecology":            3,   # EcoRegion simulation
-    "entity_registry":    4,
-    "tick_scheduler":     5,   # halt → Architectural Change Mode
+    "player_survival": 1,
+    "crafting": 1,
+    "recipes": 1,
+    "npc_behaviour": 2,
+    "ecology": 3,  # EcoRegion simulation
+    "entity_registry": 4,
+    "tick_scheduler": 5,  # halt → Architectural Change Mode
     "sim_render_interface": 5,
-    "persistence":        5,
+    "persistence": 5,
 }
 
 
 class Depth(Enum):
     """Depth of modification — determines multiplier."""
-    READ_ONLY          = "read_only"           # ×1.0
-    NEW_BEHAVIOUR      = "new_behaviour"       # ×1.5
+
+    READ_ONLY = "read_only"  # ×1.0
+    NEW_BEHAVIOUR = "new_behaviour"  # ×1.5
     MODIFIES_INTERFACE = "modifies_interface"  # ×2.5
-    RESTRUCTURES       = "restructures"        # ×4.0
+    RESTRUCTURES = "restructures"  # ×4.0
 
 
 DEPTH_MULTIPLIERS: dict[Depth, float] = {
-    Depth.READ_ONLY:          1.0,
-    Depth.NEW_BEHAVIOUR:      1.5,
+    Depth.READ_ONLY: 1.0,
+    Depth.NEW_BEHAVIOUR: 1.5,
     Depth.MODIFIES_INTERFACE: 2.5,
-    Depth.RESTRUCTURES:       4.0,
+    Depth.RESTRUCTURES: 4.0,
 }
 
 
 class RiskTier(Enum):
     """Risk tier — derived from score."""
-    LOW      = "low"       # R ≤ 3  — brief report
-    MEDIUM   = "medium"    # R 4–7  — structured report
-    HIGH     = "high"      # R 8–11 — full architectural delta report
+
+    LOW = "low"  # R ≤ 3  — brief report
+    MEDIUM = "medium"  # R 4–7  — structured report
+    HIGH = "high"  # R 8–11 — full architectural delta report
     CRITICAL = "critical"  # R ≥ 12 — block until human reviews plan
 
 
 @dataclass
 class RiskResult:
     """Result of a risk computation."""
+
     base_weight: int
     depth_multiplier: float
     file_bonus: int
@@ -173,15 +176,12 @@ if __name__ == "__main__":
     import json
 
     parser = argparse.ArgumentParser(description="DevForge Risk Scoring Calculator")
-    parser.add_argument("--subsystems", nargs="+", required=True,
-                        help=f"Subsystems touched. Options: {list(SUBSYSTEM_WEIGHTS.keys())}")
-    parser.add_argument("--depth", required=True,
-                        choices=[d.value for d in Depth],
-                        help="Depth of modification.")
-    parser.add_argument("--files", type=int, required=True,
-                        help="Number of files modified.")
-    parser.add_argument("--crosses-boundary", action="store_true",
-                        help="Set if diff touches both sim/ and render/.")
+    parser.add_argument(
+        "--subsystems", nargs="+", required=True, help=f"Subsystems touched. Options: {list(SUBSYSTEM_WEIGHTS.keys())}"
+    )
+    parser.add_argument("--depth", required=True, choices=[d.value for d in Depth], help="Depth of modification.")
+    parser.add_argument("--files", type=int, required=True, help="Number of files modified.")
+    parser.add_argument("--crosses-boundary", action="store_true", help="Set if diff touches both sim/ and render/.")
 
     args = parser.parse_args()
 

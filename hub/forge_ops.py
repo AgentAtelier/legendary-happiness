@@ -36,9 +36,9 @@ from forge_models import plan_apply, find, GIB, vram_total, RESERVE
 LLAMA_SERVICE = "forge-llama.service"
 # display/desktop headroom kept free of the model (imported from forge_models)
 HEALTH_POLL_ATTEMPTS = 60
-HEALTH_POLL_INTERVAL = 2.0       # seconds between polls
-CRASH_POLL_INTERVAL = 1.0        # faster poll for crash detection
-EXPECTED_SWAP_DURATION = 60      # typical llama restart + model load
+HEALTH_POLL_INTERVAL = 2.0  # seconds between polls
+CRASH_POLL_INTERVAL = 1.0  # faster poll for crash detection
+EXPECTED_SWAP_DURATION = 60  # typical llama restart + model load
 
 # Phase 4: durable action log
 HUB_DIR = Path(__file__).parent
@@ -51,27 +51,41 @@ RECORD_DIR = Path(os.environ.get("FORGE_ACTIONS_DIR", str(HUB_DIR / "data" / "ac
 
 # Each entry: (regex_pattern, human_cause, suggested_fix)
 FAILURE_PATTERNS: list[tuple[str, str, str]] = [
-    (r"(?i)cudaMalloc.*out of memory",
-     "Model too big for VRAM at this context size",
-     "Lower the context size or pick a smaller model. Try: forge-model set <model> ctx=8192"),
-    (r"(?i)failed to parse grammar",
-     "Grammar file is invalid or corrupted",
-     "Check the GBNF grammar file in the DevForge directory. A syntax error in the grammar prevents any constrained generation."),
-    (r"(?i)address already in use",
-     "Port conflict — another process is using the llama port",
-     "Check what's on the port: ss -tlnp | grep <port>. Stop the conflicting process or change LLAMA_PORT in stack.env."),
-    (r"(?i)segfault|SIGSEGV|core.?dump(ed)?",
-     "llama.cpp crashed (segfault) — usually a driver or model file issue",
-     "Check: 1) ROCm/driver version compatible with llama.cpp build, 2) model file not truncated (verify checksum), 3) VRAM not exhausted."),
-    (r"(?i)killed|OOM killer",
-     "Process was killed by the Linux OOM killer",
-     "System RAM exhausted. Close memory-heavy apps, lower batch-size, or pick a smaller model. Check: dmesg | grep -i oom"),
-    (r"(?i)cannot open|no such file|not found",
-     "A required file is missing",
-     "Verify the model path in stack.env exists. If it was moved, update MODEL in stack.env or symlink it back into ~/models."),
-    (r"(?i)vram too low",
-     "Model too big for available VRAM — swap refused by pre-flight check",
-     "Close other GPU apps or lower the context size. Try: forge-model set <model> ctx=8192"),
+    (
+        r"(?i)cudaMalloc.*out of memory",
+        "Model too big for VRAM at this context size",
+        "Lower the context size or pick a smaller model. Try: forge-model set <model> ctx=8192",
+    ),
+    (
+        r"(?i)failed to parse grammar",
+        "Grammar file is invalid or corrupted",
+        "Check the GBNF grammar file in the DevForge directory. A syntax error in the grammar prevents any constrained generation.",
+    ),
+    (
+        r"(?i)address already in use",
+        "Port conflict — another process is using the llama port",
+        "Check what's on the port: ss -tlnp | grep <port>. Stop the conflicting process or change LLAMA_PORT in stack.env.",
+    ),
+    (
+        r"(?i)segfault|SIGSEGV|core.?dump(ed)?",
+        "llama.cpp crashed (segfault) — usually a driver or model file issue",
+        "Check: 1) ROCm/driver version compatible with llama.cpp build, 2) model file not truncated (verify checksum), 3) VRAM not exhausted.",
+    ),
+    (
+        r"(?i)killed|OOM killer",
+        "Process was killed by the Linux OOM killer",
+        "System RAM exhausted. Close memory-heavy apps, lower batch-size, or pick a smaller model. Check: dmesg | grep -i oom",
+    ),
+    (
+        r"(?i)cannot open|no such file|not found",
+        "A required file is missing",
+        "Verify the model path in stack.env exists. If it was moved, update MODEL in stack.env or symlink it back into ~/models.",
+    ),
+    (
+        r"(?i)vram too low",
+        "Model too big for available VRAM — swap refused by pre-flight check",
+        "Close other GPU apps or lower the context size. Try: forge-model set <model> ctx=8192",
+    ),
 ]
 
 
@@ -91,9 +105,15 @@ def classify_failure(output: str, logs: str = "") -> dict:
 # ── Phase 4: durable action log ──────────────────────────────────
 
 
-def record_action(action: str, argv: list[str], exit_code: int,
-                  duration_s: float, output: str = "",
-                  error: str = "", diagnostics: str = "") -> None:
+def record_action(
+    action: str,
+    argv: list[str],
+    exit_code: int,
+    duration_s: float,
+    output: str = "",
+    error: str = "",
+    diagnostics: str = "",
+) -> None:
     """Append a durable JSONL record for one completed action.
 
     One record per action. Never lost on hub restart. Readable with
@@ -112,15 +132,13 @@ def record_action(action: str, argv: list[str], exit_code: int,
         "argv": argv,
         "exit_code": exit_code,
         "duration_s": round(duration_s, 1),
-        "output": output[:4000],       # truncate very long outputs
+        "output": output[:4000],  # truncate very long outputs
         "error": error[:2000],
         "diagnostics": diagnostics[:2000],
     }
     # Add failure classification on non-zero exit
     if exit_code != 0:
-        record["classification"] = classify_failure(
-            f"{error}\n{output}", diagnostics
-        )
+        record["classification"] = classify_failure(f"{error}\n{output}", diagnostics)
 
     with open(log_path, "a") as f:
         f.write(json.dumps(record) + "\n")
@@ -172,8 +190,15 @@ async def run_cmd_capture(*cmd: str) -> tuple[int, str]:
 async def get_service_logs(svc: str) -> str:
     """Get recent error/warning lines from a service journal for diagnostics."""
     _, out = await run_cmd_capture(
-        "journalctl", "--user", "-u", f"forge-{svc}.service",
-        "-n", "20", "--no-pager", "-o", "cat",
+        "journalctl",
+        "--user",
+        "-u",
+        f"forge-{svc}.service",
+        "-n",
+        "20",
+        "--no-pager",
+        "-o",
+        "cat",
     )
     return out.strip()
 
@@ -197,7 +222,10 @@ def get_free_vram() -> int:
 
 async def _service_is_failed() -> bool:
     code, _ = await run_cmd_capture(
-        "systemctl", "--user", "is-failed", LLAMA_SERVICE,
+        "systemctl",
+        "--user",
+        "is-failed",
+        LLAMA_SERVICE,
     )
     return code == 0
 
@@ -226,24 +254,23 @@ async def check_drift(port: str = "8002") -> Optional[dict]:
                     or (pdata.get("default_generation_settings") or {}).get("model_alias")
                     or (pdata.get("default_generation_settings") or {}).get("model")
                 )
-                running_ctx = (
-                    pdata.get("n_ctx")
-                    or (pdata.get("default_generation_settings") or {}).get("n_ctx")
-                )
+                running_ctx = pdata.get("n_ctx") or (pdata.get("default_generation_settings") or {}).get("n_ctx")
             else:
                 return None
     except httpx.RequestError:
         return None
 
     code, svc_state = await run_cmd_capture(
-        "systemctl", "--user", "is-active", LLAMA_SERVICE,
+        "systemctl",
+        "--user",
+        "is-active",
+        LLAMA_SERVICE,
     )
     if svc_state.strip() != "active":
         return None
 
-    drifted = (
-        (configured_alias and running_alias and configured_alias != running_alias)
-        or (configured_ctx and running_ctx and configured_ctx != running_ctx)
+    drifted = (configured_alias and running_alias and configured_alias != running_alias) or (
+        configured_ctx and running_ctx and configured_ctx != running_ctx
     )
 
     reason = None
@@ -273,12 +300,16 @@ async def reconcile_model(emit: Callable[[str], None]) -> int:
     t0 = time.time()
     emit("reconciling: restarting llama to match stack.env...")
     code, out = await run_cmd_capture(
-        "systemctl", "--user", "restart", LLAMA_SERVICE,
+        "systemctl",
+        "--user",
+        "restart",
+        LLAMA_SERVICE,
     )
     if code != 0:
         emit(f"restart failed (exit {code}): {out[:200]}")
-        record_action("reconcile", ["systemctl", "restart", "forge-llama"], 1,
-                      time.time() - t0, output=out, error=f"exit {code}")
+        record_action(
+            "reconcile", ["systemctl", "restart", "forge-llama"], 1, time.time() - t0, output=out, error=f"exit {code}"
+        )
         return 1
 
     env = read_env(ENVFILE)
@@ -292,8 +323,14 @@ async def reconcile_model(emit: Callable[[str], None]) -> int:
             if await _service_is_failed():
                 logs = await get_service_logs("llama")
                 emit(f"llama crashed during reconcile. Logs:\n{logs}")
-                record_action("reconcile", ["systemctl", "restart", "forge-llama"], 1,
-                              time.time() - t0, error="llama crashed", diagnostics=logs)
+                record_action(
+                    "reconcile",
+                    ["systemctl", "restart", "forge-llama"],
+                    1,
+                    time.time() - t0,
+                    error="llama crashed",
+                    diagnostics=logs,
+                )
                 return 1
 
             try:
@@ -302,22 +339,26 @@ async def reconcile_model(emit: Callable[[str], None]) -> int:
                     props = await client.get(f"http://127.0.0.1:{port}/props")
                     if props.status_code == 200:
                         pdata = props.json()
-                        actual = (
-                            pdata.get("model_alias")
-                            or (pdata.get("default_generation_settings") or {}).get("model_alias", "")
+                        actual = pdata.get("model_alias") or (pdata.get("default_generation_settings") or {}).get(
+                            "model_alias", ""
                         )
                         emit(f"reconciled: running {actual} (configured: {expected_alias})")
                         exit_code = 1 if (actual and expected_alias and actual != expected_alias) else 0
-                        record_action("reconcile", ["systemctl", "restart", "forge-llama"],
-                                      exit_code, time.time() - t0,
-                                      output=f"running={actual} configured={expected_alias}")
+                        record_action(
+                            "reconcile",
+                            ["systemctl", "restart", "forge-llama"],
+                            exit_code,
+                            time.time() - t0,
+                            output=f"running={actual} configured={expected_alias}",
+                        )
                         return exit_code
             except httpx.RequestError:
                 pass
             await asyncio.sleep(HEALTH_POLL_INTERVAL)
 
-    record_action("reconcile", ["systemctl", "restart", "forge-llama"], 1,
-                  time.time() - t0, error="timeout waiting for /health")
+    record_action(
+        "reconcile", ["systemctl", "restart", "forge-llama"], 1, time.time() - t0, error="timeout waiting for /health"
+    )
     emit(f"timeout after {HEALTH_POLL_ATTEMPTS * HEALTH_POLL_INTERVAL:.0f}s")
     return 1
 
@@ -365,16 +406,17 @@ async def swap_model(fragment: str, emit: Callable[[str], None]) -> int:
         # available-after-swap, capped at total minus display headroom
         available = min(free_bytes + reclaim, vram_total()) - RESERVE
         if need_bytes > available:
-            fatal = (f"VRAM too low: model needs ~{need_bytes / GIB:.1f} GiB, "
-                     f"but only ~{available / GIB:.1f} GiB will be available after "
-                     f"unloading the current model. Close other GPU apps or lower "
-                     f"context: forge-model set {plan['model']['alias']} ctx=8192")
+            fatal = (
+                f"VRAM too low: model needs ~{need_bytes / GIB:.1f} GiB, "
+                f"but only ~{available / GIB:.1f} GiB will be available after "
+                f"unloading the current model. Close other GPU apps or lower "
+                f"context: forge-model set {plan['model']['alias']} ctx=8192"
+            )
             _emit(f"error: {fatal}")
             record_action("swap", action_argv, 1, time.time() - t0, error=fatal)
             return 1
 
-        _emit(f"VRAM ok: ~{available / GIB:.1f} GiB available after unload, "
-              f"model needs ~{need_bytes / GIB:.1f} GiB")
+        _emit(f"VRAM ok: ~{available / GIB:.1f} GiB available after unload, model needs ~{need_bytes / GIB:.1f} GiB")
         _emit("snapshot taken")
 
         updates = {
@@ -389,7 +431,10 @@ async def swap_model(fragment: str, emit: Callable[[str], None]) -> int:
 
         _emit("restarting llama...")
         code, out = await run_cmd_capture(
-            "systemctl", "--user", "restart", LLAMA_SERVICE,
+            "systemctl",
+            "--user",
+            "restart",
+            LLAMA_SERVICE,
         )
         if code != 0:
             raise RuntimeError(f"systemctl restart failed (exit {code}): {out[:200]}")
@@ -425,19 +470,20 @@ async def swap_model(fragment: str, emit: Callable[[str], None]) -> int:
                             if plan.get("devforge_restart") == "1":
                                 _emit("template/context changed — restarting devforge...")
                                 await run_cmd_capture(
-                                    "systemctl", "--user", "restart", "forge-devforge.service",
+                                    "systemctl",
+                                    "--user",
+                                    "restart",
+                                    "forge-devforge.service",
                                 )
-                            record_action("swap", action_argv, 0, time.time() - t0,
-                                          output=f"model={updates['MODEL_ALIAS']}")
+                            record_action(
+                                "swap", action_argv, 0, time.time() - t0, output=f"model={updates['MODEL_ALIAS']}"
+                            )
                             return 0
                 except httpx.RequestError:
                     pass
                 await asyncio.sleep(HEALTH_POLL_INTERVAL)
 
-            raise RuntimeError(
-                f"Timeout after {HEALTH_POLL_ATTEMPTS * HEALTH_POLL_INTERVAL:.0f}s "
-                f"waiting for /health"
-            )
+            raise RuntimeError(f"Timeout after {HEALTH_POLL_ATTEMPTS * HEALTH_POLL_INTERVAL:.0f}s waiting for /health")
 
     except RuntimeError as e:
         _emit(f"error: {e}")
@@ -454,8 +500,7 @@ async def swap_model(fragment: str, emit: Callable[[str], None]) -> int:
                     diagnostics_str += line + "\n"
 
         _emit("rollback complete — previous model restored")
-        record_action("swap", action_argv, 1, time.time() - t0,
-                      error=str(e), diagnostics=diagnostics_str.strip())
+        record_action("swap", action_argv, 1, time.time() - t0, error=str(e), diagnostics=diagnostics_str.strip())
         return 1
 
     except Exception as e:
@@ -467,6 +512,5 @@ async def swap_model(fragment: str, emit: Callable[[str], None]) -> int:
         except Exception:
             _emit("WARNING: rollback failed — manual recovery needed")
         _emit("rollback complete")
-        record_action("swap", action_argv, 1, time.time() - t0,
-                      error=f"{type(e).__name__}: {e}")
+        record_action("swap", action_argv, 1, time.time() - t0, error=f"{type(e).__name__}: {e}")
         return 1

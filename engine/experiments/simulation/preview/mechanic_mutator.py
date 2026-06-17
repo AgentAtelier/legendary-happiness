@@ -22,7 +22,6 @@ class MechanicMutator:
         candidates = []
 
         for _ in range(count):
-
             mutated = deepcopy(systems)
 
             mutation = random.choice(

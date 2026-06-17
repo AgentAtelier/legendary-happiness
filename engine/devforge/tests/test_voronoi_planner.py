@@ -19,6 +19,7 @@ def planner():
 
 # ── Imports ──────────────────────────────────────────────────────
 
+
 class TestVoronoiPlannerImports:
     def test_planner_importable(self):
         assert VoronoiPlanner is not None
@@ -32,6 +33,7 @@ class TestVoronoiPlannerImports:
 
 # ── Grammar loading ──────────────────────────────────────────────
 
+
 class TestGrammarLoading:
     def test_grammar_loaded(self, planner):
         assert planner.grammar is not None and len(planner.grammar) > 0
@@ -42,6 +44,7 @@ class TestGrammarLoading:
 
 
 # ── Prompt building ──────────────────────────────────────────────
+
 
 class TestPromptBuilding:
     def test_prompt_contains_schema_and_context(self, planner):
@@ -57,6 +60,7 @@ class TestPromptBuilding:
 
 
 # ── Response parsing ─────────────────────────────────────────────
+
 
 class TestResponseParsing:
     def test_plain_json(self, planner):
@@ -104,10 +108,12 @@ class TestResponseParsing:
 
 # ── plan() ───────────────────────────────────────────────────────
 
+
 class TestPlanMethod:
     def test_plan_returns_parsed(self, planner):
         out = planner.plan(
-            context="", prompt="a town with 6 districts",
+            context="",
+            prompt="a town with 6 districts",
             llm_fn=lambda p: '{"region":{"width":100,"depth":100},"districts":6}',
         )
         assert out["region"] == {"width": 100, "depth": 100}
@@ -116,6 +122,7 @@ class TestPlanMethod:
     def test_plan_wraps_llm_errors(self, planner):
         def boom(_):
             raise RuntimeError("llm down")
+
         with pytest.raises(VoronoiPlanningError):
             planner.plan(context="", prompt="x", llm_fn=boom)
 

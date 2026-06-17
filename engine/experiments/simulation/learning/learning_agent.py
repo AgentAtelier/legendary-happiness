@@ -3,7 +3,6 @@ from devforge.learning.learning_engine import LearningEngine
 
 
 class LearningAgent(Agent):
-
     def __init__(self):
 
         super().__init__("learning")

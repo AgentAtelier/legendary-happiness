@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Mock callables ───────────────────────────────────────────────
 
+
 def _mock_find_symbols(path: str) -> dict | None:
     """Mock find_symbols: returns symbols matching the path."""
     if "player" in path:
@@ -42,23 +43,30 @@ def _mock_find_symbols(path: str) -> dict | None:
 def _mock_search_filesystem(query: str, path: str = "res://", recursive: bool = True) -> dict:
     """Mock search_filesystem: returns files matching query."""
     if "falling" in query.lower():
-        return {"files": [
-            {"path": "res://scripts/player.gd", "line": 142, "snippet": "apply_falling_damage()"},
-            {"path": "res://scripts/combat.gd", "line": 56, "snippet": "falling damage here"},
-        ]}
+        return {
+            "files": [
+                {"path": "res://scripts/player.gd", "line": 142, "snippet": "apply_falling_damage()"},
+                {"path": "res://scripts/combat.gd", "line": 56, "snippet": "falling damage here"},
+            ]
+        }
     if "damage" in query.lower():
-        return {"files": [
-            {"path": "res://scripts/player.gd", "line": 142, "snippet": "apply_falling_damage()"},
-            {"path": "res://scripts/enemy.gd", "line": 30, "snippet": "take_damage()"},
-        ]}
+        return {
+            "files": [
+                {"path": "res://scripts/player.gd", "line": 142, "snippet": "apply_falling_damage()"},
+                {"path": "res://scripts/enemy.gd", "line": 30, "snippet": "take_damage()"},
+            ]
+        }
     if "died" in query.lower():
-        return {"files": [
-            {"path": "res://scripts/player.gd", "line": 200, "snippet": "emit died"},
-        ]}
+        return {
+            "files": [
+                {"path": "res://scripts/player.gd", "line": 200, "snippet": "emit died"},
+            ]
+        }
     return {"files": []}
 
 
 # ── Tests ────────────────────────────────────────────────────────
+
 
 def test_search_finds_filesystem_hits() -> None:
     """search returns filesystem hits for a matching query."""
@@ -116,13 +124,17 @@ def test_search_empty_query() -> None:
 
 # ── SearchHit to_dict ────────────────────────────────────────────
 
+
 def test_search_hit_to_dict() -> None:
     """SearchHit.to_dict() includes all relevant fields."""
     from devforge.navigator.navigator import SearchHit
 
     hit = SearchHit(
-        source="filesystem", path="res://x.gd",
-        line=10, snippet="hello", symbol_type="function",
+        source="filesystem",
+        path="res://x.gd",
+        line=10,
+        snippet="hello",
+        symbol_type="function",
     )
     d = hit.to_dict()
     assert d["source"] == "filesystem"

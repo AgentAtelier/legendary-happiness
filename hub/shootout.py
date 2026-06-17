@@ -39,6 +39,7 @@ SHOOTOUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Planner mode switching (for --all-planners A/B comparison) ──
 
+
 def _set_planner_mode(mode: str) -> None:
     """Set DEVFORGE_PLANNER env var in stack.env. mode='' removes it."""
     lines = STACK_ENV.read_text().splitlines() if STACK_ENV.exists() else []
@@ -60,16 +61,20 @@ async def _restart_devforge(emit: Callable[[str], None]) -> bool:
     """Restart forge-devforge service and wait for MCP to be healthy."""
     emit("  restarting DevForge service...")
     proc = await asyncio.create_subprocess_exec(
-        "systemctl", "--user", "restart", "forge-devforge.service",
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        "systemctl",
+        "--user",
+        "restart",
+        "forge-devforge.service",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
     )
     await proc.wait()
     for _ in range(30):
         await asyncio.sleep(1)
         try:
             tools = await _devforge_call("__list__", timeout_s=10)
-            tl = tools.tools if hasattr(tools, 'tools') else tools
-            if hasattr(tl, '__iter__') and len(list(tl)) > 0:
+            tl = tools.tools if hasattr(tools, "tools") else tools
+            if hasattr(tl, "__iter__") and len(list(tl)) > 0:
                 emit("  DevForge healthy after restart")
                 return True
         except Exception:
@@ -136,6 +141,7 @@ def _log_error(exc: Exception, context: str = "") -> None:
     for line in tb.splitlines():
         _log_write(f"  TRACE: {line}")
 
+
 # ── The prompt — exact specification for the arena ───────────────
 
 SHOOTOUT_PROMPT = """Build an interactive collectible arena in the Godot scene.
@@ -174,14 +180,31 @@ SHOOTOUT_PROMPT = """Build an interactive collectible arena in the Godot scene.
 
 MODELS_TO_TEST = [
     {"file": "Qwen3-14B-Q6_K.gguf", "alias": "qwen3-14b-q6-k", "label": "Qwen3 14B"},
-    {"file": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf", "alias": "gemma-4-12b-it-qat-ud-q4-k-xl", "label": "Gemma 4 12B QAT"},
-    {"file": "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf", "alias": "gemma-4-26b-a4b-it-qat-ud-q4-k-xl", "label": "Gemma 4 26B MoE"},
-    {"file": "Gemma-4-12B-OBLITERATED.Q6_K.gguf", "alias": "gemma-4-12b-obliterated-q6-k", "label": "Gemma 4 12B Obliterated"},
-    {"file": "Cydonia-Redux-22B-v1e-Q4_K_M.gguf", "alias": "cydonia-redux-22b-v1e-q4-k-m", "label": "Cydonia Redux 22B"},
+    {
+        "file": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
+        "alias": "gemma-4-12b-it-qat-ud-q4-k-xl",
+        "label": "Gemma 4 12B QAT",
+    },
+    {
+        "file": "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf",
+        "alias": "gemma-4-26b-a4b-it-qat-ud-q4-k-xl",
+        "label": "Gemma 4 26B MoE",
+    },
+    {
+        "file": "Gemma-4-12B-OBLITERATED.Q6_K.gguf",
+        "alias": "gemma-4-12b-obliterated-q6-k",
+        "label": "Gemma 4 12B Obliterated",
+    },
+    {
+        "file": "Cydonia-Redux-22B-v1e-Q4_K_M.gguf",
+        "alias": "cydonia-redux-22b-v1e-q4-k-m",
+        "label": "Cydonia Redux 22B",
+    },
 ]
 
 
 # ── Pre-flight checks ────────────────────────────────────────────
+
 
 async def preflight_check(emit: Callable[[str], None] | None = None) -> dict:
     """Verify all prerequisites before running the shootout.
@@ -215,8 +238,7 @@ async def preflight_check(emit: Callable[[str], None] | None = None) -> dict:
         else:
             node_list = sorted(node_names)[:10]
             checks["godot_project"] = "warn"
-            msg = (f"shootout scene missing its 'Main' root — nodes: {node_list}. "
-                   f"Could not open {SHOOTOUT_SCENE}.")
+            msg = f"shootout scene missing its 'Main' root — nodes: {node_list}. Could not open {SHOOTOUT_SCENE}."
             issues.append(msg)
             log(f"  ⚠ {msg}")
     except Exception as e:
@@ -231,7 +253,7 @@ async def preflight_check(emit: Callable[[str], None] | None = None) -> dict:
         # Just list tools to verify connection
         tools = await _devforge_call("__list__", timeout_s=10)
         # list_tools() returns ListToolsResult with .tools attribute
-        tool_list = tools.tools if hasattr(tools, 'tools') else (tools if hasattr(tools, '__iter__') else [])
+        tool_list = tools.tools if hasattr(tools, "tools") else (tools if hasattr(tools, "__iter__") else [])
         tool_names = [t.name for t in tool_list]
         if "apply_spec" in tool_names:
             checks["devforge"] = "ok"
@@ -283,6 +305,7 @@ async def preflight_check(emit: Callable[[str], None] | None = None) -> dict:
 
 # ── Model resolution ─────────────────────────────────────────────
 
+
 async def _resolve_models(model_filter: str | None = None) -> list[dict]:
     """Resolve which models are actually present and fit in VRAM.
 
@@ -301,8 +324,9 @@ async def _resolve_models(model_filter: str | None = None) -> list[dict]:
     candidates = MODELS_TO_TEST
     if model_filter:
         q = model_filter.lower()
-        candidates = [m for m in MODELS_TO_TEST
-                      if q in m["alias"].lower() or q in m["file"].lower() or q in m["label"].lower()]
+        candidates = [
+            m for m in MODELS_TO_TEST if q in m["alias"].lower() or q in m["file"].lower() or q in m["label"].lower()
+        ]
 
     for m in candidates:
         found = by_file.get(m["file"])
@@ -318,10 +342,10 @@ async def _resolve_models(model_filter: str | None = None) -> list[dict]:
     return resolved
 
 
-async def _wait_for_healthy(llama_port: str = "8002",
-                             timeout: float = 60.0) -> bool:
+async def _wait_for_healthy(llama_port: str = "8002", timeout: float = 60.0) -> bool:
     """Wait for llama /health to return 200 after a swap."""
     import httpx
+
     t0 = time.time()
     async with httpx.AsyncClient(timeout=3.0) as client:
         while time.time() - t0 < timeout:
@@ -358,6 +382,7 @@ async def _swap_model(alias: str, emit: Callable[[str], None]) -> bool:
 
 # ── Static assertions (run after apply_spec) ─────────────────────
 
+
 async def _run_static_assertions(artifact: dict) -> list[dict]:
     """Run 15 static checks against the scene. Returns assertion results list."""
     results: list[dict] = []
@@ -384,83 +409,117 @@ async def _run_static_assertions(artifact: dict) -> list[dict]:
         pass
 
     # 1. Arena exists
-    results.append(check("pass" if exists("/Main/Arena") else "fail",
-        "arena_exists", "/Main/Arena" + (" found" if exists("/Main/Arena") else " missing")))
+    results.append(
+        check(
+            "pass" if exists("/Main/Arena") else "fail",
+            "arena_exists",
+            "/Main/Arena" + (" found" if exists("/Main/Arena") else " missing"),
+        )
+    )
 
     # 2. Player is MeshInstance3D
-    results.append(check(
-        "pass" if node_type("/Main/Arena/Player") == "MeshInstance3D" else "fail",
-        "player_type", f"Player type = {node_type('/Main/Arena/Player')}"))
+    results.append(
+        check(
+            "pass" if node_type("/Main/Arena/Player") == "MeshInstance3D" else "fail",
+            "player_type",
+            f"Player type = {node_type('/Main/Arena/Player')}",
+        )
+    )
 
     # 3. Player has mesh
     has_mesh = bool(player_props.get("mesh"))
-    results.append(check("pass" if has_mesh else "fail", "player_mesh",
-        "Player has mesh" if has_mesh else "Player has NO mesh"))
+    results.append(
+        check("pass" if has_mesh else "fail", "player_mesh", "Player has mesh" if has_mesh else "Player has NO mesh")
+    )
 
     # 4. Player has script
     has_script = bool(player_props.get("script") and player_props.get("script") != "None")
-    results.append(check("pass" if has_script else "fail", "player_script",
-        "Player has script" if has_script else "Player has NO script"))
+    results.append(
+        check(
+            "pass" if has_script else "fail",
+            "player_script",
+            "Player has script" if has_script else "Player has NO script",
+        )
+    )
 
     # 5. PlayerCamera is Camera3D
-    results.append(check(
-        "pass" if node_type("/Main/Arena/Player/PlayerCamera") == "Camera3D" else "fail",
-        "player_camera", f"PlayerCamera type = {node_type('/Main/Arena/Player/PlayerCamera')}"))
+    results.append(
+        check(
+            "pass" if node_type("/Main/Arena/Player/PlayerCamera") == "Camera3D" else "fail",
+            "player_camera",
+            f"PlayerCamera type = {node_type('/Main/Arena/Player/PlayerCamera')}",
+        )
+    )
 
     # 6. All 5 coins exist
     coin_names = ["Coin_Red", "Coin_Green", "Coin_Blue", "Coin_Gold", "Coin_Purple"]
     for name in coin_names:
         path = f"/Main/Arena/Collectibles/{name}"
-        results.append(check(
-            "pass" if exists(path) else "fail",
-            f"coin_{name.lower()}_exists", f"{name} {'found' if exists(path) else 'missing'}"))
+        results.append(
+            check(
+                "pass" if exists(path) else "fail",
+                f"coin_{name.lower()}_exists",
+                f"{name} {'found' if exists(path) else 'missing'}",
+            )
+        )
 
     # 7. Coins are Area3D
     for name in coin_names:
         path = f"/Main/Arena/Collectibles/{name}"
-        results.append(check(
-            "pass" if node_type(path) == "Area3D" else "fail",
-            f"coin_{name.lower()}_type", f"{name} type = {node_type(path)}"))
+        results.append(
+            check(
+                "pass" if node_type(path) == "Area3D" else "fail",
+                f"coin_{name.lower()}_type",
+                f"{name} type = {node_type(path)}",
+            )
+        )
 
     # 8. Each coin has CollisionShape3D child
     collider_ok = True
     for name in coin_names:
         coin_path = f"/Main/Arena/Collectibles/{name}"
-        has_collider = any(
-            p.startswith(coin_path + "/") and "CollisionShape" in node_type(p)
-            for p in snapshot
-        )
+        has_collider = any(p.startswith(coin_path + "/") and "CollisionShape" in node_type(p) for p in snapshot)
         if not has_collider:
             collider_ok = False
             break
-    results.append(check("pass" if collider_ok else "fail",
-        "coins_collision",
-        "All coins have CollisionShape3D" if collider_ok else "Missing CollisionShape3D on >=1 coin"))
+    results.append(
+        check(
+            "pass" if collider_ok else "fail",
+            "coins_collision",
+            "All coins have CollisionShape3D" if collider_ok else "Missing CollisionShape3D on >=1 coin",
+        )
+    )
 
     # 9. Each coin has MeshInstance3D child with mesh
     mesh_child_ok = True
     for name in coin_names:
         coin_path = f"/Main/Arena/Collectibles/{name}"
-        has_mesh_child = any(
-            p.startswith(coin_path + "/") and node_type(p) == "MeshInstance3D"
-            for p in snapshot
-        )
+        has_mesh_child = any(p.startswith(coin_path + "/") and node_type(p) == "MeshInstance3D" for p in snapshot)
         if not has_mesh_child:
             mesh_child_ok = False
             break
-    results.append(check("pass" if mesh_child_ok else "fail",
-        "coins_mesh",
-        "All coins have MeshInstance3D children" if mesh_child_ok else "Missing MeshInstance3D on >=1 coin"))
+    results.append(
+        check(
+            "pass" if mesh_child_ok else "fail",
+            "coins_mesh",
+            "All coins have MeshInstance3D children" if mesh_child_ok else "Missing MeshInstance3D on >=1 coin",
+        )
+    )
 
     # 10. CanvasLayer exists
-    results.append(check(
-        "pass" if node_type("/Main/Arena/UI") == "CanvasLayer" else "fail",
-        "ui_canvas", f"UI type = {node_type('/Main/Arena/UI')}"))
+    results.append(
+        check(
+            "pass" if node_type("/Main/Arena/UI") == "CanvasLayer" else "fail",
+            "ui_canvas",
+            f"UI type = {node_type('/Main/Arena/UI')}",
+        )
+    )
 
     # 11. ScoreLabel exists
     has_label = exists("/Main/Arena/UI/ScoreLabel")
-    results.append(check("pass" if has_label else "fail",
-        "ui_label", "ScoreLabel found" if has_label else "ScoreLabel missing"))
+    results.append(
+        check("pass" if has_label else "fail", "ui_label", "ScoreLabel found" if has_label else "ScoreLabel missing")
+    )
 
     # 12. ScoreLabel text contains "Score" and "0"
     try:
@@ -471,40 +530,69 @@ async def _run_static_assertions(artifact: dict) -> list[dict]:
             plist = {x.get("name"): x.get("value") for x in plist if isinstance(x, dict)}
         text = str(plist.get("text", ""))
         text_ok = "Score" in text and "0" in text
-        results.append(check("pass" if text_ok else "fail", "score_text",
-            f"Label text = '{text}'" + (" (ok)" if text_ok else " (expected 'Score: 0')")))
+        results.append(
+            check(
+                "pass" if text_ok else "fail",
+                "score_text",
+                f"Label text = '{text}'" + (" (ok)" if text_ok else " (expected 'Score: 0')"),
+            )
+        )
     except Exception:
         results.append(check("error", "score_text", "Property fetch failed"))
 
     # 13. No duplicate cameras
     cam_count = sum(1 for p, n in snapshot.items() if n.get("type") == "Camera3D")
-    results.append(check("pass" if cam_count <= 2 else "fail",
-        "no_dup_cameras", f"{cam_count} Camera3D nodes" + (" (ok)" if cam_count <= 2 else " TOO MANY")))
+    results.append(
+        check(
+            "pass" if cam_count <= 2 else "fail",
+            "no_dup_cameras",
+            f"{cam_count} Camera3D nodes" + (" (ok)" if cam_count <= 2 else " TOO MANY"),
+        )
+    )
 
     # 14. No scene pollution — allow the completeness injector's auto-added nodes
-    known = {"root", "Main", "Camera3D", "DirectionalLight3D", "World", "Ground", "Arena",
-             "DirectionalLight", "MainCamera"}
+    known = {
+        "root",
+        "Main",
+        "Camera3D",
+        "DirectionalLight3D",
+        "World",
+        "Ground",
+        "Arena",
+        "DirectionalLight",
+        "MainCamera",
+    }
     unexpected = []
     for p in snapshot:
         name = snapshot[p].get("name", "")
         if name not in known and not p.startswith("/Main/Arena/"):
-            unexpected.append(f"{p}({snapshot[p].get('type','?')})")
-    results.append(check("pass" if not unexpected else "fail",
-        "no_pollution", "Clean scene" if not unexpected else f"Unexpected: {unexpected[:5]}"))
+            unexpected.append(f"{p}({snapshot[p].get('type', '?')})")
+    results.append(
+        check(
+            "pass" if not unexpected else "fail",
+            "no_pollution",
+            "Clean scene" if not unexpected else f"Unexpected: {unexpected[:5]}",
+        )
+    )
 
     # 15. Pipeline errors
     errors = artifact.get("errors", [])
     error_count = artifact.get("error_count", len(errors))
-    results.append(check("pass" if error_count == 0 else "fail",
-        "no_errors", f"{error_count} pipeline errors" if error_count > 0 else "Zero pipeline errors"))
+    results.append(
+        check(
+            "pass" if error_count == 0 else "fail",
+            "no_errors",
+            f"{error_count} pipeline errors" if error_count > 0 else "Zero pipeline errors",
+        )
+    )
 
     return results
 
 
 # ── Runtime assertions (run after starting the game) ─────────────
 
-async def _run_runtime_assertions(emit: Callable[[str], None],
-                                  files: list | None = None) -> list[dict]:
+
+async def _run_runtime_assertions(emit: Callable[[str], None], files: list | None = None) -> list[dict]:
     """Verify the game boots and the GENERATED scripts implement the request.
 
     We check the artifact's own generated `.gd` content rather than reading
@@ -520,8 +608,7 @@ async def _run_runtime_assertions(emit: Callable[[str], None],
         return {"status": status, "assertion": label, "message": msg}
 
     # All generated GDScript concatenated, for intent checks.
-    scripts = [f for f in files if isinstance(f, dict)
-               and str(f.get("path", "")).endswith(".gd")]
+    scripts = [f for f in files if isinstance(f, dict) and str(f.get("path", "")).endswith(".gd")]
     code = "\n".join(str(f.get("content", "")) for f in scripts)
 
     def has(*subs) -> bool:
@@ -534,9 +621,14 @@ async def _run_runtime_assertions(emit: Callable[[str], None],
     capture = False
     launched = False
     try:
-        await _godot_ai_call("project_run", {
-            "mode": "custom", "scene": SHOOTOUT_SCENE, "autosave": False,
-        })
+        await _godot_ai_call(
+            "project_run",
+            {
+                "mode": "custom",
+                "scene": SHOOTOUT_SCENE,
+                "autosave": False,
+            },
+        )
         launched = True
         for _ in range(6):  # ~9s
             await asyncio.sleep(1.5)
@@ -546,8 +638,9 @@ async def _run_runtime_assertions(emit: Callable[[str], None],
             except Exception:
                 pass
             try:
-                mon = await _godot_ai_call("editor_manage", {
-                    "op": "monitors_get", "params": {"monitors": ["time/fps"]}})
+                mon = await _godot_ai_call(
+                    "editor_manage", {"op": "monitors_get", "params": {"monitors": ["time/fps"]}}
+                )
                 md = mon.get("data", mon)
                 if isinstance(md, dict):
                     fps = md.get("time/fps", 0) or 0
@@ -566,28 +659,64 @@ async def _run_runtime_assertions(emit: Callable[[str], None],
         # Credit a clean launch even when the FPS monitor reads 0 (a known
         # editor capture quirk) — don't false-fail every model on it.
         game_ok = bool(fps and fps > 0) or capture
-        results.append(check("pass" if game_ok else "fail", "game_runs",
-            f"FPS={fps}" + (" (running)" if fps else
-                            (" (launched, capture ready)" if capture else " (launched, FPS unread)"))))
+        results.append(
+            check(
+                "pass" if game_ok else "fail",
+                "game_runs",
+                f"FPS={fps}"
+                + (" (running)" if fps else (" (launched, capture ready)" if capture else " (launched, FPS unread)")),
+            )
+        )
 
     # 2-7. Generated-script intent checks (across ALL generated .gd files).
-    results.append(check("pass" if scripts else "fail", "scripts_created",
-        f"{len(scripts)} script(s) generated" if scripts else "no scripts generated"))
-    results.append(check("pass" if "_process" in code or "_physics_process" in code else "fail",
-        "movement_process", "_process present" if "_process" in code else "_process NOT found"))
-    results.append(check("pass" if has("Input.", "get_vector", "is_key_pressed") else "fail",
-        "movement_input", "input handling present" if has("Input.", "get_vector", "is_key_pressed") else "no Input calls"))
-    results.append(check("pass" if has("body_entered", "_on_body") else "fail",
-        "collect_handler", "body_entered handler present" if has("body_entered", "_on_body") else "no signal handler"))
-    results.append(check("pass" if "queue_free" in code else "fail",
-        "collect_qfree", "queue_free present" if "queue_free" in code else "queue_free NOT found"))
-    results.append(check("pass" if has("ScoreLabel") or "score" in code.lower() else "fail",
-        "collect_score", "score tracking present" if (has("ScoreLabel") or "score" in code.lower()) else "no score tracking"))
+    results.append(
+        check(
+            "pass" if scripts else "fail",
+            "scripts_created",
+            f"{len(scripts)} script(s) generated" if scripts else "no scripts generated",
+        )
+    )
+    results.append(
+        check(
+            "pass" if "_process" in code or "_physics_process" in code else "fail",
+            "movement_process",
+            "_process present" if "_process" in code else "_process NOT found",
+        )
+    )
+    results.append(
+        check(
+            "pass" if has("Input.", "get_vector", "is_key_pressed") else "fail",
+            "movement_input",
+            "input handling present" if has("Input.", "get_vector", "is_key_pressed") else "no Input calls",
+        )
+    )
+    results.append(
+        check(
+            "pass" if has("body_entered", "_on_body") else "fail",
+            "collect_handler",
+            "body_entered handler present" if has("body_entered", "_on_body") else "no signal handler",
+        )
+    )
+    results.append(
+        check(
+            "pass" if "queue_free" in code else "fail",
+            "collect_qfree",
+            "queue_free present" if "queue_free" in code else "queue_free NOT found",
+        )
+    )
+    results.append(
+        check(
+            "pass" if has("ScoreLabel") or "score" in code.lower() else "fail",
+            "collect_score",
+            "score tracking present" if (has("ScoreLabel") or "score" in code.lower()) else "no score tracking",
+        )
+    )
 
     return results
 
 
 # ── Cleanup ──────────────────────────────────────────────────────
+
 
 async def _write_baseline_scene() -> None:
     """Rewrite SHOOTOUT_SCENE to the canonical baseline on disk.
@@ -596,10 +725,13 @@ async def _write_baseline_scene() -> None:
     matter what a previous run (or project_run autosave) left behind.
     Goes through the editor's filesystem so it triggers a rescan.
     """
-    await _godot_ai_call("filesystem_manage", {
-        "op": "write_text",
-        "params": {"path": SHOOTOUT_SCENE, "content": SHOOTOUT_SCENE_TSCN},
-    })
+    await _godot_ai_call(
+        "filesystem_manage",
+        {
+            "op": "write_text",
+            "params": {"path": SHOOTOUT_SCENE, "content": SHOOTOUT_SCENE_TSCN},
+        },
+    )
 
 
 async def _open_fresh(scene: str = SHOOTOUT_SCENE) -> None:
@@ -623,8 +755,7 @@ async def _reset_scene() -> None:
     await _open_fresh(SHOOTOUT_SCENE)
 
 
-async def _with_heartbeat(coro, emit: Callable[[str], None], label: str,
-                          interval: float = 4.0):
+async def _with_heartbeat(coro, emit: Callable[[str], None], label: str, interval: float = 4.0):
     """Await `coro` while emitting an elapsed-time heartbeat.
 
     The long, silent phases (model swap, the 40s+ planner inside apply_spec)
@@ -643,8 +774,10 @@ async def _with_heartbeat(coro, emit: Callable[[str], None], label: str,
 
 # ── Failure attribution ──────────────────────────────────────────
 
-def _attribute_failures(static_results: list[dict], runtime_results: list[dict],
-                         arch_delta: dict, operations: list, files: list) -> list[dict]:
+
+def _attribute_failures(
+    static_results: list[dict], runtime_results: list[dict], arch_delta: dict, operations: list, files: list
+) -> list[dict]:
     """Cross-reference failed assertions against pipeline artifact to
     attribute each failure to a pipeline stage (plan / compile / execute).
 
@@ -676,7 +809,9 @@ def _attribute_failures(static_results: list[dict], runtime_results: list[dict],
                 stage, reason = "plan", "planner produced NO entities at all"
             elif coin.capitalize() not in delta_entities:
                 stage, reason = "plan", f"planner did not include {coin} in entities: {sorted(delta_entities)}"
-            elif not any(o.get("type") == "add_node" and coin.capitalize() in str(o.get("name", "")) for o in operations):
+            elif not any(
+                o.get("type") == "add_node" and coin.capitalize() in str(o.get("name", "")) for o in operations
+            ):
                 stage, reason = "compile", f"planner had {coin} but compiler produced no add_node for it"
             else:
                 stage, reason = "execute", f"node was compiled but may have failed to execute"
@@ -705,7 +840,11 @@ def _attribute_failures(static_results: list[dict], runtime_results: list[dict],
             elif assertion_id == "player_camera" and "PlayerCamera" not in delta_entities:
                 stage, reason = "plan", "planner did not include PlayerCamera entity"
             elif assertion_id == "player_script":
-                movement_systems = [s for n, s in delta_systems.items() if any(kw in n.lower() for kw in ("movement", "player", "input"))]
+                movement_systems = [
+                    s
+                    for n, s in delta_systems.items()
+                    if any(kw in n.lower() for kw in ("movement", "player", "input"))
+                ]
                 if not movement_systems:
                     stage, reason = "plan", "planner did not create a movement/player system"
                 elif not files:
@@ -762,19 +901,21 @@ def _attribute_failures(static_results: list[dict], runtime_results: list[dict],
             stage, reason = "compile", "no scripts were generated"
 
         if reason:
-            attributions.append({
-                "assertion": assertion_id,
-                "stage": stage,
-                "reason": reason,
-            })
+            attributions.append(
+                {
+                    "assertion": assertion_id,
+                    "stage": stage,
+                    "reason": reason,
+                }
+            )
 
     return attributions
 
 
 # ── Single model test ────────────────────────────────────────────
 
-async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = True,
-                          planner_mode: str = "arch") -> dict:
+
+async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = True, planner_mode: str = "arch") -> dict:
     """Run the full test against one model. Returns result dict."""
     alias = m["alias"]
     label = m["label"]
@@ -837,10 +978,15 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
         _log_write(f"  apply_spec: sending prompt ({len(SHOOTOUT_PROMPT)} chars)...")
         try:
             raw = await _with_heartbeat(
-                _devforge_call("apply_spec", {
-                    "prompt": SHOOTOUT_PROMPT,
-                }, timeout_s=300),
-                emit, "apply_spec (planning + executing)",
+                _devforge_call(
+                    "apply_spec",
+                    {
+                        "prompt": SHOOTOUT_PROMPT,
+                    },
+                    timeout_s=300,
+                ),
+                emit,
+                "apply_spec (planning + executing)",
             )
             _log_write(f"  apply_spec: raw response received, keys={list(raw.keys())[:10]}")
             model_result["raw_apply_spec"] = _safe_serialize(raw)
@@ -849,9 +995,13 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
             if artifact_id:
                 _log_write(f"  apply_spec: reading artifact {artifact_id}")
                 try:
-                    artifact = await _devforge_call("read_artifact", {
-                        "artifact_id": artifact_id,
-                    }, timeout_s=30)
+                    artifact = await _devforge_call(
+                        "read_artifact",
+                        {
+                            "artifact_id": artifact_id,
+                        },
+                        timeout_s=30,
+                    )
                     model_result["raw_artifact"] = _safe_serialize(artifact)
                     _log_write(f"  apply_spec: artifact loaded, keys={list(artifact.keys())[:10]}")
                 except Exception as e2:
@@ -874,9 +1024,11 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
         model_result["completeness_added"] = artifact.get("completeness_added", 0)
         model_result["stage_latencies"] = artifact.get("stage_latencies", {})
         _log_write(f"  apply_spec: done — applied={applied_count}, ops={op_count}, errors={error_count}")
-        _log_write(f"  diagnostics: plan_retries={model_result['plan_retries']}, "
-                   f"repair={model_result['repair_count']}, "
-                   f"completeness_added={model_result['completeness_added']}")
+        _log_write(
+            f"  diagnostics: plan_retries={model_result['plan_retries']}, "
+            f"repair={model_result['repair_count']}, "
+            f"completeness_added={model_result['completeness_added']}"
+        )
         emit(f"  apply_spec done — {applied_count} applied, {op_count} ops, {error_count} errors")
 
         # Capture scene after
@@ -922,14 +1074,15 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
         emit(f"  runtime: {runtime_pass}/{runtime_total} pass ({model_result['runtime_score']}/32)")
 
         model_result["total_score"] = model_result["static_score"] + model_result["runtime_score"]
-        model_result["status"] = "pass" if model_result["total_score"] >= 60 else (
-            "fail" if model_result["total_score"] >= 30 else "error")
+        model_result["status"] = (
+            "pass" if model_result["total_score"] >= 60 else ("fail" if model_result["total_score"] >= 30 else "error")
+        )
 
         # Cross-reference failures against pipeline artifact for attribution
         delta = artifact.get("arch_delta", {}) or {}
         model_result["failure_attribution"] = _attribute_failures(
-            static_results, runtime_results,
-            delta, artifact.get("operations", []), artifact.get("files", []))
+            static_results, runtime_results, delta, artifact.get("operations", []), artifact.get("files", [])
+        )
 
     except Exception as e:
         _log_error(e, f"shootout crashed for {label}")
@@ -940,19 +1093,23 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
         _log_write(f"  reset: restoring pristine shootout scene")
         await _reset_scene()
         model_result["ms_total"] = int((time.time() - t_model) * 1000)
-        _log_write(f"  DONE: [{model_result['status']}] score={model_result['total_score']}/100 ({model_result['ms_total']}ms)")
-        emit(f"  [{model_result['status']}] score={model_result['total_score']}/100 "
-             f"({model_result['ms_total']}ms)")
+        _log_write(
+            f"  DONE: [{model_result['status']}] score={model_result['total_score']}/100 ({model_result['ms_total']}ms)"
+        )
+        emit(f"  [{model_result['status']}] score={model_result['total_score']}/100 ({model_result['ms_total']}ms)")
 
     return model_result
 
 
 # ── Shootout runner ──────────────────────────────────────────────
 
-async def run_shootout(emit: Callable[[str], None] | None = None,
-                        model_filter: str | None = None,
-                        skip_preflight: bool = False,
-                        all_planners: bool = False) -> dict:
+
+async def run_shootout(
+    emit: Callable[[str], None] | None = None,
+    model_filter: str | None = None,
+    skip_preflight: bool = False,
+    all_planners: bool = False,
+) -> dict:
     """Run the full shootout against all (or one) available models.
 
     Args:
@@ -963,6 +1120,7 @@ async def run_shootout(emit: Callable[[str], None] | None = None,
 
     Returns a composite scorecard with per-model results + rankings.
     """
+
     def log(msg: str) -> None:
         if emit:
             emit(msg)
@@ -1027,9 +1185,14 @@ async def run_shootout(emit: Callable[[str], None] | None = None,
             "planner_comparison": planner_comparison,
             "regression_flags": regression_flags,
             "rankings": [
-                {"rank": i + 1, "model": r["model_label"], "alias": r["model_alias"],
-                 "score": r["total_score"], "status": r["status"],
-                 "planner_mode": r.get("planner_mode", "arch")}
+                {
+                    "rank": i + 1,
+                    "model": r["model_label"],
+                    "alias": r["model_alias"],
+                    "score": r["total_score"],
+                    "status": r["status"],
+                    "planner_mode": r.get("planner_mode", "arch"),
+                }
                 for i, r in enumerate(ranked)
             ],
         }
@@ -1049,8 +1212,8 @@ async def run_shootout(emit: Callable[[str], None] | None = None,
         alias = m["alias"]
         label = m["label"]
 
-        log(f"\n── [{i+1}/{total}] {label} ({alias}) ──")
-        log(f"[shootout:model] {i+1}/{total} {label}")
+        log(f"\n── [{i + 1}/{total}] {label} ({alias}) ──")
+        log(f"[shootout:model] {i + 1}/{total} {label}")
 
         planner_modes = ["arch", "ops"] if all_planners else ["arch"]
         needs_swap = True
@@ -1061,10 +1224,15 @@ async def run_shootout(emit: Callable[[str], None] | None = None,
                 _set_planner_mode("ops")
                 if not await _restart_devforge(emit):
                     log(f"  [shootout:error] DevForge restart failed for {pmode} planner")
-                    r = {"model_alias": alias, "model_label": label,
-                         "planner_mode": "ops", "status": "untested",
-                         "errors": ["DevForge restart failed for ops planner"],
-                         "total_score": 0, "max_score": 100}
+                    r = {
+                        "model_alias": alias,
+                        "model_label": label,
+                        "planner_mode": "ops",
+                        "status": "untested",
+                        "errors": ["DevForge restart failed for ops planner"],
+                        "total_score": 0,
+                        "max_score": 100,
+                    }
                     results.append(r)
                     _persist(done=False)
                     continue
@@ -1073,7 +1241,7 @@ async def run_shootout(emit: Callable[[str], None] | None = None,
             r = await _test_one_model(m, emit, swap=swap_needed, planner_mode=pmode)
             results.append(r)
             _persist(done=False)  # checkpoint after every model/planner
-            log(f"[shootout:scored] {i+1}/{total} {label} [{pmode}] = {r['total_score']}/100 ({r['status']})")
+            log(f"[shootout:scored] {i + 1}/{total} {label} [{pmode}] = {r['total_score']}/100 ({r['status']})")
 
         # Restore arch planner default after ops run
         if all_planners:
@@ -1091,12 +1259,13 @@ async def run_shootout(emit: Callable[[str], None] | None = None,
     scorecard = _persist(done=True)
     log("[shootout:done]")
     log(f"\n→ saved {out.name}")
-    log(f"Total: {scorecard['total_ms']/1000:.0f}s for {scorecard['models_tested']} models")
+    log(f"Total: {scorecard['total_ms'] / 1000:.0f}s for {scorecard['models_tested']} models")
 
     return scorecard
 
 
 # ── Regression detection ──────────────────────────────────────
+
 
 def _detect_regressions(results: list[dict]) -> list[dict]:
     """Detect models that regressed vs their previous best score.
@@ -1125,15 +1294,17 @@ def _detect_regressions(results: list[dict]) -> list[dict]:
             continue  # no previous data — can't detect regression
         delta = current - prev_best
         if delta < -10:
-            regressions.append({
-                "model": r.get("model_label", alias),
-                "alias": alias,
-                "planner_mode": r.get("planner_mode", "arch"),
-                "current_score": current,
-                "previous_best": prev_best,
-                "previous_ts": prev_ts,
-                "delta": delta,
-            })
+            regressions.append(
+                {
+                    "model": r.get("model_label", alias),
+                    "alias": alias,
+                    "planner_mode": r.get("planner_mode", "arch"),
+                    "current_score": current,
+                    "previous_best": prev_best,
+                    "previous_ts": prev_ts,
+                    "delta": delta,
+                }
+            )
     return regressions
 
 
@@ -1150,16 +1321,21 @@ def _compare_planners(results: list[dict]) -> dict | None:
         arch_score = arch.get("total_score", 0)
         ops_score = ops.get("total_score", 0)
         delta = ops_score - arch_score
-        rows.append({
-            "model_alias": alias,
-            "model_label": arch.get("model_label", ops.get("model_label", alias)),
-            "arch_score": arch_score,
-            "ops_score": ops_score,
-            "delta": delta,
-            "winner": "arch" if delta < 0 else ("ops" if delta > 0 else "tie"),
-        })
-    return {"rows": rows, "summary": f"arch avg: {sum(r['arch_score'] for r in rows)/max(len(rows),1):.0f}, "
-              f"ops avg: {sum(r['ops_score'] for r in rows)/max(len(rows),1):.0f}"}
+        rows.append(
+            {
+                "model_alias": alias,
+                "model_label": arch.get("model_label", ops.get("model_label", alias)),
+                "arch_score": arch_score,
+                "ops_score": ops_score,
+                "delta": delta,
+                "winner": "arch" if delta < 0 else ("ops" if delta > 0 else "tie"),
+            }
+        )
+    return {
+        "rows": rows,
+        "summary": f"arch avg: {sum(r['arch_score'] for r in rows) / max(len(rows), 1):.0f}, "
+        f"ops avg: {sum(r['ops_score'] for r in rows) / max(len(rows), 1):.0f}",
+    }
 
 
 # ── Safe serialization helper ────────────────────────────────────
@@ -1184,19 +1360,22 @@ def _safe_serialize(obj: Any, depth: int = 0) -> Any:
 
 # ── Scorecard management ─────────────────────────────────────────
 
+
 def list_shootouts() -> list[dict]:
     """Return all saved shootout scorecards."""
     cards = []
     for f in sorted(SHOOTOUT_DIR.glob("shootout-*.json"), reverse=True):
         try:
             d = json.loads(f.read_text())
-            cards.append({
-                "file": f.name,
-                "ts": d.get("ts"),
-                "log_ts": d.get("log_ts"),
-                "models_tested": d.get("models_tested"),
-                "rankings": d.get("rankings", []),
-            })
+            cards.append(
+                {
+                    "file": f.name,
+                    "ts": d.get("ts"),
+                    "log_ts": d.get("log_ts"),
+                    "models_tested": d.get("models_tested"),
+                    "rankings": d.get("rankings", []),
+                }
+            )
         except Exception:
             continue
     return cards
@@ -1216,6 +1395,7 @@ def get_latest_shootout() -> dict | None:
 
 # ── CLI entry point ──────────────────────────────────────────────
 
+
 def _cli_emit(line: str) -> None:
     print(line)
 
@@ -1230,7 +1410,9 @@ def main() -> None:
             print(f"Past shootouts ({len(cards)}):")
             for c in cards[:10]:
                 top = c["rankings"][0] if c["rankings"] else {"model": "?", "score": "?"}
-                print(f"  {c['file']:30s}  {c['ts']}  {c['models_tested']} models  🥇 {top['model']} ({top['score']}/100)")
+                print(
+                    f"  {c['file']:30s}  {c['ts']}  {c['models_tested']} models  🥇 {top['model']} ({top['score']}/100)"
+                )
         else:
             print("No past shootouts found.")
             print("\nAvailable models:")
@@ -1264,8 +1446,7 @@ def main() -> None:
             label += " (arch + ops planner)"
         print(f"Starting shootout: {label}")
         print("Make sure Godot editor is open with the test_project and shootout.tscn is loaded.\n")
-        asyncio.run(run_shootout(_cli_emit, model_filter=model_filter,
-                                 all_planners=all_planners))
+        asyncio.run(run_shootout(_cli_emit, model_filter=model_filter, all_planners=all_planners))
     else:
         print("Usage: python shootout.py [--all | --all-planners | --model <fragment> | --list | --last | --check]")
         print("\nAvailable models:")

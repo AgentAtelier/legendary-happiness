@@ -12,9 +12,11 @@ from typing import Dict, Any, List
 
 # ── Base Step ──────────────────────────────────────────────
 
+
 @dataclass
 class PlanStep:
     """Base class for all plan steps."""
+
     step_type: str = ""
 
     def validate(self) -> List[str]:
@@ -27,6 +29,7 @@ class PlanStep:
 
 
 # ── Scene Steps ────────────────────────────────────────────
+
 
 @dataclass
 class CreateEntityStep(PlanStep):
@@ -46,12 +49,14 @@ class CreateEntityStep(PlanStep):
         return errors
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "add_node",
-            "parent": self.parent,
-            "node_type": self.node_type,
-            "name": self.name,
-        }]
+        return [
+            {
+                "type": "add_node",
+                "parent": self.parent,
+                "node_type": self.node_type,
+                "name": self.name,
+            }
+        ]
 
 
 @dataclass
@@ -71,11 +76,13 @@ class CreateScriptStep(PlanStep):
         return errors
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "create_file",
-            "path": self.path,
-            "content": self.content,
-        }]
+        return [
+            {
+                "type": "create_file",
+                "path": self.path,
+                "content": self.content,
+            }
+        ]
 
 
 @dataclass
@@ -95,11 +102,13 @@ class AttachScriptStep(PlanStep):
         return errors
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "attach_script",
-            "node": self.node,
-            "script": self.script,
-        }]
+        return [
+            {
+                "type": "attach_script",
+                "node": self.node,
+                "script": self.script,
+            }
+        ]
 
 
 @dataclass
@@ -116,10 +125,12 @@ class RemoveNodeStep(PlanStep):
         return errors
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "remove_node",
-            "node": self.node,
-        }]
+        return [
+            {
+                "type": "remove_node",
+                "node": self.node,
+            }
+        ]
 
 
 @dataclass
@@ -139,11 +150,13 @@ class RenameNodeStep(PlanStep):
         return errors
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "rename_node",
-            "node": self.node,
-            "new_name": self.new_name,
-        }]
+        return [
+            {
+                "type": "rename_node",
+                "node": self.node,
+                "new_name": self.new_name,
+            }
+        ]
 
 
 @dataclass
@@ -156,12 +169,14 @@ class SetPropertyStep(PlanStep):
         self.step_type = "set_property"
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "set_property",
-            "node": self.node,
-            "property": self.property,
-            "value": self.value,
-        }]
+        return [
+            {
+                "type": "set_property",
+                "node": self.node,
+                "property": self.property,
+                "value": self.value,
+            }
+        ]
 
 
 @dataclass
@@ -175,16 +190,19 @@ class ConnectSignalStep(PlanStep):
         self.step_type = "connect_signal"
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [{
-            "type": "connect_signal",
-            "source": self.source,
-            "signal": self.signal,
-            "target": self.target,
-            "method": self.method,
-        }]
+        return [
+            {
+                "type": "connect_signal",
+                "source": self.source,
+                "signal": self.signal,
+                "target": self.target,
+                "method": self.method,
+            }
+        ]
 
 
 # ── Plan Container ─────────────────────────────────────────
+
 
 @dataclass
 class DevForgePlan:
@@ -207,10 +225,12 @@ class DevForgePlan:
         for step in self.steps:
             for op in step.compile():
                 if op.get("type") == "create_file":
-                    files.append({
-                        "path": op.get("path"),
-                        "content": op.get("content", ""),
-                    })
+                    files.append(
+                        {
+                            "path": op.get("path"),
+                            "content": op.get("content", ""),
+                        }
+                    )
                 else:
                     operations.append(op)
 

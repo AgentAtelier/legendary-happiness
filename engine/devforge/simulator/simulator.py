@@ -25,15 +25,15 @@ from devforge.infrastructure.logger import logger
 class Combatant:
     """A participant in combat simulation."""
 
-    id: str                      # unique identifier
-    name: str                    # display name
+    id: str  # unique identifier
+    name: str  # display name
     hp: int = 100
     max_hp: int = 100
-    attack: int = 10             # base damage before variance
-    defense: int = 5             # flat damage reduction
-    speed: int = 10              # turn order (higher = faster)
-    accuracy: float = 0.9        # hit chance (0.0–1.0)
-    crit_chance: float = 0.1     # critical hit probability
+    attack: int = 10  # base damage before variance
+    defense: int = 5  # flat damage reduction
+    speed: int = 10  # turn order (higher = faster)
+    accuracy: float = 0.9  # hit chance (0.0–1.0)
+    crit_chance: float = 0.1  # critical hit probability
     crit_multiplier: float = 1.5  # crit damage multiplier
     level: int = 1
     tags: list[str] = field(default_factory=list)
@@ -75,8 +75,8 @@ class Combatant:
 class Encounter:
     """A group of enemies the player must fight."""
 
-    id: str                     # "goblin_patrol"
-    name: str                   # "Goblin Patrol"
+    id: str  # "goblin_patrol"
+    name: str  # "Goblin Patrol"
     enemies: list[str] = field(default_factory=list)  # combatant IDs
     enemy_counts: dict[str, int] = field(default_factory=dict)  # id → count
 
@@ -96,8 +96,8 @@ class SimulationResult:
     avg_damage_dealt: float
     avg_damage_taken: float
     avg_crits_landed: float
-    player_first_turn_pct: float       # % of fights where player goes first
-    one_shot_probability: float         # % where player dies in first 2 rounds
+    player_first_turn_pct: float  # % of fights where player goes first
+    one_shot_probability: float  # % where player dies in first 2 rounds
     flawless_victory_probability: float  # % where player takes 0 damage
 
     def to_dict(self) -> dict:
@@ -120,6 +120,7 @@ class SimulationResult:
 
 
 # ── Damage formula (configurable) ─────────────────────────────────
+
 
 def default_damage_formula(attacker: Combatant, defender: Combatant) -> int:
     """Default damage formula: attack - defense with ±20% variance.
@@ -148,6 +149,7 @@ def default_crit_check(attacker: Combatant, _defender: Combatant) -> bool:
 @dataclass
 class CombatLogEntry:
     """A single round entry for analysis."""
+
     round_num: int
     attacker_id: str
     defender_id: str
@@ -213,14 +215,16 @@ def simulate_combat(
                 damage_dealt += dmg
                 if was_crit:
                     crits_landed += 1
-                log.append(CombatLogEntry(
-                    round_num=round_num,
-                    attacker_id=p.id,
-                    defender_id=target.id,
-                    damage=dmg,
-                    was_crit=was_crit,
-                    defender_hp_after=target.hp,
-                ))
+                log.append(
+                    CombatLogEntry(
+                        round_num=round_num,
+                        attacker_id=p.id,
+                        defender_id=target.id,
+                        damage=dmg,
+                        was_crit=was_crit,
+                        defender_hp_after=target.hp,
+                    )
+                )
 
         # Enemy turns
         for enemy in e_list:
@@ -235,14 +239,16 @@ def simulate_combat(
                 damage_taken += dmg
                 if flawless:
                     flawless = False
-                log.append(CombatLogEntry(
-                    round_num=round_num,
-                    attacker_id=enemy.id,
-                    defender_id=p.id,
-                    damage=dmg,
-                    was_crit=was_crit,
-                    defender_hp_after=p.hp,
-                ))
+                log.append(
+                    CombatLogEntry(
+                        round_num=round_num,
+                        attacker_id=enemy.id,
+                        defender_id=p.id,
+                        damage=dmg,
+                        was_crit=was_crit,
+                        defender_hp_after=p.hp,
+                    )
+                )
 
         # Check end conditions
         if not p.is_alive():
@@ -255,8 +261,14 @@ def simulate_combat(
 
     player_won = p.is_alive()
     stats = _build_stats(
-        round_num, p.hp, damage_dealt, damage_taken, crits_landed,
-        player_first, one_shot, flawless,
+        round_num,
+        p.hp,
+        damage_dealt,
+        damage_taken,
+        crits_landed,
+        player_first,
+        one_shot,
+        flawless,
     )
     return player_won, log, stats
 
@@ -335,7 +347,8 @@ def monte_carlo_encounter(
 
     for i in range(simulations):
         won, _, stats = simulate_combat(
-            player, enemies,
+            player,
+            enemies,
             damage_formula=damage_formula,
             hit_check=hit_check,
             crit_check=crit_check,
@@ -421,22 +434,24 @@ def monte_carlo_gauntlet(
 
     n = float(simulations)
     for ei, enc in enumerate(encounters):
-        results.append(SimulationResult(
-            encounter_id=enc.get("id", f"encounter_{ei}"),
-            encounter_name=enc.get("name", f"Encounter {ei + 1}"),
-            total_simulations=simulations,
-            player_wins=win_counts[ei],
-            player_losses=simulations - win_counts[ei],
-            win_probability=win_counts[ei] / n,
-            avg_rounds=round_counts[ei] / n,
-            avg_player_hp_remaining=hp_remaining[ei] / n if win_counts[ei] > 0 else 0.0,
-            avg_damage_dealt=0.0,  # not tracked per-encounter in gauntlet
-            avg_damage_taken=0.0,
-            avg_crits_landed=0.0,
-            player_first_turn_pct=0.0,
-            one_shot_probability=0.0,
-            flawless_victory_probability=0.0,
-        ))
+        results.append(
+            SimulationResult(
+                encounter_id=enc.get("id", f"encounter_{ei}"),
+                encounter_name=enc.get("name", f"Encounter {ei + 1}"),
+                total_simulations=simulations,
+                player_wins=win_counts[ei],
+                player_losses=simulations - win_counts[ei],
+                win_probability=win_counts[ei] / n,
+                avg_rounds=round_counts[ei] / n,
+                avg_player_hp_remaining=hp_remaining[ei] / n if win_counts[ei] > 0 else 0.0,
+                avg_damage_dealt=0.0,  # not tracked per-encounter in gauntlet
+                avg_damage_taken=0.0,
+                avg_crits_landed=0.0,
+                player_first_turn_pct=0.0,
+                one_shot_probability=0.0,
+                flawless_victory_probability=0.0,
+            )
+        )
 
     return results
 
@@ -539,17 +554,20 @@ def evaluate_encounter(
             continue
         count = counts.get(eid, 1)
         for _ in range(count):
-            enemy_list.append(combatant_from_entry(
-                enemy_lookup[eid],
-                hp_field=hp_field,
-                attack_field=attack_field,
-                defense_field=defense_field,
-                speed_field=speed_field,
-                level_field=level_field,
-            ))
+            enemy_list.append(
+                combatant_from_entry(
+                    enemy_lookup[eid],
+                    hp_field=hp_field,
+                    attack_field=attack_field,
+                    defense_field=defense_field,
+                    speed_field=speed_field,
+                    level_field=level_field,
+                )
+            )
 
     result = monte_carlo_encounter(
-        player, enemy_list,
+        player,
+        enemy_list,
         encounter_id=encounter_id,
         encounter_name=encounter_name,
         simulations=simulations,
@@ -589,12 +607,16 @@ def evaluate_level_progression(
                 count = enc.get("enemy_counts", {}).get(eid, 1)
                 if eid in enemy_lookup:
                     for _ in range(count):
-                        enemy_list.append(combatant_from_entry(
-                            enemy_lookup[eid], **field_mappings,
-                        ))
+                        enemy_list.append(
+                            combatant_from_entry(
+                                enemy_lookup[eid],
+                                **field_mappings,
+                            )
+                        )
 
             r = monte_carlo_encounter(
-                player, enemy_list,
+                player,
+                enemy_list,
                 encounter_id=enc.get("id", "unknown"),
                 encounter_name=enc.get("name", "Unknown"),
                 simulations=simulations,
@@ -607,8 +629,7 @@ def evaluate_level_progression(
         "levels": list(level_range),
         "encounter_ids": [e["id"] for e in encounters],
         "win_probabilities": {
-            str(level): {eid: round(prob, 4) for eid, prob in probs.items()}
-            for level, probs in results.items()
+            str(level): {eid: round(prob, 4) for eid, prob in probs.items()} for level, probs in results.items()
         },
         "sweet_spot": _find_sweet_spot(results),
     }

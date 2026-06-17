@@ -17,8 +17,8 @@ class Violation:
     rule_id: str
     message: str
     line_number: int | None = None
-    severity: str = "critical"      # "critical", "high", "warning"
-    action: str = "block_merge"     # "block_merge" or "flag_for_review"
+    severity: str = "critical"  # "critical", "high", "warning"
+    action: str = "block_merge"  # "block_merge" or "flag_for_review"
 
     def to_dict(self) -> dict:
         return {

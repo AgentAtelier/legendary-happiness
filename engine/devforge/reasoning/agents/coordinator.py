@@ -49,9 +49,9 @@ class Coordinator:
         system_graph: Optional[SystemGraph] = None,
     ):
         """Args:
-            llm: LLM router for agent inference.
-            config: Runtime configuration.
-            system_graph: Shared SystemGraph (blackboard). Created if None.
+        llm: LLM router for agent inference.
+        config: Runtime configuration.
+        system_graph: Shared SystemGraph (blackboard). Created if None.
         """
         self._llm = llm
         self._config = config
@@ -70,6 +70,7 @@ class Coordinator:
 
         # Transaction class
         from devforge.transaction.transaction import ExecutionTransaction
+
         self.transaction_cls = ExecutionTransaction
 
     # ------------------------------------------------------------------
@@ -150,10 +151,7 @@ class Coordinator:
 
         # Determine final status
         context["status"] = (
-            "ok"
-            if qa_result.get("status") == "ok"
-            and not context.get("governance_blocked", False)
-            else "fail"
+            "ok" if qa_result.get("status") == "ok" and not context.get("governance_blocked", False) else "fail"
         )
 
         logger.info(
@@ -231,9 +229,7 @@ class Coordinator:
 
                 if not gate1.passed:
                     context["governance_blocked"] = True
-                    context.setdefault("violations", []).extend(
-                        [v.to_dict() for v in gate1.blocking_violations]
-                    )
+                    context.setdefault("violations", []).extend([v.to_dict() for v in gate1.blocking_violations])
                     logger.warn(
                         "coordinator",
                         f"Gate 1 failed: {len(gate1.blocking_violations)} blocking violations",

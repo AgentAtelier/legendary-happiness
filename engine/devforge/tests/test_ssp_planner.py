@@ -17,6 +17,7 @@ from devforge.spatial.lexicon import AssetLexicon
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def lexicon():
     return AssetLexicon()
@@ -33,6 +34,7 @@ def planner(lexicon, ssp_engine):
 
 
 # ── Grammar loading tests ────────────────────────────────────────
+
 
 class TestGrammarLoading:
     """Grammar file loading and structure."""
@@ -68,6 +70,7 @@ class TestGrammarLoading:
 
 
 # ── Prompt building tests ────────────────────────────────────────
+
 
 class TestPromptBuilding:
     """_build_prompt: archetype catalog, asset filtering."""
@@ -116,6 +119,7 @@ class TestPromptBuilding:
 
 # ── Response parsing tests ──────────────────────────────────────
 
+
 class TestResponseParsing:
     """_parse_response: valid JSON, edge cases, error handling."""
 
@@ -131,11 +135,13 @@ class TestResponseParsing:
 
     def test_parse_with_overrides(self, planner):
         """Parse JSON with slot and dimension overrides."""
-        response = json.dumps({
-            "archetype": "living_room",
-            "dimensions": {"width": 7, "height": 3, "depth": 7},
-            "slot_overrides": {"chair_north": "stool"},
-        })
+        response = json.dumps(
+            {
+                "archetype": "living_room",
+                "dimensions": {"width": 7, "height": 3, "depth": 7},
+                "slot_overrides": {"chair_north": "stool"},
+            }
+        )
         result = planner._parse_response(response)
         assert result["archetype"] == "living_room"
         assert result["dimensions"]["width"] == 7
@@ -183,6 +189,7 @@ class TestResponseParsing:
 
 # ── Plan integration tests ──────────────────────────────────────
 
+
 class TestPlanMethod:
     """plan() method: LLM integration, error handling."""
 
@@ -202,10 +209,12 @@ class TestPlanMethod:
 
     def test_plan_with_slot_overrides(self, planner):
         """plan() handles slot overrides from LLM."""
-        mock_resp = json.dumps({
-            "archetype": "living_room",
-            "slot_overrides": {"center_table": "desk"},
-        })
+        mock_resp = json.dumps(
+            {
+                "archetype": "living_room",
+                "slot_overrides": {"center_table": "desk"},
+            }
+        )
 
         def mock_llm(prompt: str) -> str:
             return mock_resp
@@ -219,6 +228,7 @@ class TestPlanMethod:
 
     def test_plan_propagates_parse_errors(self, planner):
         """Invalid LLM output → SSPPlanningError."""
+
         def bad_llm(prompt: str) -> str:
             return "no json here"
 
@@ -227,6 +237,7 @@ class TestPlanMethod:
 
     def test_plan_propagates_llm_exceptions(self, planner):
         """LLM crash → SSPPlanningError."""
+
         def crash_llm(prompt: str) -> str:
             raise RuntimeError("LLM down")
 
@@ -235,6 +246,7 @@ class TestPlanMethod:
 
     def test_plan_passes_scene_parameter(self, planner):
         """scene parameter accepted (API compat)."""
+
         def mock_llm(prompt: str) -> str:
             return json.dumps({"archetype": "kitchen"})
 
@@ -249,9 +261,11 @@ class TestPlanMethod:
 
 # ── Import / structure tests ─────────────────────────────────────
 
+
 class TestSSPPlannerImports:
     def test_imports_available(self):
         from devforge.spatial.ssp_planner import SSPPlanner, SSPPlanningError
+
         assert SSPPlanner is not None
         assert SSPPlanningError is not None
 

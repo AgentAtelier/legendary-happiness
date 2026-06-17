@@ -25,11 +25,11 @@ from devforge.infrastructure.logger import logger
 class SignalDecl:
     """A signal declaration in a GDScript file."""
 
-    name: str               # "died"
+    name: str  # "died"
     params: list[str] = field(default_factory=list)  # ["old_health", "new_health"]
-    file_path: str = ""     # "res://scripts/player.gd"
+    file_path: str = ""  # "res://scripts/player.gd"
     line: int = 0
-    class_name: str = ""    # "Player" (from class_name or extends)
+    class_name: str = ""  # "Player" (from class_name or extends)
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {
@@ -48,9 +48,9 @@ class SignalDecl:
 class SignalConnection:
     """A .connect() or signal.connect() call in a GDScript file."""
 
-    signal_name: str        # "died"
-    source_expr: str        # "player" (the node reference before .connect)
-    target_method: str      # "_on_player_died"
+    signal_name: str  # "died"
+    source_expr: str  # "player" (the node reference before .connect)
+    target_method: str  # "_on_player_died"
     file_path: str = ""
     line: int = 0
     is_direct: bool = True  # True = signal.connect(), False = .connect("name")
@@ -69,7 +69,7 @@ class SignalConnection:
 class SignalEmit:
     """A signal.emit() call in a GDScript file."""
 
-    signal_name: str        # "died"
+    signal_name: str  # "died"
     file_path: str = ""
     line: int = 0
     is_emitting: bool = True
@@ -148,47 +148,56 @@ class SignalMapper:
             raw_params = m.group(2) or ""
             params: list[str] = []
             if raw_params:
-                params = [p.strip().split(":")[0].strip()
-                          for p in raw_params.split(",") if p.strip()]
+                params = [p.strip().split(":")[0].strip() for p in raw_params.split(",") if p.strip()]
             line = _line_number(source, m.start())
-            self._decls.append(SignalDecl(
-                name=name, params=params,
-                file_path=file_path, line=line,
-                class_name=class_name,
-            ))
+            self._decls.append(
+                SignalDecl(
+                    name=name,
+                    params=params,
+                    file_path=file_path,
+                    line=line,
+                    class_name=class_name,
+                )
+            )
 
         # Direct connections: node.signal.connect(method)
         for m in self._DIRECT_CONNECT_RE.finditer(source):
-            self._conns.append(SignalConnection(
-                source_expr=m.group(1),
-                signal_name=m.group(2),
-                target_method=m.group(3),
-                file_path=file_path,
-                line=_line_number(source, m.start()),
-                is_direct=True,
-            ))
+            self._conns.append(
+                SignalConnection(
+                    source_expr=m.group(1),
+                    signal_name=m.group(2),
+                    target_method=m.group(3),
+                    file_path=file_path,
+                    line=_line_number(source, m.start()),
+                    is_direct=True,
+                )
+            )
 
         # String connections: node.connect("signal_name", ...)
         for m in self._STRING_CONNECT_RE.finditer(source):
-            self._conns.append(SignalConnection(
-                source_expr=m.group(1),
-                signal_name=m.group(2),
-                target_method="<string_connect>",
-                file_path=file_path,
-                line=_line_number(source, m.start()),
-                is_direct=False,
-            ))
+            self._conns.append(
+                SignalConnection(
+                    source_expr=m.group(1),
+                    signal_name=m.group(2),
+                    target_method="<string_connect>",
+                    file_path=file_path,
+                    line=_line_number(source, m.start()),
+                    is_direct=False,
+                )
+            )
 
         # Signal emissions
         for m in self._EMIT_RE.finditer(source):
             name = m.group(1)
             # Skip built-in signals (tree_, visibility_, etc.) — still record them
             line = _line_number(source, m.start())
-            self._emits.append(SignalEmit(
-                signal_name=name,
-                file_path=file_path,
-                line=line,
-            ))
+            self._emits.append(
+                SignalEmit(
+                    signal_name=name,
+                    file_path=file_path,
+                    line=line,
+                )
+            )
 
     def build_graph(self) -> DependencyGraph:
         """Build a dependency graph from accumulated scans."""
@@ -286,12 +295,14 @@ class DependencyGraph:
             if name not in listened:
                 issues.append("no listeners")
             if issues:
-                orphaned.append({
-                    "signal_name": name,
-                    "file_path": decl.file_path,
-                    "line": decl.line,
-                    "issues": issues,
-                })
+                orphaned.append(
+                    {
+                        "signal_name": name,
+                        "file_path": decl.file_path,
+                        "line": decl.line,
+                        "issues": issues,
+                    }
+                )
         return orphaned
 
     def summary(self) -> dict:

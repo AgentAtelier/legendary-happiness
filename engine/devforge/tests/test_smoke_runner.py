@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Helpers ─────────────────────────────────────────────────────
 
+
 def _mock_callbacks():
     """Return mock callbacks for SmokeRunner testing."""
     screenshots: list[str] = []
@@ -53,6 +54,7 @@ def _mock_callbacks():
 
 
 # ── SmokeRunner tests ────────────────────────────────────────────
+
 
 def test_smoke_runner_visits_all_pois() -> None:
     """SmokeRunner visits all POIs in order."""
@@ -127,6 +129,7 @@ def test_stop_result_records_error() -> None:
 
 # ── build_poi tests ─────────────────────────────────────────────
 
+
 def test_build_poi_generates_correct_teleport() -> None:
     """build_poi creates a POI with correct GDScript teleport expression."""
     from devforge.runner.smoke_runner import build_poi
@@ -142,6 +145,7 @@ def test_build_poi_generates_correct_teleport() -> None:
 
 
 # ── SmokeReport tests ────────────────────────────────────────────
+
 
 def test_smoke_report_summary_text() -> None:
     """SmokeReport.summary_text includes all key stats."""

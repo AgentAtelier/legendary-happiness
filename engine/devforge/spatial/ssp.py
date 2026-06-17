@@ -27,8 +27,8 @@ from devforge.infrastructure.logger import logger
 # ── Size presets ───────────────────────────────────────────────────
 
 _SIZE_PRESETS: Dict[str, Dict[str, float]] = {
-    "cramped":  {"width": 3.0, "height": 2.8, "depth": 3.0},
-    "normal":   {"width": 5.0, "height": 3.0, "depth": 4.0},
+    "cramped": {"width": 3.0, "height": 2.8, "depth": 3.0},
+    "normal": {"width": 5.0, "height": 3.0, "depth": 4.0},
     "spacious": {"width": 8.0, "height": 3.5, "depth": 6.0},
 }
 
@@ -36,28 +36,28 @@ _SIZE_PRESETS: Dict[str, Dict[str, float]] = {
 
 _STYLE_PALETTES: Dict[str, Dict[str, list]] = {
     "rustic": {
-        "warm_brown":  [0.55, 0.35, 0.20],
-        "wood":        [0.50, 0.38, 0.25],
-        "dark_wood":   [0.35, 0.22, 0.12],
-        "warm_grey":   [0.55, 0.50, 0.45],
+        "warm_brown": [0.55, 0.35, 0.20],
+        "wood": [0.50, 0.38, 0.25],
+        "dark_wood": [0.35, 0.22, 0.12],
+        "warm_grey": [0.55, 0.50, 0.45],
     },
     "industrial": {
-        "steel_grey":  [0.45, 0.45, 0.50],
-        "dark_metal":  [0.30, 0.30, 0.35],
-        "concrete":    [0.65, 0.65, 0.65],
-        "pipe_black":  [0.15, 0.15, 0.18],
+        "steel_grey": [0.45, 0.45, 0.50],
+        "dark_metal": [0.30, 0.30, 0.35],
+        "concrete": [0.65, 0.65, 0.65],
+        "pipe_black": [0.15, 0.15, 0.18],
     },
     "noble": {
-        "rich_red":    [0.55, 0.15, 0.10],
-        "gold":        [0.85, 0.70, 0.20],
-        "ivory":       [0.95, 0.90, 0.80],
-        "dark_oak":    [0.25, 0.15, 0.08],
+        "rich_red": [0.55, 0.15, 0.10],
+        "gold": [0.85, 0.70, 0.20],
+        "ivory": [0.95, 0.90, 0.80],
+        "dark_oak": [0.25, 0.15, 0.08],
     },
     "derelict": {
-        "moss_green":  [0.25, 0.35, 0.20],
-        "rust":        [0.50, 0.25, 0.10],
-        "grey_mold":   [0.40, 0.42, 0.35],
-        "faded_wood":  [0.45, 0.38, 0.30],
+        "moss_green": [0.25, 0.35, 0.20],
+        "rust": [0.50, 0.25, 0.10],
+        "grey_mold": [0.40, 0.42, 0.35],
+        "faded_wood": [0.45, 0.38, 0.30],
     },
 }
 
@@ -65,36 +65,36 @@ _STYLE_PALETTES: Dict[str, Dict[str, list]] = {
 _DEFAULT_PALETTE: Dict[str, list] = {
     "warm_brown": [0.55, 0.40, 0.30],
     "light_grey": [0.70, 0.70, 0.72],
-    "dark_grey":  [0.30, 0.30, 0.35],
-    "cream":      [0.90, 0.85, 0.78],
+    "dark_grey": [0.30, 0.30, 0.35],
+    "cream": [0.90, 0.85, 0.78],
 }
 
 # ── Mood modifiers — how mood_tags affect the build ─────────────────
 
 _MOOD_MODIFIERS: Dict[str, dict] = {
     "abandoned": {
-        "saturation_scale": 0.4,    # desaturated colours
-        "brightness_scale": 0.6,    # darker
-        "intact_prop_ratio": 0.5,   # half of non-essential props missing
-        "add_scatter": True,         # scattered debris
+        "saturation_scale": 0.4,  # desaturated colours
+        "brightness_scale": 0.6,  # darker
+        "intact_prop_ratio": 0.5,  # half of non-essential props missing
+        "add_scatter": True,  # scattered debris
     },
     "cozy": {
         "saturation_scale": 1.15,
         "brightness_scale": 1.1,
         "placement_bias": "centered",  # props cluster to center
-        "height_scale": 0.9,           # slightly lower ceiling feel
+        "height_scale": 0.9,  # slightly lower ceiling feel
     },
     "grand": {
         "saturation_scale": 1.1,
         "brightness_scale": 1.15,
-        "height_scale": 1.3,           # taller ceiling feel
+        "height_scale": 1.3,  # taller ceiling feel
         "prop_count_mult": 1.5,
     },
     "sterile": {
         "saturation_scale": 0.7,
         "brightness_scale": 1.2,
         "intact_prop_ratio": 1.0,
-        "clutter_mult": 0.0,           # override clutter to zero
+        "clutter_mult": 0.0,  # override clutter to zero
     },
     "airy": {
         "brightness_scale": 1.25,
@@ -144,36 +144,36 @@ _MOOD_MODIFIERS: Dict[str, dict] = {
 # Each room type maps to categories of assets that MUST be present.
 # The engine picks from the asset pool for each category.
 _REQUIRED_CATEGORIES: Dict[str, List[str]] = {
-    "kitchen":      ["cooking_surface", "food_storage", "prep_surface", "lighting"],
-    "living_room":  ["seating", "surface", "lighting"],
-    "bedroom":      ["sleeping_surface", "storage", "lighting"],
-    "bathroom":     ["wash_surface", "storage"],
-    "study":        ["work_surface", "seating", "storage"],
-    "hallway":      ["lighting"],
-    "dining_room":  ["dining_surface", "seating", "lighting"],
-    "office":       ["work_surface", "seating", "storage", "lighting"],
-    "library":      ["work_surface", "seating", "storage", "storage"],
-    "workshop":     ["work_surface", "seating", "storage", "lighting"],
-    "cellar":       ["storage", "storage"],
-    "attic":        ["storage", "storage"],
-    "porch":        ["seating", "surface"],
-    "pantry":       ["storage", "storage", "prep_surface"],
+    "kitchen": ["cooking_surface", "food_storage", "prep_surface", "lighting"],
+    "living_room": ["seating", "surface", "lighting"],
+    "bedroom": ["sleeping_surface", "storage", "lighting"],
+    "bathroom": ["wash_surface", "storage"],
+    "study": ["work_surface", "seating", "storage"],
+    "hallway": ["lighting"],
+    "dining_room": ["dining_surface", "seating", "lighting"],
+    "office": ["work_surface", "seating", "storage", "lighting"],
+    "library": ["work_surface", "seating", "storage", "storage"],
+    "workshop": ["work_surface", "seating", "storage", "lighting"],
+    "cellar": ["storage", "storage"],
+    "attic": ["storage", "storage"],
+    "porch": ["seating", "surface"],
+    "pantry": ["storage", "storage", "prep_surface"],
 }
 
 # ── Category → asset IDs mapping ───────────────────────────────────
 
 _CATEGORY_TO_ASSETS: Dict[str, List[str]] = {
     "cooking_surface": ["stove"],
-    "food_storage":    ["fridge"],
-    "prep_surface":    ["counter"],
-    "seating":         ["chair"],
-    "surface":         ["table"],
-    "dining_surface":  ["table"],
-    "sleeping_surface":["table"],   # greybox: table = bed placeholder
-    "work_surface":    ["table"],
-    "storage":         ["cabinet", "shelf"],
-    "wash_surface":    ["sink"],
-    "lighting":        ["chair"],   # greybox: chair = light placeholder
+    "food_storage": ["fridge"],
+    "prep_surface": ["counter"],
+    "seating": ["chair"],
+    "surface": ["table"],
+    "dining_surface": ["table"],
+    "sleeping_surface": ["table"],  # greybox: table = bed placeholder
+    "work_surface": ["table"],
+    "storage": ["cabinet", "shelf"],
+    "wash_surface": ["sink"],
+    "lighting": ["chair"],  # greybox: chair = light placeholder
 }
 
 # ── Legacy archetype catalog (backward compat) ──────────────────────
@@ -326,18 +326,30 @@ ROOM_ARCHETYPES: Dict[str, dict] = {
 # ── Available room slots (for mapping categories to positions) ─────
 
 _AVAILABLE_SLOTS: List[str] = [
-    "north_counter_center", "north_counter_left", "north_counter_right",
+    "north_counter_center",
+    "north_counter_left",
+    "north_counter_right",
     "center_table",
-    "east_storage", "west_storage",
-    "chair_north", "chair_south", "chair_east", "chair_west",
-    "north_mid_slot", "south_mid_slot",
+    "east_storage",
+    "west_storage",
+    "chair_north",
+    "chair_south",
+    "chair_east",
+    "chair_west",
+    "north_mid_slot",
+    "south_mid_slot",
 ]
 
 # ── Clutter prop categories ────────────────────────────────────────
 
 _CLUTTER_SLOTS: List[str] = [
-    "chair_north", "chair_south", "chair_east", "chair_west",
-    "north_mid_slot", "south_mid_slot", "west_storage",
+    "chair_north",
+    "chair_south",
+    "chair_east",
+    "chair_west",
+    "north_mid_slot",
+    "south_mid_slot",
+    "west_storage",
 ]
 
 _CLUTTER_ASSETS: List[str] = ["chair", "shelf", "cabinet", "counter"]
@@ -345,8 +357,8 @@ _CLUTTER_ASSETS: List[str] = ["chair", "shelf", "cabinet", "counter"]
 
 # ── Helper Functions ────────────────────────────────────────────────
 
-def _apply_color_mod(color: list, saturation_scale: float,
-                     brightness_scale: float) -> list:
+
+def _apply_color_mod(color: list, saturation_scale: float, brightness_scale: float) -> list:
     """Modify an RGB colour by saturation and brightness factors."""
     r, g, b = color
     h, l, s = colorsys.rgb_to_hls(r, g, b)
@@ -432,11 +444,13 @@ class SSPEngine:
             # Neither key — fall back to kitchen via intent path
             logger.warn(
                 "ssp",
-                "No 'archetype' or 'room_type' in room_json; "
-                "falling back to kitchen via intent path",
+                "No 'archetype' or 'room_type' in room_json; falling back to kitchen via intent path",
             )
             return self._compile_intent(
-                {"room_type": "kitchen"}, root_path, origin, shell,
+                {"room_type": "kitchen"},
+                root_path,
+                origin,
+                shell,
             )
 
     @property
@@ -451,10 +465,7 @@ class SSPEngine:
             a = ROOM_ARCHETYPES[aid]
             defaults = a["slot_fills"]
             dims = a["dimensions"]
-            slot_str = ", ".join(
-                f"{slot}→{asset}"
-                for slot, asset in sorted(defaults.items())
-            )
+            slot_str = ", ".join(f"{slot}→{asset}" for slot, asset in sorted(defaults.items()))
             lines.append(
                 f"  {aid}: {a['label']} — "
                 f"{dims['width']:.0f}×{dims['height']:.0f}×{dims['depth']:.0f}m. "
@@ -500,7 +511,10 @@ class SSPEngine:
         }
 
         return self._delegate_to_compiler(
-            layout_json, root_path, origin, shell,
+            layout_json,
+            root_path,
+            origin,
+            shell,
             f"SSP room: {archetype_id} (legacy)",
         )
 
@@ -606,13 +620,15 @@ class SSPEngine:
             if placement_bias == "centered":
                 # Prioritize center-adjacent slots
                 center_slots = ["chair_north", "chair_south", "chair_east", "chair_west"]
-                available_clutter = [s for s in available_clutter if s in center_slots] + \
-                                    [s for s in available_clutter if s not in center_slots]
+                available_clutter = [s for s in available_clutter if s in center_slots] + [
+                    s for s in available_clutter if s not in center_slots
+                ]
             elif placement_bias == "walls":
                 # Prioritize wall-adjacent slots
                 wall_slots = ["north_mid_slot", "south_mid_slot", "west_storage", "east_storage"]
-                available_clutter = [s for s in available_clutter if s in wall_slots] + \
-                                    [s for s in available_clutter if s not in wall_slots]
+                available_clutter = [s for s in available_clutter if s in wall_slots] + [
+                    s for s in available_clutter if s not in wall_slots
+                ]
 
             rng.shuffle(available_clutter)
             for i in range(min(num_clutter, len(available_clutter))):
@@ -645,18 +661,22 @@ class SSPEngine:
             feature_lower = feature.lower().strip()
             if feature_lower in ("secret_passage", "hidden_door"):
                 # Place a concealed shelf against a wall as the passage marker
-                arcs_overrides.append({
-                    "asset": "shelf",
-                    "anchor": {"chain": ["floor", "north_wall", 0.3]},
-                    "offset": [0, 0, 0],
-                })
+                arcs_overrides.append(
+                    {
+                        "asset": "shelf",
+                        "anchor": {"chain": ["floor", "north_wall", 0.3]},
+                        "offset": [0, 0, 0],
+                    }
+                )
                 logger.info("ssp", f"Special feature built: {feature}")
             elif feature_lower == "fireplace":
-                arcs_overrides.append({
-                    "asset": "cabinet",
-                    "anchor": {"chain": ["floor", "north_wall", 0.0]},
-                    "offset": [0, 0, 0],
-                })
+                arcs_overrides.append(
+                    {
+                        "asset": "cabinet",
+                        "anchor": {"chain": ["floor", "north_wall", 0.0]},
+                        "offset": [0, 0, 0],
+                    }
+                )
                 logger.info("ssp", f"Special feature built: {feature}")
             else:
                 logger.warn(
@@ -674,7 +694,9 @@ class SSPEngine:
         modified_palette: Dict[str, list] = {}
         for color_name, color in palette.items():
             modified_palette[color_name] = _apply_color_mod(
-                color, saturation_scale, brightness_scale,
+                color,
+                saturation_scale,
+                brightness_scale,
             )
 
         # Build slot_colours from the modified palette
@@ -708,9 +730,13 @@ class SSPEngine:
         # been placed yet. Processing non-chain slots first ensures
         # center_table is always placed before any chair_*.
         _CHAIN_SLOTS = {
-            "chair_north", "chair_south", "chair_east", "chair_west",
+            "chair_north",
+            "chair_south",
+            "chair_east",
+            "chair_west",
             # l_shape_room.yaml chain slots (also depend on center_table)
-            "chair_inner", "chair_outer",
+            "chair_inner",
+            "chair_outer",
         }
         ordered: Dict[str, str] = {}
         for s, a in slot_fills.items():
@@ -735,7 +761,11 @@ class SSPEngine:
             f"clutter={clutter:.1f}, moods={mood_tags}, seed={seed})"
         )
         return self._delegate_to_compiler(
-            layout_json, root_path, origin, shell, label,
+            layout_json,
+            root_path,
+            origin,
+            shell,
+            label,
         )
 
     # ── Shared delegation ──────────────────────────────────────────
@@ -766,9 +796,7 @@ class SSPEngine:
         slots = len(layout_json.get("slot_fills", {}))
         logger.info(
             "ssp",
-            f"Compiled {label}: "
-            f"{dims.get('width', 0):.0f}×{dims.get('depth', 0):.0f}, "
-            f"{slots} slots filled",
+            f"Compiled {label}: {dims.get('width', 0):.0f}×{dims.get('depth', 0):.0f}, {slots} slots filled",
         )
 
         return plan

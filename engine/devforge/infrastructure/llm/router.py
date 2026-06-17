@@ -137,9 +137,7 @@ class LLMRouter:
                 for per-stage profiles (P2) and greedy-decoding final retries.
         """
         if not self._backend:
-            raise RuntimeError(
-                "LLM not configured. Call router.configure_llama() or router.configure_claude() first."
-            )
+            raise RuntimeError("LLM not configured. Call router.configure_llama() or router.configure_claude() first.")
 
         logger.debug("llm_router", "generate()", backend=self._backend_name, prompt_len=len(prompt))
 

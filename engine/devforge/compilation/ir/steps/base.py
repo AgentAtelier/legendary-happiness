@@ -33,9 +33,7 @@ class PlanStep:
 
         Subclasses must implement this.
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement compile()"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} must implement compile()")
 
     # ---------------------------------------------------------
     # Serialization

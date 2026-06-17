@@ -3,7 +3,6 @@ from devforge.learning.learning_record import LearningRecord
 
 
 class LearningEngine:
-
     def __init__(self):
 
         self.store = LearningStore()
@@ -31,9 +30,7 @@ class LearningEngine:
         results = []
 
         for item in data:
-
             if keyword.lower() in item["prompt"].lower():
-
                 results.append(item)
 
         return results

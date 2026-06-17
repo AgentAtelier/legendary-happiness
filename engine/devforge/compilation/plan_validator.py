@@ -38,9 +38,7 @@ class PlanValidator:
         for step in steps:
             for dependency in getattr(step, "depends_on", []) or []:
                 if dependency not in step_ids:
-                    raise PlanValidationError(
-                        f"Step '{step.step_id}' depends on unknown step '{dependency}'"
-                    )
+                    raise PlanValidationError(f"Step '{step.step_id}' depends on unknown step '{dependency}'")
                 if dependency == step.step_id:
                     raise PlanValidationError(f"Step '{step.step_id}' cannot depend on itself")
 

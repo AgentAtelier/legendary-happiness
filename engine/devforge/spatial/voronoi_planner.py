@@ -36,9 +36,7 @@ class VoronoiPlanner:
         # town_json → VoronoiEngine.compile_town()
     """
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "voronoi_planner.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "voronoi_planner.gbnf"
 
     def __init__(
         self,
@@ -194,9 +192,7 @@ Output JSON now (no prose, no markdown fences, just the JSON object):
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         return {
             "region": data.get("region", {"width": 80, "depth": 80}),

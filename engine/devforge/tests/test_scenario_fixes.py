@@ -28,17 +28,25 @@ SCENE_SIMPLE = {
 
 # ── Bug 1: Property-vs-type validation ─────────────────────────
 
+
 def test_validator_drops_material_override_on_light():
     """material_override on a DirectionalLight3D is dropped by the validator."""
     from devforge.compilation.pipeline.validator import OperationValidator
 
     ops = [
-        {"type": "add_node", "parent": "/root/Main", "name": "TestSun",
-         "node_type": "DirectionalLight3D"},
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "material_override", "value": {"__class__": "StandardMaterial3D"}},
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "position", "value": {"x": 0, "y": 10, "z": 0}},
+        {"type": "add_node", "parent": "/root/Main", "name": "TestSun", "node_type": "DirectionalLight3D"},
+        {
+            "type": "set_property",
+            "node": "/root/Main/TestSun",
+            "property": "material_override",
+            "value": {"__class__": "StandardMaterial3D"},
+        },
+        {
+            "type": "set_property",
+            "node": "/root/Main/TestSun",
+            "property": "position",
+            "value": {"x": 0, "y": 10, "z": 0},
+        },
     ]
     valid, errors = OperationValidator().validate(ops, SCENE_WITH_LIGHT, files=[])
 
@@ -58,8 +66,7 @@ def test_validator_drops_mesh_on_light():
     from devforge.compilation.pipeline.validator import OperationValidator
 
     ops = [
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "mesh", "value": {"__class__": "BoxMesh"}},
+        {"type": "set_property", "node": "/root/Main/TestSun", "property": "mesh", "value": {"__class__": "BoxMesh"}},
     ]
     valid, errors = OperationValidator().validate(ops, SCENE_WITH_LIGHT, files=[])
     assert len(valid) == 0, f"Expected mesh on light to be dropped, got {valid}"
@@ -72,14 +79,14 @@ def test_validator_allows_mesh_on_meshinstance():
     from devforge.compilation.pipeline.validator import OperationValidator
 
     scene = {
-        "name": "Main", "type": "Node3D",
+        "name": "Main",
+        "type": "Node3D",
         "children": [
             {"name": "TestCube", "type": "MeshInstance3D", "children": []},
         ],
     }
     ops = [
-        {"type": "set_property", "node": "/root/Main/TestCube",
-         "property": "mesh", "value": {"__class__": "BoxMesh"}},
+        {"type": "set_property", "node": "/root/Main/TestCube", "property": "mesh", "value": {"__class__": "BoxMesh"}},
     ]
     valid, errors = OperationValidator().validate(ops, scene, files=[])
     assert len(valid) == 1, f"Expected mesh on MeshInstance3D to pass, got errors: {errors}"
@@ -91,8 +98,12 @@ def test_validator_drops_shape_on_light():
     from devforge.compilation.pipeline.validator import OperationValidator
 
     ops = [
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "shape", "value": {"__class__": "BoxShape3D"}},
+        {
+            "type": "set_property",
+            "node": "/root/Main/TestSun",
+            "property": "shape",
+            "value": {"__class__": "BoxShape3D"},
+        },
     ]
     valid, errors = OperationValidator().validate(ops, SCENE_WITH_LIGHT, files=[])
     assert len(valid) == 0
@@ -105,14 +116,19 @@ def test_validator_allows_shape_on_collisionshape():
     from devforge.compilation.pipeline.validator import OperationValidator
 
     scene = {
-        "name": "Main", "type": "Node3D",
+        "name": "Main",
+        "type": "Node3D",
         "children": [
             {"name": "ColShape", "type": "CollisionShape3D", "children": []},
         ],
     }
     ops = [
-        {"type": "set_property", "node": "/root/Main/ColShape",
-         "property": "shape", "value": {"__class__": "BoxShape3D"}},
+        {
+            "type": "set_property",
+            "node": "/root/Main/ColShape",
+            "property": "shape",
+            "value": {"__class__": "BoxShape3D"},
+        },
     ]
     valid, errors = OperationValidator().validate(ops, scene, files=[])
     assert len(valid) == 1
@@ -124,8 +140,7 @@ def test_validator_allows_unknown_property():
     from devforge.compilation.pipeline.validator import OperationValidator
 
     ops = [
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "light_energy", "value": 0.8},
+        {"type": "set_property", "node": "/root/Main/TestSun", "property": "light_energy", "value": 0.8},
     ]
     valid, errors = OperationValidator().validate(ops, SCENE_WITH_LIGHT, files=[])
     # light_energy IS in the allowlist and DirectionalLight3D is allowed
@@ -138,8 +153,7 @@ def test_validator_allows_light_property_on_light():
     from devforge.compilation.pipeline.validator import OperationValidator
 
     ops = [
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "light_energy", "value": 0.8},
+        {"type": "set_property", "node": "/root/Main/TestSun", "property": "light_energy", "value": 0.8},
     ]
     valid, errors = OperationValidator().validate(ops, SCENE_WITH_LIGHT, files=[])
     assert len(valid) == 1
@@ -152,10 +166,13 @@ def test_validator_pending_node_type_used():
 
     # Scene doesn't have TestSun — it's about to be created by add_node
     ops = [
-        {"type": "add_node", "parent": "/root/Main", "name": "TestSun",
-         "node_type": "DirectionalLight3D"},
-        {"type": "set_property", "node": "/root/Main/TestSun",
-         "property": "material_override", "value": {"__class__": "StandardMaterial3D"}},
+        {"type": "add_node", "parent": "/root/Main", "name": "TestSun", "node_type": "DirectionalLight3D"},
+        {
+            "type": "set_property",
+            "node": "/root/Main/TestSun",
+            "property": "material_override",
+            "value": {"__class__": "StandardMaterial3D"},
+        },
     ]
     valid, errors = OperationValidator().validate(ops, SCENE_SIMPLE, files=[])
 
@@ -168,6 +185,7 @@ def test_validator_pending_node_type_used():
 
 
 # ── Bug 2: Deterministic intent pre-pass ────────────────────────
+
 
 def test_engine_injects_remove_for_delete_intent():
     """'Create X, then delete it' → engine injects _remove marker."""
@@ -203,9 +221,11 @@ def test_engine_rename_re_matches_rename_it():
 # assert the validator rule that now protects lights. `position` stays valid on
 # a light (it IS a Node3D), so it must NOT be rejected.
 
+
 def test_validation_rejects_mesh_on_light():
     """mesh on a DirectionalLight3D is rejected; position is kept."""
     from devforge.knowledge.scene.godot_node_types import _property_matches_type
+
     assert _property_matches_type("mesh", "DirectionalLight3D") is False
     # position is a Vector3 transform prop and a light IS a Node3D → allowed.
     assert _property_matches_type("position", "DirectionalLight3D") is not False
@@ -214,20 +234,24 @@ def test_validation_rejects_mesh_on_light():
 def test_validation_rejects_color_on_light():
     """color (→ material_override) on a DirectionalLight3D is rejected."""
     from devforge.knowledge.scene.godot_node_types import _property_matches_type
+
     assert _property_matches_type("material_override", "DirectionalLight3D") is False
 
 
 def test_validation_rejects_shape_on_light():
     """shape on a DirectionalLight3D is rejected."""
     from devforge.knowledge.scene.godot_node_types import _property_matches_type
+
     assert _property_matches_type("shape", "DirectionalLight3D") is False
 
 
 # ── Slice D (2026-06-16): position is a denylist, validated in one place ──
 
+
 def test_position_rejected_on_transformless_nodes():
     """Vector3 transform props are dropped on nodes with no transform."""
     from devforge.knowledge.scene.godot_node_types import _property_matches_type
+
     for nt in ("Timer", "Label", "Control", "AudioStreamPlayer", "AnimationPlayer"):
         assert _property_matches_type("position", nt) is False, nt
     assert _property_matches_type("scale", "Timer") is False
@@ -237,6 +261,7 @@ def test_position_rejected_on_transformless_nodes():
 def test_position_allowed_on_spatial_nodes():
     """Transform props pass through on Node3D and spatial subclasses."""
     from devforge.knowledge.scene.godot_node_types import _property_matches_type
+
     for nt in ("Node3D", "MeshInstance3D", "Camera3D", "Area3D", "CharacterBody3D"):
         assert _property_matches_type("position", nt) is not False, nt
 
@@ -246,6 +271,7 @@ def test_compiler_shares_canonical_transformless_set():
     knowledge layer (no divergent local copy)."""
     from devforge.compilation.pipeline import architecture_compiler as ac
     from devforge.knowledge.scene.godot_node_types import NODES_WITHOUT_VECTOR3_TRANSFORM
+
     assert ac._NON_3D_TYPES is NODES_WITHOUT_VECTOR3_TRANSFORM
 
 
@@ -253,6 +279,7 @@ def test_reverse_host_node_stub_generation():
     """Slice B: a known signal yields a correctly-typed handler stub; an
     unknown signal yields None (safe drop)."""
     from devforge.compilation.pipeline.architecture_compiler import ArchitectureCompiler
+
     c = ArchitectureCompiler()
     s = c._generate_signal_stub("Node3D", "_on_SpawnTimer_timeout", "timeout")
     assert s and "func _on_SpawnTimer_timeout() -> void:" in s and "extends Node3D" in s
@@ -262,6 +289,7 @@ def test_reverse_host_node_stub_generation():
 
 
 # ── Bug 2: DeterministicPlanner mid-prompt patterns ─────────────
+
 
 def test_planner_mid_rename_does_not_return_delta():
     """Mid-prompt rename must fall through to LLM, not return deterministic delta."""
@@ -275,8 +303,7 @@ def test_planner_mid_rename_does_not_return_delta():
     # Should fall through (return None) — the LLM creates OldName,
     # and engine._run_arch_path injects _rename afterward.
     assert result is None, (
-        "Mid-prompt rename should NOT return a deterministic delta — "
-        "the LLM must still create the entity"
+        "Mid-prompt rename should NOT return a deterministic delta — the LLM must still create the entity"
     )
 
 
@@ -299,6 +326,7 @@ def test_planner_still_handles_full_prompt_delete():
 
 
 # ── Property allowlist correctness ──────────────────────────────
+
 
 def test_property_matches_type_known_good():
     """mesh on MeshInstance3D → True."""
@@ -340,14 +368,12 @@ def test_compiler_drops_connection_to_phantom_node():
     delta = {
         "systems": [],
         "entities": [{"name": "Pickup", "type": "Area3D", "props": {"position": [0, 0, 0]}}],
-        "connections": [{"from": "Pickup", "to": "ScoreLabel",
-                         "type": "signal", "signal": "body_entered"}],
+        "connections": [{"from": "Pickup", "to": "ScoreLabel", "type": "signal", "signal": "body_entered"}],
     }
     ops = ArchitectureCompiler().compile(delta).compile_all()["operations"]
     op_types = [o["type"] for o in ops]
     assert "add_node" in op_types, "the real Pickup node must still build"
-    assert "connect_signal" not in op_types, (
-        f"phantom connection to ScoreLabel must be dropped, got: {op_types}")
+    assert "connect_signal" not in op_types, f"phantom connection to ScoreLabel must be dropped, got: {op_types}"
 
 
 def test_compiler_keeps_connection_between_real_entities():
@@ -357,11 +383,10 @@ def test_compiler_keeps_connection_between_real_entities():
 
     delta = {
         "systems": [],
-        "entities": [{"name": "SpawnTimer", "type": "Timer"},
-                     {"name": "Spawner", "type": "Node3D"}],
-        "connections": [{"from": "SpawnTimer", "to": "Spawner",
-                         "type": "signal", "signal": "timeout"}],
+        "entities": [{"name": "SpawnTimer", "type": "Timer"}, {"name": "Spawner", "type": "Node3D"}],
+        "connections": [{"from": "SpawnTimer", "to": "Spawner", "type": "signal", "signal": "timeout"}],
     }
     ops = ArchitectureCompiler().compile(delta).compile_all()["operations"]
     assert "connect_signal" in [o["type"] for o in ops], (
-        "a connection between two real same-delta entities must be kept")
+        "a connection between two real same-delta entities must be kept"
+    )

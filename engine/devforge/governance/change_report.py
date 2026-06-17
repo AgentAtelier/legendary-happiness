@@ -69,6 +69,7 @@ PROTECTED_FILE_QUESTIONS = [
 @dataclass
 class ChangeReport:
     """Structured change report for human review."""
+
     run_id: str
     timestamp: str
     risk_score: int
@@ -162,7 +163,7 @@ class ChangeReport:
             lines.append("")
             lines.append(f"— Violations ({len(self.violations)}) —")
             for v in self.violations:
-                loc = f":{v.get('line_number', '')}" if v.get('line_number') else ""
+                loc = f":{v.get('line_number', '')}" if v.get("line_number") else ""
                 lines.append(f"  [{v['severity'].upper()}] {v['rule_id']} — {v['file_path']}{loc}")
                 lines.append(f"    {v['description']}")
 
@@ -283,10 +284,7 @@ def generate_report(
         report.performance_delta_percent = gate3_result.get("delta_percent")
 
     # Pipeline passes only if all run gates passed
-    gate_results = [
-        r for r in [report.gate1_passed, report.gate2_passed, report.gate3_passed]
-        if r is not None
-    ]
+    gate_results = [r for r in [report.gate1_passed, report.gate2_passed, report.gate3_passed] if r is not None]
     report.pipeline_passed = all(gate_results) if gate_results else False
 
     # Scope conformance check
@@ -295,9 +293,7 @@ def generate_report(
         actual_files = set(changed_files)
         unexpected = actual_files - locked_files
         if unexpected:
-            report.unplanned_patterns.extend(
-                [f"File outside scope lock: {f}" for f in sorted(unexpected)]
-            )
+            report.unplanned_patterns.extend([f"File outside scope lock: {f}" for f in sorted(unexpected)])
 
     # Generate mandatory question
     report.explicit_question = _generate_question(

@@ -2,7 +2,6 @@ from devforge.qa.gameplay_simulator import GameplaySimulator
 
 
 class TestEngine:
-
     def __init__(self):
 
         self.sim = GameplaySimulator()

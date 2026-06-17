@@ -31,6 +31,7 @@ def _validate_against_schema(entry: dict, schema_path: str) -> None:
     """Validate entry against JSON schema. Falls back to basic checks if jsonschema unavailable."""
     try:
         from jsonschema import validate, ValidationError
+
         with open(schema_path, "r") as f:
             schema = json.load(f)
         validate(instance=entry, schema=schema)
@@ -44,9 +45,15 @@ def _validate_against_schema(entry: dict, schema_path: str) -> None:
 def _validate_basic(entry: dict) -> None:
     """Minimal validation when jsonschema is unavailable."""
     required = [
-        "run_id", "timestamp", "decision", "explicit_question",
-        "explicit_question_answer", "human_rationale",
-        "unplanned_patterns_reviewed", "risk_score", "model_version",
+        "run_id",
+        "timestamp",
+        "decision",
+        "explicit_question",
+        "explicit_question_answer",
+        "human_rationale",
+        "unplanned_patterns_reviewed",
+        "risk_score",
+        "model_version",
     ]
     missing = [k for k in required if k not in entry]
     if missing:
@@ -79,7 +86,7 @@ def generate_run_id(log_path: str = DEFAULT_LOG_PATH) -> str:
                     data = json.loads(line)
                     rid = data.get("run_id", "")
                     if rid.startswith(prefix):
-                        num = int(rid[len(prefix):])
+                        num = int(rid[len(prefix) :])
                         seq = max(seq, num)
                 except (json.JSONDecodeError, ValueError):
                     continue
@@ -220,26 +227,15 @@ def _format_entry_short(entry: dict) -> str:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="DevForge Decision Log — append-only architectural record"
-    )
+    parser = argparse.ArgumentParser(description="DevForge Decision Log — append-only architectural record")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     # --- append ---
     p_append = sub.add_parser("append", help="Append a new decision log entry")
-    p_append.add_argument(
-        "--json", required=True,
-        help="Path to JSON file or JSON string for the entry."
-    )
-    p_append.add_argument(
-        "--schema", required=True,
-        help="Path to decision_log_entry_schema.json."
-    )
+    p_append.add_argument("--json", required=True, help="Path to JSON file or JSON string for the entry.")
+    p_append.add_argument("--schema", required=True, help="Path to decision_log_entry_schema.json.")
     p_append.add_argument("--log", default=DEFAULT_LOG_PATH)
-    p_append.add_argument(
-        "--auto-id", action="store_true",
-        help="Auto-generate run_id (DF-MMDD-NNNN)."
-    )
+    p_append.add_argument("--auto-id", action="store_true", help="Auto-generate run_id (DF-MMDD-NNNN).")
 
     # --- list ---
     p_list = sub.add_parser("list", help="List recent entries")

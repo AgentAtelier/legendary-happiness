@@ -39,7 +39,13 @@ from devforge.operations.batch_filter import parse_query, match_nodes, build_bat
 from devforge.triage.triage import triage_text
 from devforge.forge.template_engine import list_templates, load_template, preview_template, instantiate_template
 from devforge.journal.journal import Journal
-from devforge.lore.lorekeeper import list_schemas as lore_list_schemas, load_schema, load_data_file, validate_data, validate_integrity
+from devforge.lore.lorekeeper import (
+    list_schemas as lore_list_schemas,
+    load_schema,
+    load_data_file,
+    validate_data,
+    validate_integrity,
+)
 from devforge.quests.validator import validate_quest_file
 from devforge.sentinel.sentinel import PerformanceSentinel
 from devforge.lint.linter import lint_file as run_lint_file
@@ -56,6 +62,7 @@ from devforge.refactorer.refactorer import SceneRefactorer, list_extractable
 
 # ── MCP Server ──────────────────────────────────────────────────
 import os as _os
+
 mcp = FastMCP(
     "DevForge",
     host=_os.environ.get("MCP_HOST", "127.0.0.1"),
@@ -147,9 +154,9 @@ def _init():
             grammar_path = config.llama_grammar_path
             if not grammar_path:
                 from devforge.knowledge.scene.godot_node_types import generate_grammar_file
+
                 grammar_path = generate_grammar_file()
-                logger.info("mcp_server", "Generated grammar from GODOT_NODE_TYPES",
-                             path=grammar_path)
+                logger.info("mcp_server", "Generated grammar from GODOT_NODE_TYPES", path=grammar_path)
 
             _llm.configure_llama(
                 endpoint=config.llama_endpoint,
@@ -172,12 +179,13 @@ def _init():
                     "Grammar self-test FAILED — llama.cpp is not enforcing "
                     "the GBNF grammar.  Generation will proceed without "
                     "grammar constraints; post-generation validation will "
-                    "catch malformed output."
+                    "catch malformed output.",
                 )
 
             # Clamp the context budget to the server's real window
             # (must happen before the engine builds its ContextAssembler)
             from devforge.infrastructure.llm.llama_client import apply_server_limits
+
             apply_server_limits(config, _llm._backend)
 
         # Executor
@@ -229,12 +237,13 @@ def _init():
             grammar_path=grammar_path,
         )
 
-        logger.info("mcp_server", "DevForge MCP server initialized",
-                     backend=_llm.backend_name,
-                     executor=_executor.backend_name)
+        logger.info(
+            "mcp_server", "DevForge MCP server initialized", backend=_llm.backend_name, executor=_executor.backend_name
+        )
 
 
 # ── Tools ───────────────────────────────────────────────────────
+
 
 @mcp.tool()
 def apply_spec(
@@ -374,29 +383,28 @@ def _apply_spec_impl(
 
             logger.info(
                 "mcp_server",
-                f"apply_spec: planning against v{live_version} "
-                f"(replan={replan}/{MAX_REPLANS})",
+                f"apply_spec: planning against v{live_version} (replan={replan}/{MAX_REPLANS})",
             )
 
             # Run pipeline
-            result = _engine.run_pipeline(prompt, current_scene,
-                                           scene_version=live_version,
-                                           temperature=temperature,
-                                           planner=planner,
-                                           skip_cache=skip_cache)
+            result = _engine.run_pipeline(
+                prompt,
+                current_scene,
+                scene_version=live_version,
+                temperature=temperature,
+                planner=planner,
+                skip_cache=skip_cache,
+            )
             _engine.update_history(prompt)
 
             # Recheck staleness before execution
             if replan < MAX_REPLANS:
                 # Re-fetch to see if the scene moved during planning
-                _recheck_scene, _recheck_version = (
-                    _scene_store.get_or_fetch(_executor)
-                )
+                _recheck_scene, _recheck_version = _scene_store.get_or_fetch(_executor)
                 if _recheck_version != live_version:
                     logger.info(
                         "mcp_server",
-                        f"Scene moved during planning (v{live_version} → "
-                        f"v{_recheck_version}) — replanning",
+                        f"Scene moved during planning (v{live_version} → v{_recheck_version}) — replanning",
                     )
                     current_scene = _recheck_scene
                     continue
@@ -408,7 +416,9 @@ def _apply_spec_impl(
             # (Slice 4, 2026-06-15: semantic errors blocked G8 filler creation).
             if result.operations:
                 exec_result = _executor.execute(
-                    result.operations, result.files, current_scene,
+                    result.operations,
+                    result.files,
+                    current_scene,
                 )
                 # Only bump the version if execution actually succeeded.
                 # Bumping on failure would force an unnecessary refetch
@@ -472,7 +482,9 @@ def validate_spec(
     try:
         with _acquire_pipeline_lock_ctx():
             valid_ops, errors = _engine.validate_pipeline(
-                operations, scene_tree, files or [],
+                operations,
+                scene_tree,
+                files or [],
             )
         return {
             "valid": len(errors) == 0,
@@ -531,9 +543,7 @@ def audit_scene() -> Dict[str, Any]:
     # and R4 (MeshInstance3D.mesh).  resolve_node_properties() returns
     # None when the editor is unreachable or the call fails; rules
     # R3/R4 already handle None by falling back to empty props.
-    doctor = SceneDoctor(
-        props_lookup=_executor.resolve_node_properties
-    )
+    doctor = SceneDoctor(props_lookup=_executor.resolve_node_properties)
     violations = doctor.audit(scene)
 
     counts: dict[str, int] = {"critical": 0, "warning": 0, "info": 0}
@@ -618,10 +628,7 @@ def batch_preview(
             "property": property,
             "value": value,
             "scene_version": version,
-            "hint": (
-                "No nodes matched the query. Try a broader query, "
-                "or check the scene tree with get_scene."
-            ),
+            "hint": ("No nodes matched the query. Try a broader query, or check the scene tree with get_scene."),
         }
 
     ops = build_batch_ops(matched, property, value)
@@ -634,8 +641,7 @@ def batch_preview(
 
     logger.info(
         "mcp_server",
-        f"batch_preview: {len(matched)} node(s) matched for "
-        f"{property}={value!r}",
+        f"batch_preview: {len(matched)} node(s) matched for {property}={value!r}",
     )
 
     return {
@@ -645,10 +651,7 @@ def batch_preview(
         "property": property,
         "value": value,
         "scene_version": version,
-        "hint": (
-            "Review the matched paths, then call batch_apply "
-            "with this plan_id to execute."
-        ),
+        "hint": ("Review the matched paths, then call batch_apply with this plan_id to execute."),
     }
 
 
@@ -711,7 +714,9 @@ def batch_apply(plan_id: str) -> Dict[str, Any]:
     try:
         with _acquire_pipeline_lock_ctx():
             valid_ops, errors = _engine.validate_pipeline(
-                ops, live_scene, [],
+                ops,
+                live_scene,
+                [],
             )
             if errors:
                 return {
@@ -724,27 +729,25 @@ def batch_apply(plan_id: str) -> Dict[str, Any]:
                 }
 
             exec_result = _executor.execute(
-                valid_ops, [], live_scene,
+                valid_ops,
+                [],
+                live_scene,
             )
             if exec_result and exec_result.success:
                 _scene_store.note_writes()
 
         result_dict = exec_result.to_dict() if exec_result else {}
-        result_dict["applied_count"] = (
-            result_dict.get("success_count", 0)
-        )
+        result_dict["applied_count"] = result_dict.get("success_count", 0)
 
         logger.info(
             "mcp_server",
-            f"batch_apply: {result_dict.get('applied_count', 0)} applied, "
-            f"{result_dict.get('failure_count', 0)} failed",
+            f"batch_apply: {result_dict.get('applied_count', 0)} applied, {result_dict.get('failure_count', 0)} failed",
         )
 
         _journal.append(
             "batch_apply",
             f"Batch: {result_dict.get('applied_count', 0)} nodes",
-            {"applied": result_dict.get('applied_count', 0),
-             "failed": result_dict.get('failure_count', 0)},
+            {"applied": result_dict.get("applied_count", 0), "failed": result_dict.get("failure_count", 0)},
         )
 
         return result_dict
@@ -823,10 +826,12 @@ def triage_errors(
     _journal.append(
         "triage_errors",
         f"Triage: {len(result['findings'])} unique, {result['total_raw']} raw",
-        {"findings": len(result['findings']),
-         "total_raw": result['total_raw'],
-         "source": source,
-         "by_category": result.get('by_category', {})},
+        {
+            "findings": len(result["findings"]),
+            "total_raw": result["total_raw"],
+            "source": source,
+            "by_category": result.get("by_category", {}),
+        },
     )
 
     return result
@@ -929,26 +934,23 @@ def lore_data_validate(
 
     schema = load_schema(schema_name)
     if schema is None:
-        return {
-            "error": f"Unknown schema: '{schema_name}'. "
-                     f"Use lore_schema_list to see available schemas."
-        }
+        return {"error": f"Unknown schema: '{schema_name}'. Use lore_schema_list to see available schemas."}
 
     entries = load_data_file(data_path)
     if entries is None:
-        return {
-            "error": f"Could not load data file: '{data_path}'. "
-                     f"Ensure the file exists and is a valid JSON array."
-        }
+        return {"error": f"Could not load data file: '{data_path}'. Ensure the file exists and is a valid JSON array."}
 
     result = validate_data(schema, entries)
 
     _journal.append(
         "lore_data_validate",
         f"Lore: {schema_name} — {result['valid']}/{result['total_entries']} valid",
-        {"schema": schema_name, "valid": result['valid'],
-         "total": result['total_entries'],
-         "error_count": result['error_count']},
+        {
+            "schema": schema_name,
+            "valid": result["valid"],
+            "total": result["total_entries"],
+            "error_count": result["error_count"],
+        },
     )
 
     logger.info(
@@ -1004,41 +1006,32 @@ def lore_integrity_check(
         data_path = df.get("data_path", "")
 
         if not schema_name or not data_path:
-            return {
-                "error": "Each entry must have 'schema_name' and 'data_path'"
-            }
+            return {"error": "Each entry must have 'schema_name' and 'data_path'"}
 
         # Load schema (cached)
         if schema_name not in schemas:
             schema = load_schema(schema_name)
             if schema is None:
-                return {
-                    "error": f"Unknown schema: '{schema_name}'. "
-                             f"Use lore_schema_list to see available schemas."
-                }
+                return {"error": f"Unknown schema: '{schema_name}'. Use lore_schema_list to see available schemas."}
             schemas[schema_name] = schema
 
         # Load data
         entries = load_data_file(data_path)
         if entries is None:
-            return {
-                "error": f"Could not load data file: '{data_path}'."
-            }
+            return {"error": f"Could not load data file: '{data_path}'."}
         loaded_data[schema_name] = entries
 
     result = validate_integrity(loaded_data, schemas)
 
     logger.info(
         "mcp_server",
-        f"Lore integrity: {len(loaded_data)} schemas, "
-        f"{result['error_count']} ref errors",
+        f"Lore integrity: {len(loaded_data)} schemas, {result['error_count']} ref errors",
     )
 
     _journal.append(
         "lore_integrity_check",
         f"Lore integrity: {result['error_count']} ref errors across {len(loaded_data)} schemas",
-        {"error_count": result['error_count'],
-         "schemas": list(loaded_data.keys())},
+        {"error_count": result["error_count"], "schemas": list(loaded_data.keys())},
     )
 
     return result
@@ -1122,10 +1115,12 @@ def quest_validate(
     _journal.append(
         "quest_validate",
         f"Quest validate: {result['total_quests']} quests, {result['issue_count']} issues",
-        {"total_quests": result['total_quests'],
-         "issue_count": result['issue_count'],
-         "critical": result['critical'],
-         "warning": result['warning']},
+        {
+            "total_quests": result["total_quests"],
+            "issue_count": result["issue_count"],
+            "critical": result["critical"],
+            "warning": result["warning"],
+        },
     )
 
     return result
@@ -1268,6 +1263,7 @@ def lint_content(
     cross: dict[str, list[dict]] | None = None
     if cross_file_paths:
         from devforge.lore.lorekeeper import load_data_file
+
         cross = {}
         for cf in cross_file_paths:
             sn = cf.get("schema_name", "")
@@ -1292,10 +1288,12 @@ def lint_content(
     _journal.append(
         "lint_content",
         f"Lint: {filepath} — {result['finding_count']} findings",
-        {"file": filepath,
-         "findings": result['finding_count'],
-         "errors": result['errors'],
-         "warnings": result['warnings']},
+        {
+            "file": filepath,
+            "findings": result["finding_count"],
+            "errors": result["errors"],
+            "warnings": result["warnings"],
+        },
     )
 
     return result
@@ -1367,10 +1365,12 @@ def polish_pass(
     _journal.append(
         "polish_pass",
         f"Polish: {result['finding_count']} findings, {result['fixes_applied']} fixes",
-        {"findings": result['finding_count'],
-         "errors": result['errors'],
-         "warnings": result['warnings'],
-         "fixes": result['fixes_applied']},
+        {
+            "findings": result["finding_count"],
+            "errors": result["errors"],
+            "warnings": result["warnings"],
+            "fixes": result["fixes_applied"],
+        },
     )
 
     result["scene_version"] = version
@@ -1422,8 +1422,7 @@ def project_search(
 
     logger.info(
         "mcp_server",
-        f"Project search '{query}': {result['hit_count']} hits "
-        f"(by_source={result['by_source']})",
+        f"Project search '{query}': {result['hit_count']} hits (by_source={result['by_source']})",
     )
     return result
 
@@ -1474,24 +1473,19 @@ def test_scaffold(
         }
 
     if not source.strip():
-        return {
-            "error": f"Source for '{script_path}' is empty."
-        }
+        return {"error": f"Source for '{script_path}' is empty."}
 
     result = scaffold_file(script_path, source)
 
     logger.info(
         "mcp_server",
-        f"Test scaffold: {script_path} — "
-        f"{result['public_count']} public functions",
+        f"Test scaffold: {script_path} — {result['public_count']} public functions",
     )
 
     _journal.append(
         "test_scaffold",
         f"Scaffold: {script_path} — {result['public_count']} test functions",
-        {"script": script_path,
-         "functions": result['function_count'],
-         "public": result['public_count']},
+        {"script": script_path, "functions": result["function_count"], "public": result["public_count"]},
     )
 
     return result
@@ -1580,11 +1574,12 @@ def balance_sim(
 
     _journal.append(
         "balance_sim",
-        f"Balance sim: {result['win_probability']*100:.1f}% win rate "
-        f"({result['total_simulations']} sims)",
-        {"win_probability": result['win_probability'],
-         "simulations": result['total_simulations'],
-         "avg_hp_remaining": result['avg_player_hp_remaining']},
+        f"Balance sim: {result['win_probability'] * 100:.1f}% win rate ({result['total_simulations']} sims)",
+        {
+            "win_probability": result["win_probability"],
+            "simulations": result["total_simulations"],
+            "avg_hp_remaining": result["avg_player_hp_remaining"],
+        },
     )
 
     return result
@@ -1652,10 +1647,12 @@ def signal_map(
         _journal.append(
             "signal_map",
             f"Signals: {result['signal_count']} decls, {result['connection_count']} conns, {len(result.get('orphaned', []))} orphaned",
-            {"signals": result['signal_count'],
-             "connections": result['connection_count'],
-             "emits": result['emit_count'],
-             "orphaned": len(result.get('orphaned', []))},
+            {
+                "signals": result["signal_count"],
+                "connections": result["connection_count"],
+                "emits": result["emit_count"],
+                "orphaned": len(result.get("orphaned", [])),
+            },
         )
 
         return result
@@ -1729,12 +1726,14 @@ def smoke_run(
     poi_objects = []
     for p in pois:
         pos = p.get("position", {})
-        poi_objects.append(build_poi(
-            name=p.get("name", "Unnamed"),
-            position=pos,
-            wait=p.get("wait_seconds", 2.0),
-            description=p.get("description", ""),
-        ))
+        poi_objects.append(
+            build_poi(
+                name=p.get("name", "Unnamed"),
+                position=pos,
+                wait=p.get("wait_seconds", 2.0),
+                description=p.get("description", ""),
+            )
+        )
 
     runner = SmokeRunner(
         run_project_fn=_executor.run_project,
@@ -1757,10 +1756,10 @@ def smoke_run(
         "smoke_run",
         f"Smoke run: {result['pois_visited']}/{result['total_pois']} POIs, avg FPS {result['avg_fps']}",
         {
-            "pois_visited": result['pois_visited'],
-            "total_pois": result['total_pois'],
-            "avg_fps": result['avg_fps'],
-            "errors": result['total_errors_logged'],
+            "pois_visited": result["pois_visited"],
+            "total_pois": result["total_pois"],
+            "avg_fps": result["avg_fps"],
+            "errors": result["total_errors_logged"],
         },
     )
 
@@ -1838,10 +1837,14 @@ def dialogue_validate(
     _init()
     result = validate_dialogue_file(filepath, npc_ids)
 
-    logger.info("mcp_server", f"Dialogue validate: {result.get('node_count', 0)} nodes, {result.get('issue_count', 0)} issues")
-    _journal.append("dialogue_validate",
+    logger.info(
+        "mcp_server", f"Dialogue validate: {result.get('node_count', 0)} nodes, {result.get('issue_count', 0)} issues"
+    )
+    _journal.append(
+        "dialogue_validate",
         f"Dialogue: {result.get('node_count', 0)} nodes, {result.get('issue_count', 0)} issues",
-        result)
+        result,
+    )
     return result
 
 
@@ -1885,9 +1888,7 @@ def scene_extract(
     result_dict["scene_version"] = version
 
     logger.info("mcp_server", f"Scene extract: {node_path} -> {output_path}")
-    _journal.append("scene_extract",
-        f"Extracted {node_path} -> {output_path}",
-        result_dict)
+    _journal.append("scene_extract", f"Extracted {node_path} -> {output_path}", result_dict)
     return result_dict
 
 
@@ -1980,18 +1981,13 @@ def template_preview(
 
     template = load_template(template_slug)
     if template is None:
-        return {
-            "error": f"Unknown template: '{template_slug}'. "
-                     f"Use template_list to see available templates."
-        }
+        return {"error": f"Unknown template: '{template_slug}'. Use template_list to see available templates."}
 
     try:
         preview = preview_template(template, slot_values, parent_path)
         logger.info(
             "mcp_server",
-            f"template_preview: {template_slug} -> "
-            f"{preview['operation_count']} ops, "
-            f"{preview['script_count']} scripts",
+            f"template_preview: {template_slug} -> {preview['operation_count']} ops, {preview['script_count']} scripts",
         )
         return preview
     except ValueError as exc:
@@ -2034,10 +2030,7 @@ def template_apply(
 
     template = load_template(template_slug)
     if template is None:
-        return {
-            "error": f"Unknown template: '{template_slug}'. "
-                     f"Use template_list to see available templates."
-        }
+        return {"error": f"Unknown template: '{template_slug}'. Use template_list to see available templates."}
 
     def _file_exists(rel_path: str) -> bool | None:
         """Check the Godot project for an existing script file.
@@ -2050,19 +2043,24 @@ def template_apply(
         if found is None:
             return None
         import json as _json
+
         return res_path in _json.dumps(found)
 
     try:
         # Get current scene paths for collision checking
         scene, version = _scene_store.get_or_fetch(_executor)
         from devforge.knowledge.scene.scene_graph import SceneGraph
+
         graph = SceneGraph(scene)
         existing_paths = set(graph.all_paths())
 
         with _acquire_pipeline_lock_ctx():
             result = instantiate_template(
-                template, slot_values, parent_path,
-                _executor, existing_paths,
+                template,
+                slot_values,
+                parent_path,
+                _executor,
+                existing_paths,
                 file_exists=_file_exists,
                 overwrite_files=overwrite_files,
             )
@@ -2080,9 +2078,11 @@ def template_apply(
         _journal.append(
             "template_apply",
             f"Template '{template_slug}': {result.get('applied_count', 0)} ops",
-            {"slug": template_slug,
-             "applied": result.get('applied_count', 0),
-             "failed": result.get('failure_count', 0)},
+            {
+                "slug": template_slug,
+                "applied": result.get("applied_count", 0),
+                "failed": result.get("failure_count", 0),
+            },
         )
 
         return result
@@ -2121,18 +2121,15 @@ def read_artifact(
     if payload is None:
         return {
             "error": f"Unknown artifact_id: {artifact_id}. "
-                     f"Artifacts are per-session and were not found "
-                     f"(server may have restarted). "
-                     f"Re-run apply_spec to get a fresh artifact_id."
+            f"Artifacts are per-session and were not found "
+            f"(server may have restarted). "
+            f"Re-run apply_spec to get a fresh artifact_id."
         }
 
     if section:
         if section in payload:
             return {section: payload[section]}
-        return {
-            "error": f"Unknown section '{section}'. "
-                     f"Available: {', '.join(sorted(payload.keys()))}"
-        }
+        return {"error": f"Unknown section '{section}'. Available: {', '.join(sorted(payload.keys()))}"}
 
     return payload
 

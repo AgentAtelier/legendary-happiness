@@ -5,7 +5,6 @@ from devforge.simulation.preview.design_memory import DesignMemory
 
 
 class MemoryFeature(PreviewFeature):
-
     name = "memory"
 
     def __init__(self):
@@ -28,9 +27,7 @@ class MemoryFeature(PreviewFeature):
             critique,
         )
 
-        return {
-            "stored_records": len(self.memory.records)
-        }
+        return {"stored_records": len(self.memory.records)}
 
     # ---------------------------------------------------------
 

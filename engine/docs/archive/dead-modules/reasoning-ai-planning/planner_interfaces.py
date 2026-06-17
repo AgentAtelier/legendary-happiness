@@ -23,7 +23,5 @@ class SystemPlanner(ABC):
 
 class ExecutionPlanner(ABC):
     @abstractmethod
-    def generate_execution_plan(
-        self, component: ComponentSpec, world_state: WorldState
-    ) -> ExecutionPlan:
+    def generate_execution_plan(self, component: ComponentSpec, world_state: WorldState) -> ExecutionPlan:
         raise NotImplementedError

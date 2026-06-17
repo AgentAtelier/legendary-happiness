@@ -56,8 +56,7 @@ def matrix(artifact: Artifact) -> dict[str, Any]:
     for tid in test_ids:
         rows[tid] = {}
         for model in models:
-            runs = [r for r in artifact.results
-                    if r.test_id == tid and r.model == model]
+            runs = [r for r in artifact.results if r.test_id == tid and r.model == model]
             if not runs:
                 rows[tid][model] = {"status": "no-data"}
                 continue
@@ -166,13 +165,8 @@ def summary(artifact: Artifact) -> str:
         for r in artifact.by_model(model):
             icon = {"ok": "✓", "partial": "~", "broke": "✗", "error": "✗"}[r.status]
             score_str = f"score={r.score}" if r.score is not None else ""
-            metrics_str = ", ".join(
-                f"{k}={_format_metric(v)}" for k, v in r.metrics.items()
-            )
-            lines.append(
-                f"    {icon} {r.test_id:35s}  {score_str:10s}  "
-                f"({r.latency_ms}ms)  {metrics_str}"
-            )
+            metrics_str = ", ".join(f"{k}={_format_metric(v)}" for k, v in r.metrics.items())
+            lines.append(f"    {icon} {r.test_id:35s}  {score_str:10s}  ({r.latency_ms}ms)  {metrics_str}")
 
     return "\n".join(lines)
 
@@ -188,9 +182,7 @@ def stability(
     """
     diffs: dict[str, dict] = {}
 
-    test_ids = sorted(set(
-        r.test_id for r in artifact_a.results
-    ) | set(r.test_id for r in artifact_b.results))
+    test_ids = sorted(set(r.test_id for r in artifact_a.results) | set(r.test_id for r in artifact_b.results))
 
     for tid in test_ids:
         a_runs = artifact_a.by_test(tid)

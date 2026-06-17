@@ -28,10 +28,10 @@ DEFAULT_MAX_ENTRIES = 500
 class JournalEntry:
     """A single timestamped event in the progress journal."""
 
-    timestamp: float       # epoch seconds
-    tool: str              # "audit_scene", "batch_apply", "template_apply", ...
-    event: str             # one-line human-readable summary
-    data: dict[str, Any]   # structured metrics (counts, version, errors, ...)
+    timestamp: float  # epoch seconds
+    tool: str  # "audit_scene", "batch_apply", "template_apply", ...
+    event: str  # one-line human-readable summary
+    data: dict[str, Any]  # structured metrics (counts, version, errors, ...)
 
     def to_dict(self) -> dict:
         return {
@@ -67,9 +67,7 @@ class Journal:
 
     # ── Public API ──────────────────────────────────────────────
 
-    def append(
-        self, tool: str, event: str, data: dict[str, Any] | None = None
-    ) -> JournalEntry:
+    def append(self, tool: str, event: str, data: dict[str, Any] | None = None) -> JournalEntry:
         """Append a journal entry and persist to disk.
 
         Thread-safe.  Trims oldest entries and compacts the file
@@ -85,7 +83,7 @@ class Journal:
             self._entries.append(entry)
             trimmed = len(self._entries) > self._max_entries
             if trimmed:
-                self._entries = self._entries[-self._max_entries:]
+                self._entries = self._entries[-self._max_entries :]
                 self._compact()  # rewrite file to remove trimmed lines
             else:
                 self._persist_entry(entry)
@@ -171,17 +169,19 @@ class Journal:
                             continue
                         try:
                             obj = json.loads(line)
-                            self._entries.append(JournalEntry(
-                                timestamp=obj["timestamp"],
-                                tool=obj["tool"],
-                                event=obj["event"],
-                                data=obj.get("data", {}),
-                            ))
+                            self._entries.append(
+                                JournalEntry(
+                                    timestamp=obj["timestamp"],
+                                    tool=obj["tool"],
+                                    event=obj["event"],
+                                    data=obj.get("data", {}),
+                                )
+                            )
                         except (json.JSONDecodeError, KeyError):
                             pass
                         # Rolling window — keep only the last N
                         if len(self._entries) > self._max_entries:
-                            self._entries = self._entries[-self._max_entries:]
+                            self._entries = self._entries[-self._max_entries :]
                 # If the file had more lines than max_entries, rewrite
                 if len(self._entries) >= self._max_entries:
                     self._compact()

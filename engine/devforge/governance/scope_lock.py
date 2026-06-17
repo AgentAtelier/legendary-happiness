@@ -26,16 +26,17 @@ from typing import Dict, List, Optional
 @dataclass
 class ScopeLock:
     """Defines the boundary of allowed modifications for a coder model run."""
+
     lock_id: str
     created: str
     description: str
-    allowed_files: List[str]            # Exact files the coder may modify
-    allowed_directories: List[str]      # Directories where new files may be created
-    forbidden_files: List[str]          # Explicitly blocked (e.g., protected files)
-    subsystems: List[str]              # Subsystems in scope (for risk scoring)
-    depth: str                         # Depth classification
+    allowed_files: List[str]  # Exact files the coder may modify
+    allowed_directories: List[str]  # Directories where new files may be created
+    forbidden_files: List[str]  # Explicitly blocked (e.g., protected files)
+    subsystems: List[str]  # Subsystems in scope (for risk scoring)
+    depth: str  # Depth classification
     interface_signatures: Dict[str, str]  # Expected function signatures (name → signature)
-    max_new_files: int                 # Maximum new files allowed
+    max_new_files: int  # Maximum new files allowed
     notes: str = ""
 
     def to_dict(self) -> dict:
@@ -73,6 +74,7 @@ class ScopeLock:
 @dataclass
 class ScopeValidation:
     """Result of validating actual changes against a scope lock."""
+
     passed: bool
     lock_id: str
     files_in_scope: List[str] = field(default_factory=list)
@@ -143,9 +145,7 @@ def create_scope_lock(
     # Validate no allowed file is also forbidden
     conflict = set(allowed_files) & set(forbidden_files)
     if conflict:
-        raise ValueError(
-            f"Scope lock conflict: files are both allowed and forbidden: {conflict}"
-        )
+        raise ValueError(f"Scope lock conflict: files are both allowed and forbidden: {conflict}")
 
     now = datetime.datetime.now(datetime.timezone.utc)
     lock_id = f"SL-{now.strftime('%m%d')}-{now.strftime('%H%M%S')}"
@@ -206,11 +206,7 @@ def validate_against_lock(
     total = max(len(actual_files), len(lock.allowed_files))
     accuracy = (len(in_scope) / total * 100) if total > 0 else 100.0
 
-    passed = (
-        len(out_of_scope) == 0
-        and len(forbidden_touched) == 0
-        and not over_limit
-    )
+    passed = len(out_of_scope) == 0 and len(forbidden_touched) == 0 and not over_limit
 
     return ScopeValidation(
         passed=passed,
@@ -235,8 +231,9 @@ if __name__ == "__main__":
     p_create = sub.add_parser("create", help="Create a new scope lock")
     p_create.add_argument("--files", nargs="+", required=True)
     p_create.add_argument("--subsystems", nargs="+", required=True)
-    p_create.add_argument("--depth", default="new_behaviour",
-                          choices=["read_only", "new_behaviour", "modifies_interface", "restructures"])
+    p_create.add_argument(
+        "--depth", default="new_behaviour", choices=["read_only", "new_behaviour", "modifies_interface", "restructures"]
+    )
     p_create.add_argument("--description", required=True)
     p_create.add_argument("--dirs", nargs="*", default=[])
     p_create.add_argument("--max-new-files", type=int, default=3)
@@ -255,6 +252,7 @@ if __name__ == "__main__":
         cp = None
         if args.contracts:
             from devforge.governance.contracts import ContractsParser
+
             cp = ContractsParser(args.contracts)
 
         lock = create_scope_lock(

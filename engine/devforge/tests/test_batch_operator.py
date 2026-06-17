@@ -24,6 +24,7 @@ def _leaf(name: str, type_: str = "Node3D") -> dict:
 
 # ── parse_query ─────────────────────────────────────────────────
 
+
 def test_parse_type_only() -> None:
     """parse_query(\"type:OmniLight3D\") sets node_type."""
     from devforge.operations.batch_filter import parse_query
@@ -45,7 +46,7 @@ def test_parse_combined() -> None:
 
 
 def test_convenience_all_type_plural() -> None:
-    """"all OmniLight3Ds" maps to type:OmniLight3D (plural stripped)."""
+    """ "all OmniLight3Ds" maps to type:OmniLight3D (plural stripped)."""
     from devforge.operations.batch_filter import parse_query
 
     f = parse_query("all OmniLight3Ds")
@@ -54,7 +55,7 @@ def test_convenience_all_type_plural() -> None:
 
 
 def test_convenience_every_under() -> None:
-    """"every Timer under /root/X" maps to type:Timer under:/root/X."""
+    """ "every Timer under /root/X" maps to type:Timer under:/root/X."""
     from devforge.operations.batch_filter import parse_query
 
     f = parse_query("every Timer under /root/Main/UI")
@@ -63,7 +64,7 @@ def test_convenience_every_under() -> None:
 
 
 def test_convenience_nodes_named() -> None:
-    """"nodes named foo" maps to name~foo."""
+    """ "nodes named foo" maps to name~foo."""
     from devforge.operations.batch_filter import parse_query
 
     f = parse_query("nodes named MainCamera")
@@ -96,13 +97,19 @@ def test_empty_query_raises_valueerror() -> None:
 
 # ── match_nodes ─────────────────────────────────────────────────
 
-_SCENE = _tree("Main", "Node3D",
-    _tree("Enemies", "Node3D",
+_SCENE = _tree(
+    "Main",
+    "Node3D",
+    _tree(
+        "Enemies",
+        "Node3D",
         _leaf("Goblin1", "CharacterBody3D"),
         _leaf("Goblin2", "CharacterBody3D"),
         _leaf("GoblinSpawner", "Node3D"),
     ),
-    _tree("Lights", "Node3D",
+    _tree(
+        "Lights",
+        "Node3D",
         _leaf("Sun", "DirectionalLight3D"),
         _leaf("Torch1", "OmniLight3D"),
         _leaf("Torch2", "OmniLight3D"),
@@ -164,6 +171,7 @@ def test_match_nodes_ordering_stable() -> None:
 
 
 # ── build_batch_ops ─────────────────────────────────────────────
+
 
 def test_build_batch_ops_shape() -> None:
     """Operation dicts have exactly the expected shape."""

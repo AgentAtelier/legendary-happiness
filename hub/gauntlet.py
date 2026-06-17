@@ -53,15 +53,22 @@ _PROP_AXIS = {
 
 # ── prompt sets ──────────────────────────────────────────────────
 
+
 def list_sets() -> list[dict]:
     """All prompt sets (id, title, description, prompt count)."""
     out = []
     for f in sorted(SETS_DIR.glob("*.json")):
         try:
             d = json.loads(f.read_text())
-            out.append({"id": d.get("id", f.stem), "title": d.get("title", f.stem),
-                        "description": d.get("description", ""),
-                        "count": len(d.get("prompts", [])), "file": f.name})
+            out.append(
+                {
+                    "id": d.get("id", f.stem),
+                    "title": d.get("title", f.stem),
+                    "description": d.get("description", ""),
+                    "count": len(d.get("prompts", [])),
+                    "file": f.name,
+                }
+            )
         except Exception:
             continue
     return out
@@ -79,6 +86,7 @@ def load_set(set_id: str) -> dict | None:
 
 
 # ── measurement ──────────────────────────────────────────────────
+
 
 def _depth(path: str) -> int:
     """Nesting depth relative to the scene root (/Main = 0, /Main/X = 1)."""
@@ -103,9 +111,9 @@ def _add_spatial_checks(expect: dict, ops: list, add_check) -> None:
     # MeshInstance3Ds — as this check used to — misses every layout-built asset,
     # which is why a correctly-placed kitchen scored 0/3 here.
     boxes: list[dict] = []  # [{name, x, z, half_w, half_d}]
-    positions: dict[str, dict] = {}   # node_path → set_property position value
-    mesh_nodes: set[str] = set()      # MeshInstance3D paths
-    mesh_parents: set[str] = set()    # parents that own a MeshInstance3D child
+    positions: dict[str, dict] = {}  # node_path → set_property position value
+    mesh_nodes: set[str] = set()  # MeshInstance3D paths
+    mesh_parents: set[str] = set()  # parents that own a MeshInstance3D child
 
     for o in ops:
         if o.get("type") == "add_node":
@@ -136,13 +144,15 @@ def _add_spatial_checks(expect: dict, ops: list, add_check) -> None:
         name = path.rsplit("/", 1)[-1] if "/" in path else path
         if any(k in name.lower() for k in _SHELL):
             continue
-        boxes.append({
-            "name": name,
-            "x": float(pos.get("x", 0)),
-            "z": float(pos.get("z", 0)),
-            "half_w": 0.5,
-            "half_d": 0.5,
-        })
+        boxes.append(
+            {
+                "name": name,
+                "x": float(pos.get("x", 0)),
+                "z": float(pos.get("z", 0)),
+                "half_w": 0.5,
+                "half_d": 0.5,
+            }
+        )
 
     # Check spatial asset count
     if "min_spatial_assets" in expect:
@@ -150,7 +160,7 @@ def _add_spatial_checks(expect: dict, ops: list, add_check) -> None:
         add_check(
             "spatial:assets",
             spatial_count >= expect["min_spatial_assets"],
-            f"{spatial_count}/{expect['min_spatial_assets']} placed MeshInstance3Ds"
+            f"{spatial_count}/{expect['min_spatial_assets']} placed MeshInstance3Ds",
         )
 
     # Check for overlap
@@ -164,24 +174,15 @@ def _add_spatial_checks(expect: dict, ops: list, add_check) -> None:
                 if dx < (a["half_w"] + b["half_w"]) and dz < (a["half_d"] + b["half_d"]):
                     overlaps.append(f"{a['name']} ↔ {b['name']}")
         if overlaps:
-            add_check(
-                "spatial:overlap",
-                False,
-                f"Overlaps: {', '.join(overlaps[:5])}"
-            )
+            add_check("spatial:overlap", False, f"Overlaps: {', '.join(overlaps[:5])}")
         else:
-            add_check(
-                "spatial:overlap",
-                True,
-                "no AABB overlaps detected"
-            )
+            add_check("spatial:overlap", True, "no AABB overlaps detected")
 
 
 def _rects_overlap(a: dict, b: dict) -> bool:
     """Check AABB overlap on the XZ plane."""
     return (
-        a["x"] < b["x"] + b["w"] and a["x"] + a["w"] > b["x"]
-        and a["z"] < b["z"] + b["d"] and a["z"] + a["d"] > b["z"]
+        a["x"] < b["x"] + b["w"] and a["x"] + a["w"] > b["x"] and a["z"] < b["z"] + b["d"] and a["z"] + a["d"] > b["z"]
     )
 
 
@@ -195,11 +196,15 @@ def _collect_rooms(node: dict, origin: tuple, size: tuple) -> list[dict]:
         return []
 
     if "room" in node:
-        return [{
-            "name": node.get("room", "room"),
-            "x": origin[0], "z": origin[1],
-            "w": size[0], "d": size[1],
-        }]
+        return [
+            {
+                "name": node.get("room", "room"),
+                "x": origin[0],
+                "z": origin[1],
+                "w": size[0],
+                "d": size[1],
+            }
+        ]
 
     # Malformed node guard — align with BSPPartitioner._partition
     if "axis" not in node:
@@ -292,10 +297,7 @@ def _add_building_checks(expect: dict, ops: list, artifact: dict, add_check) -> 
     # ── building:walls ──
     if "min_walls" in expect:
         wall_count = sum(
-            1 for o in ops
-            if isinstance(o, dict)
-            and o.get("type") == "add_node"
-            and "Wall_" in str(o.get("name", ""))
+            1 for o in ops if isinstance(o, dict) and o.get("type") == "add_node" and "Wall_" in str(o.get("name", ""))
         )
         add_check(
             "building:walls",
@@ -322,10 +324,7 @@ def _add_scatter_checks(expect: dict, ops: list, artifact: dict, add_check) -> N
     # ── scatter:items ──
     if "min_scatter_items" in expect:
         # Count total items requested in species list
-        total_requested = sum(
-            int(s.get("count", 0))
-            for s in garden_json.get("species", [])
-        )
+        total_requested = sum(int(s.get("count", 0)) for s in garden_json.get("species", []))
         # Count actually placed (in ops — mesh nodes for plant assets)
         plant_created = 0
         for o in ops:
@@ -352,9 +351,9 @@ def _add_scatter_checks(expect: dict, ops: list, artifact: dict, add_check) -> N
                         positions.append(val)
 
         oob_count = sum(
-            1 for p in positions
-            if p.get("x", 0) < -0.01 or p.get("x", 0) > rw + 0.01
-            or p.get("z", 0) < -0.01 or p.get("z", 0) > rd + 0.01
+            1
+            for p in positions
+            if p.get("x", 0) < -0.01 or p.get("x", 0) > rw + 0.01 or p.get("z", 0) < -0.01 or p.get("z", 0) > rd + 0.01
         )
         if oob_count:
             add_check(
@@ -395,12 +394,14 @@ def _add_wfc_checks(expect: dict, ops: list, artifact: dict, add_check) -> None:
             if "_" in name:
                 parts = name.split("_")
                 if len(parts) >= 3 and parts[-2].isdigit() and parts[-1].isdigit():
-                    tile_data.append({
-                        "name": name,
-                        "tile_type": parts[0],
-                        "col": int(parts[-2]),
-                        "row": int(parts[-1]),
-                    })
+                    tile_data.append(
+                        {
+                            "name": name,
+                            "tile_type": parts[0],
+                            "col": int(parts[-2]),
+                            "row": int(parts[-1]),
+                        }
+                    )
         elif o.get("type") == "set_property" and o.get("property") == "position":
             np = o.get("node", "")
             val = o.get("value", {})
@@ -430,11 +431,10 @@ def _add_wfc_checks(expect: dict, ops: list, artifact: dict, add_check) -> None:
         max_x = w * tile_size
         max_z = d * tile_size
         oob = [
-            td["name"] for td in tile_data
-            if td.get("x") is not None and (
-                td["x"] < -0.01 or td["x"] > max_x + 0.01
-                or td.get("z", 0) < -0.01 or td.get("z", 0) > max_z + 0.01
-            )
+            td["name"]
+            for td in tile_data
+            if td.get("x") is not None
+            and (td["x"] < -0.01 or td["x"] > max_x + 0.01 or td.get("z", 0) < -0.01 or td.get("z", 0) > max_z + 0.01)
         ]
         if oob:
             add_check(
@@ -574,7 +574,7 @@ def _compute_diversity(run_data: list[dict]) -> dict:
 
         # Extract from the full operations list if available
         full_ops = run.get("_ops", [])
-        for o in (full_ops if full_ops else []):
+        for o in full_ops if full_ops else []:
             if isinstance(o, dict) and o.get("type") == "add_node":
                 name = str(o.get("name", ""))
                 if name:
@@ -608,14 +608,8 @@ def _compute_diversity(run_data: list[dict]) -> dict:
             if not a_keys:
                 asset_sims.append(1.0)
                 continue
-            matches = sum(
-                min(asset_multisets[i].get(k, 0), asset_multisets[j].get(k, 0))
-                for k in a_keys
-            )
-            totals = sum(
-                max(asset_multisets[i].get(k, 0), asset_multisets[j].get(k, 0))
-                for k in a_keys
-            )
+            matches = sum(min(asset_multisets[i].get(k, 0), asset_multisets[j].get(k, 0)) for k in a_keys)
+            totals = sum(max(asset_multisets[i].get(k, 0), asset_multisets[j].get(k, 0)) for k in a_keys)
             asset_sims.append(matches / max(totals, 1))
     asset_similarity = sum(asset_sims) / max(len(asset_sims), 1) if asset_sims else 1.0
 
@@ -634,8 +628,11 @@ def _compute_diversity(run_data: list[dict]) -> dict:
 
 
 def _add_variety_checks(
-    expect: dict, run_data: list[dict], artifact: dict,
-    add_check, results: list[dict] | None = None,
+    expect: dict,
+    run_data: list[dict],
+    artifact: dict,
+    add_check,
+    results: list[dict] | None = None,
 ) -> None:
     """Add variety-specific checks when variety:* or fidelity:* expect keys are present.
 
@@ -734,11 +731,18 @@ def _add_variety_checks(
     built_depth = max((_depth(p) for p in added), default=0)
 
     data = dict(
-        built_nodes=len(added), built_depth=built_depth,
-        applied=raw.get("applied"), operations_total=raw.get("operations_total"),
-        error_count=err_count, errors=errors[:6],
-        props=prop_counts, scripts=len(scripts), attached=attached, signals=signals,
-        latency_ms=ms, nodes_sample=added[:20],
+        built_nodes=len(added),
+        built_depth=built_depth,
+        applied=raw.get("applied"),
+        operations_total=raw.get("operations_total"),
+        error_count=err_count,
+        errors=errors[:6],
+        props=prop_counts,
+        scripts=len(scripts),
+        attached=attached,
+        signals=signals,
+        latency_ms=ms,
+        nodes_sample=added[:20],
         # B3/N8: surface truncated flag from artifact for A/B thinking-config comparison
         truncated=artifact.get("truncated", False) if isinstance(artifact, dict) else False,
     )
@@ -750,27 +754,21 @@ def _add_variety_checks(
         checks.append({"label": label, "ok": bool(ok), "detail": detail})
 
     if "min_nodes" in expect:
-        add_check("nodes", len(added) >= expect["min_nodes"],
-                  f"{len(added)}/{expect['min_nodes']}")
+        add_check("nodes", len(added) >= expect["min_nodes"], f"{len(added)}/{expect['min_nodes']}")
     if "min_depth" in expect:
-        add_check("depth", built_depth >= expect["min_depth"],
-                  f"{built_depth}/{expect['min_depth']}")
+        add_check("depth", built_depth >= expect["min_depth"], f"{built_depth}/{expect['min_depth']}")
     for axis, need in (expect.get("props") or {}).items():
         got = prop_counts.get(axis, 0)
         add_check(f"prop:{axis}", got >= need, f"{got}/{need}")
     if "min_scripts" in expect:
-        add_check("scripts", len(scripts) >= expect["min_scripts"],
-                  f"{len(scripts)}/{expect['min_scripts']}")
+        add_check("scripts", len(scripts) >= expect["min_scripts"], f"{len(scripts)}/{expect['min_scripts']}")
     if "min_attached" in expect:
-        add_check("attached", attached >= expect["min_attached"],
-                  f"{attached}/{expect['min_attached']}")
+        add_check("attached", attached >= expect["min_attached"], f"{attached}/{expect['min_attached']}")
     if "min_signals" in expect:
-        add_check("signals", signals >= expect["min_signals"],
-                  f"{signals}/{expect['min_signals']}")
+        add_check("signals", signals >= expect["min_signals"], f"{signals}/{expect['min_signals']}")
     if "types" in expect:
         for t in expect["types"]:
-            add_check(f"type:{t}", t in types_present,
-                      "present" if t in types_present else "MISSING")
+            add_check(f"type:{t}", t in types_present, "present" if t in types_present else "MISSING")
     if expect.get("expect_errors"):
         # Adversarial: we WANT it to reject bad ops gracefully (errors) but not crash.
         add_check("rejected-bad-ops", err_count > 0, f"{err_count} errors (expected)")
@@ -818,15 +816,16 @@ async def _with_heartbeat(coro, emit, label, interval=5.0):
         done, _ = await asyncio.wait({task}, timeout=interval)
         if done:
             break
-        emit(f"    …{label} ({int(time.time()-t0)}s)")
+        emit(f"    …{label} ({int(time.time() - t0)}s)")
     return await task
 
 
 # ── runner ───────────────────────────────────────────────────────
 
-async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
-                       only: list[str] | None = None,
-                       runs: int = 1) -> dict:
+
+async def run_gauntlet(
+    set_id: str, emit: Callable[[str], None] | None = None, only: list[str] | None = None, runs: int = 1
+) -> dict:
     def log(m: str) -> None:
         if emit:
             emit(m)
@@ -849,20 +848,26 @@ async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
     out = GAUNTLET_DIR / f"gauntlet-{ts}.json"
 
     def persist(done: bool) -> dict:
-        card = {"kind": "gauntlet",
-               "ts": time.strftime("%Y-%m-%d %H:%M:%S"), "set": set_id,
-                "set_title": s.get("title", set_id), "model": model,
-                "status": "complete" if done else "running",
-                "total": len(prompts), "done": len(results), "results": results}
+        card = {
+            "kind": "gauntlet",
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "set": set_id,
+            "set_title": s.get("title", set_id),
+            "model": model,
+            "status": "complete" if done else "running",
+            "total": len(prompts),
+            "done": len(results),
+            "results": results,
+        }
         out.write_text(json.dumps(card, indent=2))
         return card
 
     persist(False)
 
     for i, spec in enumerate(prompts):
-        pid = spec.get("id", f"P{i+1}")
-        log(f"[gauntlet:prompt] {i+1}/{len(prompts)} {pid} ×{runs}")
-        log(f"▶ {pid} — {spec.get('axis','')}")
+        pid = spec.get("id", f"P{i + 1}")
+        log(f"[gauntlet:prompt] {i + 1}/{len(prompts)} {pid} ×{runs}")
+        log(f"▶ {pid} — {spec.get('axis', '')}")
 
         run_data: list[dict] = []
         for rn in range(1, runs + 1):
@@ -882,8 +887,8 @@ async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
                 apply_args["planner"] = planner
             try:
                 raw = await _with_heartbeat(
-                    _devforge_call("apply_spec", apply_args, timeout_s=300),
-                    log, f"{pid} R{rn} planning+executing")
+                    _devforge_call("apply_spec", apply_args, timeout_s=300), log, f"{pid} R{rn} planning+executing"
+                )
                 aid = raw.get("artifact_id")
                 artifact = raw
                 if aid:
@@ -911,8 +916,7 @@ async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
 
             run_data.append(prof)
             if runs > 1:
-                log(f"    [{prof['verdict']}] {prof['coverage']}% "
-                    f"({prof['built_nodes']}n {ms//1000}s)")
+                log(f"    [{prof['verdict']}] {prof['coverage']}% ({prof['built_nodes']}n {ms // 1000}s)")
 
         # Aggregate across runs: keep first run's full profile + add stats
         if runs == 1:
@@ -934,17 +938,22 @@ async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
             # Stage 4: variety checks — pass both run_data (per-prompt runs)
             # and results (all sibling prompt results for intent_coverage)
             _add_variety_checks(
-                spec.get("expect", {}), run_data, artifact,
+                spec.get("expect", {}),
+                run_data,
+                artifact,
                 lambda label, ok, detail: agg.setdefault("variety_checks", []).append(
-                    {"label": label, "ok": ok, "detail": detail}),
+                    {"label": label, "ok": ok, "detail": detail}
+                ),
                 results=results,
             )
         results.append(agg)
         persist(False)
-        lat = agg.get('mean_latency_ms', agg.get('latency_ms', 0))
-        log(f"  [{agg['verdict']}] {agg['coverage']}% — nodes {agg['built_nodes']}, "
-            f"depth {agg['built_depth']}, props {agg.get('props',{})}, "
-            f"scripts {agg.get('scripts',0)}, err {agg['error_count']} ({lat//1000}s)")
+        lat = agg.get("mean_latency_ms", agg.get("latency_ms", 0))
+        log(
+            f"  [{agg['verdict']}] {agg['coverage']}% — nodes {agg['built_nodes']}, "
+            f"depth {agg['built_depth']}, props {agg.get('props', {})}, "
+            f"scripts {agg.get('scripts', 0)}, err {agg['error_count']} ({lat // 1000}s)"
+        )
 
     # restore the real game scene
     try:
@@ -958,8 +967,7 @@ async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
     partial = sum(1 for r in results if r["verdict"] == "partial")
     broke = sum(1 for r in results if r["verdict"] == "broke")
     avg = round(sum(r["coverage"] for r in results) / (len(results) or 1))
-    log(f"[gauntlet:done] {full} full / {partial} partial / {broke} broke · "
-        f"avg coverage {avg}% → {out.name}")
+    log(f"[gauntlet:done] {full} full / {partial} partial / {broke} broke · avg coverage {avg}% → {out.name}")
     card["summary"] = {"full": full, "partial": partial, "broke": broke, "avg_coverage": avg}
     out.write_text(json.dumps(card, indent=2))
 
@@ -977,8 +985,10 @@ async def run_gauntlet(set_id: str, emit: Callable[[str], None] | None = None,
                         icon = "✓" if c["ok"] else "✗"
                         log(f"    {icon} {c['label']}: {c['detail']}")
                 if dv:
-                    log(f"    diversity: Jaccard={dv.get('jaccard_distance', 0):.2f} "
-                        f"({dv.get('distinct_outputs', 0)}/{dv.get('total_runs', 0)} distinct)")
+                    log(
+                        f"    diversity: Jaccard={dv.get('jaccard_distance', 0):.2f} "
+                        f"({dv.get('distinct_outputs', 0)}/{dv.get('total_runs', 0)} distinct)"
+                    )
     return card
 
 
@@ -987,9 +997,16 @@ def history(limit: int = 30) -> list[dict]:
     for f in sorted(GAUNTLET_DIR.glob("gauntlet-*.json"), reverse=True)[:limit]:
         try:
             d = json.loads(f.read_text())
-            runs.append({"file": f.name, "ts": d.get("ts"), "set": d.get("set"),
-                         "model": d.get("model"), "summary": d.get("summary"),
-                         "status": d.get("status")})
+            runs.append(
+                {
+                    "file": f.name,
+                    "ts": d.get("ts"),
+                    "set": d.get("set"),
+                    "model": d.get("model"),
+                    "summary": d.get("summary"),
+                    "status": d.get("status"),
+                }
+            )
         except Exception:
             continue
     return runs
@@ -1007,6 +1024,7 @@ def get_run(ts: str) -> dict | None:
 
 # ── CLI ──────────────────────────────────────────────────────────
 
+
 def _cli() -> None:
     args = sys.argv[1:]
     if not args or "--list" in args:
@@ -1023,7 +1041,9 @@ def _cli() -> None:
             only = args[args.index("--only") + 1].split(",")
         if "--runs" in args:
             runs = int(args[args.index("--runs") + 1])
-        asyncio.run(run_gauntlet(set_id, lambda l: print(l) if not l.startswith("[gauntlet:prompt]") else None, only, runs=runs))
+        asyncio.run(
+            run_gauntlet(set_id, lambda l: print(l) if not l.startswith("[gauntlet:prompt]") else None, only, runs=runs)
+        )
         return
     print("usage: python gauntlet.py [--list | --run <set-id> [--only ids] [--runs N]]")
 

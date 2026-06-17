@@ -21,11 +21,9 @@ def build_environment_timeseries(
     result: Dict[str, List[Dict[str, Any]]] = {}
 
     for frame in frames:
-
         world = frame.world
 
         for key, value in world.environment.items():
-
             if key not in result:
                 result[key] = []
 
@@ -54,9 +52,7 @@ def build_event_timeline(
     events: List[Dict[str, Any]] = []
 
     for frame in frames:
-
         for event in frame.world.events:
-
             events.append(
                 {
                     "time": event["time"],
@@ -99,11 +95,9 @@ def build_parameter_view(parameters) -> Dict[str, Any]:
     output: Dict[str, Any] = {}
 
     for system_name, params in parameters.items():
-
         output[system_name] = []
 
         for param in params.values():
-
             output[system_name].append(
                 {
                     "name": param.name,

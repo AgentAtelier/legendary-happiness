@@ -15,8 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Helpers ───────────────────────────────────────────────────
 
+
 def _make_client(prompt_template="gemma", **kwargs) -> "LlamaClient":
     from devforge.infrastructure.llm.llama_client import LlamaClient
+
     return LlamaClient(prompt_template=prompt_template, **kwargs)
 
 
@@ -66,6 +68,7 @@ def _capture_chat_prompt(prompt_template: str, messages: list[dict]) -> str:
 
 # ── Test 1: gemma generate ────────────────────────────────────
 
+
 def test_gemma_generate_wire_bytes() -> None:
     """gemma generate(\"hi\") → exact Gemma control tokens."""
     prompt_bytes = _capture_generate_prompt("gemma", "hi")
@@ -73,6 +76,7 @@ def test_gemma_generate_wire_bytes() -> None:
 
 
 # ── Test 2: chatml generate ───────────────────────────────────
+
 
 def test_chatml_generate_wire_bytes() -> None:
     """chatml generate(\"hi\") → exact ChatML control tokens."""
@@ -82,6 +86,7 @@ def test_chatml_generate_wire_bytes() -> None:
 
 # ── Test 3: raw generate ──────────────────────────────────────
 
+
 def test_raw_generate_passthrough() -> None:
     """raw generate(\"hi\") → prompt == \"hi\" (no wrapping)."""
     prompt_bytes = _capture_generate_prompt("raw", "hi")
@@ -90,39 +95,40 @@ def test_raw_generate_passthrough() -> None:
 
 # ── Test 4: gemma chat with system ────────────────────────────
 
+
 def test_gemma_chat_system_folds_into_user() -> None:
     """gemma chat() with system folds [Instructions] into user turn."""
-    prompt_bytes = _capture_chat_prompt("gemma", [
-        {"role": "system", "content": "You are helpful."},
-        {"role": "user", "content": "Hello"},
-    ])
-    expected = (
-        "<start_of_turn>user\n"
-        "[Instructions]\nYou are helpful.\n\n"
-        "Hello"
-        "<end_of_turn>\n"
-        "<start_of_turn>model\n"
+    prompt_bytes = _capture_chat_prompt(
+        "gemma",
+        [
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "Hello"},
+        ],
     )
+    expected = "<start_of_turn>user\n[Instructions]\nYou are helpful.\n\nHello<end_of_turn>\n<start_of_turn>model\n"
     assert prompt_bytes == expected
 
 
 # ── Test 5: chatml chat with system ───────────────────────────
 
+
 def test_chatml_chat_system_emits_block() -> None:
     """chatml chat() with system emits system block BEFORE user block."""
-    prompt_bytes = _capture_chat_prompt("chatml", [
-        {"role": "system", "content": "You are helpful."},
-        {"role": "user", "content": "Hello"},
-    ])
+    prompt_bytes = _capture_chat_prompt(
+        "chatml",
+        [
+            {"role": "system", "content": "You are helpful."},
+            {"role": "user", "content": "Hello"},
+        ],
+    )
     expected = (
-        "<|im_start|>system\nYou are helpful.<|im_end|>\n"
-        "<|im_start|>user\nHello<|im_end|>\n"
-        "<|im_start|>assistant\n"
+        "<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>user\nHello<|im_end|>\n<|im_start|>assistant\n"
     )
     assert prompt_bytes == expected
 
 
 # ── Test 6: unknown template → ValueError ─────────────────────
+
 
 def test_unknown_template_raises_valueerror() -> None:
     """Unknown prompt_template name raises ValueError listing valid options."""
@@ -141,6 +147,7 @@ def test_unknown_template_raises_valueerror() -> None:
 
 # ── Test 7: default is gemma ──────────────────────────────────
 
+
 def test_default_is_gemma() -> None:
     """When nothing configured, prompt_template defaults to gemma."""
     from devforge.infrastructure.llm.llama_client import LlamaClient
@@ -154,6 +161,7 @@ def test_default_is_gemma() -> None:
 
 
 # ── Test 8: RuntimeConfig.validate rejects bad template ───────
+
 
 def test_config_validate_rejects_bad_template() -> None:
     """RuntimeConfig.validate() rejects llm_prompt_template='qwen'."""
@@ -169,6 +177,7 @@ def test_config_validate_rejects_bad_template() -> None:
 
 # ── Test 9: DEVFORGE_PROMPT_TEMPLATE env round-trip ───────────
 
+
 def test_env_var_round_trip() -> None:
     """DEVFORGE_PROMPT_TEMPLATE=chatml survives from_env()."""
     from devforge.infrastructure.runtime_config import RuntimeConfig
@@ -179,6 +188,7 @@ def test_env_var_round_trip() -> None:
 
 
 # ── Test 10: configure_llama passes template to client ────────
+
 
 def test_configure_llama_passes_template() -> None:
     """configure_llama(prompt_template='chatml') reaches LlamaClient."""
@@ -202,51 +212,51 @@ def test_configure_llama_passes_template() -> None:
 
 # ── Test 11: gemma chat without system ────────────────────────
 
+
 def test_gemma_chat_user_only() -> None:
     """gemma chat() with only user message produces correct format."""
-    prompt_bytes = _capture_chat_prompt("gemma", [
-        {"role": "user", "content": "hi"},
-    ])
-    expected = (
-        "<start_of_turn>user\n"
-        "hi"
-        "<end_of_turn>\n"
-        "<start_of_turn>model\n"
+    prompt_bytes = _capture_chat_prompt(
+        "gemma",
+        [
+            {"role": "user", "content": "hi"},
+        ],
     )
+    expected = "<start_of_turn>user\nhi<end_of_turn>\n<start_of_turn>model\n"
     assert prompt_bytes == expected
 
 
 # ── Test 12: chatml chat without system ───────────────────────
 
+
 def test_chatml_chat_user_only() -> None:
     """chatml chat() with only user message — no system block emitted."""
-    prompt_bytes = _capture_chat_prompt("chatml", [
-        {"role": "user", "content": "hi"},
-    ])
-    expected = (
-        "<|im_start|>user\nhi<|im_end|>\n"
-        "<|im_start|>assistant\n"
+    prompt_bytes = _capture_chat_prompt(
+        "chatml",
+        [
+            {"role": "user", "content": "hi"},
+        ],
     )
+    expected = "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n"
     assert prompt_bytes == expected
 
 
 # ── Test 13: gemma chat system-only folds properly ────────────
 
+
 def test_gemma_chat_system_only() -> None:
     """gemma chat() with only system message folds into user turn."""
-    prompt_bytes = _capture_chat_prompt("gemma", [
-        {"role": "system", "content": "Be concise."},
-    ])
-    expected = (
-        "<start_of_turn>user\n"
-        "[Instructions]\nBe concise.\n"
-        "<end_of_turn>\n"
-        "<start_of_turn>model\n"
+    prompt_bytes = _capture_chat_prompt(
+        "gemma",
+        [
+            {"role": "system", "content": "Be concise."},
+        ],
     )
+    expected = "<start_of_turn>user\n[Instructions]\nBe concise.\n<end_of_turn>\n<start_of_turn>model\n"
     assert prompt_bytes == expected
 
 
 # ── Tests: auto-detection of prompt template from model alias ──
+
 
 def test_detect_gemma_from_alias() -> None:
     """detect_prompt_template returns 'gemma' for gemma aliases."""
@@ -284,11 +294,12 @@ def test_apply_server_limits_auto_sets_template() -> None:
     from devforge.infrastructure.llm.llama_client import apply_server_limits
     from devforge.infrastructure.runtime_config import RuntimeConfig
 
-    config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096,
-                           llm_prompt_template="gemma")
+    config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096, llm_prompt_template="gemma")
     client = MagicMock()
     client.server_props.return_value = {
-        "n_ctx": 32768, "total_slots": 1, "model_alias": "qwen3-14b",
+        "n_ctx": 32768,
+        "total_slots": 1,
+        "model_alias": "qwen3-14b",
     }
 
     with patch.dict(os.environ, {}, clear=True):
@@ -312,20 +323,19 @@ def test_apply_server_limits_respects_env_override() -> None:
     from devforge.infrastructure.llm.llama_client import apply_server_limits
     from devforge.infrastructure.runtime_config import RuntimeConfig
 
-    config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096,
-                           llm_prompt_template="gemma")
+    config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096, llm_prompt_template="gemma")
     client = MagicMock()
     client.server_props.return_value = {
-        "n_ctx": 32768, "total_slots": 1, "model_alias": "qwen3-14b",
+        "n_ctx": 32768,
+        "total_slots": 1,
+        "model_alias": "qwen3-14b",
     }
 
     # Any non-empty env value blocks the auto-detection override.
     with patch.dict(os.environ, {"DEVFORGE_PROMPT_TEMPLATE": "gemma"}, clear=False):
         apply_server_limits(config, client)
 
-    assert config.llm_prompt_template == "gemma", (
-        "Should NOT override when DEVFORGE_PROMPT_TEMPLATE is explicitly set"
-    )
+    assert config.llm_prompt_template == "gemma", "Should NOT override when DEVFORGE_PROMPT_TEMPLATE is explicitly set"
     assert not hasattr(client, "prompt_template") or client.prompt_template != "chatml", (
         "Client should also not be overridden when env is set"
     )
@@ -338,11 +348,12 @@ def test_apply_server_limits_no_override_when_already_chatml() -> None:
     from devforge.infrastructure.llm.llama_client import apply_server_limits
     from devforge.infrastructure.runtime_config import RuntimeConfig
 
-    config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096,
-                           llm_prompt_template="chatml")
+    config = RuntimeConfig(context_token_budget=24000, llama_max_tokens=4096, llm_prompt_template="chatml")
     client = MagicMock()
     client.server_props.return_value = {
-        "n_ctx": 32768, "total_slots": 1, "model_alias": "qwen3-14b",
+        "n_ctx": 32768,
+        "total_slots": 1,
+        "model_alias": "qwen3-14b",
     }
 
     with patch.dict(os.environ, {}, clear=True):
@@ -354,6 +365,7 @@ def test_apply_server_limits_no_override_when_already_chatml() -> None:
 
 # ── GBNF normalization (PEG parser compatibility) ─────────────
 
+
 def test_normalize_gbnf_joins_continuation_lines():
     """Multi-line alternations must collapse onto the rule line.
 
@@ -363,16 +375,17 @@ def test_normalize_gbnf_joins_continuation_lines():
     """
     from devforge.infrastructure.llm.llama_client import normalize_gbnf
 
-    src = ('system-list ::= ""\n'
-           '              | system (ws "," ws system)*\n'
-           '\n'
-           'entity ::= "a"\n'
-           '         | "b"\n'
-           '         | "c"\n')
+    src = (
+        'system-list ::= ""\n'
+        '              | system (ws "," ws system)*\n'
+        "\n"
+        'entity ::= "a"\n'
+        '         | "b"\n'
+        '         | "c"\n'
+    )
     out = normalize_gbnf(src)
-    assert '| ' in out  # alternations preserved...
-    assert not any(l.strip().startswith("|") for l in out.split("\n")), \
-        "no line may start with |"
+    assert "| " in out  # alternations preserved...
+    assert not any(l.strip().startswith("|") for l in out.split("\n")), "no line may start with |"
     assert 'system-list ::= "" | system (ws "," ws system)*' in out
     assert 'entity ::= "a" | "b" | "c"' in out
 
@@ -380,10 +393,7 @@ def test_normalize_gbnf_joins_continuation_lines():
 def test_normalize_gbnf_skips_comments_and_blanks():
     from devforge.infrastructure.llm.llama_client import normalize_gbnf
 
-    src = ('rule ::= "x"\n'
-           '# a comment between alternatives\n'
-           '\n'
-           '       | "y"\n')
+    src = 'rule ::= "x"\n# a comment between alternatives\n\n       | "y"\n'
     out = normalize_gbnf(src)
     assert 'rule ::= "x" | "y"' in out
     assert "# a comment between alternatives" in out
@@ -470,6 +480,7 @@ class TestDedupOperations:
 
     def _dedupe(self, ops):
         from devforge.compilation.pipeline.engine import PipelineEngine
+
         return PipelineEngine._dedupe_operations(ops)
 
     def test_identical_ops_deduped(self):
@@ -518,27 +529,29 @@ class TestNormalizeGbnfStrongIdempotency:
 
     def test_idempotent_multi_line_alternation(self):
         from devforge.infrastructure.llm.llama_client import normalize_gbnf
+
         src = 'root ::= "a"\n | "b"\n | "c"\n\nws ::= [ \\t\\n]*'
         once = normalize_gbnf(src)
         twice = normalize_gbnf(once)
         assert once == twice, f"Not idempotent:\nonce: {once!r}\ntwice: {twice!r}"
-        assert '|' not in once.split('\n')[1], f"Continuation line not joined: {once}"
+        assert "|" not in once.split("\n")[1], f"Continuation line not joined: {once}"
 
     def test_idempotent_complex_grammar(self):
         from devforge.infrastructure.llm.llama_client import normalize_gbnf
+
         src = 'root ::= object\nobject ::= "{" ws pair (ws "," ws pair)* ws "}"\npair ::= string ws ":" ws value\nstring ::= "\\"" char* "\\""\nchar ::= [^"\\\\]\n | "\\\\" escape\nescape ::= ["\\\\/bfnrt]\nvalue ::= string\n | number\n | object\n | array\n | "true" | "false" | "null"\nws ::= [ \\t\\n]*'
         once = normalize_gbnf(src)
         twice = normalize_gbnf(once)
         assert once == twice, f"Complex grammar not idempotent"
         # Verify no standalone | lines remain
-        for line in once.split('\n'):
+        for line in once.split("\n"):
             stripped = line.strip()
-            if stripped and not stripped.startswith('#'):
-                assert not stripped.startswith('|'), \
-                    f"Standalone | still present: {line!r}"
+            if stripped and not stripped.startswith("#"):
+                assert not stripped.startswith("|"), f"Standalone | still present: {line!r}"
 
     def test_already_normalized_unchanged(self):
         from devforge.infrastructure.llm.llama_client import normalize_gbnf
+
         src = 'root ::= "a" | "b" | "c"'
         assert normalize_gbnf(src) == src
         assert normalize_gbnf(normalize_gbnf(src)) == src

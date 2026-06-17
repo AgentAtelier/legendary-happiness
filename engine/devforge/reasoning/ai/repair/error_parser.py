@@ -29,13 +29,9 @@ class ErrorParser:
     that the repair system can understand.
     """
 
-    GODOT_ERROR_PATTERN = re.compile(
-        r'(?P<file>.*\.gd):(?P<line>\d+)\s*-\s*(?P<message>.+)'
-    )
+    GODOT_ERROR_PATTERN = re.compile(r"(?P<file>.*\.gd):(?P<line>\d+)\s*-\s*(?P<message>.+)")
 
-    UNKNOWN_IDENTIFIER_PATTERN = re.compile(
-        r"Identifier\s+'(?P<symbol>\w+)'\s+not\s+declared"
-    )
+    UNKNOWN_IDENTIFIER_PATTERN = re.compile(r"Identifier\s+'(?P<symbol>\w+)'\s+not\s+declared")
 
     def parse_report(self, report) -> List[ParsedError]:
         """

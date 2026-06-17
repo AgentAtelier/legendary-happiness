@@ -57,15 +57,12 @@ class FeatureDecomposer:
             response = llm(llm_prompt)
 
         try:
-
             data = json.loads(response)
 
             if isinstance(data, list):
-
                 features = []
 
                 for f in data:
-
                     if isinstance(f, str):
                         features.append(f)
 

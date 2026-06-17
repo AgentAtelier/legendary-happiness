@@ -19,15 +19,18 @@ def _write_data(tmpdir: str, filename: str, data: list[dict]) -> str:
 
 # ── Duplicate IDs (L01) ─────────────────────────────────────────
 
+
 def test_duplicate_ids_detected() -> None:
     """Two entries with the same id are flagged."""
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "sword01", "name": "Sword"},
-        {"id": "sword01", "name": "Sword Again"},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "sword01", "name": "Sword"},
+            {"id": "sword01", "name": "Sword Again"},
+        ]
+    )
 
     assert result["finding_count"] >= 1
     assert any(f["rule_id"] == "L01" for f in result["findings"])
@@ -39,25 +42,30 @@ def test_no_duplicates_clean() -> None:
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "sword01", "name": "Sword"},
-        {"id": "shield02", "name": "Shield"},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "sword01", "name": "Sword"},
+            {"id": "shield02", "name": "Shield"},
+        ]
+    )
 
     assert not any(f["rule_id"] == "L01" for f in result["findings"])
 
 
 # ── Naming convention (L02) ─────────────────────────────────────
 
+
 def test_non_snake_case_flagged() -> None:
     """IDs that aren't snake_case get flagged as L02."""
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "Bad Name", "name": "Something"},
-        {"id": "CamelCase", "name": "Something"},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "Bad Name", "name": "Something"},
+            {"id": "CamelCase", "name": "Something"},
+        ]
+    )
 
     assert any(f["rule_id"] == "L02" for f in result["findings"])
 
@@ -67,25 +75,30 @@ def test_snake_case_passes() -> None:
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "sword_of_fire", "name": "Fire Sword"},
-        {"id": "health_potion_2", "name": "Health Potion"},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "sword_of_fire", "name": "Fire Sword"},
+            {"id": "health_potion_2", "name": "Health Potion"},
+        ]
+    )
 
     assert not any(f["rule_id"] == "L02" for f in result["findings"])
 
 
 # ── Empty name (L03) ────────────────────────────────────────────
 
+
 def test_empty_name_flagged() -> None:
     """Empty or whitespace-only name is flagged as L03."""
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "item01", "name": ""},
-        {"id": "item02", "name": "   "},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "item01", "name": ""},
+            {"id": "item02", "name": "   "},
+        ]
+    )
 
     assert any(f["rule_id"] == "L03" for f in result["findings"])
     assert sum(1 for f in result["findings"] if f["rule_id"] == "L03") >= 2
@@ -96,23 +109,28 @@ def test_valid_name_no_l03() -> None:
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "item01", "name": "Sword"},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "item01", "name": "Sword"},
+        ]
+    )
 
     assert not any(f["rule_id"] == "L03" for f in result["findings"])
 
 
 # ── Empty required (L03/L04) — null/empty name and required fields _
 
+
 def test_null_value_flagged() -> None:
     """Null values in the name field are flagged as L03."""
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "item01", "name": None, "damage": 5},
-    ])
+    result = linter.lint_file(
+        [
+            {"id": "item01", "name": None, "damage": 5},
+        ]
+    )
 
     assert any(f["rule_id"] == "L03" for f in result["findings"])
 
@@ -122,29 +140,33 @@ def test_empty_duplicate_id_flagged() -> None:
     from devforge.lint.linter import ContentLinter
 
     linter = ContentLinter()
-    result = linter.lint_file([
-        {"id": "", "name": "First"},
-        {"id": "", "name": "Second"},
-    ])
-
-    assert any(
-        f["rule_id"] == "L01" and f["entry_id"] == "<empty>"
-        for f in result["findings"]
+    result = linter.lint_file(
+        [
+            {"id": "", "name": "First"},
+            {"id": "", "name": "Second"},
+        ]
     )
+
+    assert any(f["rule_id"] == "L01" and f["entry_id"] == "<empty>" for f in result["findings"])
 
 
 # ── End-to-end via lint_file() ──────────────────────────────────
+
 
 def test_lint_file_loads_json() -> None:
     """lint_file() loads a JSON file and runs lint rules."""
     from devforge.lint.linter import lint_file
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = _write_data(tmpdir, "items.json", [
-            {"id": "sword01", "name": "Sword"},
-            {"id": "sword01", "name": "Sword Dupe"},
-            {"id": "Bad Name", "name": "Something"},
-        ])
+        path = _write_data(
+            tmpdir,
+            "items.json",
+            [
+                {"id": "sword01", "name": "Sword"},
+                {"id": "sword01", "name": "Sword Dupe"},
+                {"id": "Bad Name", "name": "Something"},
+            ],
+        )
         result = lint_file(path)
         assert result["total_entries"] == 3
         assert result["finding_count"] >= 2  # L01 duplicate + L02 naming
@@ -198,9 +220,13 @@ def test_lint_file_with_schema() -> None:
     from devforge.lint.linter import lint_file
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = _write_data(tmpdir, "items.json", [
-            {"id": "sword01", "name": "Sword"},
-        ])
+        path = _write_data(
+            tmpdir,
+            "items.json",
+            [
+                {"id": "sword01", "name": "Sword"},
+            ],
+        )
         result = lint_file(path, schema_name="nonexistent_schema")
         assert "error" in result  # schema not found
 

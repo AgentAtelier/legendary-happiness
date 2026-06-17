@@ -51,13 +51,13 @@ class TestGrammarLoading:
     def test_grammar_contains_room_type_key(self, planner):
         """Grammar constrains room_type as required."""
         # GBNF uses escaped quotes: \"room_type\"
-        assert 'room_type' in planner.grammar
+        assert "room_type" in planner.grammar
 
     def test_grammar_constrains_size(self, planner):
         """Grammar enumerates cramped/normal/spacious."""
-        assert 'cramped' in planner.grammar
-        assert 'normal' in planner.grammar
-        assert 'spacious' in planner.grammar
+        assert "cramped" in planner.grammar
+        assert "normal" in planner.grammar
+        assert "spacious" in planner.grammar
 
     def test_grammar_constrains_style(self, planner):
         """Grammar enumerates rustic/industrial/noble/derelict."""
@@ -74,8 +74,7 @@ class TestGrammarLoading:
 class TestPromptBuilding:
     def test_prompt_contains_schema_fields(self, planner):
         prompt = planner._build_prompt("SCENE_CTX", "build a kitchen")
-        for field in ("room_type", "size", "style", "clutter",
-                       "mood_tags", "must_have", "special_features", "seed"):
+        for field in ("room_type", "size", "style", "clutter", "mood_tags", "must_have", "special_features", "seed"):
             assert field in prompt, f"'{field}' missing from prompt"
 
     def test_prompt_contains_context(self, planner):
@@ -144,28 +143,20 @@ class TestResponseParsing:
         assert out["seed"] == 42
 
     def test_strips_think_tags(self, planner):
-        out = planner._parse_response(
-            '<think>hmm what room</think>{"room_type":"bedroom"}'
-        )
+        out = planner._parse_response('<think>hmm what room</think>{"room_type":"bedroom"}')
         assert out["room_type"] == "bedroom"
 
     def test_strips_markdown_fence(self, planner):
-        out = planner._parse_response(
-            '```json\n{"room_type":"living_room"}\n```'
-        )
+        out = planner._parse_response('```json\n{"room_type":"living_room"}\n```')
         assert out["room_type"] == "living_room"
 
     def test_prose_prefix(self, planner):
-        out = planner._parse_response(
-            'Sure! Here is your descriptor: {"room_type":"kitchen","size":"cramped"}'
-        )
+        out = planner._parse_response('Sure! Here is your descriptor: {"room_type":"kitchen","size":"cramped"}')
         assert out["room_type"] == "kitchen"
         assert out["size"] == "cramped"
 
     def test_prose_suffix(self, planner):
-        out = planner._parse_response(
-            '{"room_type":"study","size":"normal"} Hope that helps!'
-        )
+        out = planner._parse_response('{"room_type":"study","size":"normal"} Hope that helps!')
         assert out["room_type"] == "study"
         assert out["size"] == "normal"
 
@@ -186,16 +177,12 @@ class TestResponseParsing:
 
     def test_mood_tags_filtered_non_strings(self, planner):
         """Non-string mood tags are dropped."""
-        out = planner._parse_response(
-            '{"room_type":"attic","mood_tags":["abandoned",42,null,"cozy"]}'
-        )
+        out = planner._parse_response('{"room_type":"attic","mood_tags":["abandoned",42,null,"cozy"]}')
         assert out["mood_tags"] == ["abandoned", "cozy"]
 
     def test_must_have_unknown_assets_dropped(self, planner):
         """must_have assets not in lexicon are filtered out."""
-        out = planner._parse_response(
-            '{"room_type":"kitchen","must_have":["stove","dragon_egg","fridge"]}'
-        )
+        out = planner._parse_response('{"room_type":"kitchen","must_have":["stove","dragon_egg","fridge"]}')
         # dragon_egg is not a real asset — dropped
         assert "must_have" in out
         assert "dragon_egg" not in out["must_have"]
@@ -226,37 +213,28 @@ class TestResponseParsing:
 class TestGracefulDegradation:
     def test_unknown_size_logged_and_skipped(self, planner):
         """Unknown size value is logged but not included in descriptor."""
-        out = planner._parse_response(
-            '{"room_type":"kitchen","size":"enormous"}'
-        )
+        out = planner._parse_response('{"room_type":"kitchen","size":"enormous"}')
         assert "size" not in out  # skipped
 
     def test_unknown_style_logged_and_skipped(self, planner):
         """Unknown style value is logged but not included."""
-        out = planner._parse_response(
-            '{"room_type":"kitchen","style":"cyberpunk"}'
-        )
+        out = planner._parse_response('{"room_type":"kitchen","style":"cyberpunk"}')
         assert "style" not in out  # skipped
 
     def test_valid_size_passes_through(self, planner):
         for size in ("cramped", "normal", "spacious"):
-            out = planner._parse_response(
-                f'{{"room_type":"kitchen","size":"{size}"}}'
-            )
+            out = planner._parse_response(f'{{"room_type":"kitchen","size":"{size}"}}')
             assert out["size"] == size
 
     def test_valid_style_passes_through(self, planner):
         for style in ("rustic", "industrial", "noble", "derelict"):
-            out = planner._parse_response(
-                f'{{"room_type":"kitchen","style":"{style}"}}'
-            )
+            out = planner._parse_response(f'{{"room_type":"kitchen","style":"{style}"}}')
             assert out["style"] == style
 
     def test_mixed_valid_invalid_moods(self, planner):
         """Known moods pass through, unknown silently dropped."""
         out = planner._parse_response(
-            '{"room_type":"living_room",'
-            '"mood_tags":["cozy","not_a_mood","grand","also_fake"]}'
+            '{"room_type":"living_room","mood_tags":["cozy","not_a_mood","grand","also_fake"]}'
         )
         # All are strings so all pass the type filter; RoomIntentPlanner
         # doesn't filter mood_tags against KNOWN_MOODS — that's the engine's job
@@ -265,9 +243,7 @@ class TestGracefulDegradation:
 
     def test_empty_arrays_preserved(self, planner):
         """Empty arrays are valid."""
-        out = planner._parse_response(
-            '{"room_type":"kitchen","mood_tags":[],"must_have":[],"special_features":[]}'
-        )
+        out = planner._parse_response('{"room_type":"kitchen","mood_tags":[],"must_have":[],"special_features":[]}')
         assert out["mood_tags"] == []
         # Empty must_have array means no forced assets (descriptor doesn't
         # include the key since the list is empty)
@@ -317,7 +293,8 @@ class TestPlanMethod:
     def test_plan_returns_full_descriptor(self, planner):
         """plan() handles all fields."""
         out = planner.plan(
-            context="ctx", prompt="make a grand library",
+            context="ctx",
+            prompt="make a grand library",
             llm_fn=lambda p: (
                 '{"room_type":"library","size":"spacious","style":"noble",'
                 '"clutter":0.5,"mood_tags":["grand"],'
@@ -337,13 +314,15 @@ class TestPlanMethod:
     def test_plan_wraps_llm_errors(self, planner):
         def boom(_):
             raise RuntimeError("llm down")
+
         with pytest.raises(RoomPlanningError):
             planner.plan(context="", prompt="x", llm_fn=boom)
 
     def test_plan_wraps_unparseable(self, planner):
         with pytest.raises(RoomPlanningError):
             planner.plan(
-                context="", prompt="x",
+                context="",
+                prompt="x",
                 llm_fn=lambda p: "garbage no json",
             )
 
@@ -366,7 +345,8 @@ class TestPlanMethod:
             return '{"room_type":"hallway"}'
 
         planner.plan(
-            context="EXISTING_BUILDING", prompt="add a hallway",
+            context="EXISTING_BUILDING",
+            prompt="add a hallway",
             llm_fn=capture,
         )
         assert len(sent_prompts) == 1

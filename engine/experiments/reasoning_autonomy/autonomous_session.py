@@ -29,6 +29,7 @@ from devforge.validation.critic_manager import CriticManager, CriticResult
 @dataclass
 class SessionResult:
     """Result of an autonomous session run."""
+
     passed: bool
     prompt: str
     iterations: int = 0
@@ -76,9 +77,9 @@ class AutonomousSession:
         contracts_path: Optional[str] = None,
     ):
         """Args:
-            engine: PipelineEngine instance for compilation.
-            project_root: Root of the project for governance gates.
-            contracts_path: Override path to architectural_contracts.yaml.
+        engine: PipelineEngine instance for compilation.
+        project_root: Root of the project for governance gates.
+        contracts_path: Override path to architectural_contracts.yaml.
         """
         self._engine = engine
         self._project_root = project_root
@@ -199,10 +200,7 @@ class AutonomousSession:
                 break
 
         # ── 4. Determine final pass/fail ──
-        result.passed = (
-            len(critic_result.blocking_violations) == 0
-            and len(main_errors) == 0
-        )
+        result.passed = len(critic_result.blocking_violations) == 0 and len(main_errors) == 0
 
         status = "PASSED" if result.passed else "FAILED"
         logger.info(

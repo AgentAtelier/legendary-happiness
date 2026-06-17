@@ -25,8 +25,10 @@ from devforge.execution.interface import ExecutionResult
 
 # ── Fixtures ──────────────────────────────────────────────────────
 
+
 class _MockContent:
     """Fake MCP text content block."""
+
     def __init__(self, text: str):
         self.text = text
         self.type = "text"
@@ -34,6 +36,7 @@ class _MockContent:
 
 class _MockCallToolResult:
     """Fake MCP CallToolResult object."""
+
     def __init__(self, text: str = '{"results": [{"success": true}]}'):
         self.content = [_MockContent(text)]
         self.isError = False
@@ -68,15 +71,18 @@ def mock_transport():
 
     mock_transport_ctx = AsyncMock()
     # streamable_http_client yields (read, write, get_session_id)
-    mock_transport_ctx.__aenter__ = AsyncMock(
-        return_value=(mock_read, mock_write, MagicMock())
-    )
+    mock_transport_ctx.__aenter__ = AsyncMock(return_value=(mock_read, mock_write, MagicMock()))
     mock_transport_ctx.__aexit__ = AsyncMock(return_value=None)
 
-    with patch(
-        "mcp.client.streamable_http.streamable_http_client", return_value=mock_transport_ctx,
-    ) as mock_streamable_http_client, patch(
-        "mcp.ClientSession", return_value=mock_session,
+    with (
+        patch(
+            "mcp.client.streamable_http.streamable_http_client",
+            return_value=mock_transport_ctx,
+        ) as mock_streamable_http_client,
+        patch(
+            "mcp.ClientSession",
+            return_value=mock_session,
+        ),
     ):
         yield {
             "transport_client": mock_streamable_http_client,
@@ -103,6 +109,7 @@ def _shutdown(executor):
 
 # ── Tests: session reuse ──────────────────────────────────────────
 
+
 def test_session_reuse_across_calls(mock_transport):
     """Second call to _ensure_session reuses the same session object."""
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
@@ -111,8 +118,7 @@ def test_session_reuse_across_calls(mock_transport):
         session2 = _run_on_loop(executor, executor._ensure_session())
 
         assert session1 is session2, (
-            "_ensure_session should return the same session object on "
-            "subsequent calls — no reconnect expected"
+            "_ensure_session should return the same session object on subsequent calls — no reconnect expected"
         )
         assert mock_transport["transport_client"].call_count == 1, (
             "streamable_http_client should be called exactly once"
@@ -139,6 +145,7 @@ def test_session_reuse_after_successful_tool_call(mock_transport):
 
 # ── Tests: circuit breaker ────────────────────────────────────────
 
+
 def test_circuit_breaker_not_triggered_below_threshold(mock_transport):
     """A few failures don't open the circuit."""
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
@@ -164,9 +171,7 @@ def test_circuit_breaker_triggers_after_threshold(mock_transport):
         executor._mcp_session = None
         executor._record_mcp_failure()
 
-        assert executor._mcp_next_retry_mono > time.monotonic(), (
-            "Circuit breaker should have set a future retry time"
-        )
+        assert executor._mcp_next_retry_mono > time.monotonic(), "Circuit breaker should have set a future retry time"
 
         with pytest.raises(ConnectionError, match="circuit open"):
             _run_on_loop(executor, executor._ensure_session())
@@ -212,6 +217,7 @@ def test_circuit_breaker_resets_on_successful_reconnect(mock_transport):
 
 # ── Tests: tool failure invalidates session ───────────────────────
 
+
 def test_call_tool_safe_closes_session_on_failure(mock_transport):
     """When session.call_tool() raises, the session is closed."""
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
@@ -234,12 +240,8 @@ def test_call_tool_safe_closes_session_on_failure(mock_transport):
         except ConnectionError:
             pass
 
-        assert executor._mcp_session is None, (
-            "Session should be None after _call_tool_safe failure"
-        )
-        assert executor._mcp_failures >= 1, (
-            "Failure counter should be incremented"
-        )
+        assert executor._mcp_session is None, "Session should be None after _call_tool_safe failure"
+        assert executor._mcp_failures >= 1, "Failure counter should be incremented"
         # Verify sse_ctx cleanup was called
         assert mock_transport["transport_ctx"].__aexit__.called, (
             "streamable_http_client context manager should be __aexit__'d on close"
@@ -260,7 +262,9 @@ def test_session_reconnects_after_call_tool_safe_failure(mock_transport):
             _run_on_loop(
                 executor,
                 executor._call_tool_safe(
-                    executor._mcp_session, name="test", arguments={},
+                    executor._mcp_session,
+                    name="test",
+                    arguments={},
                 ),
             )
         except ConnectionError:
@@ -285,6 +289,7 @@ def test_session_reconnects_after_call_tool_safe_failure(mock_transport):
 
 # ── Tests: _record_mcp_failure edge cases ─────────────────────────
 
+
 def test_record_mcp_failure_below_threshold_does_not_open_circuit():
     """_record_mcp_failure below threshold doesn't set backoff timer."""
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
@@ -293,9 +298,7 @@ def test_record_mcp_failure_below_threshold_does_not_open_circuit():
         executor._mcp_failures = 3
         executor._record_mcp_failure()
 
-        assert executor._mcp_next_retry_mono == 0.0, (
-            "Below threshold, no backoff should be set"
-        )
+        assert executor._mcp_next_retry_mono == 0.0, "Below threshold, no backoff should be set"
         assert executor._mcp_failures == 4
     finally:
         _shutdown(executor)
@@ -324,6 +327,7 @@ def test_record_mcp_failure_exponential_backoff(mock_transport):
 
 
 # ── Tests: execute() with mocked transport ────────────────────────
+
 
 def test_execute_returns_success_result(mock_transport):
     """execute() returns ExecutionResult with success=True on clean run."""
@@ -364,6 +368,7 @@ def test_get_scene_returns_dict(mock_transport):
 
 # ── Tests: mid-execution session death ──────────────────────────
 
+
 def test_execute_reconnects_after_mid_execution_session_death(mock_transport):
     """After the session dies mid-execute, the next execute() reconnects.
 
@@ -378,9 +383,7 @@ def test_execute_reconnects_after_mid_execution_session_death(mock_transport):
         # ── First execute: session dies during batch_execute ──
         # Set up call_tool to succeed for create_file (no files, so skipped),
         # then fail on batch_execute.
-        mock_transport["session"].call_tool.side_effect = ConnectionError(
-            "SSE transport dropped during batch_execute"
-        )
+        mock_transport["session"].call_tool.side_effect = ConnectionError("SSE transport dropped during batch_execute")
 
         result1 = executor.execute(
             operations=[
@@ -390,16 +393,10 @@ def test_execute_reconnects_after_mid_execution_session_death(mock_transport):
         )
 
         # First execute should report failure
-        assert not result1.success, (
-            "First execute should fail when session dies mid-execution"
-        )
+        assert not result1.success, "First execute should fail when session dies mid-execution"
         assert len(result1.errors) > 0, "Error messages should be recorded"
-        assert executor._mcp_session is None, (
-            "Session should be closed after _call_tool_safe caught the error"
-        )
-        assert executor._mcp_failures >= 1, (
-            "Failure counter should be incremented"
-        )
+        assert executor._mcp_session is None, "Session should be closed after _call_tool_safe caught the error"
+        assert executor._mcp_failures >= 1, "Failure counter should be incremented"
 
         # ── Second execute: must reconnect and succeed ──
         # Reset the mock to succeed
@@ -413,16 +410,10 @@ def test_execute_reconnects_after_mid_execution_session_death(mock_transport):
             files=[],
         )
 
-        assert result2.success, (
-            f"Second execute should succeed after reconnect, got: {result2.errors}"
-        )
-        assert executor._mcp_session is not None, (
-            "A new session should be established"
-        )
+        assert result2.success, f"Second execute should succeed after reconnect, got: {result2.errors}"
+        assert executor._mcp_session is not None, "A new session should be established"
         # Failure counter should be reset after successful reconnect
-        assert executor._mcp_failures == 0, (
-            "Failure counter should reset on successful reconnect"
-        )
+        assert executor._mcp_failures == 0, "Failure counter should reset on successful reconnect"
         # streamable_http_client must be called again for the reconnect.
         # NOTE: with the C8 per-operation retry (MAX_BATCH_RETRIES=2,
         # reconnecting between attempts), a permanently-failing first execute
@@ -465,9 +456,7 @@ def test_execute_handles_partial_failure_then_reconnects(mock_transport):
 
         assert not result1.success
         assert executor._mcp_session is None
-        assert executor._mcp_failures >= 1, (
-            "Failure counter should be incremented after mid-execution death"
-        )
+        assert executor._mcp_failures >= 1, "Failure counter should be incremented after mid-execution death"
 
         # ── Reconnect and succeed ──
         mock_transport["session"].call_tool.side_effect = None
@@ -488,6 +477,7 @@ def test_execute_handles_partial_failure_then_reconnects(mock_transport):
 
 
 # ── Tests: circuit breaker from accumulated tool-call failures ──
+
 
 def test_circuit_breaker_opens_from_accumulated_tool_failures(mock_transport):
     """Tool-call failures during execute() push counter past threshold.
@@ -515,30 +505,21 @@ def test_circuit_breaker_opens_from_accumulated_tool_failures(mock_transport):
         assert not result1.success
         assert executor._mcp_session is None
         assert executor._mcp_failures >= 2, (
-            f"Expected counter past threshold (2) from accumulated "
-            f"tool-call failures, got {executor._mcp_failures}"
+            f"Expected counter past threshold (2) from accumulated tool-call failures, got {executor._mcp_failures}"
         )
 
         # ── Step 2: reconnect attempt also fails → circuit opens ──
         # Make streamable_http_client's context manager raise on __aenter__
-        mock_transport["transport_ctx"].__aenter__.side_effect = ConnectionError(
-            "godot-ai unreachable"
-        )
+        mock_transport["transport_ctx"].__aenter__.side_effect = ConnectionError("godot-ai unreachable")
 
         # _ensure_session will fail → _record_mcp_failure called
         # -> counter goes 3→4 -> circuit opens with backoff
         with pytest.raises(ConnectionError, match="godot-ai unreachable"):
             _run_on_loop(executor, executor._ensure_session())
 
-        assert executor._mcp_failures >= executor._mcp_failure_threshold, (
-            "Counter should be at or past threshold"
-        )
-        assert executor._mcp_next_retry_mono > time.monotonic(), (
-            "Circuit breaker should have set a future retry time"
-        )
-        assert executor._mcp_backoff_ms >= 2000, (
-            "Backoff should have doubled from the initial 1000ms"
-        )
+        assert executor._mcp_failures >= executor._mcp_failure_threshold, "Counter should be at or past threshold"
+        assert executor._mcp_next_retry_mono > time.monotonic(), "Circuit breaker should have set a future retry time"
+        assert executor._mcp_backoff_ms >= 2000, "Backoff should have doubled from the initial 1000ms"
 
         # ── Step 3: immediate retry is blocked by circuit ──
         with pytest.raises(ConnectionError, match="circuit open"):
@@ -553,9 +534,7 @@ def test_circuit_breaker_opens_from_accumulated_tool_failures(mock_transport):
 
         session = _run_on_loop(executor, executor._ensure_session())
         assert session is not None
-        assert executor._mcp_failures == 0, (
-            "Counter should reset after successful reconnect"
-        )
+        assert executor._mcp_failures == 0, "Counter should reset after successful reconnect"
 
         # ── Step 5: now execute() works end-to-end ──
         result2 = executor.execute(
@@ -569,10 +548,12 @@ def test_circuit_breaker_opens_from_accumulated_tool_failures(mock_transport):
 
 # ── Tests: concurrent _ensure_session ─────────────────────────────
 
+
 def test_concurrent_ensure_session_only_connects_once(mock_transport):
     """Two racing _ensure_session tasks produce exactly one connection."""
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
     try:
+
         async def two_racers():
             # First, kill the session
             executor._mcp_session = None
@@ -586,9 +567,7 @@ def test_concurrent_ensure_session_only_connects_once(mock_transport):
         session_a, session_b = _run_on_loop(executor, two_racers())
 
         # Both should get the same session object
-        assert session_a is session_b, (
-            "Racing _ensure_session calls should return the same session"
-        )
+        assert session_a is session_b, "Racing _ensure_session calls should return the same session"
         # Only one transport connection
         assert mock_transport["transport_client"].call_count == 1
     finally:
@@ -596,6 +575,7 @@ def test_concurrent_ensure_session_only_connects_once(mock_transport):
 
 
 # ── Tests: shutdown ───────────────────────────────────────────────
+
 
 def test_shutdown_stops_background_loop(mock_transport):
     """shutdown() closes the session and stops the event loop."""
@@ -605,9 +585,7 @@ def test_shutdown_stops_background_loop(mock_transport):
     executor._thread.join(timeout=2.0)
     # loop.stop() stops run_forever but doesn't close the loop.
     # is_running() is the correct signal here.
-    assert not executor._loop.is_running(), (
-        "Event loop should not be running after shutdown"
-    )
+    assert not executor._loop.is_running(), "Event loop should not be running after shutdown"
 
 
 def test_shutdown_idempotent(mock_transport):
@@ -624,29 +602,32 @@ def test_shutdown_idempotent(mock_transport):
 # create_node, ...), not the category-prefixed MCP tool names
 # (script_attach, node_create, ...). Node targets are read from `path`.
 
+
 def test_translate_uses_plugin_command_names():
     """Every op maps to a command registered in godot-ai's dispatcher."""
-    commands = GodotAIMCPExecutor._translate_ops_to_commands([
-        {"type": "add_node", "parent": "/root/Main",
-         "node_type": "Camera3D", "name": "Cam"},
-        {"type": "set_property", "node": "/root/Main/Cam",
-         "property": "fov", "value": 90},
-        {"type": "attach_script", "node": "/root/Main/Cam",
-         "script": "scripts/cam.gd"},
-        {"type": "connect_signal", "source": "/root/Main/Btn",
-         "signal": "pressed", "target": "/root/Main", "method": "_on_pressed"},
-    ])
+    commands = GodotAIMCPExecutor._translate_ops_to_commands(
+        [
+            {"type": "add_node", "parent": "/root/Main", "node_type": "Camera3D", "name": "Cam"},
+            {"type": "set_property", "node": "/root/Main/Cam", "property": "fov", "value": 90},
+            {"type": "attach_script", "node": "/root/Main/Cam", "script": "scripts/cam.gd"},
+            {
+                "type": "connect_signal",
+                "source": "/root/Main/Btn",
+                "signal": "pressed",
+                "target": "/root/Main",
+                "method": "_on_pressed",
+            },
+        ]
+    )
 
     assert commands == [
-        {"command": "create_node", "params": {
-            "parent_path": "/root/Main", "type": "Camera3D", "name": "Cam"}},
-        {"command": "set_property", "params": {
-            "path": "/root/Main/Cam", "property": "fov", "value": 90}},
-        {"command": "attach_script", "params": {
-            "path": "/root/Main/Cam", "script_path": "res://scripts/cam.gd"}},
-        {"command": "connect_signal", "params": {
-            "path": "/root/Main/Btn", "signal": "pressed",
-            "target": "/root/Main", "method": "_on_pressed"}},
+        {"command": "create_node", "params": {"parent_path": "/root/Main", "type": "Camera3D", "name": "Cam"}},
+        {"command": "set_property", "params": {"path": "/root/Main/Cam", "property": "fov", "value": 90}},
+        {"command": "attach_script", "params": {"path": "/root/Main/Cam", "script_path": "res://scripts/cam.gd"}},
+        {
+            "command": "connect_signal",
+            "params": {"path": "/root/Main/Btn", "signal": "pressed", "target": "/root/Main", "method": "_on_pressed"},
+        },
     ]
 
 
@@ -669,8 +650,7 @@ def test_script_create_sends_res_path(mock_transport):
         # execute() also fetches the scene snapshot afterwards — find
         # the script_create call among all tool calls.
         creates = [
-            c for c in mock_transport["session"].call_tool.call_args_list
-            if c.kwargs.get("name") == "script_create"
+            c for c in mock_transport["session"].call_tool.call_args_list if c.kwargs.get("name") == "script_create"
         ]
         assert len(creates) == 1
         assert creates[0].kwargs["arguments"]["path"] == "res://scripts/player.gd"
@@ -680,14 +660,14 @@ def test_script_create_sends_res_path(mock_transport):
 
 # ── Tests: read_logs (WO-003) ────────────────────────────────────
 
+
 def test_read_logs_returns_text(mock_transport):
     """read_logs() returns the log text from the mocked logs_read tool."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
     log_msg = "player.gd:42 - Invalid call. Nonexistent function 'move' in base 'Node3D'."
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps(log_msg)
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps(log_msg))
     try:
         logs = executor.read_logs()
         assert logs is not None
@@ -710,14 +690,14 @@ def test_read_logs_returns_none_on_failure(mock_transport):
 
 # ── Tests: resolve_node_properties (WO-004) ──────────────────────
 
+
 def test_resolve_node_properties_returns_dict(mock_transport):
     """resolve_node_properties() returns a property dict from mocked transport."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
     props = {"current": True, "fov": 75.0, "near": 0.05}
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps(props)
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps(props))
     try:
         result = executor.resolve_node_properties("/root/Main/Camera")
         assert result is not None
@@ -740,14 +720,14 @@ def test_resolve_node_properties_returns_none_on_failure(mock_transport):
 
 # ── Tests: get_performance_monitors (WO-010) ─────────────────────
 
+
 def test_get_performance_monitors_returns_dict(mock_transport):
     """get_performance_monitors() returns a metrics dict from mocked transport."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
     metrics = {"time/fps": 60.0, "rendering/total_draw_calls": 120}
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps(metrics)
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps(metrics))
     try:
         result = executor.get_performance_monitors()
         assert result is not None
@@ -777,10 +757,9 @@ def test_get_performance_monitors_wire_shape(mock_transport):
     tests pin the verified contracts.
     """
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps({"time/fps": 60.0})
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps({"time/fps": 60.0}))
     try:
         result = executor.get_performance_monitors(monitors=["time/fps"])
         assert result is not None
@@ -811,6 +790,7 @@ def test_game_eval_wire_shape(mock_transport):
 def test_take_screenshot_wire_shape(mock_transport):
     """Screenshots use the dedicated editor_screenshot tool, source=game."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
     mock_transport["session"].call_tool.return_value = _MockCallToolResult(
         json.dumps({"source": "game", "width": 640, "height": 360})
@@ -829,10 +809,9 @@ def test_take_screenshot_wire_shape(mock_transport):
 def test_run_project_wire_shape(mock_transport):
     """Launching uses the dedicated project_run tool (project_manage has no run op)."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps({"status": "running"})
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps({"status": "running"}))
     try:
         result = executor.run_project()
         assert result == {"status": "running"}
@@ -846,10 +825,9 @@ def test_run_project_wire_shape(mock_transport):
 def test_stop_project_wire_shape(mock_transport):
     """Stopping uses project_manage with op 'stop' (not 'stop_project')."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps({"status": "stopped"})
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps({"status": "stopped"}))
     try:
         result = executor.stop_project()
         assert result == {"status": "stopped"}
@@ -863,10 +841,9 @@ def test_stop_project_wire_shape(mock_transport):
 def test_find_symbols_wire_shape(mock_transport):
     """find_symbols nests its path under params (manage-tool convention)."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
-    mock_transport["session"].call_tool.return_value = _MockCallToolResult(
-        json.dumps({"functions": ["take_damage"]})
-    )
+    mock_transport["session"].call_tool.return_value = _MockCallToolResult(json.dumps({"functions": ["take_damage"]}))
     try:
         result = executor.find_symbols("scripts/player.gd")
         assert result == {"functions": ["take_damage"]}
@@ -882,6 +859,7 @@ def test_find_symbols_wire_shape(mock_transport):
 def test_search_filesystem_wire_shape(mock_transport):
     """Filesystem search uses op 'search' with a 'name' param."""
     import json
+
     executor = GodotAIMCPExecutor(mcp_url="http://test/mcp")
     mock_transport["session"].call_tool.return_value = _MockCallToolResult(
         json.dumps({"files": ["res://scripts/player.gd"]})
@@ -907,8 +885,7 @@ def test_batch_result_status_ok_counts_as_success():
     norm = GodotAIMCPExecutor._normalize_op_result
     ok = norm({"command": "create_node", "status": "ok", "data": {}})
     assert ok["success"] is True
-    err = norm({"command": "create_node", "status": "error",
-                "error": "no parent"})
+    err = norm({"command": "create_node", "status": "error", "error": "no parent"})
     assert err["success"] is False
     # already-normalized results pass through untouched
     assert norm({"success": False, "status": "ok"})["success"] is False
@@ -916,10 +893,10 @@ def test_batch_result_status_ok_counts_as_success():
     assert norm("text-result") == "text-result"
 
     from devforge.execution.interface import ExecutionResult
+
     result = ExecutionResult(
         success=True,
-        results=[norm({"command": "create_node", "status": "ok"}),
-                 norm({"command": "create_node", "status": "ok"})],
+        results=[norm({"command": "create_node", "status": "ok"}), norm({"command": "create_node", "status": "ok"})],
         errors=[],
     )
     assert result.success_count == 2
@@ -943,8 +920,12 @@ def test_unwrap_scene_hierarchy_rebuilds_flat_list():
             {"children_count": 0, "name": "Camera3D", "path": "/Main/Camera3D", "type": "Camera3D"},
             {"children_count": 0, "name": "Sun", "path": "/Main/Sun", "type": "DirectionalLight3D"},
             {"children_count": 1, "name": "Ground", "path": "/Main/Ground", "type": "StaticBody3D"},
-            {"children_count": 0, "name": "CollisionShape3D",
-             "path": "/Main/Ground/CollisionShape3D", "type": "CollisionShape3D"},
+            {
+                "children_count": 0,
+                "name": "CollisionShape3D",
+                "path": "/Main/Ground/CollisionShape3D",
+                "type": "CollisionShape3D",
+            },
         ],
         "total_count": 5,
     }
@@ -978,34 +959,30 @@ def test_completeness_no_duplicates_and_default_mesh():
     from devforge.compilation.pipeline.completeness import CompletenessChecker
 
     scene = {
-        "name": "Main", "type": "Node3D",
+        "name": "Main",
+        "type": "Node3D",
         "children": [
             {"name": "Camera3D", "type": "Camera3D", "children": []},
             {"name": "Sun", "type": "DirectionalLight3D", "children": []},
         ],
     }
-    ops = [{"type": "add_node", "parent": "/root/Main",
-            "node_type": "MeshInstance3D", "name": "CenterCube"}]
+    ops = [{"type": "add_node", "parent": "/root/Main", "node_type": "MeshInstance3D", "name": "CenterCube"}]
     out = CompletenessChecker().enforce([], ops, scene)
 
     types_added = [o.get("node_type") for o in out if o.get("type") == "add_node"]
     assert "Camera3D" not in types_added, "duplicate camera injected"
     assert "DirectionalLight3D" not in types_added, "duplicate light injected"
 
-    mesh_ops = [o for o in out if o.get("type") == "set_property"
-                and o.get("property") == "mesh"]
+    mesh_ops = [o for o in out if o.get("type") == "set_property" and o.get("property") == "mesh"]
     assert len(mesh_ops) == 1
     assert mesh_ops[0]["node"] == "/root/Main/CenterCube"
     assert mesh_ops[0]["value"]["__class__"] == "BoxMesh"
 
     # If the plan already sets a mesh, don't double-inject
     ops2 = [
-        {"type": "add_node", "parent": "/root/Main",
-         "node_type": "MeshInstance3D", "name": "Orb"},
-        {"type": "set_property", "node": "/root/Main/Orb",
-         "property": "mesh", "value": {"__class__": "SphereMesh"}},
+        {"type": "add_node", "parent": "/root/Main", "node_type": "MeshInstance3D", "name": "Orb"},
+        {"type": "set_property", "node": "/root/Main/Orb", "property": "mesh", "value": {"__class__": "SphereMesh"}},
     ]
     out2 = CompletenessChecker().enforce([], ops2, scene)
-    mesh_ops2 = [o for o in out2 if o.get("type") == "set_property"
-                 and o.get("property") == "mesh"]
+    mesh_ops2 = [o for o in out2 if o.get("type") == "set_property" and o.get("property") == "mesh"]
     assert len(mesh_ops2) == 1

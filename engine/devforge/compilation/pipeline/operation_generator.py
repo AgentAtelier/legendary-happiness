@@ -9,7 +9,6 @@ from devforge.infrastructure.logger import logger
 
 
 class OperationGenerator:
-
     def generate_from_plan(self, plan: DevForgePlan) -> Dict[str, Any]:
         """Generate operations from a validated DevForgePlan."""
         return plan.compile_all()

@@ -8,7 +8,6 @@ from typing import Dict, Any, List
 
 
 class DesignMemory:
-
     def __init__(self, path: str = "memory/design_memory.json"):
 
         self.path = Path(path)
@@ -28,10 +27,7 @@ class DesignMemory:
 
         record = {
             "systems": systems,
-            "metrics": {
-                name: metric.value
-                for name, metric in metrics.items()
-            },
+            "metrics": {name: metric.value for name, metric in metrics.items()},
             "critique": critique,
         }
 
@@ -64,7 +60,6 @@ class DesignMemory:
             return
 
         with open(self.path, "r") as f:
-
             self.records = json.load(f)
 
     # ---------------------------------------------------------
@@ -74,5 +69,4 @@ class DesignMemory:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(self.path, "w") as f:
-
             json.dump(self.records, f, indent=2)

@@ -3,7 +3,6 @@ from devforge.reasoning.ai.design.game_architect import GameArchitect
 
 
 class ArchitectAgent(Agent):
-
     def __init__(self, llm=None):
 
         super().__init__("architect", llm)
@@ -16,6 +15,4 @@ class ArchitectAgent(Agent):
 
         graph = self.architect.synthesize(prompt, self.llm)
 
-        return {
-            "system_graph": graph
-        }
+        return {"system_graph": graph}

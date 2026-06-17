@@ -27,7 +27,8 @@ def test_default_bucket_exists() -> None:
 def test_budget_exceed_raises_429() -> None:
     """Requests exceeding the budget limit get a 429."""
     from devforge.infrastructure.llm.gateway import (
-        _check_budget, _record_usage,
+        _check_budget,
+        _record_usage,
         BUDGET_LIMIT_TOKENS,
     )
     from fastapi import HTTPException
@@ -52,7 +53,8 @@ def test_budget_exceed_raises_429() -> None:
 def test_budget_below_limit_passes() -> None:
     """Requests below the budget limit pass."""
     from devforge.infrastructure.llm.gateway import (
-        _check_budget, _record_usage,
+        _check_budget,
+        _record_usage,
     )
 
     test_key = f"__test_below_{time.monotonic()}"
@@ -65,7 +67,9 @@ def test_budget_below_limit_passes() -> None:
 def test_sliding_expiry_resets_on_usage() -> None:
     """Active turns don't expire mid-pipeline — expiry resets on record."""
     from devforge.infrastructure.llm.gateway import (
-        _check_budget, _record_usage, _turn_budgets,  # noqa: F401
+        _check_budget,
+        _record_usage,
+        _turn_budgets,  # noqa: F401
     )
 
     test_key = f"__test_sliding_{time.monotonic()}"
@@ -90,15 +94,15 @@ def test_strict_mode_env_var_configurable() -> None:
     # The env var path is tested by setting os.environ and re-reading.
     # Rather than mutating the module global, we verify the env-var
     # parsing logic: '1' → True, anything else → False.
-    assert gw.GATEWAY_STRICT_BUDGET == (
-        gw.os.environ.get("GATEWAY_STRICT_BUDGET", "0") == "1"
-    )
+    assert gw.GATEWAY_STRICT_BUDGET == (gw.os.environ.get("GATEWAY_STRICT_BUDGET", "0") == "1")
 
 
 def test_expired_entry_purged_on_lookup() -> None:
     """Entries past TURN_EXPIRY_SECONDS are purged and get a fresh budget."""
     from devforge.infrastructure.llm.gateway import (
-        _check_budget, _record_usage, _turn_budgets,  # noqa: F401
+        _check_budget,
+        _record_usage,
+        _turn_budgets,  # noqa: F401
         TURN_EXPIRY_SECONDS,
     )
 
@@ -120,7 +124,8 @@ def test_expired_entry_purged_on_lookup() -> None:
 def test_separate_turns_have_separate_budgets() -> None:
     """Two different turn_ids get independent budgets."""
     from devforge.infrastructure.llm.gateway import (
-        _check_budget, _record_usage,
+        _check_budget,
+        _record_usage,
     )
 
     turn_a = f"__test_turn_a_{time.monotonic()}"

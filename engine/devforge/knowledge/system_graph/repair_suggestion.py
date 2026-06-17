@@ -16,7 +16,6 @@ class RepairSuggestionEngine:
 
         # Missing nodes
         for node_id in diff.missing_nodes:
-
             operations.append(
                 {
                     "type": "create_node",
@@ -26,7 +25,6 @@ class RepairSuggestionEngine:
 
         # Missing edges
         for edge in diff.missing_edges:
-
             operations.append(
                 {
                     "type": "create_edge",

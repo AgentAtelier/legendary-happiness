@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── simulate_combat ──────────────────────────────────────────────
 
+
 def test_player_wins_easy_encounter() -> None:
     """Player with strong stats wins a 1v1 against a weak goblin."""
     from devforge.simulator.simulator import simulate_combat, Combatant
@@ -78,15 +79,15 @@ def test_win_probability_converges() -> None:
     enemy = Combatant(id="clone", name="Clone", hp=50, attack=10, defense=5, speed=10)
 
     result = monte_carlo_encounter(
-        player, [enemy],
-        encounter_id="test", encounter_name="Test",
+        player,
+        [enemy],
+        encounter_id="test",
+        encounter_name="Test",
         simulations=2000,
     )
 
     # Player has first-turn advantage (tie goes to player for equal speed)
-    assert 0.50 <= result.win_probability <= 0.75, (
-        f"Expected win probability ~0.55-0.70, got {result.win_probability}"
-    )
+    assert 0.50 <= result.win_probability <= 0.75, f"Expected win probability ~0.55-0.70, got {result.win_probability}"
     assert result.total_simulations == 2000
     assert result.player_wins + result.player_losses == 2000
 
@@ -104,6 +105,7 @@ def test_varied_damage_rolls() -> None:
 
 
 # ── Combatant helpers ────────────────────────────────────────────
+
 
 def test_combatant_clone_is_independent() -> None:
     """Clone creates an independent copy."""
@@ -127,6 +129,7 @@ def test_combatant_heal_capped() -> None:
 
 
 # ── evaluate_encounter ───────────────────────────────────────────
+
 
 def test_evaluate_encounter_returns_valid_result() -> None:
     """evaluate_encounter produces correct result dict."""
@@ -173,6 +176,7 @@ def test_evaluate_encounter_missing_enemy_warns() -> None:
 
 # ── Monte Carlo gauntlet ─────────────────────────────────────────
 
+
 def test_monte_carlo_gauntlet_player_dies() -> None:
     """In a gauntlet of tough enemies, player win rate drops across encounters."""
     from devforge.simulator.simulator import monte_carlo_gauntlet, Combatant
@@ -188,7 +192,10 @@ def test_monte_carlo_gauntlet_player_dies() -> None:
     enemy_lookup = {"goblin": goblin_data}
 
     results = monte_carlo_gauntlet(
-        player, encounters, enemy_lookup, simulations=500,
+        player,
+        encounters,
+        enemy_lookup,
+        simulations=500,
     )
 
     assert len(results) == 2
@@ -197,6 +204,7 @@ def test_monte_carlo_gauntlet_player_dies() -> None:
 
 
 # ── evaluate_level_progression ───────────────────────────────────
+
 
 def test_level_progression_finds_sweet_spots() -> None:
     """Level progression identifies levels where encounters are balanced."""

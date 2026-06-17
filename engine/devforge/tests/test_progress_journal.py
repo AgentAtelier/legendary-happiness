@@ -145,6 +145,7 @@ def test_thread_safety() -> None:
 
     j = Journal(path=os.path.join(tempfile.mkdtemp(), "test.jsonl"))
     try:
+
         def append_many(prefix: str):
             for i in range(20):
                 j.append("test", f"{prefix}{i}", {})

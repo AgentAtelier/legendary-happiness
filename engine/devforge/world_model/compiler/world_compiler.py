@@ -14,8 +14,6 @@ class WorldCompiler:
 
         operations = []
 
-        operations.extend(
-            self.entity_compiler.compile(world)
-        )
+        operations.extend(self.entity_compiler.compile(world))
 
         return operations

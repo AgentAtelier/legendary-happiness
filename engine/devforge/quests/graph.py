@@ -26,9 +26,9 @@ class GraphIssue:
     """A reachability or soft-lock issue found in the quest graph."""
 
     issue_type: str  # "unreachable" | "cycle" | "item_deadlock" | "flag_deadlock"
-    severity: str    # "CRITICAL" | "WARNING"
+    severity: str  # "CRITICAL" | "WARNING"
     quests: list[str]  # involved quest IDs
-    message: str     # plain-language explanation of the problem
+    message: str  # plain-language explanation of the problem
 
     def to_dict(self) -> dict:
         return {
@@ -65,10 +65,7 @@ class QuestGraph:
 
     def start_nodes(self) -> list[str]:
         """Quests with no prerequisites — the entry points."""
-        return [
-            qid for qid, q in self._quests.items()
-            if not q.prerequisites
-        ]
+        return [qid for qid, q in self._quests.items() if not q.prerequisites]
 
     def _compute_reachable(self) -> set[str]:
         """Compute the set of quests reachable from start nodes via BFS."""
@@ -104,17 +101,19 @@ class QuestGraph:
         if not unreachable:
             return []
 
-        return [GraphIssue(
-            issue_type="unreachable",
-            severity="CRITICAL",
-            quests=sorted(unreachable),
-            message=(
-                f"{len(unreachable)} quest(s) are unreachable from any "
-                f"starting quest: {', '.join(sorted(unreachable))}. "
-                f"Check prerequisites — these quests may have missing or "
-                f"circular dependencies."
-            ),
-        )]
+        return [
+            GraphIssue(
+                issue_type="unreachable",
+                severity="CRITICAL",
+                quests=sorted(unreachable),
+                message=(
+                    f"{len(unreachable)} quest(s) are unreachable from any "
+                    f"starting quest: {', '.join(sorted(unreachable))}. "
+                    f"Check prerequisites — these quests may have missing or "
+                    f"circular dependencies."
+                ),
+            )
+        ]
 
     def find_cycles(self) -> list[GraphIssue]:
         """Find prerequisite cycles (A requires B, B requires A)."""
@@ -156,16 +155,18 @@ class QuestGraph:
         issues: list[GraphIssue] = []
         for cycle in unique_cycles:
             cycle_str = " → ".join(cycle)
-            issues.append(GraphIssue(
-                issue_type="cycle",
-                severity="CRITICAL",
-                quests=cycle,
-                message=(
-                    f"Prerequisite cycle detected: {cycle_str}. "
-                    f"This creates a soft-lock — no quest in the cycle "
-                    f"can ever be started."
-                ),
-            ))
+            issues.append(
+                GraphIssue(
+                    issue_type="cycle",
+                    severity="CRITICAL",
+                    quests=cycle,
+                    message=(
+                        f"Prerequisite cycle detected: {cycle_str}. "
+                        f"This creates a soft-lock — no quest in the cycle "
+                        f"can ever be started."
+                    ),
+                )
+            )
         return issues
 
     def find_item_deadlocks(self) -> list[GraphIssue]:
@@ -177,17 +178,19 @@ class QuestGraph:
         for qid, q in self._quests.items():
             for item in q.required_items:
                 if item in q.grants_items:
-                    issues.append(GraphIssue(
-                        issue_type="item_deadlock",
-                        severity="WARNING",
-                        quests=[qid],
-                        message=(
-                            f"Quest '{q.name or qid}' requires item "
-                            f"'{item}' but also grants it — the player "
-                            f"can never satisfy this requirement on "
-                            f"the first playthrough."
-                        ),
-                    ))
+                    issues.append(
+                        GraphIssue(
+                            issue_type="item_deadlock",
+                            severity="WARNING",
+                            quests=[qid],
+                            message=(
+                                f"Quest '{q.name or qid}' requires item "
+                                f"'{item}' but also grants it — the player "
+                                f"can never satisfy this requirement on "
+                                f"the first playthrough."
+                            ),
+                        )
+                    )
                     continue
 
                 # Check if the item can come from any reachable source
@@ -200,17 +203,19 @@ class QuestGraph:
                         break
 
                 if not can_obtain:
-                    issues.append(GraphIssue(
-                        issue_type="item_deadlock",
-                        severity="CRITICAL",
-                        quests=[qid],
-                        message=(
-                            f"Quest '{q.name or qid}' requires item "
-                            f"'{item}' but no reachable quest grants it. "
-                            f"Either add a quest that grants '{item}' "
-                            f"or remove it from the requirements."
-                        ),
-                    ))
+                    issues.append(
+                        GraphIssue(
+                            issue_type="item_deadlock",
+                            severity="CRITICAL",
+                            quests=[qid],
+                            message=(
+                                f"Quest '{q.name or qid}' requires item "
+                                f"'{item}' but no reachable quest grants it. "
+                                f"Either add a quest that grants '{item}' "
+                                f"or remove it from the requirements."
+                            ),
+                        )
+                    )
 
         return issues
 
@@ -224,28 +229,25 @@ class QuestGraph:
         for qid, q in self._quests.items():
             for flag in q.required_flags:
                 if flag not in all_set_flags:
-                    issues.append(GraphIssue(
-                        issue_type="flag_deadlock",
-                        severity="CRITICAL",
-                        quests=[qid],
-                        message=(
-                            f"Quest '{q.name or qid}' requires flag "
-                            f"'{flag}' but no quest sets it. "
-                            f"Either add a quest that sets '{flag}' "
-                            f"or remove it from the requirements."
-                        ),
-                    ))
+                    issues.append(
+                        GraphIssue(
+                            issue_type="flag_deadlock",
+                            severity="CRITICAL",
+                            quests=[qid],
+                            message=(
+                                f"Quest '{q.name or qid}' requires flag "
+                                f"'{flag}' but no quest sets it. "
+                                f"Either add a quest that sets '{flag}' "
+                                f"or remove it from the requirements."
+                            ),
+                        )
+                    )
 
         return issues
 
     def validate(self) -> dict:
         """Run all checks and return aggregated results."""
-        issues = (
-            self.find_unreachable()
-            + self.find_cycles()
-            + self.find_item_deadlocks()
-            + self.find_flag_deadlocks()
-        )
+        issues = self.find_unreachable() + self.find_cycles() + self.find_item_deadlocks() + self.find_flag_deadlocks()
 
         critical = sum(1 for i in issues if i.severity == "CRITICAL")
         warning = sum(1 for i in issues if i.severity == "WARNING")

@@ -39,6 +39,7 @@ def run() -> int:
     print("Checking server module...")
     try:
         import devforge.platform.server.server
+
         print("  OK  Server module loads\n")
     except Exception as e:
         errors.append(("server", str(e)))
@@ -48,6 +49,7 @@ def run() -> int:
     print("Checking LLM router...")
     try:
         from devforge.infrastructure.llm.router import LLMRouter
+
         router = LLMRouter()
         router.configure_mock()
         router.generate("test")
@@ -66,6 +68,7 @@ def run() -> int:
         import devforge.compilation.pipeline.repair_engine
         import devforge.compilation.pipeline.context_assembler
         import devforge.compilation.pipeline.operation_generator
+
         print("  OK  All pipeline components load\n")
     except Exception as e:
         errors.append(("pipeline", str(e)))

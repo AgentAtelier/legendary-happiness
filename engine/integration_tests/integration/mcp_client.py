@@ -15,8 +15,7 @@ from typing import Any
 class MCPClient:
     """Lightweight MCP client for calling DevForge tools over SSE."""
 
-    def __init__(self, mcp_url: str = "http://localhost:8001/sse",
-                 timeout: float = 180.0):
+    def __init__(self, mcp_url: str = "http://localhost:8001/sse", timeout: float = 180.0):
         self._mcp_url = mcp_url
         self._timeout = timeout
 
@@ -30,8 +29,7 @@ class MCPClient:
             return result
         return {"raw": str(result), "errors": ["Non-dict response from apply_spec"]}
 
-    async def read_artifact(self, artifact_id: str,
-                           section: str | None = None) -> dict:
+    async def read_artifact(self, artifact_id: str, section: str | None = None) -> dict:
         """Fetch full details of a previous apply_spec result."""
         arguments = {"artifact_id": artifact_id}
         if section:

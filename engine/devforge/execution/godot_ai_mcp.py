@@ -48,12 +48,12 @@ class GodotAIMCPExecutor(Executor):
     TOOL_SCENE_HIERARCHY = "scene_get_hierarchy"
     TOOL_LOGS_READ = "logs_read"
     TOOL_NODE_GET_PROPERTIES = "node_get_properties"
-    TOOL_EDITOR_MANAGE = "editor_manage"          # ops: monitors_get, game_eval, state, ...
+    TOOL_EDITOR_MANAGE = "editor_manage"  # ops: monitors_get, game_eval, state, ...
     TOOL_EDITOR_SCREENSHOT = "editor_screenshot"  # dedicated tool, source="game"|"viewport"
-    TOOL_SCRIPT_MANAGE = "script_manage"          # ops: read, detach, find_symbols
+    TOOL_SCRIPT_MANAGE = "script_manage"  # ops: read, detach, find_symbols
     TOOL_FILESYSTEM_MANAGE = "filesystem_manage"  # ops: read_text, write_text, reimport, search
-    TOOL_PROJECT_RUN = "project_run"              # dedicated tool: mode, scene, autosave
-    TOOL_PROJECT_MANAGE = "project_manage"        # ops: stop, settings_get, settings_set
+    TOOL_PROJECT_RUN = "project_run"  # dedicated tool: mode, scene, autosave
+    TOOL_PROJECT_MANAGE = "project_manage"  # ops: stop, settings_get, settings_set
 
     # DevForge operation type -> godot-ai command mapping
     # batch_execute dispatches on the PLUGIN command names registered in
@@ -196,14 +196,11 @@ class GodotAIMCPExecutor(Executor):
         except Exception as exc:
             logger.error(
                 "executor.mcp",
-                f"Property resolution failed for {node_path}: "
-                f"{type(exc).__name__}: {exc}",
+                f"Property resolution failed for {node_path}: {type(exc).__name__}: {exc}",
             )
             return None
 
-    def get_performance_monitors(
-        self, monitors: list[str] | None = None
-    ) -> dict | None:
+    def get_performance_monitors(self, monitors: list[str] | None = None) -> dict | None:
         """Fetch live performance metrics from the Godot editor.
 
         Calls godot-ai's ``performance_monitors_get`` tool.  If
@@ -220,8 +217,7 @@ class GodotAIMCPExecutor(Executor):
         except Exception as exc:
             logger.error(
                 "executor.mcp",
-                f"Performance monitors fetch failed: "
-                f"{type(exc).__name__}: {exc}",
+                f"Performance monitors fetch failed: {type(exc).__name__}: {exc}",
             )
             return None
 
@@ -238,13 +234,15 @@ class GodotAIMCPExecutor(Executor):
         except Exception as exc:
             logger.error(
                 "executor.mcp",
-                f"find_symbols failed for {path}: "
-                f"{type(exc).__name__}: {exc}",
+                f"find_symbols failed for {path}: {type(exc).__name__}: {exc}",
             )
             return None
 
     def search_filesystem(
-        self, query: str, path: str = "res://", recursive: bool = True,
+        self,
+        query: str,
+        path: str = "res://",
+        recursive: bool = True,
     ) -> dict | None:
         """Search the project filesystem for files matching *query*.
 
@@ -253,14 +251,11 @@ class GodotAIMCPExecutor(Executor):
         """
         logger.info("executor.mcp", f"Searching filesystem for '{query}'")
         try:
-            return self._run(
-                self._search_filesystem_async(query, path, recursive)
-            )
+            return self._run(self._search_filesystem_async(query, path, recursive))
         except Exception as exc:
             logger.error(
                 "executor.mcp",
-                f"search_filesystem failed for '{query}': "
-                f"{type(exc).__name__}: {exc}",
+                f"search_filesystem failed for '{query}': {type(exc).__name__}: {exc}",
             )
             return None
 
@@ -315,8 +310,7 @@ class GodotAIMCPExecutor(Executor):
             if now < self._mcp_next_retry_mono:
                 wait_ms = int((self._mcp_next_retry_mono - now) * 1000)
                 raise ConnectionError(
-                    f"MCP session circuit open after {self._mcp_failures} "
-                    f"consecutive failures — retry in {wait_ms}ms"
+                    f"MCP session circuit open after {self._mcp_failures} consecutive failures — retry in {wait_ms}ms"
                 )
 
             # Tear down any stale transport state
@@ -344,9 +338,7 @@ class GodotAIMCPExecutor(Executor):
 
             except Exception as exc:
                 self._record_mcp_failure()
-                raise ConnectionError(
-                    f"Failed to establish MCP session to {self._mcp_url}: {exc}"
-                ) from exc
+                raise ConnectionError(f"Failed to establish MCP session to {self._mcp_url}: {exc}") from exc
 
     async def _close_session(self):
         """Close the persistent MCP session and its transport."""
@@ -395,13 +387,10 @@ class GodotAIMCPExecutor(Executor):
             mono = time.monotonic()
             current_backoff = self._mcp_backoff_ms
             self._mcp_next_retry_mono = mono + current_backoff / 1000.0
-            self._mcp_backoff_ms = min(
-                current_backoff * 2, self._mcp_max_backoff_ms
-            )
+            self._mcp_backoff_ms = min(current_backoff * 2, self._mcp_max_backoff_ms)
             logger.warn(
                 "executor.mcp",
-                f"MCP session circuit OPEN after {self._mcp_failures} "
-                f"failures — backoff {current_backoff}ms",
+                f"MCP session circuit OPEN after {self._mcp_failures} failures — backoff {current_backoff}ms",
             )
 
     def run_project(self, mode: str = "main", scene: str = "") -> dict | None:
@@ -497,7 +486,8 @@ class GodotAIMCPExecutor(Executor):
             content = f.get("content", "")
             if path:
                 try:
-                    await self._call_tool_safe(session,
+                    await self._call_tool_safe(
+                        session,
                         name="script_create",
                         arguments={
                             "path": self._res_path(path),
@@ -505,8 +495,7 @@ class GodotAIMCPExecutor(Executor):
                         },
                     )
                 except Exception as exc:
-                    logger.warn("executor.mcp",
-                                f"File creation failed for {path}: {exc}")
+                    logger.warn("executor.mcp", f"File creation failed for {path}: {exc}")
 
         # 2. Execute scene operations with bounded retry on transient failures.
         # C8: godot-ai can drop calls during editor importing, WS blips, or
@@ -521,7 +510,8 @@ class GodotAIMCPExecutor(Executor):
             for batch_attempt in range(MAX_BATCH_RETRIES + 1):
                 try:
                     commands = self._translate_ops_to_commands(operations)
-                    batch_result = await self._call_tool_safe(session,
+                    batch_result = await self._call_tool_safe(
+                        session,
                         name=self.TOOL_BATCH_EXECUTE,
                         arguments={"commands": commands},
                     )
@@ -536,7 +526,7 @@ class GodotAIMCPExecutor(Executor):
                     break  # success
                 except (ConnectionError, TimeoutError, OSError) as exc:
                     if batch_attempt < MAX_BATCH_RETRIES:
-                        delay = RETRY_DELAY_BASE * (2 ** batch_attempt)
+                        delay = RETRY_DELAY_BASE * (2**batch_attempt)
                         logger.warn(
                             "executor.mcp",
                             f"batch_execute transient failure (attempt "
@@ -548,10 +538,7 @@ class GodotAIMCPExecutor(Executor):
                         await self._close_session()
                         session = await self._ensure_session()
                     else:
-                        errors.append(
-                            f"batch_execute failed after "
-                            f"{MAX_BATCH_RETRIES + 1} attempts: {exc}"
-                        )
+                        errors.append(f"batch_execute failed after {MAX_BATCH_RETRIES + 1} attempts: {exc}")
                 except Exception as exc:
                     # T3: Graceful adversarial — don't lose all ops when the
                     # batch fails. Fall back to sending each op individually
@@ -562,9 +549,7 @@ class GodotAIMCPExecutor(Executor):
                         f"falling back to per-op execution for "
                         f"{len(operations)} operations",
                     )
-                    results = await self._execute_ops_individually(
-                        session, operations
-                    )
+                    results = await self._execute_ops_individually(session, operations)
                     # Per-op errors are already populated in results by the
                     # individual calls, so break here with whatever we got.
                     break
@@ -572,7 +557,8 @@ class GodotAIMCPExecutor(Executor):
         # 3. Fetch logs for error parsing
         raw_logs: str | None = None
         try:
-            logs_result = await self._call_tool_safe(session, 
+            logs_result = await self._call_tool_safe(
+                session,
                 name=self.TOOL_LOGS_READ,
                 arguments={},
             )
@@ -583,13 +569,12 @@ class GodotAIMCPExecutor(Executor):
         # 4. Fetch updated scene
         scene_snapshot: Dict[str, Any] | None = None
         try:
-            hier_result = await self._call_tool_safe(session, 
+            hier_result = await self._call_tool_safe(
+                session,
                 name=self.TOOL_SCENE_HIERARCHY,
                 arguments={},
             )
-            scene_snapshot = self._unwrap_scene_hierarchy(
-                self._parse_tool_result(hier_result)
-            )
+            scene_snapshot = self._unwrap_scene_hierarchy(self._parse_tool_result(hier_result))
         except Exception as exc:
             logger.warn("executor.mcp", f"Scene hierarchy failed: {exc}")
 
@@ -604,15 +589,11 @@ class GodotAIMCPExecutor(Executor):
         # Determine overall success (results are normalized: every dict
         # carries an explicit "success" bool — same default as
         # ExecutionResult.success_count, so summary and counts agree)
-        all_ok = (
-            len(errors) == 0
-            and all(r.get("success", False) for r in results)
-        )
+        all_ok = len(errors) == 0 and all(r.get("success", False) for r in results)
 
         logger.info(
             "executor.mcp",
-            f"MCP execution complete: {len(results)} results, "
-            f"{len(errors)} errors, {elapsed}ms",
+            f"MCP execution complete: {len(results)} results, {len(errors)} errors, {elapsed}ms",
         )
 
         return ExecutionResult(
@@ -626,7 +607,8 @@ class GodotAIMCPExecutor(Executor):
     async def _get_scene_async(self) -> Dict[str, Any] | None:
         session = await self._ensure_session()
 
-        result = await self._call_tool_safe(session, 
+        result = await self._call_tool_safe(
+            session,
             name=self.TOOL_SCENE_HIERARCHY,
             arguments={},
         )
@@ -636,7 +618,8 @@ class GodotAIMCPExecutor(Executor):
     async def _read_logs_async(self) -> str | None:
         """Fetch the raw Godot editor log text via MCP."""
         session = await self._ensure_session()
-        result = await self._call_tool_safe(session,
+        result = await self._call_tool_safe(
+            session,
             name=self.TOOL_LOGS_READ,
             arguments={},
         )
@@ -708,9 +691,7 @@ class GodotAIMCPExecutor(Executor):
                 root["children"].append(entry)
         return root
 
-    async def _execute_ops_individually(
-        self, session, operations: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    async def _execute_ops_individually(self, session, operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Send each operation one at a time as a fallback when batch fails.
 
         T3: Graceful adversarial — a single bad op (invalid path, unknown
@@ -734,26 +715,30 @@ class GodotAIMCPExecutor(Executor):
                         results.append(self._normalize_op_result(r))
                 elif isinstance(parsed, dict):
                     inner = parsed.get("results", [parsed])
-                    for r in (inner if isinstance(inner, list) else [inner]):
+                    for r in inner if isinstance(inner, list) else [inner]:
                         results.append(self._normalize_op_result(r))
                 else:
-                    results.append({
-                        "command": op_type,
-                        "success": True,
-                        "status": "ok",
-                        "result": str(parsed),
-                    })
+                    results.append(
+                        {
+                            "command": op_type,
+                            "success": True,
+                            "status": "ok",
+                            "result": str(parsed),
+                        }
+                    )
             except Exception as exc:
                 logger.warn(
                     "executor.mcp",
                     f"Per-op {i} ({op_type}) failed: {type(exc).__name__}: {exc}",
                 )
-                results.append({
-                    "command": op_type,
-                    "success": False,
-                    "status": "error",
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
+                results.append(
+                    {
+                        "command": op_type,
+                        "success": False,
+                        "status": "error",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
                 # Reconnect session after transport failure
                 try:
                     await self._close_session()
@@ -766,9 +751,7 @@ class GodotAIMCPExecutor(Executor):
     # Serialization round-trip (one-time)
     # ------------------------------------------------------------------
 
-    def resolve_property_types(
-        self, sample_values: Dict[str, Any] | None = None
-    ) -> Dict[str, str]:
+    def resolve_property_types(self, sample_values: Dict[str, Any] | None = None) -> Dict[str, str]:
         """Perform a one-time round-trip to learn Godot property serialization.
 
         Calls ``node_get_properties`` on a reference node and records
@@ -790,9 +773,7 @@ class GodotAIMCPExecutor(Executor):
             )
             return {}
 
-    async def _resolve_node_properties_async(
-        self, node_path: str
-    ) -> dict | None:
+    async def _resolve_node_properties_async(self, node_path: str) -> dict | None:
         """Fetch live properties for *node_path* via MCP."""
         session = await self._ensure_session()
         result = await self._call_tool_safe(
@@ -825,7 +806,10 @@ class GodotAIMCPExecutor(Executor):
         return parsed
 
     async def _search_filesystem_async(
-        self, query: str, path: str, recursive: bool,
+        self,
+        query: str,
+        path: str,
+        recursive: bool,
     ) -> dict | None:
         """Search the project filesystem via MCP.
 
@@ -847,9 +831,7 @@ class GodotAIMCPExecutor(Executor):
             return None
         return parsed
 
-    async def _get_performance_monitors_async(
-        self, monitors: list[str] | None = None
-    ) -> dict | None:
+    async def _get_performance_monitors_async(self, monitors: list[str] | None = None) -> dict | None:
         """Fetch live performance metrics via editor_manage/monitors_get."""
         session = await self._ensure_session()
         arguments: dict[str, Any] = {"op": "monitors_get"}
@@ -886,26 +868,20 @@ class GodotAIMCPExecutor(Executor):
         logger.info("executor.mcp", "Property types resolved", hints=hints)
         return hints
 
-    async def _run_project_async(
-        self, mode: str = "main", scene: str = ""
-    ) -> dict | None:
+    async def _run_project_async(self, mode: str = "main", scene: str = "") -> dict | None:
         """Launch via the dedicated project_run tool (NOT project_manage,
         whose only lifecycle op is "stop")."""
         session = await self._ensure_session()
         arguments: dict[str, Any] = {"mode": mode}
         if scene:
             arguments["scene"] = scene
-        result = await self._call_tool_safe(
-            session, name=self.TOOL_PROJECT_RUN, arguments=arguments
-        )
+        result = await self._call_tool_safe(session, name=self.TOOL_PROJECT_RUN, arguments=arguments)
         parsed = self._parse_tool_result(result)
         return parsed if isinstance(parsed, dict) else None
 
     async def _stop_project_async(self) -> dict | None:
         session = await self._ensure_session()
-        result = await self._call_tool_safe(
-            session, name=self.TOOL_PROJECT_MANAGE, arguments={"op": "stop"}
-        )
+        result = await self._call_tool_safe(session, name=self.TOOL_PROJECT_MANAGE, arguments={"op": "stop"})
         parsed = self._parse_tool_result(result)
         return parsed if isinstance(parsed, dict) else None
 
@@ -954,9 +930,7 @@ class GodotAIMCPExecutor(Executor):
     # ------------------------------------------------------------------
 
     @classmethod
-    def _translate_ops_to_commands(
-        cls, operations: List[Dict[str, Any]]
-    ) -> list[dict]:
+    def _translate_ops_to_commands(cls, operations: List[Dict[str, Any]]) -> list[dict]:
         """Convert DevForge flat operations to godot-ai nested commands.
 
         DevForge generates flat dicts like::

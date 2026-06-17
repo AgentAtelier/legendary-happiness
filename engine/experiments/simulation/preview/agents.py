@@ -84,7 +84,6 @@ class AgentEngine:
     def step(self, world: WorldState) -> None:
 
         for agent in self.agents:
-
             agent.observe(world)
 
             action = agent.decide(world)

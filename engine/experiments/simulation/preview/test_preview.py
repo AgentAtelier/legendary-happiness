@@ -8,18 +8,8 @@ def main():
     # Example generated system
     generated_system = {
         "name": "weather",
-        "config": {
-            "rain_variation": 0.1
-        },
-        "logic": {
-            "rules": [
-                {
-                    "type": "environment_delta",
-                    "target": "rain",
-                    "delta": 0.02
-                }
-            ]
-        }
+        "config": {"rain_variation": 0.1},
+        "logic": {"rules": [{"type": "environment_delta", "target": "rain", "delta": 0.02}]},
     }
 
     preview.add_generated_system(generated_system)

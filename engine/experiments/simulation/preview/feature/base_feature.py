@@ -2,7 +2,6 @@
 
 
 class PreviewFeature:
-
     name = "base"
 
     def run(self, controller, **kwargs):

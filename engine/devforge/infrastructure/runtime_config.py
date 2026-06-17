@@ -51,12 +51,14 @@ class RuntimeConfig:
     # Per-stage sampler profiles for tuned generation quality
     # Keys: "arch" (planning), "ops" (operation gen), "scripts" (GDScript),
     #       "decomp" (feature decomposition)
-    sampler_profiles: dict = field(default_factory=lambda: {
-        "arch": {"temperature": 0.2, "top_p": 0.9, "top_k": 40},
-        "ops": {"temperature": 0.2, "top_p": 0.9, "top_k": 40},
-        "scripts": {"temperature": 0.4, "top_p": 0.95, "top_k": 64},
-        "decomp": {"temperature": 0.3, "top_p": 0.9, "top_k": 40},
-    })
+    sampler_profiles: dict = field(
+        default_factory=lambda: {
+            "arch": {"temperature": 0.2, "top_p": 0.9, "top_k": 40},
+            "ops": {"temperature": 0.2, "top_p": 0.9, "top_k": 40},
+            "scripts": {"temperature": 0.4, "top_p": 0.95, "top_k": 64},
+            "decomp": {"temperature": 0.3, "top_p": 0.9, "top_k": 40},
+        }
+    )
 
     # Paths
     game_root: str = "./dev-forge"
@@ -79,73 +81,47 @@ class RuntimeConfig:
         errors: list[str] = []
 
         if self.llm_backend not in self.VALID_LLM_BACKENDS:
-            errors.append(
-                f"llm_backend='{self.llm_backend}' is not one of "
-                f"{sorted(self.VALID_LLM_BACKENDS)}"
-            )
+            errors.append(f"llm_backend='{self.llm_backend}' is not one of {sorted(self.VALID_LLM_BACKENDS)}")
 
         if self.executor_backend not in self.VALID_EXECUTOR_BACKENDS:
             errors.append(
-                f"executor_backend='{self.executor_backend}' is not one of "
-                f"{sorted(self.VALID_EXECUTOR_BACKENDS)}"
+                f"executor_backend='{self.executor_backend}' is not one of {sorted(self.VALID_EXECUTOR_BACKENDS)}"
             )
 
         if self.max_plan_retries < 1:
-            errors.append(
-                f"max_plan_retries={self.max_plan_retries} must be >= 1"
-            )
+            errors.append(f"max_plan_retries={self.max_plan_retries} must be >= 1")
 
         if self.max_repair_attempts < 0:
-            errors.append(
-                f"max_repair_attempts={self.max_repair_attempts} must be >= 0"
-            )
+            errors.append(f"max_repair_attempts={self.max_repair_attempts} must be >= 0")
 
         if self.max_plan_steps < 1:
-            errors.append(
-                f"max_plan_steps={self.max_plan_steps} must be >= 1"
-            )
+            errors.append(f"max_plan_steps={self.max_plan_steps} must be >= 1")
 
         if self.max_files_per_plan < 1:
-            errors.append(
-                f"max_files_per_plan={self.max_files_per_plan} must be >= 1"
-            )
+            errors.append(f"max_files_per_plan={self.max_files_per_plan} must be >= 1")
 
         if self.context_token_budget < 1:
-            errors.append(
-                f"context_token_budget={self.context_token_budget} must be >= 1"
-            )
+            errors.append(f"context_token_budget={self.context_token_budget} must be >= 1")
 
         if self.llama_max_tokens < 1:
-            errors.append(
-                f"llama_max_tokens={self.llama_max_tokens} must be >= 1"
-            )
+            errors.append(f"llama_max_tokens={self.llama_max_tokens} must be >= 1")
 
         if self.claude_max_tokens < 1:
-            errors.append(
-                f"claude_max_tokens={self.claude_max_tokens} must be >= 1"
-            )
+            errors.append(f"claude_max_tokens={self.claude_max_tokens} must be >= 1")
 
         if self.llama_temperature < 0:
-            errors.append(
-                f"llama_temperature={self.llama_temperature} must be >= 0"
-            )
+            errors.append(f"llama_temperature={self.llama_temperature} must be >= 0")
 
         if self.llm_timeout_s < 1:
-            errors.append(
-                f"llm_timeout_s={self.llm_timeout_s} must be >= 1"
-            )
+            errors.append(f"llm_timeout_s={self.llm_timeout_s} must be >= 1")
 
         if self.llm_prompt_template not in self.VALID_PROMPT_TEMPLATES:
             errors.append(
-                f"llm_prompt_template='{self.llm_prompt_template}' is not one of "
-                f"{sorted(self.VALID_PROMPT_TEMPLATES)}"
+                f"llm_prompt_template='{self.llm_prompt_template}' is not one of {sorted(self.VALID_PROMPT_TEMPLATES)}"
             )
 
         if self.planner_mode not in self.VALID_PLANNER_MODES:
-            errors.append(
-                f"planner_mode='{self.planner_mode}' is not one of "
-                f"{sorted(self.VALID_PLANNER_MODES)}"
-            )
+            errors.append(f"planner_mode='{self.planner_mode}' is not one of {sorted(self.VALID_PLANNER_MODES)}")
 
         # Validate sampler profiles
         unknown_stages = set(self.sampler_profiles.keys()) - self.VALID_SAMPLER_STAGES
@@ -157,15 +133,11 @@ class RuntimeConfig:
 
         for stage, profile in self.sampler_profiles.items():
             if not isinstance(profile, dict):
-                errors.append(
-                    f"sampler_profiles['{stage}'] is not a dict"
-                )
+                errors.append(f"sampler_profiles['{stage}'] is not a dict")
                 continue
             temp = profile.get("temperature")
             if temp is not None and (not isinstance(temp, (int, float)) or temp < 0):
-                errors.append(
-                    f"sampler_profiles['{stage}'].temperature={temp} must be >= 0"
-                )
+                errors.append(f"sampler_profiles['{stage}'].temperature={temp} must be >= 0")
 
         return errors
 
@@ -266,15 +238,14 @@ def get_config() -> RuntimeConfig:
         errs = config.validate()
         if errs:
             import sys
+
             print(
                 "\n".join(f"[CONFIG ERROR] {e}" for e in errs),
                 file=sys.stderr,
             )
             # Fail loudly (F7): a typo'd backend or impossible limit
             # must not run silently with surprise behavior.
-            raise ValueError(
-                "Invalid DevForge configuration: " + "; ".join(errs)
-            )
+            raise ValueError("Invalid DevForge configuration: " + "; ".join(errs))
         _config = config
     return _config
 

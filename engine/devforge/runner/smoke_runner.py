@@ -25,10 +25,10 @@ from devforge.infrastructure.logger import logger
 class POIStop:
     """A point of interest to visit during the smoke run."""
 
-    name: str                          # "Town Square"
-    teleport_expr: str                 # GDScript expression to move there
-    wait_seconds: float = 2.0          # seconds to wait after teleport
-    description: str = ""              # what to look for at this POI
+    name: str  # "Town Square"
+    teleport_expr: str  # GDScript expression to move there
+    wait_seconds: float = 2.0  # seconds to wait after teleport
+    description: str = ""  # what to look for at this POI
 
     def to_dict(self) -> dict:
         return {
@@ -271,12 +271,15 @@ def run_smoke_test(
     *callbacks*: optional dict of callable overrides (for testing)
     """
     cb = callbacks or {}
-    pois = [POIStop(
-        name=p["name"],
-        teleport_expr=p.get("teleport_expr", ""),
-        wait_seconds=p.get("wait_seconds", 2.0),
-        description=p.get("description", ""),
-    ) for p in pois_data]
+    pois = [
+        POIStop(
+            name=p["name"],
+            teleport_expr=p.get("teleport_expr", ""),
+            wait_seconds=p.get("wait_seconds", 2.0),
+            description=p.get("description", ""),
+        )
+        for p in pois_data
+    ]
 
     runner = SmokeRunner(
         run_project_fn=cb.get("run_project"),

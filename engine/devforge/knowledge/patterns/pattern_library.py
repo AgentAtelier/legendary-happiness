@@ -6,7 +6,6 @@ from typing import Dict, List
 
 @dataclass
 class Pattern:
-
     name: str
     description: str
     entities: List[str]
@@ -47,7 +46,6 @@ class PatternLibrary:
         matches: List[Pattern] = []
 
         for pattern in self.patterns.values():
-
             if pattern.name.lower() in prompt_lower:
                 matches.append(pattern)
 

@@ -61,9 +61,7 @@ class ArtifactStore:
                 self._order.append(artifact_id)
             return payload
 
-    def build_summary(
-        self, artifact_id: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def build_summary(self, artifact_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Extract a compact summary from a full pipeline result.
 
         The summary is what ``apply_spec`` returns to the LLM — small

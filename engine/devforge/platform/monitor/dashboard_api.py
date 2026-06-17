@@ -20,6 +20,7 @@ CSS = BASE / "dashboard.css"
 # UI
 # ------------------------------------------------------------
 
+
 @router.get("/", response_class=HTMLResponse)
 def dashboard():
     return HTML.read_text()
@@ -38,6 +39,7 @@ def css():
 # ------------------------------------------------------------
 # API
 # ------------------------------------------------------------
+
 
 @router.get("/api/status")
 def status():

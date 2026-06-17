@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 class GraphViewer:
-
     """
     Converts system graph into visualization format.
     """
@@ -15,7 +14,6 @@ class GraphViewer:
         edges = []
 
         for n in graph.get("nodes", []):
-
             nodes.append(
                 {
                     "id": n["id"],
@@ -24,7 +22,6 @@ class GraphViewer:
             )
 
         for e in graph.get("edges", []):
-
             edges.append(
                 {
                     "source": e["from"],

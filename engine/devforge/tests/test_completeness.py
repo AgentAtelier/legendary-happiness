@@ -48,8 +48,7 @@ def test_injected_light_parents_under_root_main():
     assert lights, "expected a DirectionalLight3D to be injected"
     for op in injected:
         assert op["parent"] == "/root/Main", (
-            f"injected {op['node_type']} parent {op['parent']!r} "
-            f"is not the scene root /root/Main"
+            f"injected {op['node_type']} parent {op['parent']!r} is not the scene root /root/Main"
         )
 
 
@@ -78,9 +77,7 @@ def test_find_root_resolves_non_main_root():
     cc = CompletenessChecker()
     idx = cc._collect_nodes(SCENE_MAIN2, [])
     assert "/root/Main2" in idx
-    assert cc._find_root(idx, []) == "/root/Main2", (
-        "completeness must target the live root, not a hardcoded /root/Main"
-    )
+    assert cc._find_root(idx, []) == "/root/Main2", "completeness must target the live root, not a hardcoded /root/Main"
 
 
 def test_injected_nodes_parent_under_live_root_not_main():

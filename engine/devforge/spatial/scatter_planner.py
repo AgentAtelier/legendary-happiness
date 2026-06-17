@@ -40,9 +40,7 @@ class ScatterPlanner:
         # garden_json → ScatterEngine.compile_garden()
     """
 
-    DEFAULT_GRAMMAR_PATH = (
-        Path(__file__).resolve().parent / "prompts" / "scatter_planner.gbnf"
-    )
+    DEFAULT_GRAMMAR_PATH = Path(__file__).resolve().parent / "prompts" / "scatter_planner.gbnf"
 
     def __init__(
         self,
@@ -135,21 +133,21 @@ class ScatterPlanner:
         """Build the scatter planner prompt with plant asset catalog."""
         # Filter to outdoor/scatter assets only
         scatter_assets = [
-            aid for aid in self._lexicon.asset_ids
-            if any("scatter" in c or "outdoor" in c or "plant" in c
-                   for c in self._lexicon.get(aid).get("category", []))
+            aid
+            for aid in self._lexicon.asset_ids
+            if any("scatter" in c or "outdoor" in c or "plant" in c for c in self._lexicon.get(aid).get("category", []))
         ]
         asset_ids = ", ".join(scatter_assets) if scatter_assets else "tree, bush, flower, rock"
 
         asset_lines: list[str] = []
-        for aid in (scatter_assets or ["tree", "bush", "flower", "rock"]):
+        for aid in scatter_assets or ["tree", "bush", "flower", "rock"]:
             asset = self._lexicon.get(aid)
             if asset:
                 fp = asset.get("footprint", {})
                 h = asset.get("height", 1.0)
                 asset_lines.append(
                     f"  {aid}: {asset.get('label', aid)} "
-                    f"(footprint {fp.get('width',1)}×{fp.get('depth',1)}m, "
+                    f"(footprint {fp.get('width', 1)}×{fp.get('depth', 1)}m, "
                     f"height {h}m)"
                 )
         asset_summary = "\n".join(asset_lines) if asset_lines else "  (no plant assets)"
@@ -216,9 +214,7 @@ Output JSON now (no prose, no markdown fences, just the JSON object):
         try:
             data, _ = decoder.raw_decode(text[start:])
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in LLM response: {e}\n{text[:200]}"
-            )
+            raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
         return {
             "region": data.get("region", {"width": 20.0, "depth": 20.0}),

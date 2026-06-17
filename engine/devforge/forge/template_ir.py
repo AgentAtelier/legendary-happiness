@@ -31,9 +31,9 @@ from devforge.infrastructure.logger import logger
 class TemplateSlot:
     """A user-configurable parameter in a template."""
 
-    name: str         # "camera_height"
-    type: str         # "float" | "int" | "str" | "bool" | "vec3" | "node_path"
-    default: Any      # default value
+    name: str  # "camera_height"
+    type: str  # "float" | "int" | "str" | "bool" | "vec3" | "node_path"
+    default: Any  # default value
     description: str  # one-sentence explanation for the parameter prompt
 
     def to_dict(self) -> dict:
@@ -49,7 +49,7 @@ class TemplateSlot:
 class TemplateScript:
     """A GDScript file that ships with the template."""
 
-    path: str     # "scripts/player/fps_controller.gd"
+    path: str  # "scripts/player/fps_controller.gd"
     content: str  # script body with {{slot_name}} placeholders
 
 
@@ -57,9 +57,9 @@ class TemplateScript:
 class Template:
     """A complete game-system template."""
 
-    slug: str           # "fps_controller"
-    name: str           # "FPS Controller"
-    description: str    # what the system does
+    slug: str  # "fps_controller"
+    name: str  # "FPS Controller"
+    description: str  # what the system does
     version: int = 1
     slots: list[TemplateSlot] = field(default_factory=list)
     requires: list[str] = field(default_factory=list)  # prerequisite template slugs
@@ -75,9 +75,7 @@ class Template:
             "version": self.version,
             "slots": [s.to_dict() for s in self.slots],
             "requires": self.requires,
-            "scripts": [
-                {"path": s.path, "content": s.content} for s in self.scripts
-            ],
+            "scripts": [{"path": s.path, "content": s.content} for s in self.scripts],
             "operations": self.operations,
             "collision_check": self.collision_check,
         }
@@ -104,10 +102,7 @@ def resolve_slot_values(
     # Check for unknown slot names
     unknown = set(provided) - set(slot_map)
     if unknown:
-        raise ValueError(
-            f"Unknown slot(s): {', '.join(sorted(unknown))}. "
-            f"Available: {', '.join(sorted(slot_map))}"
-        )
+        raise ValueError(f"Unknown slot(s): {', '.join(sorted(unknown))}. Available: {', '.join(sorted(slot_map))}")
 
     resolved: dict[str, Any] = {}
     for slot in slots:
@@ -128,6 +123,7 @@ def substitute_slots(text: str, slot_values: dict[str, Any]) -> str:
     inside the text as-is (for GDScript exports, the caller should
     handle quoting).
     """
+
     def _replace(m: re.Match) -> str:
         name = m.group(1)
         if name not in slot_values:
@@ -191,6 +187,7 @@ def _validate_slot_value(slot: TemplateSlot, value: Any) -> None:
 
 # ── Serialization ───────────────────────────────────────────────
 
+
 def template_from_dict(data: dict) -> Template:
     """Parse a template dict (from JSON) into a ``Template``."""
     slots = [
@@ -202,10 +199,7 @@ def template_from_dict(data: dict) -> Template:
         )
         for s in data.get("slots", [])
     ]
-    scripts = [
-        TemplateScript(path=s["path"], content=s["content"])
-        for s in data.get("scripts", [])
-    ]
+    scripts = [TemplateScript(path=s["path"], content=s["content"]) for s in data.get("scripts", [])]
     return Template(
         slug=data["slug"],
         name=data["name"],

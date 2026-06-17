@@ -30,15 +30,16 @@ SHAPE_TYPES: set[str] = {"CollisionShape3D", "CollisionPolygon3D"}
 
 # ── Violation data class ────────────────────────────────────────
 
+
 @dataclass
 class Violation:
     """A rule violation found during scene audit."""
 
-    rule_id: str       # "R1".."R5"
-    severity: str      # "CRITICAL" | "WARNING" | "INFO"
-    node_path: str     # "/root/Main/Player"
-    message: str       # what is wrong, one sentence, names the node
-    suggestion: str    # how to fix it, one sentence, concrete
+    rule_id: str  # "R1".."R5"
+    severity: str  # "CRITICAL" | "WARNING" | "INFO"
+    node_path: str  # "/root/Main/Player"
+    message: str  # what is wrong, one sentence, names the node
+    suggestion: str  # how to fix it, one sentence, concrete
 
     def to_dict(self) -> dict:
         return {
@@ -51,6 +52,7 @@ class Violation:
 
 
 # ── Helpers ─────────────────────────────────────────────────────
+
 
 def _parent_path(node_path: str) -> str:
     """Return the parent path of a scene node path.
@@ -72,6 +74,7 @@ def _siblings(graph: SceneGraph, parent_path: str) -> list[SceneNode]:
 
 # ── Rules ───────────────────────────────────────────────────────
 
+
 def rule_r1(
     graph: SceneGraph,
     props_lookup: Callable[[str], dict | None] | None,
@@ -85,20 +88,22 @@ def rule_r1(
         parent = graph.find_by_path(_parent_path(node.path))
         parent_type = parent.type if parent else "N/A"
         if parent is None or parent.type not in COLLISION_OBJECT_TYPES:
-            violations.append(Violation(
-                rule_id="R1",
-                severity="CRITICAL",
-                node_path=node.path,
-                message=(
-                    f"{node.type} '{node.name}' has parent type "
-                    f"'{parent_type}' — must be a CollisionObject3D subclass"
-                ),
-                suggestion=(
-                    f"Move '{node.name}' under a "
-                    f"{', '.join(sorted(COLLISION_OBJECT_TYPES))} node, "
-                    f"or change the parent type."
-                ),
-            ))
+            violations.append(
+                Violation(
+                    rule_id="R1",
+                    severity="CRITICAL",
+                    node_path=node.path,
+                    message=(
+                        f"{node.type} '{node.name}' has parent type "
+                        f"'{parent_type}' — must be a CollisionObject3D subclass"
+                    ),
+                    suggestion=(
+                        f"Move '{node.name}' under a "
+                        f"{', '.join(sorted(COLLISION_OBJECT_TYPES))} node, "
+                        f"or change the parent type."
+                    ),
+                )
+            )
     return violations
 
 
@@ -112,24 +117,21 @@ def rule_r2(
     for node in graph.all_nodes():
         if node.type not in COLLISION_OBJECT_TYPES:
             continue
-        has_shape = any(
-            child.type in SHAPE_TYPES for child in node.children
-        )
+        has_shape = any(child.type in SHAPE_TYPES for child in node.children)
         if not has_shape:
-            violations.append(Violation(
-                rule_id="R2",
-                severity="CRITICAL",
-                node_path=node.path,
-                message=(
-                    f"{node.type} '{node.name}' has no CollisionShape3D "
-                    f"or CollisionPolygon3D child — it will fall through "
-                    f"the world or pass through other bodies."
-                ),
-                suggestion=(
-                    f"Add a CollisionShape3D child to '{node.name}' "
-                    f"and assign a Shape3D resource."
-                ),
-            ))
+            violations.append(
+                Violation(
+                    rule_id="R2",
+                    severity="CRITICAL",
+                    node_path=node.path,
+                    message=(
+                        f"{node.type} '{node.name}' has no CollisionShape3D "
+                        f"or CollisionPolygon3D child — it will fall through "
+                        f"the world or pass through other bodies."
+                    ),
+                    suggestion=(f"Add a CollisionShape3D child to '{node.name}' and assign a Shape3D resource."),
+                )
+            )
     return violations
 
 
@@ -147,16 +149,15 @@ def rule_r3(
     camera = cameras[0]
 
     if props_lookup is None:
-        return [Violation(
-            rule_id="R3",
-            severity="INFO",
-            node_path=camera.path,
-            message="R3 skipped (no property access available)",
-            suggestion=(
-                "Enable live property access (WO-004) or check manually "
-                "that Camera3D.current is enabled."
-            ),
-        )]
+        return [
+            Violation(
+                rule_id="R3",
+                severity="INFO",
+                node_path=camera.path,
+                message="R3 skipped (no property access available)",
+                suggestion=("Enable live property access (WO-004) or check manually that Camera3D.current is enabled."),
+            )
+        ]
 
     props = props_lookup(camera.path)
     if props is None:
@@ -164,20 +165,22 @@ def rule_r3(
 
     is_current = props.get("current", False)
     if not is_current:
-        return [Violation(
-            rule_id="R3",
-            severity="WARNING",
-            node_path=camera.path,
-            message=(
-                f"Camera3D '{camera.name}' is the only camera in the "
-                f"scene but 'current' is not enabled — the game view "
-                f"may show the wrong camera or be black."
-            ),
-            suggestion=(
-                f"Enable 'current' on Camera3D '{camera.name}' in the "
-                f"Inspector, or call camera.current = true in a script."
-            ),
-        )]
+        return [
+            Violation(
+                rule_id="R3",
+                severity="WARNING",
+                node_path=camera.path,
+                message=(
+                    f"Camera3D '{camera.name}' is the only camera in the "
+                    f"scene but 'current' is not enabled — the game view "
+                    f"may show the wrong camera or be black."
+                ),
+                suggestion=(
+                    f"Enable 'current' on Camera3D '{camera.name}' in the "
+                    f"Inspector, or call camera.current = true in a script."
+                ),
+            )
+        ]
     return []
 
 
@@ -190,35 +193,32 @@ def rule_r4(
     meshes = [n for n in graph.all_nodes() if n.type == "MeshInstance3D"]
 
     if props_lookup is None:
-        return [Violation(
-            rule_id="R4",
-            severity="INFO",
-            node_path="/",
-            message="R4 skipped (no property access available)",
-            suggestion=(
-                "Enable live property access (WO-004) or check "
-                "manually that MeshInstance3D.mesh is assigned."
-            ),
-        )]
+        return [
+            Violation(
+                rule_id="R4",
+                severity="INFO",
+                node_path="/",
+                message="R4 skipped (no property access available)",
+                suggestion=(
+                    "Enable live property access (WO-004) or check manually that MeshInstance3D.mesh is assigned."
+                ),
+            )
+        ]
 
     for mesh in meshes:
         props = props_lookup(mesh.path)
         if props is None:
             props = {}
         if props.get("mesh") is None:
-            violations.append(Violation(
-                rule_id="R4",
-                severity="WARNING",
-                node_path=mesh.path,
-                message=(
-                    f"MeshInstance3D '{mesh.name}' has no mesh assigned "
-                    f"— it renders nothing."
-                ),
-                suggestion=(
-                    f"Assign a Mesh resource to '{mesh.name}' in the "
-                    f"Inspector, or add one via code."
-                ),
-            ))
+            violations.append(
+                Violation(
+                    rule_id="R4",
+                    severity="WARNING",
+                    node_path=mesh.path,
+                    message=(f"MeshInstance3D '{mesh.name}' has no mesh assigned — it renders nothing."),
+                    suggestion=(f"Assign a Mesh resource to '{mesh.name}' in the Inspector, or add one via code."),
+                )
+            )
     return violations
 
 
@@ -244,20 +244,19 @@ def rule_r5(
             if name in seen:
                 # Report only once per duplicate name per parent
                 if seen[name] is not None:
-                    violations.append(Violation(
-                        rule_id="R5",
-                        severity="WARNING",
-                        node_path=seen[name].path,
-                        message=(
-                            f"Sibling name conflict: two nodes named "
-                            f"'{name}' under '{pp}' — Godot silently "
-                            f"renames on instancing, breaking NodePath refs."
-                        ),
-                        suggestion=(
-                            f"Rename one of the '{name}' nodes under "
-                            f"'{pp}' to a unique name."
-                        ),
-                    ))
+                    violations.append(
+                        Violation(
+                            rule_id="R5",
+                            severity="WARNING",
+                            node_path=seen[name].path,
+                            message=(
+                                f"Sibling name conflict: two nodes named "
+                                f"'{name}' under '{pp}' — Godot silently "
+                                f"renames on instancing, breaking NodePath refs."
+                            ),
+                            suggestion=(f"Rename one of the '{name}' nodes under '{pp}' to a unique name."),
+                        )
+                    )
                     seen[name] = None  # sentinel: already reported
             else:
                 seen[name] = child

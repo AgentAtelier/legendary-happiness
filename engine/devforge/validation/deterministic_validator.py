@@ -71,15 +71,12 @@ class ValidationResult:
             f"  Review flags: {len(self.review_flags)}",
         ]
         if self.unparsed_constructs > 0:
-            lines.append(
-                f"  ⚠ Unparsed constructs: {self.unparsed_constructs}"
-            )
+            lines.append(f"  ⚠ Unparsed constructs: {self.unparsed_constructs}")
         if self.blocking_violations:
             lines.append("  Violations:")
             for v in self.blocking_violations:
                 loc = f":{v.line_number}" if v.line_number else ""
-                lines.append(f"    [{v.severity.upper()}] {v.rule_id} — "
-                             f"{v.message}{loc}")
+                lines.append(f"    [{v.severity.upper()}] {v.rule_id} — {v.message}{loc}")
         return "\n".join(lines)
 
 
@@ -95,9 +92,7 @@ class DeterministicValidator:
         Args:
             rules: Custom rule list. Defaults to ALL_RULES from the registry.
         """
-        self._rules: List[Rule] = [
-            rule_cls() for rule_cls in (rules or ALL_RULES)
-        ]
+        self._rules: List[Rule] = [rule_cls() for rule_cls in (rules or ALL_RULES)]
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -158,9 +153,7 @@ class DeterministicValidator:
     # Bulk validation
     # ------------------------------------------------------------------
 
-    def validate_files(
-        self, patches: List[tuple[str, str]]
-    ) -> List[ValidationResult]:
+    def validate_files(self, patches: List[tuple[str, str]]) -> List[ValidationResult]:
         """Validate multiple patches, returning per-file results.
 
         Args:

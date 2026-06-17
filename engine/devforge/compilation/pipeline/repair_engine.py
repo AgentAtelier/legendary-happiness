@@ -79,8 +79,7 @@ class RepairEngine:
             if self._convergence_count >= 2:
                 logger.warn(
                     "repair_engine",
-                    "Repair converged — same errors after 2 attempts, "
-                    "returning unchanged",
+                    "Repair converged — same errors after 2 attempts, returning unchanged",
                     errors=list(error_key)[:5],
                 )
                 # Reset for next pipeline run

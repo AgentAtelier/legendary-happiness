@@ -18,9 +18,9 @@ class RefactorResult:
     """Result of a scene refactoring operation."""
 
     success: bool
-    extracted_node_path: str          # "/root/Main/Enemies"
-    new_instance_name: str            # "Enemies" (or "Enemies_001" if collision)
-    extracted_scene_path: str         # "res://scenes/extracted_enemies.tscn"
+    extracted_node_path: str  # "/root/Main/Enemies"
+    new_instance_name: str  # "Enemies" (or "Enemies_001" if collision)
+    extracted_scene_path: str  # "res://scenes/extracted_enemies.tscn"
     operations: list[dict] = field(default_factory=list)  # ops to apply
     warnings: list[str] = field(default_factory=list)
     error: str = ""
@@ -95,8 +95,7 @@ class SceneRefactorer:
 
         # Collision check
         if parent:
-            sibling_names = {c.get("name", "") for c in parent.get("children", [])
-                           if c is not target}
+            sibling_names = {c.get("name", "") for c in parent.get("children", []) if c is not target}
             if node_name in sibling_names:
                 if collision_strategy == "error":
                     return RefactorResult(
@@ -137,13 +136,15 @@ class SceneRefactorer:
         # 3. Add instance reference
         parent_path = node_path.rsplit("/", 1)[0] or "/root"
 
-        ops.append({
-            "type": "add_node",
-            "parent": parent_path,
-            "node_type": "instance",
-            "name": instance_name,
-            "instance_path": output_path,
-        })
+        ops.append(
+            {
+                "type": "add_node",
+                "parent": parent_path,
+                "node_type": "instance",
+                "name": instance_name,
+                "instance_path": output_path,
+            }
+        )
 
         logger.info(
             "refactorer",
@@ -193,13 +194,15 @@ class SceneRefactorer:
         def _walk(node: dict, path: str):
             children = node.get("children", [])
             if len(children) >= min_children:
-                candidates.append({
-                    "path": path,
-                    "name": node.get("name", ""),
-                    "type": node.get("type", ""),
-                    "child_count": len(children),
-                    "suggested_output": f"res://scenes/extracted_{node.get('name', 'unnamed').lower()}.tscn",
-                })
+                candidates.append(
+                    {
+                        "path": path,
+                        "name": node.get("name", ""),
+                        "type": node.get("type", ""),
+                        "child_count": len(children),
+                        "suggested_output": f"res://scenes/extracted_{node.get('name', 'unnamed').lower()}.tscn",
+                    }
+                )
             for i, child in enumerate(children):
                 _walk(child, f"{path}/{child.get('name', f'child_{i}')}")
 

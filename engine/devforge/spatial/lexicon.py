@@ -47,10 +47,7 @@ class AssetLexicon:
         """Return the asset entry; raise SlotViolation if missing."""
         entry = self._assets.get(asset_id)
         if entry is None:
-            raise SlotViolation(
-                f"Asset '{asset_id}' not found in lexicon. "
-                f"Available: {', '.join(self.asset_ids)}"
-            )
+            raise SlotViolation(f"Asset '{asset_id}' not found in lexicon. Available: {', '.join(self.asset_ids)}")
         return entry
 
     def by_category(self, category: str) -> List[str]:
@@ -82,8 +79,9 @@ class AssetLexicon:
         max_d = float(max_footprint.get("depth", 0))
         return float(fp.get("width", 0)) <= max_w and float(fp.get("depth", 0)) <= max_d
 
-    def greybox_ops(self, asset_id: str, parent: str, name: str,
-                    position: dict, facing: Optional[list] = None) -> List[dict]:
+    def greybox_ops(
+        self, asset_id: str, parent: str, name: str, position: dict, facing: Optional[list] = None
+    ) -> List[dict]:
         """Produce the batch_execute ops to place a greybox asset.
 
         Returns the standard DevForge op dicts: add_node + set_property
@@ -103,12 +101,14 @@ class AssetLexicon:
         ops: List[dict] = []
 
         # add_node
-        ops.append({
-            "type": "add_node",
-            "parent": parent,
-            "node_type": "MeshInstance3D",
-            "name": name,
-        })
+        ops.append(
+            {
+                "type": "add_node",
+                "parent": parent,
+                "node_type": "MeshInstance3D",
+                "name": name,
+            }
+        )
 
         node_path = f"{parent}/{name}"
 
@@ -132,31 +132,37 @@ class AssetLexicon:
                 "height": h,
             }
 
-        ops.append({
-            "type": "set_property",
-            "node": node_path,
-            "property": "mesh",
-            "value": mesh_value,
-        })
+        ops.append(
+            {
+                "type": "set_property",
+                "node": node_path,
+                "property": "mesh",
+                "value": mesh_value,
+            }
+        )
 
         # position
-        ops.append({
-            "type": "set_property",
-            "node": node_path,
-            "property": "position",
-            "value": {"x": position["x"], "y": position["y"] + h / 2, "z": position["z"]},
-        })
+        ops.append(
+            {
+                "type": "set_property",
+                "node": node_path,
+                "property": "position",
+                "value": {"x": position["x"], "y": position["y"] + h / 2, "z": position["z"]},
+            }
+        )
 
         # color (material_override)
-        ops.append({
-            "type": "set_property",
-            "node": node_path,
-            "property": "material_override",
-            "value": {
-                "__class__": "StandardMaterial3D",
-                "albedo_color": {"r": color[0], "g": color[1], "b": color[2], "a": 1.0},
-            },
-        })
+        ops.append(
+            {
+                "type": "set_property",
+                "node": node_path,
+                "property": "material_override",
+                "value": {
+                    "__class__": "StandardMaterial3D",
+                    "albedo_color": {"r": color[0], "g": color[1], "b": color[2], "a": 1.0},
+                },
+            }
+        )
 
         return ops
 
@@ -168,10 +174,7 @@ class AssetLexicon:
             fp = entry.get("footprint", {})
             h = entry.get("height", 0)
             cats = ", ".join(entry.get("category", []))
-            lines.append(
-                f"  {aid}: {fp.get('width',0)}×{fp.get('depth',0)}×{h}m "
-                f"[{cats}]"
-            )
+            lines.append(f"  {aid}: {fp.get('width', 0)}×{fp.get('depth', 0)}×{h}m [{cats}]")
         return "\n".join(lines)
 
     # ── internals ───────────────────────────────────────────
@@ -201,11 +204,7 @@ class AssetLexicon:
         required = ["category", "footprint", "height", "greybox"]
         for key in required:
             if key not in entry:
-                raise SlotViolation(
-                    f"Asset '{aid}' missing required field '{key}'"
-                )
+                raise SlotViolation(f"Asset '{aid}' missing required field '{key}'")
         fp = entry["footprint"]
         if not isinstance(fp, dict) or "width" not in fp or "depth" not in fp:
-            raise SlotViolation(
-                f"Asset '{aid}' footprint missing width/depth"
-            )
+            raise SlotViolation(f"Asset '{aid}' footprint missing width/depth")

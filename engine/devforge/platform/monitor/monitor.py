@@ -45,7 +45,6 @@ class Trace:
 
 
 class Monitor:
-
     def __init__(self):
         self._traces: List[Trace] = []
         self._max_traces = 200
@@ -58,7 +57,7 @@ class Monitor:
         )
         self._traces.append(trace)
         if len(self._traces) > self._max_traces:
-            self._traces = self._traces[-self._max_traces:]
+            self._traces = self._traces[-self._max_traces :]
 
         logger.info("monitor", f"Trace started: {trace.trace_id}", prompt=prompt[:80])
         return trace
@@ -90,9 +89,7 @@ class Monitor:
         trace.status = status
         trace.metadata.update(metadata)
 
-        logger.info("monitor", f"Trace ended: {trace.trace_id}",
-                     status=status,
-                     duration_ms=trace.duration_ms())
+        logger.info("monitor", f"Trace ended: {trace.trace_id}", status=status, duration_ms=trace.duration_ms())
 
     def get_traces(self, limit: int = 50) -> List[Dict]:
         return [t.to_dict() for t in self._traces[-limit:]]

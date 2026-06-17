@@ -4,7 +4,6 @@ from typing import Dict, Any
 
 
 class PatternLibrary:
-
     def __init__(self):
 
         self.patterns: Dict[str, Dict[str, Any]] = {}
@@ -36,7 +35,6 @@ class PatternLibrary:
         prompt_lower = prompt.lower()
 
         for name in self.patterns:
-
             if name.lower() in prompt_lower:
                 results.append(self.patterns[name])
 

@@ -7,7 +7,6 @@ from typing import Dict, Any, List
 
 
 class ScenarioExplorer:
-
     """
     Explores parameter spaces through repeated simulations.
     """
@@ -27,7 +26,6 @@ class ScenarioExplorer:
         results = []
 
         for _ in range(runs):
-
             params = self._sample_parameters(parameter_ranges)
 
             self._apply_parameters(params)
@@ -41,10 +39,7 @@ class ScenarioExplorer:
             results.append(
                 {
                     "parameters": params,
-                    "metrics": {
-                        name: metric.value
-                        for name, metric in metrics.items()
-                    },
+                    "metrics": {name: metric.value for name, metric in metrics.items()},
                 }
             )
 
@@ -57,11 +52,9 @@ class ScenarioExplorer:
         params = {}
 
         for system, plist in ranges.items():
-
             params[system] = {}
 
             for name, (low, high) in plist.items():
-
                 params[system][name] = random.uniform(low, high)
 
         return params
@@ -71,9 +64,7 @@ class ScenarioExplorer:
     def _apply_parameters(self, params):
 
         for system, values in params.items():
-
             for name, value in values.items():
-
                 self.controller.set_parameter(
                     system,
                     name,

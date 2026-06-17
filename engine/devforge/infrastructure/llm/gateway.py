@@ -52,19 +52,13 @@ BUDGET_LIMIT_TOKENS = int(os.environ.get("GATEWAY_BUDGET_TOKENS", "100000"))
 TURN_EXPIRY_SECONDS = int(os.environ.get("GATEWAY_TURN_EXPIRY", "300"))
 # When set, requests without X-Turn-Id are rejected (strict mode).
 # When unset (default), untagged requests share a default bucket.
-GATEWAY_STRICT_BUDGET = (
-    os.environ.get("GATEWAY_STRICT_BUDGET", "0") == "1"
-)
+GATEWAY_STRICT_BUDGET = os.environ.get("GATEWAY_STRICT_BUDGET", "0") == "1"
 # Key for the shared default bucket (untagged requests)
 _DEFAULT_BUCKET = "__default__"
 
 # Prefix-affinity scheduling (Phase 3)
-GATEWAY_SERIALIZE_DEVFORGE = (
-    os.environ.get("GATEWAY_SERIALIZE_DEVFORGE", "1") == "1"
-)
-GATEWAY_DEVFORGE_QUEUE_TIMEOUT = float(
-    os.environ.get("GATEWAY_DEVFORGE_QUEUE_TIMEOUT", "60")
-)
+GATEWAY_SERIALIZE_DEVFORGE = os.environ.get("GATEWAY_SERIALIZE_DEVFORGE", "1") == "1"
+GATEWAY_DEVFORGE_QUEUE_TIMEOUT = float(os.environ.get("GATEWAY_DEVFORGE_QUEUE_TIMEOUT", "60"))
 
 # Connection pool: keep connections warm to llama.cpp so repeat calls
 # skip the TCP+TLS handshake.  Max 20 connections — enough for
@@ -116,8 +110,7 @@ def _safe_json(resp: httpx.Response) -> dict | list:
         return resp.json()
     except Exception:
         logger.warning(
-            "Gateway: upstream returned non-JSON response "
-            "(status=%d, content_type=%s)",
+            "Gateway: upstream returned non-JSON response (status=%d, content_type=%s)",
             resp.status_code,
             resp.headers.get("content-type", "?"),
         )
@@ -141,6 +134,7 @@ async def _read_json_body(request: Request) -> dict:
 @dataclass
 class _TurnBudget:
     """Cumulative token usage for one ``apply_spec`` turn."""
+
     tokens_used: int = 0
     call_count: int = 0
     created_at: float = 0.0
@@ -170,9 +164,11 @@ def _check_budget(turn_id: str) -> _TurnBudget:
         age = time.monotonic() - entry.created_at
         if age > TURN_EXPIRY_SECONDS:
             logger.info(
-                "Budget: purging expired turn %s (age=%.0fs, "
-                "tokens=%d, calls=%d)",
-                turn_id[:8], age, entry.tokens_used, entry.call_count,
+                "Budget: purging expired turn %s (age=%.0fs, tokens=%d, calls=%d)",
+                turn_id[:8],
+                age,
+                entry.tokens_used,
+                entry.call_count,
             )
             del _turn_budgets[turn_id]
             entry = None
@@ -212,8 +208,11 @@ def _record_usage(turn_id: str, tokens: int) -> None:
     entry.created_at = time.monotonic()  # sliding expiry
     logger.debug(
         "Budget: turn %s +%d tokens → %d/%d (%d calls)",
-        turn_id[:8], tokens, entry.tokens_used,
-        BUDGET_LIMIT_TOKENS, entry.call_count,
+        turn_id[:8],
+        tokens,
+        entry.tokens_used,
+        BUDGET_LIMIT_TOKENS,
+        entry.call_count,
     )
 
 
@@ -242,16 +241,15 @@ async def _cleanup_stale_budgets() -> None:
     while True:
         await asyncio.sleep(60)
         now = time.monotonic()
-        stale = [
-            tid for tid, b in _turn_budgets.items()
-            if now - b.created_at > TURN_EXPIRY_SECONDS
-        ]
+        stale = [tid for tid, b in _turn_budgets.items() if now - b.created_at > TURN_EXPIRY_SECONDS]
         for tid in stale:
             b = _turn_budgets.pop(tid, None)
             if b:
                 logger.info(
                     "Budget: cleaned up turn %s (tokens=%d, calls=%d)",
-                    tid[:8], b.tokens_used, b.call_count,
+                    tid[:8],
+                    b.tokens_used,
+                    b.call_count,
                 )
 
 
@@ -312,9 +310,9 @@ async def _wait_for_streams(timeout: float) -> None:
     except TimeoutError:
         _devforge_queued_timeout_total += 1
         logger.warning(
-            "Scheduler: DevForge /completion waited %.0fs for %d "
-            "stream(s) — proceeding anyway (KV cache may evict)",
-            timeout, _active_stream_count,
+            "Scheduler: DevForge /completion waited %.0fs for %d stream(s) — proceeding anyway (KV cache may evict)",
+            timeout,
+            _active_stream_count,
         )
 
 
@@ -338,15 +336,20 @@ def _prefix_hash(body: dict, route: str) -> str:
 
 # ── App ─────────────────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup: log that we're ready.  Shutdown: close the client pool."""
     logger.info(
         "LLM Gateway starting on %s:%s → %s (budget=%d tokens/turn, "
         "expiry=%ds, serialize_devforge=%s, queue_timeout=%ds)",
-        GATEWAY_HOST, GATEWAY_PORT, LLAMA_CPP_URL,
-        BUDGET_LIMIT_TOKENS, TURN_EXPIRY_SECONDS,
-        GATEWAY_SERIALIZE_DEVFORGE, int(GATEWAY_DEVFORGE_QUEUE_TIMEOUT),
+        GATEWAY_HOST,
+        GATEWAY_PORT,
+        LLAMA_CPP_URL,
+        BUDGET_LIMIT_TOKENS,
+        TURN_EXPIRY_SECONDS,
+        GATEWAY_SERIALIZE_DEVFORGE,
+        int(GATEWAY_DEVFORGE_QUEUE_TIMEOUT),
     )
     cleanup_task = asyncio.create_task(_cleanup_stale_budgets())
     yield
@@ -372,6 +375,7 @@ app = FastAPI(
 
 # ── Health check ────────────────────────────────────────────────
 
+
 @app.get("/health")
 async def health():
     """Quick health probe — checks that llama.cpp is reachable."""
@@ -380,22 +384,28 @@ async def health():
         start = time.monotonic()
         resp = await client.get(f"{LLAMA_CPP_URL}/health")
         elapsed_ms = int((time.monotonic() - start) * 1000)
-        return JSONResponse({
-            "status": "ok",
-            "llama_cpp": {
-                "reachable": resp.is_success,
-                "status_code": resp.status_code,
-                "latency_ms": elapsed_ms,
-            },
-        })
+        return JSONResponse(
+            {
+                "status": "ok",
+                "llama_cpp": {
+                    "reachable": resp.is_success,
+                    "status_code": resp.status_code,
+                    "latency_ms": elapsed_ms,
+                },
+            }
+        )
     except Exception as exc:
-        return JSONResponse({
-            "status": "degraded",
-            "llama_cpp": {"reachable": False, "error": str(exc)},
-        }, status_code=503)
+        return JSONResponse(
+            {
+                "status": "degraded",
+                "llama_cpp": {"reachable": False, "error": str(exc)},
+            },
+            status_code=503,
+        )
 
 
 # ── Slot monitoring ─────────────────────────────────────────────
+
 
 @app.get("/slots")
 async def slots():
@@ -411,6 +421,7 @@ async def slots():
 
 
 # ── Tokenize ────────────────────────────────────────────────────
+
 
 @app.post("/tokenize")
 async def tokenize(request: Request):
@@ -437,8 +448,7 @@ async def tokenize(request: Request):
             if isinstance(tokens, list):
                 _record_usage(turn_id, len(tokens))
         remaining = max(0, BUDGET_LIMIT_TOKENS - _turn_budgets.get(turn_id, _TurnBudget()).tokens_used)
-        return JSONResponse(data, status_code=resp.status_code,
-                           headers={"X-Budget-Remaining": str(remaining)})
+        return JSONResponse(data, status_code=resp.status_code, headers={"X-Budget-Remaining": str(remaining)})
     except HTTPException:
         raise
     except httpx.ConnectError:
@@ -448,6 +458,7 @@ async def tokenize(request: Request):
 
 
 # ── Completion (DevForge) ───────────────────────────────────────
+
 
 @app.post("/completion")
 async def completion(request: Request):
@@ -500,8 +511,7 @@ async def completion(request: Request):
             _record_usage(turn_id, tokens)
 
         remaining = max(0, BUDGET_LIMIT_TOKENS - _turn_budgets.get(turn_id, _TurnBudget()).tokens_used)
-        return JSONResponse(data, status_code=resp.status_code,
-                           headers={"X-Budget-Remaining": str(remaining)})
+        return JSONResponse(data, status_code=resp.status_code, headers={"X-Budget-Remaining": str(remaining)})
     except HTTPException:
         raise
     except httpx.ConnectError:
@@ -511,6 +521,7 @@ async def completion(request: Request):
 
 
 # ── Models list (Odysseus endpoint probing) ────────────────────
+
 
 @app.get("/v1/models")
 async def list_models():
@@ -530,6 +541,7 @@ async def list_models():
 
 
 # ── Chat completions (Odysseus) ─────────────────────────────────
+
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
@@ -616,8 +628,7 @@ async def _stream_chat_completions(body: dict, turn_id: str | None = None):
 
         _phash = _prefix_hash(body, "chat")
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("Scheduler: stream start prefix=%s (active=%d)",
-                         _phash, _active_stream_count)
+            logger.debug("Scheduler: stream start prefix=%s (active=%d)", _phash, _active_stream_count)
 
         async with client.stream(
             "POST",
@@ -640,7 +651,8 @@ async def _stream_chat_completions(body: dict, turn_id: str | None = None):
                                 usage = chunk.get("usage")
                                 if isinstance(usage, dict):
                                     tokens = usage.get(
-                                        "prompt_tokens", 0,
+                                        "prompt_tokens",
+                                        0,
                                     ) + usage.get("completion_tokens", 0)
                                     _record_usage(turn_id, tokens)
                             except Exception:
@@ -660,41 +672,49 @@ async def _stream_chat_completions(body: dict, turn_id: str | None = None):
 
 # ── Budget debug endpoint ───────────────────────────────────────
 
+
 @app.get("/budget")
 async def budget_overview():
     """Return current budget state for all active turns."""
     now = time.monotonic()
     turns = []
     for tid, b in sorted(_turn_budgets.items()):
-        turns.append({
-            "turn_id": tid[:8] + "…",
-            "tokens_used": b.tokens_used,
+        turns.append(
+            {
+                "turn_id": tid[:8] + "…",
+                "tokens_used": b.tokens_used,
+                "budget_limit": BUDGET_LIMIT_TOKENS,
+                "remaining": max(0, BUDGET_LIMIT_TOKENS - b.tokens_used),
+                "call_count": b.call_count,
+                "age_s": round(now - b.created_at, 1),
+            }
+        )
+    return JSONResponse(
+        {
+            "active_turns": len(turns),
             "budget_limit": BUDGET_LIMIT_TOKENS,
-            "remaining": max(0, BUDGET_LIMIT_TOKENS - b.tokens_used),
-            "call_count": b.call_count,
-            "age_s": round(now - b.created_at, 1),
-        })
-    return JSONResponse({
-        "active_turns": len(turns),
-        "budget_limit": BUDGET_LIMIT_TOKENS,
-        "turn_expiry_s": TURN_EXPIRY_SECONDS,
-        "turns": turns,
-    })
+            "turn_expiry_s": TURN_EXPIRY_SECONDS,
+            "turns": turns,
+        }
+    )
 
 
 # ── Scheduler debug endpoint (Phase 3) ──────────────────────────
 
+
 @app.get("/scheduler")
 async def scheduler_overview():
     """Return current scheduler state: active streams and queue stats."""
-    return JSONResponse({
-        "active_streams": _active_stream_count,
-        "streams_total": _streams_total,
-        "devforge_queued_total": _devforge_queued_total,
-        "devforge_queued_timeout_total": _devforge_queued_timeout_total,
-        "serialize_devforge": GATEWAY_SERIALIZE_DEVFORGE,
-        "queue_timeout_s": GATEWAY_DEVFORGE_QUEUE_TIMEOUT,
-    })
+    return JSONResponse(
+        {
+            "active_streams": _active_stream_count,
+            "streams_total": _streams_total,
+            "devforge_queued_total": _devforge_queued_total,
+            "devforge_queued_timeout_total": _devforge_queued_timeout_total,
+            "serialize_devforge": GATEWAY_SERIALIZE_DEVFORGE,
+            "queue_timeout_s": GATEWAY_DEVFORGE_QUEUE_TIMEOUT,
+        }
+    )
 
 
 # ── Main ────────────────────────────────────────────────────────

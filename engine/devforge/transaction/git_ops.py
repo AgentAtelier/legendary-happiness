@@ -38,6 +38,7 @@ class GitOps:
         """Lazy-load the git.Repo instance."""
         if self._repo is None:
             import git
+
             self._repo = git.Repo(self._repo_path)
         return self._repo
 

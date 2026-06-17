@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 # ── Sample recording ────────────────────────────────────────────
 
+
 def test_sample_stores_metrics() -> None:
     """Recording a sample stores it in the ring buffer."""
     from devforge.sentinel.sentinel import PerformanceSentinel
@@ -34,6 +35,7 @@ def test_sample_returns_none_for_none_metrics() -> None:
 
 
 # ── History ─────────────────────────────────────────────────────
+
 
 def test_history_returns_recent_samples() -> None:
     """History returns samples newest first, up to n."""
@@ -63,6 +65,7 @@ def test_history_empty() -> None:
 
 
 # ── Summary statistics ──────────────────────────────────────────
+
 
 def test_summary_computes_stats() -> None:
     """Summary computes min, max, avg across all samples."""
@@ -107,6 +110,7 @@ def test_summary_skips_non_numeric() -> None:
 
 # ── Ring buffer eviction ────────────────────────────────────────
 
+
 def test_eviction_on_overflow() -> None:
     """Oldest sample is evicted when max_samples is exceeded."""
     from devforge.sentinel.sentinel import PerformanceSentinel
@@ -123,6 +127,7 @@ def test_eviction_on_overflow() -> None:
 
 
 # ── Clear ───────────────────────────────────────────────────────
+
 
 def test_clear_empties_buffer() -> None:
     """Clear() removes all samples."""

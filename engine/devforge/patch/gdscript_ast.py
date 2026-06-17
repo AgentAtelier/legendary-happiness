@@ -57,6 +57,7 @@ except (ImportError, AttributeError, TypeError):
 @dataclass
 class FuncInfo:
     """Extracted function information from AST."""
+
     name: str
     line_number: int
     return_type: Optional[str]
@@ -68,6 +69,7 @@ class FuncInfo:
 @dataclass
 class SyntaxError:
     """A syntax error found in the source."""
+
     line_number: int
     column: int
     message: str
@@ -110,10 +112,12 @@ def _t1_find_funcs(content: str) -> List[FuncInfo]:
             for param in _t1_split_params(params_str):
                 pm = _RE_PARAM_T1.match(param.strip())
                 if pm:
-                    f.params.append({
-                        "name": pm.group(1),
-                        "type": pm.group(2),
-                    })
+                    f.params.append(
+                        {
+                            "name": pm.group(1),
+                            "type": pm.group(2),
+                        }
+                    )
         funcs.append(f)
     return funcs
 

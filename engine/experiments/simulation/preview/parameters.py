@@ -58,7 +58,6 @@ class ParameterRegistry:
         specs: Dict[str, ParameterSpec] = {}
 
         for name, value in params.items():
-
             specs[name] = ParameterSpec(
                 name=name,
                 value=value,

@@ -33,6 +33,7 @@ SHAPE_RESOURCES: Dict[str, dict] = {
     "cylinder": {"__class__": "CylinderShape3D", "radius": 0.5, "height": 2},
 }
 
+
 # ── Material template (for material_override on MeshInstance3D) ─
 def make_material(r: float, g: float, b: float, a: float = 1.0) -> dict:
     """Build a StandardMaterial3D resource dict with the given albedo color."""

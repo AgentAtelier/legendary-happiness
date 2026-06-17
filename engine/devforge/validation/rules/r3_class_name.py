@@ -34,8 +34,7 @@ class R3ClassName(Rule):
             violations.append(
                 Violation(
                     rule_id="R3_CLASS_NAME",
-                    message=f"class_name '{name}' is not PascalCase "
-                    f"(should match [A-Z][a-zA-Z0-9]*)",
+                    message=f"class_name '{name}' is not PascalCase (should match [A-Z][a-zA-Z0-9]*)",
                     line_number=line_num,
                     severity="critical",
                     action="block_merge",

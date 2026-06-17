@@ -36,26 +36,18 @@ class ArchitectureValidator:
         problems: List[str] = []
 
         for node in graph.nodes.values():
-
             if node.type != NodeType.ENTITY:
                 continue
 
             has_script = False
 
             for edge in graph.edges:
-
-                if (
-                    edge.source == node.id
-                    and edge.type == EdgeType.USES
-                ):
+                if edge.source == node.id and edge.type == EdgeType.USES:
                     has_script = True
                     break
 
             if not has_script:
-
-                problems.append(
-                    f"Entity '{node.name}' has no script"
-                )
+                problems.append(f"Entity '{node.name}' has no script")
 
         return problems
 
@@ -71,23 +63,18 @@ class ArchitectureValidator:
         problems: List[str] = []
 
         for node in graph.nodes.values():
-
             if node.type != NodeType.SCRIPT:
                 continue
 
             used = False
 
             for edge in graph.edges:
-
                 if edge.target == node.id:
                     used = True
                     break
 
             if not used:
-
-                problems.append(
-                    f"Script '{node.name}' is not attached to any entity"
-                )
+                problems.append(f"Script '{node.name}' is not attached to any entity")
 
         return problems
 
@@ -103,14 +90,10 @@ class ArchitectureValidator:
         problems: List[str] = []
 
         for edge in graph.edges:
-
             if edge.type != EdgeType.DEPENDS_ON:
                 continue
 
             if edge.target not in graph.nodes:
-
-                problems.append(
-                    f"Dependency missing: {edge.source} -> {edge.target}"
-                )
+                problems.append(f"Dependency missing: {edge.source} -> {edge.target}")
 
         return problems

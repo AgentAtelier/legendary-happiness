@@ -20,6 +20,7 @@ def _write_schema(tmpdir: str, name: str, data: dict) -> str:
 
 # ── schema_from_dict ────────────────────────────────────────────
 
+
 def test_schema_from_dict_minimal() -> None:
     """Minimal schema dict parses correctly."""
     from devforge.lore.schema import schema_from_dict
@@ -34,13 +35,14 @@ def test_schema_with_ref_field() -> None:
     """ref: type field sets foreign_ref."""
     from devforge.lore.schema import schema_from_dict
 
-    s = schema_from_dict({
-        "name": "quest",
-        "fields": [
-            {"name": "reward_item", "type": "ref:item", "required": True,
-             "foreign_ref": "item"},
-        ]
-    })
+    s = schema_from_dict(
+        {
+            "name": "quest",
+            "fields": [
+                {"name": "reward_item", "type": "ref:item", "required": True, "foreign_ref": "item"},
+            ],
+        }
+    )
     assert len(s.fields) == 1
     assert s.fields[0].foreign_ref == "item"
     assert s.ref_fields()[0].name == "reward_item"
@@ -48,14 +50,19 @@ def test_schema_with_ref_field() -> None:
 
 # ── validate_data_entry ─────────────────────────────────────────
 
+
 def test_validate_missing_required() -> None:
     """Missing required field is reported."""
     from devforge.lore.schema import validate_data_entry, SchemaDefinition, SchemaField
 
-    s = SchemaDefinition("item", id_field="id", fields=[
-        SchemaField("id", "str", required=True),
-        SchemaField("name", "str", required=True),
-    ])
+    s = SchemaDefinition(
+        "item",
+        id_field="id",
+        fields=[
+            SchemaField("id", "str", required=True),
+            SchemaField("name", "str", required=True),
+        ],
+    )
     errors = validate_data_entry({"id": "sword01"}, s)
     assert len(errors) == 1
     assert "name" in errors[0]
@@ -65,10 +72,14 @@ def test_validate_valid_entry() -> None:
     """Valid entry produces no errors."""
     from devforge.lore.schema import validate_data_entry, SchemaDefinition, SchemaField
 
-    s = SchemaDefinition("item", id_field="id", fields=[
-        SchemaField("id", "str", required=True),
-        SchemaField("damage", "int"),
-    ])
+    s = SchemaDefinition(
+        "item",
+        id_field="id",
+        fields=[
+            SchemaField("id", "str", required=True),
+            SchemaField("damage", "int"),
+        ],
+    )
     errors = validate_data_entry({"id": "sword01", "damage": 10}, s)
     assert errors == []
 
@@ -77,9 +88,13 @@ def test_validate_wrong_type() -> None:
     """Wrong field type is reported."""
     from devforge.lore.schema import validate_data_entry, SchemaDefinition, SchemaField
 
-    s = SchemaDefinition("item", id_field="id", fields=[
-        SchemaField("damage", "int"),
-    ])
+    s = SchemaDefinition(
+        "item",
+        id_field="id",
+        fields=[
+            SchemaField("damage", "int"),
+        ],
+    )
     errors = validate_data_entry({"id": "sword01", "damage": "high"}, s)
     assert len(errors) == 1
     assert "int" in errors[0]
@@ -87,18 +102,27 @@ def test_validate_wrong_type() -> None:
 
 # ── validate_referential_integrity ──────────────────────────────
 
+
 def test_integrity_valid_refs() -> None:
     """Valid foreign-key references produce no errors."""
     from devforge.lore.schema import SchemaDefinition, SchemaField
     from devforge.lore.lorekeeper import validate_integrity as vi
 
-    item_schema = SchemaDefinition("item", id_field="id", fields=[
-        SchemaField("id", "str", required=True),
-    ])
-    npc_schema = SchemaDefinition("npc", id_field="id", fields=[
-        SchemaField("id", "str", required=True),
-        SchemaField("favorite_item", "ref:item", foreign_ref="item"),
-    ])
+    item_schema = SchemaDefinition(
+        "item",
+        id_field="id",
+        fields=[
+            SchemaField("id", "str", required=True),
+        ],
+    )
+    npc_schema = SchemaDefinition(
+        "npc",
+        id_field="id",
+        fields=[
+            SchemaField("id", "str", required=True),
+            SchemaField("favorite_item", "ref:item", foreign_ref="item"),
+        ],
+    )
 
     data_files = {
         "item": [{"id": "sword01"}],
@@ -115,13 +139,21 @@ def test_integrity_broken_ref() -> None:
     from devforge.lore.schema import SchemaDefinition, SchemaField
     from devforge.lore.lorekeeper import validate_integrity
 
-    item_schema = SchemaDefinition("item", id_field="id", fields=[
-        SchemaField("id", "str", required=True),
-    ])
-    npc_schema = SchemaDefinition("npc", id_field="id", fields=[
-        SchemaField("id", "str", required=True),
-        SchemaField("favorite_item", "ref:item", foreign_ref="item"),
-    ])
+    item_schema = SchemaDefinition(
+        "item",
+        id_field="id",
+        fields=[
+            SchemaField("id", "str", required=True),
+        ],
+    )
+    npc_schema = SchemaDefinition(
+        "npc",
+        id_field="id",
+        fields=[
+            SchemaField("id", "str", required=True),
+            SchemaField("favorite_item", "ref:item", foreign_ref="item"),
+        ],
+    )
 
     data_files = {
         "item": [{"id": "sword01"}],
@@ -135,6 +167,7 @@ def test_integrity_broken_ref() -> None:
 
 
 # ── list_schemas / load_schema ──────────────────────────────────
+
 
 def test_list_schemas_scans_directory() -> None:
     """list_schemas finds .schema.json files."""

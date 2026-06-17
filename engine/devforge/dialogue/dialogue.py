@@ -26,8 +26,8 @@ from devforge.infrastructure.logger import logger
 class DialogueChoice:
     """A player response choice in a dialogue node."""
 
-    text: str                          # "Tell me about the dragon."
-    next_id: str = ""                  # target node ID, or "" for terminal
+    text: str  # "Tell me about the dragon."
+    next_id: str = ""  # target node ID, or "" for terminal
     conditions: dict[str, Any] = field(default_factory=dict)  # e.g. {"has_item": "sword", "quest_completed": "q1"}
 
     def to_dict(self) -> dict:
@@ -43,13 +43,13 @@ class DialogueChoice:
 class DialogueNode:
     """A single node in a dialogue tree."""
 
-    id: str                            # "npc_eldrin_greeting"
-    speaker_id: str                    # "eldrin" (references NPC schema)
-    text: str                          # "Well met, traveler. What brings you to these parts?"
+    id: str  # "npc_eldrin_greeting"
+    speaker_id: str  # "eldrin" (references NPC schema)
+    text: str  # "Well met, traveler. What brings you to these parts?"
     conditions: dict[str, Any] = field(default_factory=dict)  # conditions to show this node
     choices: list[DialogueChoice] = field(default_factory=list)
-    emotion: str = "neutral"           # hint for portrait/animation
-    is_terminal: bool = False          # dialogue ends after this node
+    emotion: str = "neutral"  # hint for portrait/animation
+    is_terminal: bool = False  # dialogue ends after this node
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {
@@ -72,9 +72,9 @@ class DialogueNode:
 class DialogueTree:
     """A complete dialogue tree for an NPC or conversation."""
 
-    id: str                            # "eldrin_main"
-    name: str                          # "Eldrin — Main Conversation"
-    start_node_id: str                 # "npc_eldrin_greeting"
+    id: str  # "eldrin_main"
+    name: str  # "Eldrin — Main Conversation"
+    start_node_id: str  # "npc_eldrin_greeting"
     nodes: list[DialogueNode] = field(default_factory=list)
     version: int = 1
 
@@ -95,7 +95,7 @@ class DialogueTree:
 class DialogueIssue:
     """A problem found during dialogue validation."""
 
-    issue_type: str       # "missing_speaker", "dead_end", "orphan_node", "duplicate_id", "missing_start"
+    issue_type: str  # "missing_speaker", "dead_end", "orphan_node", "duplicate_id", "missing_start"
     node_id: str = ""
     detail: str = ""
 
@@ -123,43 +123,57 @@ class DialogueValidator:
         # Check start node exists
         node_map = {n.id: n for n in tree.nodes}
         if tree.start_node_id not in node_map:
-            issues.append(DialogueIssue(
-                "missing_start",
-                detail=f"Start node '{tree.start_node_id}' not found in tree",
-            ))
+            issues.append(
+                DialogueIssue(
+                    "missing_start",
+                    detail=f"Start node '{tree.start_node_id}' not found in tree",
+                )
+            )
 
         # Check each node
         seen_ids: set[str] = set()
         for node in tree.nodes:
             # Duplicate IDs
             if node.id in seen_ids:
-                issues.append(DialogueIssue(
-                    "duplicate_id", node.id,
-                    f"Duplicate node ID: '{node.id}'",
-                ))
+                issues.append(
+                    DialogueIssue(
+                        "duplicate_id",
+                        node.id,
+                        f"Duplicate node ID: '{node.id}'",
+                    )
+                )
             seen_ids.add(node.id)
 
             # Speaker validation
             if npc_ids is not None and node.speaker_id not in npc_ids:
-                issues.append(DialogueIssue(
-                    "missing_speaker", node.id,
-                    f"Speaker '{node.speaker_id}' is not a known NPC",
-                ))
+                issues.append(
+                    DialogueIssue(
+                        "missing_speaker",
+                        node.id,
+                        f"Speaker '{node.speaker_id}' is not a known NPC",
+                    )
+                )
 
             # Choice validation
             for choice in node.choices:
                 if choice.next_id and choice.next_id not in node_map:
-                    issues.append(DialogueIssue(
-                        "dead_end", node.id,
-                        f"Choice leads to unknown node '{choice.next_id}'",
-                    ))
+                    issues.append(
+                        DialogueIssue(
+                            "dead_end",
+                            node.id,
+                            f"Choice leads to unknown node '{choice.next_id}'",
+                        )
+                    )
 
             # Terminal nodes should have no choices
             if node.is_terminal and node.choices:
-                issues.append(DialogueIssue(
-                    "orphan_node", node.id,
-                    "Terminal node should not have choices",
-                ))
+                issues.append(
+                    DialogueIssue(
+                        "orphan_node",
+                        node.id,
+                        "Terminal node should not have choices",
+                    )
+                )
 
         return issues
 
@@ -175,11 +189,14 @@ class DialogueValidator:
                 speaker_id=n["speaker_id"],
                 text=n["text"],
                 conditions=n.get("conditions", {}),
-                choices=[DialogueChoice(
-                    text=c["text"],
-                    next_id=c.get("next_id", ""),
-                    conditions=c.get("conditions", {}),
-                ) for c in n.get("choices", [])],
+                choices=[
+                    DialogueChoice(
+                        text=c["text"],
+                        next_id=c.get("next_id", ""),
+                        conditions=c.get("conditions", {}),
+                    )
+                    for c in n.get("choices", [])
+                ],
                 emotion=n.get("emotion", "neutral"),
                 is_terminal=n.get("is_terminal", False),
             )
@@ -198,6 +215,7 @@ class DialogueValidator:
 def load_dialogue_file(filepath: str) -> DialogueTree | None:
     """Load a dialogue JSON file into a DialogueTree. Returns None on failure."""
     import json
+
     try:
         with open(filepath, "r") as f:
             data = json.load(f)
@@ -211,11 +229,14 @@ def load_dialogue_file(filepath: str) -> DialogueTree | None:
             speaker_id=n["speaker_id"],
             text=n["text"],
             conditions=n.get("conditions", {}),
-            choices=[DialogueChoice(
-                text=c["text"],
-                next_id=c.get("next_id", ""),
-                conditions=c.get("conditions", {}),
-            ) for c in n.get("choices", [])],
+            choices=[
+                DialogueChoice(
+                    text=c["text"],
+                    next_id=c.get("next_id", ""),
+                    conditions=c.get("conditions", {}),
+                )
+                for c in n.get("choices", [])
+            ],
             emotion=n.get("emotion", "neutral"),
             is_terminal=n.get("is_terminal", False),
         )

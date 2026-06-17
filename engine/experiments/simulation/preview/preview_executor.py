@@ -18,8 +18,6 @@ class PreviewExecutor:
         errors = self.validator.validate(scene)
 
         if errors:
-            raise RuntimeError(
-                "Preview validation failed:\n" + "\n".join(errors)
-            )
+            raise RuntimeError("Preview validation failed:\n" + "\n".join(errors))
 
         return scene

@@ -30,7 +30,6 @@ class AutoBalancer:
         best_params = None
 
         for _ in range(iterations):
-
             self._randomize_parameters()
 
             self.controller.reset()
@@ -42,13 +41,11 @@ class AutoBalancer:
             score = self._score(metrics, targets)
 
             if score < best_score:
-
                 best_score = score
 
                 best_params = self._current_parameters()
 
         if best_params:
-
             self._apply_parameters(best_params)
 
         return {
@@ -63,7 +60,6 @@ class AutoBalancer:
         score = 0
 
         for name, target in targets.items():
-
             if name not in metrics:
                 continue
 
@@ -80,9 +76,7 @@ class AutoBalancer:
         params = self.controller.parameters()
 
         for system, plist in params.items():
-
             for p in plist:
-
                 new_value = random.uniform(
                     p.get("min", 0),
                     p.get("max", 1),
@@ -103,11 +97,7 @@ class AutoBalancer:
         output = {}
 
         for system, plist in params.items():
-
-            output[system] = {
-                p["name"]: p["value"]
-                for p in plist
-            }
+            output[system] = {p["name"]: p["value"] for p in plist}
 
         return output
 
@@ -116,9 +106,7 @@ class AutoBalancer:
     def _apply_parameters(self, parameters):
 
         for system, values in parameters.items():
-
             for name, value in values.items():
-
                 self.controller.set_parameter(
                     system,
                     name,

@@ -16,6 +16,7 @@ from devforge.spatial.lexicon import AssetLexicon
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def lexicon():
     return AssetLexicon()
@@ -34,6 +35,7 @@ def planner_no_lexicon():
 
 # ── Grammar loading tests ────────────────────────────────────────
 
+
 class TestGrammarLoading:
     """Grammar file loading: default path, custom path, missing path."""
 
@@ -48,12 +50,12 @@ class TestGrammarLoading:
     def test_custom_grammar_path(self, lexicon):
         """Custom grammar path overrides the default."""
         with NamedTemporaryFile(mode="w", suffix=".gbnf", delete=False) as f:
-            f.write("root ::= \"hello\"\n")
+            f.write('root ::= "hello"\n')
             tmp_path = f.name
 
         try:
             p = ScatterPlanner(lexicon=lexicon, grammar_path=tmp_path)
-            assert p.grammar == "root ::= \"hello\""
+            assert p.grammar == 'root ::= "hello"'
         finally:
             Path(tmp_path).unlink()
 
@@ -77,6 +79,7 @@ class TestGrammarLoading:
 
 
 # ── Prompt building tests ────────────────────────────────────────
+
 
 class TestPromptBuilding:
     """_build_prompt: asset filtering, structure, edge cases."""
@@ -138,21 +141,24 @@ class TestPromptBuilding:
 
 # ── Response parsing tests ──────────────────────────────────────
 
+
 class TestResponseParsing:
     """_parse_response: valid JSON, edge cases, error handling."""
 
     def test_parse_valid_complete_json(self, planner):
         """Parse a fully-populated garden JSON."""
-        response = json.dumps({
-            "region": {"width": 20.0, "depth": 15.0},
-            "keep_out": [
-                {"x": 4.0, "z": 4.0, "w": 12.0, "d": 8.0},
-            ],
-            "species": [
-                {"id": "tree", "count": 5, "min_spacing": 4.0},
-                {"id": "bush", "count": 10, "min_spacing": 2.0},
-            ],
-        })
+        response = json.dumps(
+            {
+                "region": {"width": 20.0, "depth": 15.0},
+                "keep_out": [
+                    {"x": 4.0, "z": 4.0, "w": 12.0, "d": 8.0},
+                ],
+                "species": [
+                    {"id": "tree", "count": 5, "min_spacing": 4.0},
+                    {"id": "bush", "count": 10, "min_spacing": 2.0},
+                ],
+            }
+        )
         result = planner._parse_response(response)
         assert result["region"]["width"] == 20.0
         assert result["region"]["depth"] == 15.0
@@ -164,44 +170,56 @@ class TestResponseParsing:
 
     def test_parse_minimal_json(self, planner):
         """Parse a minimal garden JSON with only region and one species."""
-        response = json.dumps({
-            "region": {"width": 10.0, "depth": 10.0},
-            "keep_out": [],
-            "species": [
-                {"id": "flower", "count": 3, "min_spacing": 1.5},
-            ],
-        })
+        response = json.dumps(
+            {
+                "region": {"width": 10.0, "depth": 10.0},
+                "keep_out": [],
+                "species": [
+                    {"id": "flower", "count": 3, "min_spacing": 1.5},
+                ],
+            }
+        )
         result = planner._parse_response(response)
         assert result["species"][0]["count"] == 3
         assert result["keep_out"] == []
 
     def test_parse_with_thinking_tags(self, planner):
         """Strip ＜think＞...＜/think＞ tags before parsing JSON."""
-        response = "<think>Let me plan a garden</think>\n" + json.dumps({
-            "region": {"width": 20.0, "depth": 20.0},
-            "keep_out": [],
-            "species": [{"id": "tree", "count": 3, "min_spacing": 4.0}],
-        })
+        response = "<think>Let me plan a garden</think>\n" + json.dumps(
+            {
+                "region": {"width": 20.0, "depth": 20.0},
+                "keep_out": [],
+                "species": [{"id": "tree", "count": 3, "min_spacing": 4.0}],
+            }
+        )
         result = planner._parse_response(response)
         assert result["species"][0]["count"] == 3
 
     def test_parse_with_markdown_fences(self, planner):
         """Strip ```json and ``` fences before parsing JSON."""
-        response = "```json\n" + json.dumps({
-            "region": {"width": 15.0, "depth": 15.0},
-            "keep_out": [],
-            "species": [{"id": "bush", "count": 5, "min_spacing": 2.0}],
-        }) + "\n```"
+        response = (
+            "```json\n"
+            + json.dumps(
+                {
+                    "region": {"width": 15.0, "depth": 15.0},
+                    "keep_out": [],
+                    "species": [{"id": "bush", "count": 5, "min_spacing": 2.0}],
+                }
+            )
+            + "\n```"
+        )
         result = planner._parse_response(response)
         assert result["species"][0]["id"] == "bush"
 
     def test_parse_with_prose_prefix(self, planner):
         """JSON preceded by prose text — find the JSON object and parse it."""
-        response = "Here is the garden plan:\n" + json.dumps({
-            "region": {"width": 12.0, "depth": 8.0},
-            "keep_out": [],
-            "species": [{"id": "rock", "count": 2, "min_spacing": 1.5}],
-        })
+        response = "Here is the garden plan:\n" + json.dumps(
+            {
+                "region": {"width": 12.0, "depth": 8.0},
+                "keep_out": [],
+                "species": [{"id": "rock", "count": 2, "min_spacing": 1.5}],
+            }
+        )
         result = planner._parse_response(response)
         assert result["region"]["width"] == 12.0
 
@@ -216,11 +234,13 @@ class TestResponseParsing:
 
     def test_parse_integer_counts_as_ints(self, planner):
         """Count values are parsed as integers (not floats)."""
-        response = json.dumps({
-            "region": {"width": 10, "depth": 10},
-            "keep_out": [],
-            "species": [{"id": "tree", "count": 5, "min_spacing": 4}],
-        })
+        response = json.dumps(
+            {
+                "region": {"width": 10, "depth": 10},
+                "keep_out": [],
+                "species": [{"id": "tree", "count": 5, "min_spacing": 4}],
+            }
+        )
         result = planner._parse_response(response)
         # JSON doesn't distinguish int/float, but the value should be numeric
         assert result["species"][0]["count"] == 5
@@ -254,16 +274,19 @@ class TestResponseParsing:
 
 # ── Plan integration tests ──────────────────────────────────────
 
+
 class TestPlanMethod:
     """plan() method: LLM integration, error propagation, result shape."""
 
     def test_plan_returns_correct_shape(self, planner):
         """plan() with a mock LLM returns the expected dict shape."""
-        mock_response = json.dumps({
-            "region": {"width": 20.0, "depth": 20.0},
-            "keep_out": [],
-            "species": [{"id": "tree", "count": 3, "min_spacing": 4.0}],
-        })
+        mock_response = json.dumps(
+            {
+                "region": {"width": 20.0, "depth": 20.0},
+                "keep_out": [],
+                "species": [{"id": "tree", "count": 3, "min_spacing": 4.0}],
+            }
+        )
 
         def mock_llm(prompt: str) -> str:
             return mock_response
@@ -280,6 +303,7 @@ class TestPlanMethod:
 
     def test_plan_propagates_llm_errors(self, planner):
         """When LLM returns invalid output, ScatterPlanningError is raised."""
+
         def bad_llm(prompt: str) -> str:
             return "no json here"
 
@@ -292,11 +316,13 @@ class TestPlanMethod:
 
     def test_plan_passes_scene_parameter(self, planner):
         """scene parameter is accepted (for API compatibility)."""
-        mock_response = json.dumps({
-            "region": {"width": 10, "depth": 10},
-            "keep_out": [],
-            "species": [{"id": "bush", "count": 2, "min_spacing": 2}],
-        })
+        mock_response = json.dumps(
+            {
+                "region": {"width": 10, "depth": 10},
+                "keep_out": [],
+                "species": [{"id": "bush", "count": 2, "min_spacing": 2}],
+            }
+        )
 
         def mock_llm(prompt: str) -> str:
             return mock_response
@@ -312,6 +338,7 @@ class TestPlanMethod:
 
     def test_plan_llm_exception_propagates(self, planner):
         """When llm_fn raises an exception, ScatterPlanningError is raised."""
+
         def crashing_llm(prompt: str) -> str:
             raise RuntimeError("LLM crashed")
 
@@ -325,9 +352,11 @@ class TestPlanMethod:
 
 # ── Import / structure tests ─────────────────────────────────────
 
+
 class TestScatterPlannerImports:
     def test_imports_available(self):
         from devforge.spatial.scatter_planner import ScatterPlanner, ScatterPlanningError
+
         assert ScatterPlanner is not None
         assert ScatterPlanningError is not None
 

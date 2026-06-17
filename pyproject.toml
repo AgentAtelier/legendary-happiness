@@ -1,0 +1,18 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["F", "I", "B"]
+ignore = [
+    "B904",   # raise without from inside except - noisy in CLI wrappers
+    "B028",   # No explicit stacklevel keyword in warn - tolerable
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
