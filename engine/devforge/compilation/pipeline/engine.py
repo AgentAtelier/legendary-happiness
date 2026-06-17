@@ -45,6 +45,7 @@ from devforge.infrastructure.logger import logger
 from devforge.infrastructure.runtime_config import RuntimeConfig
 from devforge.knowledge.scene.scene_graph import SceneGraph
 from devforge.knowledge.system_graph.system_graph import SystemGraph
+from devforge.reasoning.prompts.conditioning import prepend_conditioning
 
 
 def _clean_rename_target(name: str) -> str:
@@ -339,6 +340,12 @@ class PipelineEngine:
                     scene_version=scene_version,
                     stage_latencies=stages,
                 )
+
+            # Phase 0.5: System-owned conditioning (additive). Prepend the quality
+            # directive so a plain user prompt gets the best output — the owner
+            # never needs "magic words". Toggle: DEVFORGE_PLANNER_CONDITIONING=0.
+            # (NEXT-PHASE-RECONCILED-DIRECTION.md, slice A.)
+            planner_prompt = prepend_conditioning(planner_prompt)
 
             # Phase 1: Context Assembly
             # The architecture planner's output schema cannot use code — it
