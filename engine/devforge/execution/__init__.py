@@ -9,9 +9,9 @@ Backend (b): GodotAIMCPExecutor — uses the godot-ai MCP server
     log parsing.
 """
 
-from devforge.execution.interface import Executor, ExecutionResult
 from devforge.execution.devforge_plugin import DevForgePluginExecutor
-from devforge.execution.godot_ai_mcp import GodotAIMCPExecutor
+from devforge.execution.godot_ai_executor import GodotAIMCPExecutor
+from devforge.execution.interface import ExecutionResult, Executor
 
 __all__ = [
     "Executor",
