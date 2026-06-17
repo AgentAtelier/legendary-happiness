@@ -1,0 +1,31 @@
+# DevForge Process Supervisor (M2 — deployment story)
+#
+# Start with Honcho:      honcho start
+# Or Foreman:             foreman start
+# Or overmind:            overmind start
+#
+# Startup order matters: llama.cpp → gateway → DevForge MCP → (godot-ai + Godot)
+# The gateway depends on llama.cpp; DevForge depends on the gateway.
+# godot-ai and Godot are external and started separately.
+
+# ── LLM backend (must be first) ──
+llama: llama-server -m /path/to/gemma-4-26B-A4B-it-qat.gguf --host 127.0.0.1 --port 9090 --ctx-size 32768 --n-gpu-layers 99
+
+# ── LLM Gateway (depends on llama.cpp) ──
+gateway: python -m devforge.infrastructure.llm.gateway
+
+# ── DevForge MCP Server (depends on gateway) ──
+mcp: python -c "from devforge.platform.mcp_server import mcp; mcp.run(transport='sse')"
+
+# ── DevForge FastAPI Server (optional, for Godot plugin) ──
+# api: uvicorn devforge.platform.server.server:app --host 127.0.0.1 --port 8002
+
+# ── Environment ──
+# These are set via .env or the shell before starting.
+# See SETUP-GUIDE.md for the full list.
+# DEVFORGE_LLAMA_ENDPOINT=http://localhost:9090
+# DEVFORGE_EXECUTOR_BACKEND=godot_ai_mcp
+# DEVFORGE_GODOT_AI_MCP_URL=http://localhost:8000/mcp
+# DEVFORGE_GAME_ROOT=./dev-forge
+# MCP_HOST=127.0.0.1
+# MCP_PORT=8001

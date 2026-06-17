@@ -1,0 +1,190 @@
+{
+  "kind": "bench",
+  "ts": "2026-06-15 04:59:21",
+  "model": "qwen3-14b-q6-k",
+  "template": "chatml",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "server answers /health",
+      "id": "llama.health",
+      "ms": 6,
+      "layer": "llama",
+      "title": "Server alive"
+    },
+    {
+      "status": "pass",
+      "detail": "model=qwen3-14b-q6-k ctx=32768",
+      "id": "llama.props",
+      "ms": 6,
+      "layer": "llama",
+      "title": "Serving the configured model"
+    },
+    {
+      "status": "pass",
+      "detail": "runaway guards present in LLAMA_ARGS",
+      "id": "llama.caps",
+      "ms": 0,
+      "layer": "llama",
+      "title": "Runaway guards configured"
+    },
+    {
+      "status": "pass",
+      "detail": "grammar constrained the output exactly",
+      "id": "llama.grammar",
+      "ms": 431,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "status": "pass",
+      "detail": "model emitted a native tool call (mcp__godot-ai__scene_get_hierarchy)",
+      "id": "llama.tools",
+      "ms": 3407,
+      "layer": "llama",
+      "title": "Native tool calling"
+    },
+    {
+      "status": "pass",
+      "detail": "/no_think suppressed the thinking block",
+      "id": "llama.nothink",
+      "ms": 1030,
+      "layer": "llama",
+      "title": "/no_think switch (Qwen only)"
+    },
+    {
+      "status": "pass",
+      "detail": "chat returned 628 chars of content (finish=stop)",
+      "id": "llama.chat_content",
+      "ms": 10319,
+      "layer": "llama",
+      "title": "Chat returns content, not a thinking essay"
+    },
+    {
+      "status": "pass",
+      "detail": "server 2.7.5 matches the editor plugin",
+      "id": "godotai.status",
+      "ms": 5,
+      "layer": "godot-ai",
+      "title": "Server up + version matches plugin"
+    },
+    {
+      "status": "fail",
+      "detail": "loopback-only \u2014 Odysseus (docker) cannot reach it. A plugin-spawned server won the race; run: stack up (it adopts/replaces it)",
+      "id": "godotai.bind",
+      "ms": 6,
+      "layer": "godot-ai",
+      "title": "Reachable from Docker"
+    },
+    {
+      "status": "pass",
+      "detail": "41 tools",
+      "id": "godotai.tools",
+      "ms": 17,
+      "layer": "godot-ai",
+      "title": "Tool surface complete"
+    },
+    {
+      "status": "pass",
+      "detail": "editor adopted, scene res://scenes/main.tscn",
+      "id": "godotai.editor",
+      "ms": 95,
+      "layer": "godot-ai",
+      "title": "Editor adopted the server"
+    },
+    {
+      "status": "pass",
+      "detail": "6 nodes, root /Main",
+      "id": "godotai.scene",
+      "ms": 97,
+      "layer": "godot-ai",
+      "title": "Live scene read"
+    },
+    {
+      "status": "fail",
+      "detail": "IP\u2192000 (want 200), DNS\u2192000 (want 403). If IP failed: check GODOT_AI_ALLOW_HOSTS in stack.env",
+      "id": "godotai.guard",
+      "ms": 140,
+      "layer": "godot-ai",
+      "title": "Container access + security guard"
+    },
+    {
+      "status": "pass",
+      "detail": "30 tools incl. apply_spec",
+      "id": "devforge.tools",
+      "ms": 20,
+      "layer": "devforge",
+      "title": "MCP server + apply_spec present"
+    },
+    {
+      "status": "pass",
+      "detail": "nested tree OK \u2014 root 'Main' with 5 children",
+      "id": "devforge.scene",
+      "ms": 37,
+      "layer": "devforge",
+      "title": "Scene tree is nested (not flat)"
+    },
+    {
+      "status": "pass",
+      "detail": "created visible node via LLM plan (3 ops), cleaned up",
+      "id": "devforge.apply",
+      "ms": 17706,
+      "layer": "devforge",
+      "title": "Full pipeline write (LLM plan \u2192 editor)"
+    },
+    {
+      "status": "pass",
+      "detail": "web app answers (HTTP 401)",
+      "id": "odysseus.up",
+      "ms": 5,
+      "layer": "odysseus",
+      "title": "Web app running"
+    },
+    {
+      "status": "fail",
+      "detail": "['godot-ai', 'DevForge'] NOT connected \u2014 Odysseus only connects at startup. Fix: make sure the servers are up, then docker restart odysseus-odysseus-1",
+      "id": "odysseus.mcp",
+      "ms": 89,
+      "layer": "odysseus",
+      "title": "Both MCP servers connected THIS boot"
+    },
+    {
+      "status": "pass",
+      "detail": "enabled, temp 0.2, /no_think + 'MCP' present",
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Persona invariants"
+    },
+    {
+      "status": "pass",
+      "detail": "1 endpoint(s) clean",
+      "id": "odysseus.endpoint",
+      "ms": 13,
+      "layer": "odysseus",
+      "title": "Model endpoint records clean"
+    },
+    {
+      "status": "pass",
+      "detail": "container reaches llama via host.docker.internal",
+      "id": "odysseus.reach",
+      "ms": 45,
+      "layer": "odysseus",
+      "title": "Container reaches llama"
+    },
+    {
+      "status": "fail",
+      "detail": "apply_spec NOT in retrieval for the cube request \u2014 the model won't see it. Retrieved MCP tools: NONE. Fix: enrich DevForge tool descriptions / persona inject vocabulary, then docker restart odysseus-odysseus-1",
+      "id": "odysseus.retrieval",
+      "ms": 2676,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "pass": 18,
+    "fail": 4,
+    "skip": 0,
+    "error": 0
+  }
+}

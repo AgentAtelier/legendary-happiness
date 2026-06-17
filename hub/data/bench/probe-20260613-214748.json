@@ -1,0 +1,72 @@
+{
+  "ts": "2026-06-13 21:47:39",
+  "model": "merged-22b-q4-k-m",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "broken",
+      "summary": "planner produced an EMPTY delta (0 entities)",
+      "thresholds": "\u22653 entities w/ valid types",
+      "data": {
+        "entity_count": 0,
+        "names": [],
+        "types": [],
+        "systems": 0,
+        "parents": {}
+      },
+      "id": "devforge.plan",
+      "ms": 8803,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "broken",
+      "summary": "compiler emitted ONLY scaffolding (camera/light) \u2014 none of ['Body', 'Eye', 'Hero'] requested",
+      "thresholds": "requested ops present, parented /root/Main",
+      "data": {
+        "op_count": 0,
+        "requested_ops": [],
+        "scaffold_ops": [],
+        "parents": {},
+        "bad_parents": {},
+        "coverage": "0/3"
+      },
+      "id": "devforge.compile",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Compiler operations + parent paths"
+    },
+    {
+      "verdict": "broken",
+      "summary": "1 execution error(s): ['Architecture planning failed after 3 attempts: LLM HTTP error: 400 Client Error: Bad Request for url: http://127.0.0.1:8002/completion; LLM HTTP error: 400 Client Error: Bad Request for url: http://12\u2026']",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 0,
+        "operations_total": 0,
+        "error_count": 1,
+        "errors": [
+          "Architecture planning failed after 3 attempts: LLM HTTP error: 400 Client Error: Bad Request for url: http://127.0.0.1:8002/completion; LLM HTTP error: 400 Client Error: Bad Request for url: http://12\u2026"
+        ],
+        "nodes_added": [],
+        "requested_built": [],
+        "coverage": "0/3",
+        "before_n": 1,
+        "after_n": 1
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    }
+  ],
+  "counts": {
+    "works": 0,
+    "degraded": 0,
+    "broken": 3,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "devforge": "broken"
+  }
+}

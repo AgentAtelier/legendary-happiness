@@ -1,0 +1,54 @@
+{
+  "id": "move1-diagnostics",
+  "title": "Move 1 Diagnostics — Prove the Bottleneck First",
+  "description": "Three baselines the Stage 4 rebalance must beat. Run with --runs 10 for repeat-diversity; with --runs 1 per variant for intent-sensitivity; on 4B and 27B for model ceiling.",
+  "planner": "room",
+  "prompts": [
+    {
+      "id": "D1_repeat_kitchen",
+      "axis": "variety:repeat_diversity",
+      "prompt": "build a kitchen",
+      "expect": {
+        "min_nodes": 3,
+        "variety_min_diversity": 0.0,
+        "variety_min_entropy": 0.0
+      }
+    },
+    {
+      "id": "D2_cramped_kitchen",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a cramped kitchen",
+      "expect": {
+        "min_nodes": 2,
+        "variety_min_intent_fields": 0
+      }
+    },
+    {
+      "id": "D3_spacious_kitchen",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a spacious kitchen",
+      "expect": {
+        "min_nodes": 3,
+        "variety_min_intent_fields": 0
+      }
+    },
+    {
+      "id": "D4_abandoned_kitchen",
+      "axis": "variety:intent_coverage",
+      "prompt": "build an abandoned kitchen",
+      "expect": {
+        "min_nodes": 2,
+        "variety_min_intent_fields": 0
+      }
+    },
+    {
+      "id": "D5_luxurious_kitchen",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a luxurious kitchen",
+      "expect": {
+        "min_nodes": 3,
+        "variety_min_intent_fields": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "slug": "save_system",
+  "name": "Save System",
+  "description": "Slot-based save system with autosave timer, versioned schema, and save/load UI signals. Registers as an Autoload singleton.",
+  "version": 1,
+  "slots": [
+    {"name": "save_directory", "type": "str", "default": "user://saves", "description": "Directory path for save files"},
+    {"name": "auto_save_interval", "type": "float", "default": 300.0, "description": "Seconds between autosaves (0 to disable)"},
+    {"name": "max_save_slots", "type": "int", "default": 5, "description": "Maximum number of save slots"}
+  ],
+  "requires": [],
+  "scripts": [
+    {
+      "path": "scripts/systems/save_manager.gd",
+      "content": "extends Node\n\nsignal save_completed(slot: int)\nsignal load_completed(slot: int)\nsignal autosave_triggered\n\nconst SAVE_VERSION := 1\nconst SAVE_DIR := \"{{save_directory}}\"\nconst MAX_SLOTS := {{max_save_slots}}\nconst AUTO_SAVE_INTERVAL := {{auto_save_interval}}\n\nvar _auto_save_timer: float = 0.0\n\nfunc _ready():\n\tDirAccess.make_dir_recursive_absolute(SAVE_DIR)\n\nfunc _process(delta):\n\tif AUTO_SAVE_INTERVAL > 0:\n\t\t_auto_save_timer += delta\n\t\tif _auto_save_timer >= AUTO_SAVE_INTERVAL:\n\t\t\t_auto_save_timer = 0.0\n\t\t\tautosave_triggered.emit()\n\t\t\tsave_game(0)\n\nfunc save_game(slot: int) -> bool:\n\tif slot < 0 or slot >= MAX_SLOTS:\n\t\tpush_error(\"Save slot %d out of range [0, %d]\" % [slot, MAX_SLOTS - 1])\n\t\treturn false\n\n\tvar save_data := {\n\t\t\"version\": SAVE_VERSION,\n\t\t\"timestamp\": Time.get_unix_time_from_system(),\n\t\t\"scene_path\": get_tree().current_scene.scene_file_path,\n\t\t\"player_data\": _collect_player_data(),\n\t\t\"world_state\": _collect_world_state(),\n\t}\n\n\tvar file := FileAccess.open(\"%s/save_%d.json\" % [SAVE_DIR, slot], FileAccess.WRITE)\n\tif file == null:\n\t\tpush_error(\"Failed to open save file for slot %d\" % slot)\n\t\treturn false\n\n\tfile.store_string(JSON.stringify(save_data, \"\\t\"))\n\tfile.close()\n\tsave_completed.emit(slot)\n\treturn true\n\nfunc load_game(slot: int) -> Dictionary:\n\tif slot < 0 or slot >= MAX_SLOTS:\n\t\tpush_error(\"Load slot %d out of range [0, %d]\" % [slot, MAX_SLOTS - 1])\n\t\treturn {}\n\n\tvar path := \"%s/save_%d.json\" % [SAVE_DIR, slot]\n\tif not FileAccess.file_exists(path):\n\t\tpush_warning(\"No save file for slot %d\" % slot)\n\t\treturn {}\n\n\tvar file := FileAccess.open(path, FileAccess.READ)\n\tvar json := JSON.new()\n\tvar error := json.parse(file.get_as_text())\n\tfile.close()\n\n\tif error != OK:\n\t\tpush_error(\"Failed to parse save file for slot %d\" % slot)\n\t\treturn {}\n\n\tvar data: Dictionary = json.get_data()\n\tload_completed.emit(slot)\n\treturn data\n\nfunc get_save_info(slot: int) -> Dictionary:\n\tvar path := \"%s/save_%d.json\" % [SAVE_DIR, slot]\n\tif not FileAccess.file_exists(path):\n\t\treturn {}\n\tvar file := FileAccess.open(path, FileAccess.READ)\n\tvar json := JSON.new()\n\tjson.parse(file.get_as_text())\n\tfile.close()\n\tvar data: Dictionary = json.get_data()\n\treturn {\"slot\": slot, \"timestamp\": data.get(\"timestamp\", 0), \"scene\": data.get(\"scene_path\", \"\")}\n\nfunc _collect_player_data() -> Dictionary:\n\tvar player = get_tree().get_first_node_in_group(\"player\")\n\tif player:\n\t\treturn {\"position\": {\"x\": player.global_position.x, \"y\": player.global_position.y, \"z\": player.global_position.z}}\n\treturn {}\n\nfunc _collect_world_state() -> Dictionary:\n\treturn {}\n"
+    }
+  ],
+  "operations": [
+    {"type": "add_node", "parent": "/root", "node_type": "Node", "name": "SaveManager"},
+    {"type": "attach_script", "node": "/root/SaveManager", "script": "scripts/systems/save_manager.gd"}
+  ],
+  "collision_check": ["/root/SaveManager"]
+}

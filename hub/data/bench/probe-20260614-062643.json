@@ -1,0 +1,130 @@
+{
+  "ts": "2026-06-14 06:25:55",
+  "model": "merged-22b-q4-k-m",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "25.3 tok/s, TTFT 158 ms",
+      "thresholds": "\u226515 works \u00b7 5\u201315 degraded \u00b7 <5 broken",
+      "data": {
+        "tok_per_sec": 25.3,
+        "gen_tok": 98,
+        "prompt_tok": 39,
+        "ttft_ms": 158,
+        "gen_ms": 3871
+      },
+      "id": "llama.throughput",
+      "ms": 4197,
+      "layer": "llama",
+      "title": "Generation throughput"
+    },
+    {
+      "verdict": "works",
+      "summary": "grammar enforced exactly \u2192 'ANVIL'",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "id": "llama.grammar",
+      "ms": 302,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "verdict": "works",
+      "summary": "planned 3 entities in 42s: ['Hero', 'Eye', 'Body']",
+      "thresholds": "\u22653 entities w/ valid types, planning <60s",
+      "data": {
+        "entity_count": 3,
+        "names": [
+          "Hero",
+          "Eye",
+          "Body"
+        ],
+        "types": [
+          "CharacterBody3D",
+          "Camera3D",
+          "MeshInstance3D"
+        ],
+        "systems": 1,
+        "parents": {
+          "Eye": "Hero",
+          "Body": "Hero"
+        },
+        "apply_ms": 42606,
+        "model": "merged-22b-q4-k-m",
+        "plan_stage_ms": 0,
+        "compile_ms": 0,
+        "plan_retries": 0,
+        "stage_latencies": {}
+      },
+      "id": "devforge.plan",
+      "ms": 43341,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "works",
+      "summary": "auto-injected {'DirectionalLight': '/root/Main'} at valid parent",
+      "thresholds": "injected nodes parented at /root/Main",
+      "data": {
+        "injected": {
+          "DirectionalLight": "/root/Main"
+        },
+        "bad_parents": {},
+        "parent_errors": [],
+        "completeness_added": 0
+      },
+      "id": "devforge.completeness",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Completeness injector parents"
+    },
+    {
+      "verdict": "works",
+      "summary": "built all ['Body', 'Eye', 'Hero'], +5 nodes, 0 errors",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 10,
+        "operations_total": 10,
+        "error_count": 0,
+        "errors": [],
+        "nodes_added": [
+          "/Main/DirectionalLight",
+          "/Main/Hero",
+          "/Main/Hero/Body",
+          "/Main/Hero/CollisionShape3D",
+          "/Main/Hero/Eye"
+        ],
+        "requested_built": [
+          "Body",
+          "Eye",
+          "Hero"
+        ],
+        "coverage": "3/3",
+        "before_n": 1,
+        "after_n": 6,
+        "plan_retries": 0,
+        "repair_count": 0,
+        "completeness_added": 0
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    }
+  ],
+  "counts": {
+    "works": 5,
+    "degraded": 0,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "works",
+    "devforge": "works"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "ts": "2026-06-13 03:02:26",
+  "model": "gemma-4",
+  "template": "gemma",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "apply_spec retrieved. MCP tools in top-k: ['mcp__devforge__apply_spec', 'mcp__devforge__audit_scene', 'mcp__devforge__get_scene', 'mcp__devforge__validate_spec', 'mcp__godot-ai__node_create', 'mcp__godot-ai__scene_manage', 'mcp__godot-ai__scene_open', 'mcp__godot-ai__script_attach']",
+      "id": "odysseus.retrieval",
+      "ms": 2866,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "fail": 0,
+    "skip": 0,
+    "error": 0
+  }
+}

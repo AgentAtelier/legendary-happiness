@@ -1,0 +1,142 @@
+{
+  "ts": "2026-06-14 21:36:04",
+  "model": "merged-22b-q4-k-m",
+  "template": "chatml",
+  "config_hash": "95eaf058",
+  "scenarios": [
+    {
+      "scenario_id": "cube_create",
+      "category": "geometry",
+      "status": "pass",
+      "ms": 43100,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/TestCube)",
+          "message": "/Main/TestCube exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/TestCube, MeshInstance3D)",
+          "message": "/Main/TestCube is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "has_mesh(/Main/TestCube)",
+          "message": "/Main/TestCube has mesh assigned"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": []
+    },
+    {
+      "scenario_id": "batch_three",
+      "category": "multi-node",
+      "status": "fail",
+      "ms": 36399,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/BlockA)",
+          "message": "/Main/BlockA exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/BlockB)",
+          "message": "/Main/BlockB exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/BlockC)",
+          "message": "/Main/BlockC exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/BlockA, MeshInstance3D)",
+          "message": "/Main/BlockA is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/BlockB, MeshInstance3D)",
+          "message": "/Main/BlockB is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/BlockC, MeshInstance3D)",
+          "message": "/Main/BlockC is MeshInstance3D"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_extra_nodes(exclude={'BlockC', 'BlockB', 'BlockA'})",
+          "message": "Unrequested nodes added: ['/Main/MainCamera', '/Main/DirectionalLight']"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": []
+    },
+    {
+      "scenario_id": "small_room",
+      "category": "composite",
+      "status": "fail",
+      "ms": 51907,
+      "assertions": [
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/WallFront)",
+          "message": "/Main/WallFront NOT found in scene. Present: ['/Main']"
+        },
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/WallBack)",
+          "message": "/Main/WallBack NOT found in scene. Present: ['/Main']"
+        },
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/WallLeft)",
+          "message": "/Main/WallLeft NOT found in scene. Present: ['/Main']"
+        },
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/WallRight)",
+          "message": "/Main/WallRight NOT found in scene. Present: ['/Main']"
+        },
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/RoomLight)",
+          "message": "/Main/RoomLight NOT found in scene. Present: ['/Main']"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_duplicate_cameras",
+          "message": "0 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": []
+    }
+  ],
+  "summary": {
+    "pass": 1,
+    "fail": 2,
+    "error": 0,
+    "total": 3,
+    "pass_rate": 0.3333,
+    "total_ms": 131406,
+    "avg_ms": 43802
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 10:42:08",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "qwen3-5-9b-q8-0",
+  "status": "running",
+  "total": 1,
+  "done": 0,
+  "results": []
+}

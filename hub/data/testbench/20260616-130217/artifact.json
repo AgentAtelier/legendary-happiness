@@ -1,0 +1,3003 @@
+{
+  "kind": "single",
+  "suite": "custom",
+  "ts": "2026-06-16 13:02:17",
+  "models": [
+    "qwen3-5-9b-q8-0"
+  ],
+  "results": [
+    {
+      "test_id": "probe.llama.throughput",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:21",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "throughput": {
+          "value": 40.7,
+          "unit": "tok_s",
+          "higher_is_better": true,
+          "label": "throughput"
+        },
+        "ttft": {
+          "value": 79,
+          "unit": "ms",
+          "higher_is_better": false,
+          "label": "TTFT"
+        },
+        "gen_tokens": {
+          "value": 186,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "gen tokens"
+        }
+      },
+      "raw": {
+        "tok_per_sec": 40.7,
+        "gen_tok": 186,
+        "prompt_tok": 18,
+        "ttft_ms": 79,
+        "gen_ms": 4568
+      },
+      "errors": [],
+      "latency_ms": 4706,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.llama.context",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:21",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "context": {
+          "value": 32768,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "loaded ctx"
+        },
+        "kv_cache": {
+          "value": "q4_0",
+          "unit": "bool",
+          "higher_is_better": true,
+          "label": "KV cache"
+        }
+      },
+      "raw": {
+        "n_ctx_loaded": 32768,
+        "configured_ctx": 32768,
+        "kv_cache": "q4_0",
+        "model_alias": "qwen3-5-9b-q8-0",
+        "expected_alias": "qwen3-5-9b-q8-0"
+      },
+      "errors": [],
+      "latency_ms": 1,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.llama.grammar",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:22",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "enforced": {
+          "value": true,
+          "unit": "bool",
+          "higher_is_better": true,
+          "label": "grammar enforced"
+        }
+      },
+      "raw": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "errors": [],
+      "latency_ms": 222,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.llama.thinking",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:32",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "broke",
+      "score": 0,
+      "metrics": {
+        "content_chars": {
+          "value": 0,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "answer chars"
+        },
+        "reasoning_chars": {
+          "value": 1353,
+          "unit": "count",
+          "higher_is_better": false,
+          "label": "reasoning leak"
+        }
+      },
+      "raw": {
+        "content_chars": 0,
+        "reasoning_chars": 1353,
+        "finish_reason": "length",
+        "content_sample": "",
+        "model_is_qwen": true
+      },
+      "errors": [
+        "empty answer (1353 chars reasoning) \u2014 thinking trap"
+      ],
+      "latency_ms": 10000,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.llama.tools",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:33",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "tool_call": {
+          "value": true,
+          "unit": "bool",
+          "higher_is_better": true,
+          "label": "emitted tool call"
+        }
+      },
+      "raw": {
+        "emitted_tool_call": true,
+        "tool_name": "scene_get_hierarchy",
+        "finish_reason": "tool_calls",
+        "text_content": ""
+      },
+      "errors": [],
+      "latency_ms": 1858,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.devforge.plan",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:41",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "broke",
+      "score": 0,
+      "metrics": {
+        "entities": {
+          "value": 0,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "planned entities"
+        },
+        "planning_ms": {
+          "value": 0,
+          "unit": "ms",
+          "higher_is_better": false,
+          "label": "planning time"
+        },
+        "apply_ms": {
+          "value": 7317,
+          "unit": "ms",
+          "higher_is_better": false,
+          "label": "apply time"
+        }
+      },
+      "raw": {
+        "raw": {
+          "artifact_id": "37e933175af1",
+          "applied": 20,
+          "operations_total": 20,
+          "files": [],
+          "errors": [],
+          "error_count": 0,
+          "scene_version": 3,
+          "has_full_detail": true,
+          "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+        },
+        "artifact": {
+          "files": [],
+          "operations": [
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Floor"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": -0.05,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.35,
+                  "g": 0.3,
+                  "b": 0.25,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Ceiling"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": 2.8,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.7,
+                  "g": 0.7,
+                  "b": 0.75,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "counter_north_counter_right"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 1.2,
+                  "y": 0.9,
+                  "z": 0.6
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "position",
+              "value": {
+                "x": 0.8999999999999999,
+                "y": 0.45,
+                "z": 0.6
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.6,
+                  "g": 0.45,
+                  "b": 0.35,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "cabinet_north_counter_left"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 0.8,
+                  "y": 1.6,
+                  "z": 0.5
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "position",
+              "value": {
+                "x": 0.6,
+                "y": 0.8,
+                "z": 1.15
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.65,
+                  "g": 0.5,
+                  "b": 0.4,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.093,
+                  "g": 0.094,
+                  "b": 0.091,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.065,
+                  "g": 0.07,
+                  "b": 0.062,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "errors": [],
+          "scene_version": 3,
+          "arch_delta": {
+            "_room": {
+              "room_type": "kitchen",
+              "size": "cramped",
+              "style": "derelict",
+              "clutter": 0.8,
+              "mood_tags": [
+                "abandoned",
+                "dark",
+                "cramped_feel"
+              ],
+              "must_have": [
+                "cabinet",
+                "counter",
+                "sink",
+                "stove",
+                "fridge"
+              ],
+              "special_features": [
+                "hidden_door"
+              ],
+              "seed": 42
+            },
+            "systems": [],
+            "entities": [],
+            "connections": []
+          },
+          "execution": {
+            "success": true,
+            "results": [
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Floor",
+                  "parent_path": "/Main",
+                  "path": "/Main/Floor",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": -0.0500000007450581,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262172950188919>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262172899857771>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Ceiling",
+                  "parent_path": "/Main",
+                  "path": "/Main/Ceiling",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": 2.79999995231628,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262172815971093>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262172765644231>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "counter_north_counter_right",
+                  "parent_path": "/Main",
+                  "path": "/Main/counter_north_counter_right",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262172698533047>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.899999976158142,
+                    "y": 0.449999988079071,
+                    "z": 0.600000023841858
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262172648200935>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "cabinet_north_counter_left",
+                  "parent_path": "/Main",
+                  "path": "/Main/cabinet_north_counter_left",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262172581092971>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.600000023841858,
+                    "y": 0.800000011920929,
+                    "z": 1.14999997615814
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262172530761329>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262172648200935>",
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262172497208786>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262172530761329>",
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262172463652153>"
+                },
+                "status": "ok",
+                "success": true
+              }
+            ],
+            "errors": [],
+            "success_count": 20,
+            "failure_count": 0
+          }
+        },
+        "before": [
+          "/Main",
+          "/Main/DirectionalLight",
+          "/Main/MainCamera"
+        ],
+        "after": [
+          "/Main",
+          "/Main/Ceiling",
+          "/Main/DirectionalLight",
+          "/Main/Floor",
+          "/Main/MainCamera",
+          "/Main/cabinet_north_counter_left",
+          "/Main/counter_north_counter_right"
+        ],
+        "apply_ms": 7317
+      },
+      "errors": [
+        "planner produced an EMPTY delta (0 entities)"
+      ],
+      "latency_ms": 7552,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.devforge.compile",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:44",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "partial",
+      "score": 0,
+      "metrics": {
+        "ops": {
+          "value": 4,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "requested ops"
+        },
+        "coverage": {
+          "value": 0.0,
+          "unit": "ratio",
+          "higher_is_better": true,
+          "label": "compile coverage"
+        }
+      },
+      "raw": {
+        "raw": {
+          "artifact_id": "d8cbd6c4687d",
+          "applied": 20,
+          "operations_total": 20,
+          "files": [],
+          "errors": [],
+          "error_count": 0,
+          "scene_version": 5,
+          "has_full_detail": true,
+          "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+        },
+        "artifact": {
+          "files": [],
+          "operations": [
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Floor"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": -0.05,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.35,
+                  "g": 0.3,
+                  "b": 0.25,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Ceiling"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": 2.8,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.7,
+                  "g": 0.7,
+                  "b": 0.75,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "counter_north_counter_right"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 1.2,
+                  "y": 0.9,
+                  "z": 0.6
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "position",
+              "value": {
+                "x": 0.8999999999999999,
+                "y": 0.45,
+                "z": 0.6
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.6,
+                  "g": 0.45,
+                  "b": 0.35,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "cabinet_north_counter_left"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 0.8,
+                  "y": 1.6,
+                  "z": 0.5
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "position",
+              "value": {
+                "x": 0.6,
+                "y": 0.8,
+                "z": 1.15
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.65,
+                  "g": 0.5,
+                  "b": 0.4,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.046,
+                  "g": 0.046,
+                  "b": 0.046,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.033,
+                  "g": 0.034,
+                  "b": 0.032,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "errors": [],
+          "scene_version": 5,
+          "arch_delta": {
+            "_room": {
+              "room_type": "kitchen",
+              "size": "cramped",
+              "style": "derelict",
+              "clutter": 0.8,
+              "mood_tags": [
+                "abandoned",
+                "dark",
+                "haunted"
+              ],
+              "must_have": [
+                "cabinet",
+                "counter",
+                "sink",
+                "stove",
+                "fridge"
+              ],
+              "special_features": [
+                "hidden_door"
+              ],
+              "seed": 42
+            },
+            "systems": [],
+            "entities": [],
+            "connections": []
+          },
+          "execution": {
+            "success": true,
+            "results": [
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Floor",
+                  "parent_path": "/Main",
+                  "path": "/Main/Floor",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": -0.0500000007450581,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262120655606831>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262120605275171>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Ceiling",
+                  "parent_path": "/Main",
+                  "path": "/Main/Ceiling",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": 2.79999995231628,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262120521389060>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262120471071492>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "counter_north_counter_right",
+                  "parent_path": "/Main",
+                  "path": "/Main/counter_north_counter_right",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262120403948571>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.899999976158142,
+                    "y": 0.449999988079071,
+                    "z": 0.600000023841858
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262120353616919>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "cabinet_north_counter_left",
+                  "parent_path": "/Main",
+                  "path": "/Main/cabinet_north_counter_left",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262120286507999>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.600000023841858,
+                    "y": 0.800000011920929,
+                    "z": 1.14999997615814
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262120236176349>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262120353616919>",
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262120202621963>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262120236176349>",
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262120169068405>"
+                },
+                "status": "ok",
+                "success": true
+              }
+            ],
+            "errors": [],
+            "success_count": 20,
+            "failure_count": 0
+          }
+        },
+        "before": [
+          "/Main",
+          "/Main/DirectionalLight",
+          "/Main/MainCamera"
+        ],
+        "after": [
+          "/Main",
+          "/Main/Ceiling",
+          "/Main/DirectionalLight",
+          "/Main/Floor",
+          "/Main/MainCamera",
+          "/Main/cabinet_north_counter_left",
+          "/Main/counter_north_counter_right"
+        ],
+        "apply_ms": 2732
+      },
+      "errors": [],
+      "latency_ms": 3083,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.devforge.completeness",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:47",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "partial",
+      "score": 50,
+      "metrics": {
+        "injected": {
+          "value": 0,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "injected nodes"
+        }
+      },
+      "raw": {
+        "raw": {
+          "artifact_id": "7750d95d5d3d",
+          "applied": 25,
+          "operations_total": 25,
+          "files": [],
+          "errors": [],
+          "error_count": 0,
+          "scene_version": 7,
+          "has_full_detail": true,
+          "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+        },
+        "artifact": {
+          "files": [],
+          "operations": [
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Floor"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": -0.05,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.35,
+                  "g": 0.3,
+                  "b": 0.25,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Ceiling"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": 2.8,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.7,
+                  "g": 0.7,
+                  "b": 0.75,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "counter_north_counter_right"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 1.2,
+                  "y": 0.9,
+                  "z": 0.6
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "position",
+              "value": {
+                "x": 0.8999999999999999,
+                "y": 0.45,
+                "z": 0.6
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.6,
+                  "g": 0.45,
+                  "b": 0.35,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "cabinet_north_counter_left"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 0.8,
+                  "y": 1.6,
+                  "z": 0.5
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "position",
+              "value": {
+                "x": 0.6,
+                "y": 0.8,
+                "z": 1.15
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.65,
+                  "g": 0.5,
+                  "b": 0.4,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "shelf_east_storage"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/shelf_east_storage",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 1.0,
+                  "y": 1.2,
+                  "z": 0.3
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/shelf_east_storage",
+              "property": "position",
+              "value": {
+                "x": 3.0,
+                "y": 2.0,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/shelf_east_storage",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.5,
+                  "g": 0.35,
+                  "b": 0.25,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.093,
+                  "g": 0.094,
+                  "b": 0.091,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.065,
+                  "g": 0.07,
+                  "b": 0.062,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/shelf_east_storage",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.082,
+                  "g": 0.07,
+                  "b": 0.062,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "errors": [],
+          "scene_version": 7,
+          "arch_delta": {
+            "_room": {
+              "room_type": "kitchen",
+              "size": "cramped",
+              "style": "derelict",
+              "clutter": 0.8,
+              "mood_tags": [
+                "abandoned",
+                "dark",
+                "cramped_feel"
+              ],
+              "must_have": [
+                "cabinet",
+                "counter",
+                "sink",
+                "stove",
+                "fridge",
+                "shelf"
+              ],
+              "special_features": [
+                "hidden_door"
+              ],
+              "seed": 42
+            },
+            "systems": [],
+            "entities": [],
+            "connections": []
+          },
+          "execution": {
+            "success": true,
+            "results": [
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Floor",
+                  "parent_path": "/Main",
+                  "path": "/Main/Floor",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": -0.0500000007450581,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262072672776303>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072622441193>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Ceiling",
+                  "parent_path": "/Main",
+                  "path": "/Main/Ceiling",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": 2.79999995231628,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262072538554506>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072488223883>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "counter_north_counter_right",
+                  "parent_path": "/Main",
+                  "path": "/Main/counter_north_counter_right",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262072421115108>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.899999976158142,
+                    "y": 0.449999988079071,
+                    "z": 0.600000023841858
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072370779031>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "cabinet_north_counter_left",
+                  "parent_path": "/Main",
+                  "path": "/Main/cabinet_north_counter_left",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262072303670888>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.600000023841858,
+                    "y": 0.800000011920929,
+                    "z": 1.14999997615814
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072253339242>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "shelf_east_storage",
+                  "parent_path": "/Main",
+                  "path": "/Main/shelf_east_storage",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/shelf_east_storage",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262072186229435>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/shelf_east_storage",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 3.0,
+                    "y": 2.0,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/shelf_east_storage",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072135897789>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262072370779031>",
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072102343562>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262072253339242>",
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072068789124>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262072135897789>",
+                  "path": "/root/Main/shelf_east_storage",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262072035234773>"
+                },
+                "status": "ok",
+                "success": true
+              }
+            ],
+            "errors": [],
+            "success_count": 25,
+            "failure_count": 0
+          }
+        },
+        "before": [
+          "/Main",
+          "/Main/DirectionalLight",
+          "/Main/MainCamera"
+        ],
+        "after": [
+          "/Main",
+          "/Main/Ceiling",
+          "/Main/DirectionalLight",
+          "/Main/Floor",
+          "/Main/MainCamera",
+          "/Main/cabinet_north_counter_left",
+          "/Main/counter_north_counter_right",
+          "/Main/shelf_east_storage"
+        ],
+        "apply_ms": 2315
+      },
+      "errors": [],
+      "latency_ms": 2668,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.devforge.execute",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:50",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "partial",
+      "score": 10,
+      "metrics": {
+        "applied": {
+          "value": 20,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "applied ops"
+        },
+        "errors": {
+          "value": 0,
+          "unit": "count",
+          "higher_is_better": false,
+          "label": "errors"
+        },
+        "nodes_added": {
+          "value": 4,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "nodes added"
+        },
+        "coverage": {
+          "value": 0.0,
+          "unit": "ratio",
+          "higher_is_better": true,
+          "label": "execution coverage"
+        }
+      },
+      "raw": {
+        "raw": {
+          "artifact_id": "fa3a113db435",
+          "applied": 20,
+          "operations_total": 20,
+          "files": [],
+          "errors": [],
+          "error_count": 0,
+          "scene_version": 9,
+          "has_full_detail": true,
+          "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+        },
+        "artifact": {
+          "files": [],
+          "operations": [
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Floor"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": -0.05,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Floor",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.35,
+                  "g": 0.3,
+                  "b": 0.25,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "Ceiling"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "position",
+              "value": {
+                "x": 1.5,
+                "y": 2.8,
+                "z": 1.5
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "mesh",
+              "value": {
+                "__class__": "PlaneMesh",
+                "size": {
+                  "x": 10,
+                  "y": 10
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "scale",
+              "value": {
+                "x": 0.3,
+                "y": 1.0,
+                "z": 0.3
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/Ceiling",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.7,
+                  "g": 0.7,
+                  "b": 0.75,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "counter_north_counter_right"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 1.2,
+                  "y": 0.9,
+                  "z": 0.6
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "position",
+              "value": {
+                "x": 0.8999999999999999,
+                "y": 0.45,
+                "z": 0.6
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.6,
+                  "g": 0.45,
+                  "b": 0.35,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "add_node",
+              "parent": "/root/Main",
+              "node_type": "MeshInstance3D",
+              "name": "cabinet_north_counter_left"
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "mesh",
+              "value": {
+                "__class__": "BoxMesh",
+                "size": {
+                  "x": 0.8,
+                  "y": 1.6,
+                  "z": 0.5
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "position",
+              "value": {
+                "x": 0.6,
+                "y": 0.8,
+                "z": 1.15
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.65,
+                  "g": 0.5,
+                  "b": 0.4,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/counter_north_counter_right",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.046,
+                  "g": 0.046,
+                  "b": 0.046,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "set_property",
+              "node": "/root/Main/cabinet_north_counter_left",
+              "property": "material_override",
+              "value": {
+                "__class__": "StandardMaterial3D",
+                "albedo_color": {
+                  "r": 0.033,
+                  "g": 0.034,
+                  "b": 0.032,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "errors": [],
+          "scene_version": 9,
+          "arch_delta": {
+            "_room": {
+              "room_type": "kitchen",
+              "size": "cramped",
+              "style": "derelict",
+              "clutter": 0.8,
+              "mood_tags": [
+                "abandoned",
+                "dark",
+                "haunted"
+              ],
+              "must_have": [
+                "cabinet",
+                "counter",
+                "fridge",
+                "sink",
+                "stove"
+              ],
+              "special_features": [
+                "hidden_door"
+              ],
+              "seed": 42
+            },
+            "systems": [],
+            "entities": [],
+            "connections": []
+          },
+          "execution": {
+            "success": true,
+            "results": [
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Floor",
+                  "parent_path": "/Main",
+                  "path": "/Main/Floor",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": -0.0500000007450581,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262019170226619>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Floor",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Floor",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262019119894976>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "Ceiling",
+                  "parent_path": "/Main",
+                  "path": "/Main/Ceiling",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 1.5,
+                    "y": 2.79999995231628,
+                    "z": 1.5
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<PlaneMesh#-9223262019036008907>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 1.0,
+                    "y": 1.0,
+                    "z": 1.0
+                  },
+                  "path": "/root/Main/Ceiling",
+                  "property": "scale",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.300000011920929,
+                    "y": 1.0,
+                    "z": 0.300000011920929
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/Ceiling",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262018985677264>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "counter_north_counter_right",
+                  "parent_path": "/Main",
+                  "path": "/Main/counter_north_counter_right",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262018918568456>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.899999976158142,
+                    "y": 0.449999988079071,
+                    "z": 0.600000023841858
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262018868236807>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "create_node",
+                "data": {
+                  "name": "cabinet_north_counter_left",
+                  "parent_path": "/Main",
+                  "path": "/Main/cabinet_north_counter_left",
+                  "type": "MeshInstance3D",
+                  "undoable": true
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "mesh",
+                  "undoable": true,
+                  "value": "():<BoxMesh#-9223262018801127935>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "position",
+                  "undoable": true,
+                  "value": {
+                    "x": 0.600000023841858,
+                    "y": 0.800000011920929,
+                    "z": 1.14999997615814
+                  }
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": null,
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262018750796244>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262018868236807>",
+                  "path": "/root/Main/counter_north_counter_right",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262018717241816>"
+                },
+                "status": "ok",
+                "success": true
+              },
+              {
+                "command": "set_property",
+                "data": {
+                  "old_value": "():<StandardMaterial3D#-9223262018750796244>",
+                  "path": "/root/Main/cabinet_north_counter_left",
+                  "property": "material_override",
+                  "undoable": true,
+                  "value": "():<StandardMaterial3D#-9223262018683687388>"
+                },
+                "status": "ok",
+                "success": true
+              }
+            ],
+            "errors": [],
+            "success_count": 20,
+            "failure_count": 0
+          }
+        },
+        "before": [
+          "/Main",
+          "/Main/DirectionalLight",
+          "/Main/MainCamera"
+        ],
+        "after": [
+          "/Main",
+          "/Main/Ceiling",
+          "/Main/DirectionalLight",
+          "/Main/Floor",
+          "/Main/MainCamera",
+          "/Main/cabinet_north_counter_left",
+          "/Main/counter_north_counter_right"
+        ],
+        "apply_ms": 2782
+      },
+      "errors": [],
+      "latency_ms": 3158,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.devforge.validate",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:50",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "valid_count": {
+          "value": 1,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "accepted"
+        },
+        "error_count": {
+          "value": 1,
+          "unit": "count",
+          "higher_is_better": false,
+          "label": "rejected"
+        }
+      },
+      "raw": {
+        "valid": false,
+        "errors": [
+          "Op 1 (add_node): parent '/root/Ghost' not found in scene"
+        ],
+        "valid_count": 1,
+        "error_count": 1
+      },
+      "errors": [],
+      "latency_ms": 16,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.devforge.roundtrip",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:50",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "devforge_nodes": {
+          "value": 7,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "DevForge nodes"
+        },
+        "godot_nodes": {
+          "value": 7,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "Godot nodes"
+        }
+      },
+      "raw": {
+        "devforge_nodes": 7,
+        "godot_nodes": 7,
+        "devforge_root": "Main"
+      },
+      "errors": [],
+      "latency_ms": 51,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.godotai.latency",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:50",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "create_ms": {
+          "value": 28,
+          "unit": "ms",
+          "higher_is_better": false,
+          "label": "create"
+        },
+        "delete_ms": {
+          "value": 29,
+          "unit": "ms",
+          "higher_is_better": false,
+          "label": "delete"
+        },
+        "roundtrip_ms": {
+          "value": 57,
+          "unit": "ms",
+          "higher_is_better": false,
+          "label": "round-trip"
+        }
+      },
+      "raw": {
+        "create_ms": 28,
+        "delete_ms": 29,
+        "verified": true
+      },
+      "errors": [],
+      "latency_ms": 419,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.godotai.fidelity",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:02:50",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "nodes": {
+          "value": 3,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "scene nodes"
+        }
+      },
+      "raw": {
+        "node_count": 3,
+        "root": "Main",
+        "has_more": false,
+        "sample": [
+          "/Main",
+          "/Main/MainCamera",
+          "/Main/DirectionalLight"
+        ]
+      },
+      "errors": [],
+      "latency_ms": 26,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.runtime.launch",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:03:00",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "partial",
+      "score": 40,
+      "metrics": {
+        "fps": {
+          "value": 0,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "FPS"
+        },
+        "launched": {
+          "value": true,
+          "unit": "bool",
+          "higher_is_better": true,
+          "label": "launched"
+        }
+      },
+      "raw": {
+        "launched": true,
+        "fps": 0,
+        "capture_ready": true,
+        "polls": 6
+      },
+      "errors": [],
+      "latency_ms": 9651,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.odysseus.persona",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:03:00",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "ok",
+      "score": 100,
+      "metrics": {
+        "enabled": {
+          "value": true,
+          "unit": "bool",
+          "higher_is_better": true,
+          "label": "enabled"
+        },
+        "prompt_chars": {
+          "value": 3880,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "prompt size"
+        },
+        "temp": {
+          "value": 0.2,
+          "unit": "ratio",
+          "higher_is_better": false,
+          "label": "temperature"
+        }
+      },
+      "raw": {
+        "enabled": true,
+        "system_prompt_chars": 3880,
+        "temperature": 0.2,
+        "has_mcp": true,
+        "has_nothink": true,
+        "character_name": "Godot Developer"
+      },
+      "errors": [],
+      "latency_ms": 0,
+      "screenshot": ""
+    },
+    {
+      "test_id": "probe.odysseus.retrieval",
+      "category": "probe",
+      "suite": "",
+      "model": "qwen3-5-9b-q8-0",
+      "ts": "2026-06-16 13:03:02",
+      "run_index": 1,
+      "repeat_count": 1,
+      "status": "partial",
+      "score": 50,
+      "metrics": {
+        "tools_retrieved": {
+          "value": 10,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "tools retrieved"
+        },
+        "mcp_tools": {
+          "value": 0,
+          "unit": "count",
+          "higher_is_better": true,
+          "label": "MCP tools in top-k"
+        },
+        "apply_spec": {
+          "value": false,
+          "unit": "bool",
+          "higher_is_better": true,
+          "label": "apply_spec present"
+        }
+      },
+      "raw": {
+        "lane_counts": {
+          "fastembed": 66
+        },
+        "mcp_in_collection": false,
+        "retrieved": [
+          "ask_teacher",
+          "ask_user",
+          "bash",
+          "chat_with_model",
+          "manage_mcp",
+          "manage_memory",
+          "pipeline",
+          "suggest_document",
+          "trigger_research",
+          "update_plan"
+        ]
+      },
+      "errors": [],
+      "latency_ms": 2103,
+      "screenshot": ""
+    }
+  ],
+  "meta": {}
+}

@@ -1,0 +1,14 @@
+# devforge_decomposer.gbnf
+# GBNF grammar for DevForge FeatureDecomposer JSON output.
+# Phase 3: Constrains the LLM to produce a parseable JSON array of
+# feature strings.  The {0,7} bound limits decomposition fan-out
+# (each feature triggers a full pipeline run).
+
+root ::= "[" ws item-list ws "]"
+
+item-list ::= ""
+             | item (ws "," ws item){0,7}
+
+item ::= "\"" [a-zA-Z0-9_ \-]{3,80} "\""
+
+ws ::= [ \t\n\r]*

@@ -1,0 +1,46 @@
+{
+  "id": "building-v1",
+  "title": "BSP Multi-Room Buildings — Stage 3 Slice",
+  "planner": "building",
+  "description": "Building generation: split trees → room rects → per-room furniture via SpatialCompiler + partition walls with doorways. LLM emits semantic split-tree only; deterministic engine resolves transforms and wall geometry.",
+  "prompts": [
+    {
+      "id": "B1_small_house",
+      "axis": "building:3-rooms",
+      "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom.",
+      "expect": {
+        "min_nodes": 4,
+        "min_rooms": 3,
+        "min_spatial_assets": 3,
+        "building_no_overlap": true,
+        "building_in_bounds": true,
+        "min_walls": 1
+      }
+    },
+    {
+      "id": "B2_studio",
+      "axis": "building:single-room",
+      "prompt": "Build a tiny studio apartment — just one room. Put a bed and a small table in it.",
+      "expect": {
+        "min_nodes": 3,
+        "min_rooms": 1,
+        "min_spatial_assets": 1,
+        "building_no_overlap": true,
+        "building_in_bounds": true
+      }
+    },
+    {
+      "id": "B3_two_bedroom",
+      "axis": "building:4-rooms",
+      "prompt": "Build a house with a living room, a kitchen, and two bedrooms. Put a table in the living room, a stove and a counter in the kitchen, a bed in each bedroom.",
+      "expect": {
+        "min_nodes": 5,
+        "min_rooms": 4,
+        "min_spatial_assets": 4,
+        "building_no_overlap": true,
+        "building_in_bounds": true,
+        "min_walls": 1
+      }
+    }
+  ]
+}

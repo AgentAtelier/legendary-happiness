@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevForge Asset Metadata Sidecar",
+  "description": "Every generated asset requires this sidecar (C-07). Assets without a valid sidecar are not considered complete.",
+  "type": "object",
+  "required": [
+    "asset_id",
+    "pipeline_type",
+    "creation_date",
+    "style_version"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "Unique asset identifier."
+    },
+    "pipeline_type": {
+      "type": "string",
+      "enum": ["procedural", "diffusion"],
+      "description": "Which pipeline produced this asset."
+    },
+    "creation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of generation."
+    },
+    "style_version": {
+      "type": "string",
+      "description": "Semantic version of the active style schema at time of generation (C-06)."
+    },
+    "procedural": {
+      "type": ["object", "null"],
+      "description": "Required when pipeline_type is 'procedural'.",
+      "required": [
+        "geometry_template_id",
+        "seed",
+        "export_parameters",
+        "lod_configuration",
+        "collision_type",
+        "biome_tags"
+      ],
+      "properties": {
+        "geometry_template_id": {
+          "type": "string",
+          "description": "Identifier of the geometry template used."
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Seed value for parametric variation."
+        },
+        "export_parameters": {
+          "type": "object",
+          "description": "Blender export settings (format, scale, etc.).",
+          "properties": {
+            "format": { "type": "string", "enum": ["glb", "gltf"] },
+            "scale": { "type": "number" },
+            "apply_modifiers": { "type": "boolean" }
+          }
+        },
+        "lod_configuration": {
+          "type": "object",
+          "description": "LOD levels and distances.",
+          "properties": {
+            "levels": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "level": { "type": "integer" },
+                  "max_distance": { "type": "number" },
+                  "vertex_reduction": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        "collision_type": {
+          "type": "string",
+          "enum": ["convex", "trimesh", "box", "sphere", "capsule", "none"],
+          "description": "Collision shape type for Godot import."
+        },
+        "biome_tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Biomes this asset is associated with."
+        },
+        "decay_stage": {
+          "type": ["string", "null"],
+          "enum": ["healthy", "stressed", "degraded", "collapsed", null],
+          "description": "Ecological decay stage this variant represents."
+        }
+      },
+      "additionalProperties": false
+    },
+    "diffusion": {
+      "type": ["object", "null"],
+      "description": "Required when pipeline_type is 'diffusion'.",
+      "required": [
+        "model_checkpoint_hash",
+        "seed",
+        "prompt",
+        "sampler",
+        "resolution",
+        "pipeline_version"
+      ],
+      "properties": {
+        "model_checkpoint_hash": {
+          "type": "string",
+          "description": "SHA256 of the model weights file."
+        },
+        "lora_version": {
+          "type": ["string", "null"],
+          "description": "Semantic version of the LoRA. Null if no LoRA used."
+        },
+        "lora_hash": {
+          "type": ["string", "null"],
+          "description": "SHA256 of the LoRA weights file."
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Integer seed used for generation."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Full prompt text, verbatim."
+        },
+        "negative_prompt": {
+          "type": ["string", "null"],
+          "description": "Full negative prompt text."
+        },
+        "sampler": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "steps": { "type": "integer" }
+          },
+          "required": ["name", "steps"]
+        },
+        "resolution": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "integer" },
+            "height": { "type": "integer" }
+          },
+          "required": ["width", "height"]
+        },
+        "controlnet_conditioning_hash": {
+          "type": ["string", "null"],
+          "description": "SHA256 of conditioning image. Null if no ControlNet."
+        },
+        "pipeline_version": {
+          "type": "string",
+          "description": "Version of the generation script."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "if": {
+    "properties": { "pipeline_type": { "const": "procedural" } }
+  },
+  "then": {
+    "required": ["procedural"]
+  },
+  "else": {
+    "required": ["diffusion"]
+  }
+}

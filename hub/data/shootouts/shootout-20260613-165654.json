@@ -1,0 +1,217 @@
+{
+  "ts": "2026-06-13 16:57:04",
+  "log_ts": "20260613-165654",
+  "scene": "res://shootout.tscn",
+  "model_filter": "gemma-4-12b-obliterated-q6-k",
+  "models_tested": 1,
+  "total_ms": 8712,
+  "results": [
+    {
+      "model_alias": "gemma-4-12b-obliterated-q6-k",
+      "model_label": "Gemma 4 12B Obliterated",
+      "status": "error",
+      "static_assertions": [
+        {
+          "status": "fail",
+          "assertion": "arena_exists",
+          "message": "/Main/Arena missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_type",
+          "message": "Player type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "player_mesh",
+          "message": "Player has NO mesh"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_script",
+          "message": "Player has NO script"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_camera",
+          "message": "PlayerCamera type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_exists",
+          "message": "Coin_Red missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_exists",
+          "message": "Coin_Green missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_exists",
+          "message": "Coin_Blue missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_exists",
+          "message": "Coin_Gold missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_exists",
+          "message": "Coin_Purple missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_type",
+          "message": "Coin_Red type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_type",
+          "message": "Coin_Green type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_type",
+          "message": "Coin_Blue type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_type",
+          "message": "Coin_Gold type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_type",
+          "message": "Coin_Purple type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_collision",
+          "message": "Missing CollisionShape3D on >=1 coin"
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_mesh",
+          "message": "Missing MeshInstance3D on >=1 coin"
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_canvas",
+          "message": "UI type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_label",
+          "message": "ScoreLabel missing"
+        },
+        {
+          "status": "error",
+          "assertion": "score_text",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_dup_cameras",
+          "message": "1 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_pollution",
+          "message": "Clean scene"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_errors",
+          "message": "1 pipeline errors"
+        }
+      ],
+      "runtime_assertions": [
+        {
+          "status": "fail",
+          "assertion": "game_fps",
+          "message": "FPS = 0 (dead?)"
+        },
+        {
+          "status": "error",
+          "assertion": "movement_process",
+          "message": "find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "movement_input",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_handler",
+          "message": "find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_qfree",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_score",
+          "message": "No score tracking found"
+        }
+      ],
+      "static_score": 6,
+      "runtime_score": 0,
+      "total_score": 6,
+      "max_score": 100,
+      "ms_total": 8712,
+      "errors": [],
+      "raw_apply_spec": {
+        "artifact_id": "60b61e15be37",
+        "applied": 0,
+        "operations_total": 0,
+        "files": [],
+        "errors": [
+          "Op 0 (add_node): parent '/root/Camera3D' not found in scene"
+        ],
+        "error_count": 1,
+        "scene_version": 2,
+        "has_full_detail": true,
+        "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+      },
+      "scene_before": {
+        "/Main": "Node3D",
+        "/Main/Camera3D": "Camera3D",
+        "/Main/Ground": "StaticBody3D"
+      },
+      "scene_after": {
+        "/Main": "Node3D",
+        "/Main/Camera3D": "Camera3D",
+        "/Main/Ground": "StaticBody3D"
+      },
+      "raw_artifact": {
+        "files": [],
+        "operations": [],
+        "errors": [
+          "Op 0 (add_node): parent '/root/Camera3D' not found in scene"
+        ],
+        "scene_version": 2,
+        "arch_delta": {
+          "systems": [],
+          "entities": [],
+          "connections": [],
+          "parents": {}
+        },
+        "execution": null
+      }
+    }
+  ],
+  "rankings": [
+    {
+      "rank": 1,
+      "model": "Gemma 4 12B Obliterated",
+      "alias": "gemma-4-12b-obliterated-q6-k",
+      "score": 6,
+      "status": "error"
+    }
+  ]
+}

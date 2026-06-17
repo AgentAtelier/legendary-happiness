@@ -1,0 +1,54 @@
+{
+  "id": "variety-v1",
+  "title": "Variety Dashboard — Stage 4 rebalance metrics",
+  "description": "Measures repeat-diversity, intent-coverage, descriptor entropy, and fidelity for the room intent pipeline. Use with --runs 10 for diversity metrics.",
+  "planner": "room",
+  "prompts": [
+    {
+      "id": "V1_kitchen_repeat",
+      "axis": "variety:repeat_diversity",
+      "prompt": "build a kitchen",
+      "expect": {
+        "min_nodes": 3,
+        "variety_min_diversity": 0.1,
+        "variety_min_entropy": 0.2
+      }
+    },
+    {
+      "id": "V2_kitchen_cramped",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a cramped kitchen",
+      "expect": {
+        "min_nodes": 2,
+        "variety_min_intent_fields": 1
+      }
+    },
+    {
+      "id": "V3_kitchen_spacious",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a spacious kitchen",
+      "expect": {
+        "min_nodes": 3,
+        "variety_min_intent_fields": 1
+      }
+    },
+    {
+      "id": "V4_kitchen_rustic",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a rustic kitchen",
+      "expect": {
+        "min_nodes": 3,
+        "variety_min_intent_fields": 1
+      }
+    },
+    {
+      "id": "V5_kitchen_derelict",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a derelict abandoned kitchen",
+      "expect": {
+        "min_nodes": 2,
+        "variety_min_intent_fields": 1
+      }
+    }
+  ]
+}

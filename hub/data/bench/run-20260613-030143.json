@@ -1,0 +1,141 @@
+{
+  "ts": "2026-06-13 03:01:39",
+  "model": "gemma-4",
+  "template": "gemma",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "server answers /health",
+      "id": "llama.health",
+      "ms": 19,
+      "layer": "llama",
+      "title": "Server alive"
+    },
+    {
+      "status": "pass",
+      "detail": "model=gemma-4 ctx=32768",
+      "id": "llama.props",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Serving the configured model"
+    },
+    {
+      "status": "pass",
+      "detail": "runaway guards present in LLAMA_ARGS",
+      "id": "llama.caps",
+      "ms": 0,
+      "layer": "llama",
+      "title": "Runaway guards configured"
+    },
+    {
+      "status": "pass",
+      "detail": "server 2.7.2 matches the editor plugin",
+      "id": "godotai.status",
+      "ms": 9,
+      "layer": "godot-ai",
+      "title": "Server up + version matches plugin"
+    },
+    {
+      "status": "pass",
+      "detail": "listening on 0.0.0.0 (reachable from the Odysseus container)",
+      "id": "godotai.bind",
+      "ms": 5,
+      "layer": "godot-ai",
+      "title": "Reachable from Docker"
+    },
+    {
+      "status": "pass",
+      "detail": "41 tools",
+      "id": "godotai.tools",
+      "ms": 194,
+      "layer": "godot-ai",
+      "title": "Tool surface complete"
+    },
+    {
+      "status": "pass",
+      "detail": "editor adopted, scene res://scenes/main.tscn",
+      "id": "godotai.editor",
+      "ms": 104,
+      "layer": "godot-ai",
+      "title": "Editor adopted the server"
+    },
+    {
+      "status": "pass",
+      "detail": "8 nodes, root /Main",
+      "id": "godotai.scene",
+      "ms": 75,
+      "layer": "godot-ai",
+      "title": "Live scene read"
+    },
+    {
+      "status": "pass",
+      "detail": "container reaches it via IP (200); DNS name correctly rejected (403)",
+      "id": "godotai.guard",
+      "ms": 161,
+      "layer": "godot-ai",
+      "title": "Container access + security guard"
+    },
+    {
+      "status": "pass",
+      "detail": "30 tools incl. apply_spec",
+      "id": "devforge.tools",
+      "ms": 32,
+      "layer": "devforge",
+      "title": "MCP server + apply_spec present"
+    },
+    {
+      "status": "pass",
+      "detail": "nested tree OK \u2014 root 'Main' with 5 children",
+      "id": "devforge.scene",
+      "ms": 3914,
+      "layer": "devforge",
+      "title": "Scene tree is nested (not flat)"
+    },
+    {
+      "status": "pass",
+      "detail": "web app answers (HTTP 401)",
+      "id": "odysseus.up",
+      "ms": 5,
+      "layer": "odysseus",
+      "title": "Web app running"
+    },
+    {
+      "status": "pass",
+      "detail": "godot-ai (41) and DevForge (30) connected this boot",
+      "id": "odysseus.mcp",
+      "ms": 36,
+      "layer": "odysseus",
+      "title": "Both MCP servers connected THIS boot"
+    },
+    {
+      "status": "pass",
+      "detail": "enabled, temp 0.2, /no_think + 'MCP' present",
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Persona invariants"
+    },
+    {
+      "status": "pass",
+      "detail": "1 endpoint(s) clean",
+      "id": "odysseus.endpoint",
+      "ms": 12,
+      "layer": "odysseus",
+      "title": "Model endpoint records clean"
+    },
+    {
+      "status": "pass",
+      "detail": "container reaches llama via host.docker.internal",
+      "id": "odysseus.reach",
+      "ms": 40,
+      "layer": "odysseus",
+      "title": "Container reaches llama"
+    }
+  ],
+  "counts": {
+    "pass": 16,
+    "fail": 0,
+    "skip": 0,
+    "error": 0
+  }
+}

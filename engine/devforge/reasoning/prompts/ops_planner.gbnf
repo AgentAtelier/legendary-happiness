@@ -1,0 +1,70 @@
+# devforge_ops_planner.gbnf
+# GBNF grammar for DevForge direct operation generation.
+# Constrains the LLM to emit a JSON array of Godot scene operations.
+# Phase 6: A/B-tested against the arch path behind DEVFORGE_PLANNER=ops.
+#
+# NOTE: Keep the godot-type enum in sync with arch_planner.gbnf and
+# planner_grammar.gbnf.  All three must list the same set of valid
+# Godot node types.
+
+root ::= ws "[" ws op-list ws "]" ws
+
+op-list ::= ""
+          | op (ws "," ws op)*
+
+op ::= add-node
+     | set-property
+     | create-file
+     | attach-script
+     | connect-signal
+
+add-node ::= "{" ws "\"type\"" ws ":" ws "\"add_node\"" ws "," ws "\"parent\"" ws ":" ws string ws "," ws "\"node_type\"" ws ":" ws godot-type ws "," ws "\"name\"" ws ":" ws string ws "}"
+
+set-property ::= "{" ws "\"type\"" ws ":" ws "\"set_property\"" ws "," ws "\"node\"" ws ":" ws string ws "," ws "\"property\"" ws ":" ws string ws "," ws "\"value\"" ws ":" ws any-value ws "}"
+
+create-file ::= "{" ws "\"type\"" ws ":" ws "\"create_file\"" ws "," ws "\"path\"" ws ":" ws string ws "," ws "\"content\"" ws ":" ws string ws "}"
+
+attach-script ::= "{" ws "\"type\"" ws ":" ws "\"attach_script\"" ws "," ws "\"node\"" ws ":" ws string ws "," ws "\"script\"" ws ":" ws string ws "}"
+
+connect-signal ::= "{" ws "\"type\"" ws ":" ws "\"connect_signal\"" ws "," ws "\"source\"" ws ":" ws string ws "," ws "\"signal\"" ws ":" ws string ws "," ws "\"target\"" ws ":" ws string ws "," ws "\"method\"" ws ":" ws string ws "}"
+
+any-value ::= string
+            | number
+            | boolean
+            | null-val
+            | any-array
+            | any-object
+
+boolean ::= "true" | "false"
+
+null-val ::= "null"
+
+any-array ::= "[" ws any-value-list ws "]"
+
+any-value-list ::= ""
+                 | any-value (ws "," ws any-value)*
+
+any-object ::= "{" ws any-object-list ws "}"
+
+any-object-list ::= ""
+                  | object-kv (ws "," ws object-kv)*
+
+object-kv ::= string ws ":" ws any-value
+
+godot-type ::= "\"Node3D\"" | "\"CharacterBody3D\"" | "\"StaticBody3D\"" | "\"Area3D\"" | "\"Camera3D\"" | "\"MeshInstance3D\"" | "\"CollisionShape3D\"" | "\"CSGBox3D\"" | "\"CSGSphere3D\"" | "\"Path3D\"" | "\"NavigationAgent3D\"" | "\"Timer\"" | "\"AnimationPlayer\"" | "\"Sprite3D\"" | "\"Label3D\"" | "\"RayCast3D\"" | "\"AudioStreamPlayer3D\"" | "\"GPUParticles3D\"" | "\"OmniLight3D\"" | "\"SpotLight3D\"" | "\"DirectionalLight3D\"" | "\"WorldEnvironment\"" | "\"Node\"" | "\"Node2D\"" | "\"Control\"" | "\"ColorRect\"" | "\"Panel\"" | "\"Button\"" | "\"Label\"" | "\"LineEdit\"" | "\"TextEdit\"" | "\"GridContainer\"" | "\"VBoxContainer\"" | "\"HBoxContainer\"" | "\"SpringArm3D\"" | "\"CanvasLayer\"" | "\"ProgressBar\""
+
+string ::= "\"" char* "\""
+
+char ::= unescaped
+       | "\\" escape
+
+unescaped ::= [^"\\\x00-\x1F]
+
+escape ::= ["\\/bfnrt]
+         | "u" hex hex hex hex
+
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?

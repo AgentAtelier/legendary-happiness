@@ -1,0 +1,35 @@
+▶ llama.throughput — Generation throughput
+  [WORKS] (6343 ms) 32.7 tok/s, TTFT 66 ms
+▶ llama.context — Context window actually loaded
+  [WORKS] (5 ms) ctx 32768 (q4_0 KV)
+▶ llama.grammar — Grammar enforcement
+  [WORKS] (205 ms) grammar enforced exactly → 'ANVIL'
+▶ llama.thinking — Answer vs hidden reasoning
+  [WORKS] (229 ms) answered directly in 12 chars (reasoning 0)
+▶ llama.tools — Native tool calling
+  [WORKS] (2659 ms) native tool call → scene_get_hierarchy
+▶ devforge.plan — Planner architecture delta
+  [WORKS] (692 ms) planned 3 entities in 0s: ['Hero', 'Eye', 'Body']
+▶ devforge.compile — Compiler operations + parent paths
+  [WORKS] (0 ms) all ['Body', 'Eye', 'Hero'] compiled under /root/Main
+▶ devforge.completeness — Completeness injector parents
+  [DEGRADED] (0 ms) no auto-injection observed (light may already exist)
+▶ devforge.execute — Full apply_spec execution
+  [WORKS] (0 ms) built all ['Body', 'Eye', 'Hero'], +4 nodes, 0 errors
+▶ devforge.validate — Validator accept/reject
+  [WORKS] (16 ms) accepted the valid op, rejected the bad parent
+▶ devforge.roundtrip — Scene view parity
+  [WORKS] (267 ms) both see 3 nodes (root 'Main')
+▶ godotai.latency — Write round-trip latency
+  [WORKS] (272 ms) create 21 + delete 27 ms round-trip
+▶ godotai.fidelity — Scene tree fidelity
+  [WORKS] (207 ms) 3 nodes, root 'Main'
+▶ runtime.launch — Game actually runs
+  [DEGRADED] (9656 ms) launched + capture ready but FPS monitor read 0 (editor monitor quirk)
+▶ odysseus.persona — Live persona is the real prompt
+  [WORKS] (0 ms) enabled, 3880 char prompt, temp 0.2, MCP+/no_think
+▶ odysseus.retrieval — Tool retrieval surfaces apply_spec
+  [DEGRADED] (1996 ms) MCP tools not yet in the index — they index on the first agent chat after a restart (run one chat turn to warm it)
+[probe:done] 13 works / 3 degraded / 0 broken → probe-20260616-104755.json
+
+Layer rollup: llama=works, devforge=degraded, godot-ai=works, runtime=degraded, odysseus=degraded

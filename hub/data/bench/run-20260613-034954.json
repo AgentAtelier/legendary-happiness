@@ -1,0 +1,29 @@
+{
+  "ts": "2026-06-13 03:49:54",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "godot-ai (41) and DevForge (30) connected this boot",
+      "id": "odysseus.mcp",
+      "ms": 24,
+      "layer": "odysseus",
+      "title": "Both MCP servers connected THIS boot"
+    },
+    {
+      "status": "pass",
+      "detail": "enabled, temp 0.2, /no_think + 'MCP' present",
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Persona invariants"
+    }
+  ],
+  "counts": {
+    "pass": 2,
+    "fail": 0,
+    "skip": 0,
+    "error": 0
+  }
+}

@@ -1,0 +1,73 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/mrg/dev/games/Forge/devforge_review_package
+plugins: anyio-4.13.0
+collected 689 items
+
+devforge/tests/test_artifact_store.py ........                           [  1%]
+devforge/tests/test_balance_simulator.py ............                    [  2%]
+devforge/tests/test_batch_operator.py ..............                     [  4%]
+devforge/tests/test_bsp.py ..................................            [  9%]
+devforge/tests/test_completeness.py .....                                [ 10%]
+devforge/tests/test_content_linter.py ..............                     [ 12%]
+devforge/tests/test_context_clamp.py .....                               [ 13%]
+devforge/tests/test_design_companion.py .......                          [ 14%]
+devforge/tests/test_dialogue_engine.py .......                           [ 15%]
+devforge/tests/test_error_triage.py ...........                          [ 16%]
+devforge/tests/test_gateway_budget.py ........                           [ 18%]
+devforge/tests/test_godot_ai_mcp.py .................................... [ 23%]
+.                                                                        [ 23%]
+devforge/tests/test_import_walk.py .                                     [ 23%]
+devforge/tests/test_lorekeeper.py ..........                             [ 25%]
+devforge/tests/test_performance_sentinel.py ........                     [ 26%]
+devforge/tests/test_polish_pass.py .............                         [ 28%]
+devforge/tests/test_progress_journal.py ........                         [ 29%]
+devforge/tests/test_project_navigator.py .......                         [ 30%]
+devforge/tests/test_prompt_templates.py ................................ [ 34%]
+                                                                         [ 34%]
+devforge/tests/test_quest_validator.py ...........                       [ 36%]
+devforge/tests/test_rename_remove.py .......                             [ 37%]
+devforge/tests/test_repair_engine.py ...                                 [ 38%]
+devforge/tests/test_room_intent_planner.py ............................. [ 42%]
+.......................                                                  [ 45%]
+devforge/tests/test_scatter.py ................................          [ 50%]
+devforge/tests/test_scatter_planner.py ................................. [ 55%]
+                                                                         [ 55%]
+devforge/tests/test_scenario_fixes.py ...........................        [ 58%]
+devforge/tests/test_scene_doctor.py .............                        [ 60%]
+devforge/tests/test_scene_refactorer.py .......                          [ 61%]
+devforge/tests/test_script_extractor.py .........                        [ 63%]
+devforge/tests/test_signal_mapper.py ...............                     [ 65%]
+devforge/tests/test_smoke_runner.py .......                              [ 66%]
+devforge/tests/test_spatial.py ................................          [ 70%]
+devforge/tests/test_ssp.py ............................................. [ 77%]
+.....                                                                    [ 78%]
+devforge/tests/test_ssp_planner.py ............................          [ 82%]
+devforge/tests/test_template_forge.py .................................  [ 87%]
+devforge/tests/test_test_harness.py ........                             [ 88%]
+devforge/tests/test_voronoi.py .....................                     [ 91%]
+devforge/tests/test_voronoi_planner.py .................                 [ 93%]
+devforge/tests/test_wfc.py ......................                        [ 96%]
+devforge/tests/test_wfc_planner.py .....................                 [100%]
+
+=============================== warnings summary ===============================
+devforge/tests/test_import_walk.py::test_all_modules_import
+  /home/mrg/dev/games/Forge/devforge_review_package/devforge/platform/server/server.py:94: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+devforge/tests/test_import_walk.py::test_all_modules_import
+  /home/mrg/dev/games/Forge/devforge_review_package/.venv/lib/python3.14/site-packages/fastapi/applications.py:4598: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 689 passed, 2 warnings in 9.18s ========================

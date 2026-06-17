@@ -1,0 +1,27 @@
+# wfc_planner.gbnf
+# GBNF grammar for WFC dungeon generation JSON output.
+# Constrains the LLM to emit dungeon size, tile_size, and optional seed.
+#
+# Schema: {size{w,d}, tile_size, seed?}
+
+root ::= "{" ws "\"size\"" ws ":" ws size-object ws ("," ws extra)* ws "}"
+
+extra ::= tile-size-kv | seed-kv
+
+size-object ::= "{" ws "\"width\"" ws ":" ws number ws "," ws "\"depth\"" ws ":" ws number ws "}"
+
+tile-size-kv ::= "\"tile_size\"" ws ":" ws number
+seed-kv ::= "\"seed\"" ws ":" ws number
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

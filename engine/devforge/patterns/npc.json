@@ -1,0 +1,13 @@
+{
+  "name": "NPC",
+  "triggers": ["npc", "villager", "non-player character", "merchant", "quest giver", "townsperson"],
+  "delta": {
+    "systems": [
+      {"name": "DialogueSystem", "description": "Handles NPC dialogue and interactions"}
+    ],
+    "entities": [
+      {"name": "NPC", "type": "CharacterBody3D"}
+    ],
+    "connections": []
+  }
+}

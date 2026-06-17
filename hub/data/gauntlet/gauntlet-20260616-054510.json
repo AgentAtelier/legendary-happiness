@@ -1,0 +1,716 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 05:45:46",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 1,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 25,
+      "built_depth": 2,
+      "applied": 51,
+      "operations_total": 51,
+      "error_count": 1,
+      "errors": [
+        "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+      ],
+      "props": {
+        "position": 24,
+        "mesh": 1
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 735,
+      "nodes_sample": [
+        "/Main/BadCam",
+        "/Main/BadCam/BadCamMesh",
+        "/Main/Filler1",
+        "/Main/Filler10",
+        "/Main/Filler11",
+        "/Main/Filler12",
+        "/Main/Filler13",
+        "/Main/Filler14",
+        "/Main/Filler15",
+        "/Main/Filler16",
+        "/Main/Filler17",
+        "/Main/Filler18",
+        "/Main/Filler19",
+        "/Main/Filler2",
+        "/Main/Filler20",
+        "/Main/Filler3",
+        "/Main/Filler4",
+        "/Main/Filler5",
+        "/Main/Filler6",
+        "/Main/Filler7"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "25/20"
+        },
+        {
+          "label": "rejected-bad-ops",
+          "ok": true,
+          "detail": "1 errors (expected)"
+        },
+        {
+          "label": "no-crash",
+          "ok": true,
+          "detail": "no crash"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G8_adversarial",
+      "axis": "validation / graceful failure",
+      "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main.",
+      "runs": [
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 735,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 634,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 634,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 634,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 642,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 636,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 665,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 660,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 658,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        },
+        {
+          "built_nodes": 25,
+          "built_depth": 2,
+          "applied": 51,
+          "operations_total": 51,
+          "error_count": 1,
+          "errors": [
+            "Semantic violation: Camera3D 'BadCam' has a MeshInstance3D child 'BadCamMesh' \u2014 cameras are not renderable; mesh children are wasted."
+          ],
+          "props": {
+            "position": 24,
+            "mesh": 1
+          },
+          "scripts": 1,
+          "attached": 1,
+          "signals": 0,
+          "latency_ms": 652,
+          "nodes_sample": [
+            "/Main/BadCam",
+            "/Main/BadCam/BadCamMesh",
+            "/Main/Filler1",
+            "/Main/Filler10",
+            "/Main/Filler11",
+            "/Main/Filler12",
+            "/Main/Filler13",
+            "/Main/Filler14",
+            "/Main/Filler15",
+            "/Main/Filler16",
+            "/Main/Filler17",
+            "/Main/Filler18",
+            "/Main/Filler19",
+            "/Main/Filler2",
+            "/Main/Filler20",
+            "/Main/Filler3",
+            "/Main/Filler4",
+            "/Main/Filler5",
+            "/Main/Filler6",
+            "/Main/Filler7"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "25/20"
+            },
+            {
+              "label": "rejected-bad-ops",
+              "ok": true,
+              "detail": "1 errors (expected)"
+            },
+            {
+              "label": "no-crash",
+              "ok": true,
+              "detail": "no crash"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G8_adversarial",
+          "axis": "validation / graceful failure",
+          "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+        }
+      ],
+      "mean_coverage": 100,
+      "stddev_coverage": 0,
+      "mean_latency_ms": 655
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

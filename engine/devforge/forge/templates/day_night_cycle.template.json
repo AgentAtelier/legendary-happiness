@@ -1,0 +1,31 @@
+{
+  "slug": "day_night_cycle",
+  "name": "Day/Night Cycle",
+  "description": "Time-of-day system with sun/moon rotation, ambient light color interpolation, and weather transition hooks. Supports configurable day length, sky colors, and ambient intensity ramping.",
+  "version": 1,
+  "slots": [
+    {"name": "parent", "type": "node_path", "default": "/root/Main", "description": "Parent node path for the DayNightManager"},
+    {"name": "day_length_seconds", "type": "float", "default": 1200.0, "description": "Full day cycle length in seconds (real-time)"},
+    {"name": "start_time", "type": "float", "default": 0.25, "description": "Starting time as fraction of day (0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk)"},
+    {"name": "night_color", "type": "vec3", "default": {"x": 0.05, "y": 0.05, "z": 0.15}, "description": "Ambient light color at midnight (RGB)"},
+    {"name": "day_color", "type": "vec3", "default": {"x": 0.6, "y": 0.65, "z": 0.8}, "description": "Ambient light color at noon (RGB)"},
+    {"name": "ambient_min", "type": "float", "default": 0.05, "description": "Minimum ambient light energy at midnight"},
+    {"name": "ambient_max", "type": "float", "default": 0.8, "description": "Maximum ambient light energy at noon"}
+  ],
+  "requires": [],
+  "scripts": [
+    {
+      "path": "scripts/systems/day_night_cycle.gd",
+      "content": "extends Node\n\nsignal time_changed(time_of_day: float)  ## 0.0–1.0\nsignal period_changed(period: String)     ## \"dawn\", \"day\", \"dusk\", \"night\"\nsignal weather_changed(weather: String)\n\n@export var day_length_seconds: float = {{day_length_seconds}}\n\nvar _time_of_day: float = {{start_time}}  ## 0.0 (midnight) → 0.5 (noon) → 1.0 (midnight)\nvar _current_period: String = \"day\"\nvar _paused: bool = false\n\n@onready var _sun_light: DirectionalLight3D = $SunLight\n@onready var _ambient_light: WorldEnvironment = $\"../WorldEnvironment\"\n\nfunc _ready():\n\t_setup_lighting()\n\nfunc _process(delta: float) -> void:\n\tif _paused:\n\t\treturn\n\n\t_time_of_day += delta / day_length_seconds\n\tif _time_of_day >= 1.0:\n\t\t_time_of_day -= 1.0\n\n\t_update_sun_position()\n\t_update_lighting()\n\t_check_period()\n\ttime_changed.emit(_time_of_day)\n\nfunc get_time_of_day() -> float:\n\treturn _time_of_day\n\nfunc get_hour() -> int:\n\treturn int(_time_of_day * 24.0)\n\nfunc get_minute() -> int:\n\treturn int((_time_of_day * 24.0 - get_hour()) * 60.0)\n\nfunc get_period() -> String:\n\treturn _current_period\n\nfunc is_daytime() -> bool:\n\treturn _time_of_day > 0.25 and _time_of_day < 0.75\n\nfunc is_nighttime() -> bool:\n\treturn not is_daytime()\n\nfunc set_time(time: float) -> void:\n\t_time_of_day = clamp(time, 0.0, 0.999)\n\t_update_sun_position()\n\t_update_lighting()\n\t_check_period()\n\nfunc set_paused(paused: bool) -> void:\n\t_paused = paused\n\nfunc add_time(hours: float) -> void:\n\t_time_of_day += hours / 24.0\n\tif _time_of_day >= 1.0:\n\t\t_time_of_day -= 1.0\n\nfunc set_weather(weather: String) -> void:\n\tweather_changed.emit(weather)\n\nfunc _update_sun_position() -> void:\n\t# 0° at midnight (nadir), 180° (PI) at noon (zenith)\n\t_sun_light.rotation.x = _time_of_day * PI * 2.0\n\nfunc _update_lighting() -> void:\n\t# -cos(t*2PI) peaks at noon (1.0), troughs at midnight (-1.0)\n\tvar sun_height := -cos(_time_of_day * PI * 2.0)\n\t_sun_light.light_energy = max(0.0, sun_height * 1.5)\n\n\tvar day_factor := clamp(sun_height, 0.0, 1.0)\n\tvar night_c := Color({{night_color.x}}, {{night_color.y}}, {{night_color.z}})\n\tvar day_c := Color({{day_color.x}}, {{day_color.y}}, {{day_color.z}})\n\tvar sky_color := night_c.lerp(day_c, day_factor)\n\n\tvar amb_energy := lerp({{ambient_min}}, {{ambient_max}}, day_factor)\n\n\tif _ambient_light:\n\t\tvar env := _ambient_light.environment\n\t\tif env:\n\t\t\tenv.ambient_light_color = sky_color\n\t\t\tenv.ambient_light_energy = amb_energy\n\nfunc _check_period() -> void:\n\tvar prev := _current_period\n\tvar t := _time_of_day\n\tif t < 0.2:\n\t\t_current_period = \"night\"\n\telif t < 0.3:\n\t\t_current_period = \"dawn\"\n\telif t < 0.7:\n\t\t_current_period = \"day\"\n\telif t < 0.8:\n\t\t_current_period = \"dusk\"\n\telse:\n\t\t_current_period = \"night\"\n\n\tif prev != _current_period:\n\t\tperiod_changed.emit(_current_period)\n\nfunc _setup_lighting() -> void:\n\t_sun_light.shadow_enabled = true\n\t_sun_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS\n\t_update_sun_position()\n\t_update_lighting()\n\t_check_period()\n\nfunc serialize() -> Dictionary:\n\treturn {\"time_of_day\": _time_of_day}\n\nfunc deserialize(data: Dictionary) -> void:\n\t_time_of_day = data.get(\"time_of_day\", 0.25)\n\t_update_sun_position()\n\t_update_lighting()\n"
+    }
+  ],
+  "operations": [
+    {"type": "add_node", "parent": "{{parent}}", "node_type": "Node", "name": "DayNightManager"},
+    {"type": "add_node", "parent": "/root/Main/DayNightManager", "node_type": "DirectionalLight3D", "name": "SunLight"},
+    {"type": "set_property", "node": "/root/Main/DayNightManager/SunLight", "property": "light_color", "value": {"x": 1.0, "y": 0.95, "z": 0.8, "w": 1.0}},
+    {"type": "set_property", "node": "/root/Main/DayNightManager/SunLight", "property": "light_energy", "value": 1.0},
+    {"type": "set_property", "node": "/root/Main/DayNightManager/SunLight", "property": "shadow_enabled", "value": true},
+    {"type": "attach_script", "node": "/root/Main/DayNightManager", "script": "scripts/systems/day_night_cycle.gd"}
+  ],
+  "collision_check": ["/root/Main/DayNightManager"]
+}

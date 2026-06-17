@@ -1,0 +1,13 @@
+{
+  "name": "Player",
+  "triggers": ["player", "playable character", "main character", "hero", "protagonist"],
+  "delta": {
+    "systems": [
+      {"name": "PlayerMovement", "description": "Handles player input and movement"}
+    ],
+    "entities": [
+      {"name": "Player", "type": "CharacterBody3D"}
+    ],
+    "connections": []
+  }
+}

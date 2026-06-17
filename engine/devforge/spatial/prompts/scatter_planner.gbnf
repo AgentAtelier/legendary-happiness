@@ -1,0 +1,29 @@
+# scatter_planner.gbnf
+# GBNF grammar for outdoor scatter (garden/forest) JSON output.
+# Constrains the LLM to emit a region, keep-out zones, and a species list
+# with id, count, and min_spacing.
+#
+# Schema: {region{w,d}, keep_out[{x,z,w,d}], species[{id,count,min_spacing}]}
+
+root ::= "{" ws "\"region\"" ws ":" ws region-object ws "," ws "\"keep_out\"" ws ":" ws keep-out-array ws "," ws "\"species\"" ws ":" ws species-array ws "}"
+
+region-object ::= "{" ws "\"width\"" ws ":" ws number ws "," ws "\"depth\"" ws ":" ws number ws "}"
+
+keep-out-array ::= "[" ws "]" | "[" ws keep-out-object (ws "," ws keep-out-object)* ws "]"
+keep-out-object ::= "{" ws "\"x\"" ws ":" ws number ws "," ws "\"z\"" ws ":" ws number ws "," ws "\"w\"" ws ":" ws number ws "," ws "\"d\"" ws ":" ws number ws "}"
+
+species-array ::= "[" ws species-object (ws "," ws species-object)* ws "]"
+species-object ::= "{" ws "\"id\"" ws ":" ws string ws "," ws "\"count\"" ws ":" ws number ws "," ws "\"min_spacing\"" ws ":" ws number ws "}"
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

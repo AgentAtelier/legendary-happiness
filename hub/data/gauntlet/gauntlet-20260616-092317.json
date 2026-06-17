@@ -1,0 +1,169 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 09:24:19",
+  "set": "garden-v1",
+  "set_title": "Outdoor Scatter \u2014 Garden Slice",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 3,
+  "done": 3,
+  "results": [
+    {
+      "built_nodes": 15,
+      "built_depth": 1,
+      "applied": 60,
+      "operations_total": 60,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 15,
+        "mesh": 15,
+        "color": 15
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 22254,
+      "nodes_sample": [
+        "/Main/bush_1",
+        "/Main/bush_10",
+        "/Main/bush_2",
+        "/Main/bush_3",
+        "/Main/bush_4",
+        "/Main/bush_5",
+        "/Main/bush_6",
+        "/Main/bush_7",
+        "/Main/bush_8",
+        "/Main/bush_9",
+        "/Main/tree_1",
+        "/Main/tree_2",
+        "/Main/tree_3",
+        "/Main/tree_4",
+        "/Main/tree_5"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "15/10"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G1_simple_garden",
+      "axis": "scatter:simple",
+      "prompt": "Scatter 5 trees and 10 bushes around the area. Space trees 4m apart and bushes 2m apart."
+    },
+    {
+      "built_nodes": 20,
+      "built_depth": 1,
+      "applied": 80,
+      "operations_total": 80,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 20,
+        "mesh": 20,
+        "color": 20
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 14082,
+      "nodes_sample": [
+        "/Main/flower_1",
+        "/Main/flower_10",
+        "/Main/flower_11",
+        "/Main/flower_12",
+        "/Main/flower_13",
+        "/Main/flower_14",
+        "/Main/flower_15",
+        "/Main/flower_16",
+        "/Main/flower_17",
+        "/Main/flower_18",
+        "/Main/flower_19",
+        "/Main/flower_2",
+        "/Main/flower_20",
+        "/Main/flower_3",
+        "/Main/flower_4",
+        "/Main/flower_5",
+        "/Main/flower_6",
+        "/Main/flower_7",
+        "/Main/flower_8",
+        "/Main/flower_9"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "20/15"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G2_flower_bed",
+      "axis": "scatter:flowers",
+      "prompt": "Plant a flower bed with 20 flowers spaced 1m apart in a 10x10 metre garden."
+    },
+    {
+      "built_nodes": 28,
+      "built_depth": 1,
+      "applied": 112,
+      "operations_total": 112,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 28,
+        "mesh": 28,
+        "color": 28
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 16453,
+      "nodes_sample": [
+        "/Main/bush_1",
+        "/Main/bush_2",
+        "/Main/bush_3",
+        "/Main/bush_4",
+        "/Main/bush_5",
+        "/Main/bush_6",
+        "/Main/bush_7",
+        "/Main/bush_8",
+        "/Main/flower_1",
+        "/Main/flower_10",
+        "/Main/flower_11",
+        "/Main/flower_12",
+        "/Main/flower_2",
+        "/Main/flower_3",
+        "/Main/flower_4",
+        "/Main/flower_5",
+        "/Main/flower_6",
+        "/Main/flower_7",
+        "/Main/flower_8",
+        "/Main/flower_9"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "28/20"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G3_mixed_garden",
+      "axis": "scatter:mixed",
+      "prompt": "Create a garden with 3 trees (4m spacing), 8 bushes (2m spacing), 12 flowers (1.5m spacing), and 5 rocks (2m spacing). Keep the area 20x20 metres."
+    }
+  ],
+  "summary": {
+    "full": 3,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

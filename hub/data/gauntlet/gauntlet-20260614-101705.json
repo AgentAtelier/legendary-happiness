@@ -1,0 +1,198 @@
+{
+  "ts": "2026-06-14 10:20:23",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 3,
+  "done": 3,
+  "results": [
+    {
+      "built_nodes": 12,
+      "built_depth": 3,
+      "applied": 29,
+      "operations_total": 29,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 3,
+      "latency_ms": 43842,
+      "nodes_sample": [
+        "/Main/DirectionalLight",
+        "/Main/MainCamera",
+        "/Main/Pickups",
+        "/Main/Pickups/P1",
+        "/Main/Pickups/P1/P1Mesh",
+        "/Main/Pickups/P1/P1Shape",
+        "/Main/Pickups/P2",
+        "/Main/Pickups/P2/P2Mesh",
+        "/Main/Pickups/P2/P2Shape",
+        "/Main/Pickups/P3",
+        "/Main/Pickups/P3/P3Mesh",
+        "/Main/Pickups/P3/P3Shape"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "12/10"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "3/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G4_children",
+      "axis": "collider/mesh children (the regression case)",
+      "prompt": "Under /Main create a Node3D named Pickups. Under it create three Area3D nodes named P1, P2, P3. Each Area3D must have a CollisionShape3D child with a sphere shape AND a MeshInstance3D child with a sphere mesh, each colored differently."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 3,
+      "operations_total": 33,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6,
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 1,
+      "latency_ms": 35641,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "signals",
+          "ok": true,
+          "detail": "1/1"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+    },
+    {
+      "built_nodes": 3,
+      "built_depth": 1,
+      "applied": 57,
+      "operations_total": 64,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 10,
+        "shape": 6,
+        "mesh": 6,
+        "color": 6,
+        "text": 1
+      },
+      "scripts": 4,
+      "attached": 4,
+      "signals": 6,
+      "latency_ms": 116179,
+      "nodes_sample": [
+        "/Main/Camera3D",
+        "/Main/DirectionalLight",
+        "/Main/Ground"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "3/25"
+        },
+        {
+          "label": "depth",
+          "ok": false,
+          "detail": "1/4"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "4/2"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "4/2"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 2,
+    "broke": 0,
+    "avg_coverage": 83
+  }
+}

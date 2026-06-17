@@ -1,0 +1,11 @@
+{
+  "name": "Movement",
+  "operations": [
+    {
+      "type": "add_node",
+      "parent": "{entity}",
+      "name": "Navigation",
+      "node_type": "NavigationAgent3D"
+    }
+  ]
+}

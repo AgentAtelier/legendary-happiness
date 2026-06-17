@@ -1,0 +1,572 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 06:08:07",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "qwen3-6-27b",
+  "status": "complete",
+  "total": 1,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 9,
+      "built_depth": 1,
+      "applied": 38,
+      "operations_total": 38,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 9,
+        "mesh": 9,
+        "color": 9
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 30745,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/cabinet_corner_storage",
+        "/Main/chair_chair_inner",
+        "/Main/chair_chair_outer",
+        "/Main/counter_cook_counter",
+        "/Main/fridge_cook_appliance_left",
+        "/Main/stove_cook_appliance_right",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "9/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "7/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override.",
+      "runs": [
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 30745,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 12189,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 5,
+          "built_depth": 1,
+          "applied": 22,
+          "operations_total": 22,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 5,
+            "mesh": 5,
+            "color": 5
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9987,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "5/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "3/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 5,
+          "built_depth": 1,
+          "applied": 22,
+          "operations_total": 22,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 5,
+            "mesh": 5,
+            "color": 5
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 10194,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "5/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "3/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 5,
+          "built_depth": 1,
+          "applied": 22,
+          "operations_total": 22,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 5,
+            "mesh": 5,
+            "color": 5
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9778,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "5/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "3/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 11542,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 11545,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 11547,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 11544,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        },
+        {
+          "built_nodes": 9,
+          "built_depth": 1,
+          "applied": 38,
+          "operations_total": 38,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 9,
+            "mesh": 9,
+            "color": 9
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 11644,
+          "nodes_sample": [
+            "/Main/Ceiling",
+            "/Main/Floor",
+            "/Main/cabinet_corner_storage",
+            "/Main/chair_chair_inner",
+            "/Main/chair_chair_outer",
+            "/Main/counter_cook_counter",
+            "/Main/fridge_cook_appliance_left",
+            "/Main/stove_cook_appliance_right",
+            "/Main/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "9/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "7/2 placed MeshInstance3Ds"
+            },
+            {
+              "label": "spatial:overlap",
+              "ok": true,
+              "detail": "no AABB overlaps detected"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "S4_adjacency",
+          "axis": "spatial:ARCS",
+          "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+        }
+      ],
+      "mean_coverage": 100,
+      "stddev_coverage": 0,
+      "mean_latency_ms": 13072
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Health",
+  "operations": [
+    {
+      "type": "set_property",
+      "node": "{entity}",
+      "key": "health",
+      "value": 100
+    }
+  ]
+}

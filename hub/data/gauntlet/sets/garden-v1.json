@@ -1,0 +1,38 @@
+{
+  "id": "garden-v1",
+  "title": "Outdoor Scatter — Garden Slice",
+  "planner": "scatter",
+  "description": "Outdoor scatter: Poisson-disk tree/bush/flower/rock placement with keep-out zones. LLM emits species + counts; deterministic engine samples positions.",
+  "prompts": [
+    {
+      "id": "G1_simple_garden",
+      "axis": "scatter:simple",
+      "prompt": "Scatter 5 trees and 10 bushes around the area. Space trees 4m apart and bushes 2m apart.",
+      "expect": {
+        "min_nodes": 10,
+        "min_scatter_items": 15,
+        "scatter_in_bounds": true
+      }
+    },
+    {
+      "id": "G2_flower_bed",
+      "axis": "scatter:flowers",
+      "prompt": "Plant a flower bed with 20 flowers spaced 1m apart in a 10x10 metre garden.",
+      "expect": {
+        "min_nodes": 15,
+        "min_scatter_items": 15,
+        "scatter_in_bounds": true
+      }
+    },
+    {
+      "id": "G3_mixed_garden",
+      "axis": "scatter:mixed",
+      "prompt": "Create a garden with 3 trees (4m spacing), 8 bushes (2m spacing), 12 flowers (1.5m spacing), and 5 rocks (2m spacing). Keep the area 20x20 metres.",
+      "expect": {
+        "min_nodes": 20,
+        "min_scatter_items": 25,
+        "scatter_in_bounds": true
+      }
+    }
+  ]
+}

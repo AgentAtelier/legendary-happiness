@@ -1,0 +1,137 @@
+=== SHOOTOUT LOG 20260614-024744 ===
+
+[02:47:44] === FORGE MODEL SHOOTOUT ===
+[02:47:44] Scene: res://shootout.tscn
+[02:47:45] Models to test: 5
+[02:47:45]   • Qwen3 14B (qwen3-14b-q6-k)
+[02:47:45]   • Gemma 4 12B QAT (gemma-4-12b-it-qat-ud-q4-k-xl)
+[02:47:45]   • Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-ud-q4-k-xl)
+[02:47:45]   • Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[02:47:45]   • Cydonia Redux 22B (cydonia-redux-22b-v1e-q4-k-m)
+[02:47:45] 
+── [1/5] Qwen3 14B (qwen3-14b-q6-k) ──
+[02:47:45] [shootout:model] 1/5 Qwen3 14B
+[02:47:45] START: Qwen3 14B (qwen3-14b-q6-k)
+[02:47:45]   swap: starting...
+[02:47:49]   swap: OK
+[02:47:49]   reset: pristine shootout scene
+[02:47:49]   scene_before: 3 nodes
+[02:47:49]   apply_spec: sending prompt (1672 chars)...
+[02:48:19]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[02:48:19]   apply_spec: reading artifact 9eec81c6c02a
+[02:48:19]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[02:48:19]   apply_spec: done — applied=?, ops=16, errors=0
+[02:48:19]   scene_after: 15 nodes
+[02:48:19]   static: running 23 checks...
+[02:48:19]   static: 3p/19f/1e = 9/68
+[02:48:19]     [fail] player_type: Player type = 
+[02:48:19]     [fail] player_mesh: Player has NO mesh
+[02:48:19]     [fail] player_script: Player has NO script
+[02:48:19]     [fail] player_camera: PlayerCamera type = 
+[02:48:19]     [fail] coin_coin_red_exists: Coin_Red missing
+[02:48:19]     [fail] coin_coin_green_exists: Coin_Green missing
+[02:48:19]     [fail] coin_coin_blue_exists: Coin_Blue missing
+[02:48:19]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[02:48:19]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[02:48:19]     [fail] coin_coin_red_type: Coin_Red type = 
+[02:48:19]     [fail] coin_coin_green_type: Coin_Green type = 
+[02:48:19]     [fail] coin_coin_blue_type: Coin_Blue type = 
+[02:48:19]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[02:48:19]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[02:48:19]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[02:48:19]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[02:48:19]     [fail] ui_canvas: UI type = 
+[02:48:19]     [fail] ui_label: ScoreLabel missing
+[02:48:19]     [error] score_text: Property fetch failed
+[02:48:19]     [fail] no_pollution: Unexpected: ['/Main/Player(MeshInstance3D)', '/Main/PlayerCamera(Camera3D)', '/Main/Collectibles(Node3D)', '/Main/Coin_Red(Area3D)', '/Main/Coin_Green(Area3D)']
+[02:48:19]   runtime: running checks...
+[02:48:22]   runtime: 0p/2f/4e = 0/32
+[02:48:22]     [fail] game_fps: FPS = 0 (dead?)
+[02:48:22]     [error] movement_process: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:48:22]     [error] movement_input: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:48:22]     [error] collect_handler: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:48:22]     [error] collect_qfree: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:48:22]     [fail] collect_score: No score tracking found
+[02:48:22]   reset: restoring pristine shootout scene
+[02:48:22]   DONE: [error] score=9/100 (36718ms)
+[02:48:22] [shootout:scored] 1/5 Qwen3 14B = 9/100 (error)
+[02:48:22] 
+── [2/5] Gemma 4 12B QAT (gemma-4-12b-it-qat-ud-q4-k-xl) ──
+[02:48:22] [shootout:model] 2/5 Gemma 4 12B QAT
+[02:48:22] START: Gemma 4 12B QAT (gemma-4-12b-it-qat-ud-q4-k-xl)
+[02:48:22]   swap: starting...
+[02:48:22]   swap: FAILED
+[02:48:22]   reset: restoring pristine shootout scene
+[02:48:22]   DONE: [error] score=0/100 (738ms)
+[02:48:22] [shootout:scored] 2/5 Gemma 4 12B QAT = 0/100 (error)
+[02:48:22] 
+── [3/5] Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-ud-q4-k-xl) ──
+[02:48:22] [shootout:model] 3/5 Gemma 4 26B MoE
+[02:48:22] START: Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-ud-q4-k-xl)
+[02:48:22]   swap: starting...
+[02:48:22]   swap: FAILED
+[02:48:22]   reset: restoring pristine shootout scene
+[02:48:23]   DONE: [error] score=0/100 (109ms)
+[02:48:23] [shootout:scored] 3/5 Gemma 4 26B MoE = 0/100 (error)
+[02:48:23] 
+── [4/5] Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k) ──
+[02:48:23] [shootout:model] 4/5 Gemma 4 12B Obliterated
+[02:48:23] START: Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[02:48:23]   swap: starting...
+[02:48:51]   swap: OK
+[02:48:51]   reset: pristine shootout scene
+[02:48:51]   scene_before: 3 nodes
+[02:48:51]   apply_spec: sending prompt (1672 chars)...
+[02:49:59]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[02:49:59]   apply_spec: reading artifact ec15e4283fb8
+[02:49:59]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[02:49:59]   apply_spec: done — applied=?, ops=4, errors=0
+[02:49:59]   scene_after: 6 nodes
+[02:49:59]   static: running 23 checks...
+[02:50:00]   static: 2p/20f/1e = 6/68
+[02:50:00]     [fail] arena_exists: /Main/Arena missing
+[02:50:00]     [fail] player_type: Player type = 
+[02:50:00]     [fail] player_mesh: Player has NO mesh
+[02:50:00]     [fail] player_script: Player has NO script
+[02:50:00]     [fail] player_camera: PlayerCamera type = 
+[02:50:00]     [fail] coin_coin_red_exists: Coin_Red missing
+[02:50:00]     [fail] coin_coin_green_exists: Coin_Green missing
+[02:50:00]     [fail] coin_coin_blue_exists: Coin_Blue missing
+[02:50:00]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[02:50:00]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[02:50:00]     [fail] coin_coin_red_type: Coin_Red type = 
+[02:50:00]     [fail] coin_coin_green_type: Coin_Green type = 
+[02:50:00]     [fail] coin_coin_blue_type: Coin_Blue type = 
+[02:50:00]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[02:50:00]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[02:50:00]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[02:50:00]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[02:50:00]     [fail] ui_canvas: UI type = 
+[02:50:00]     [fail] ui_label: ScoreLabel missing
+[02:50:00]     [error] score_text: Property fetch failed
+[02:50:00]     [fail] no_pollution: Unexpected: ['/Main/Collectibles(Node3D)', '/Main/Collectiles(Node3D)', '/Main/DirectionalLight(DirectionalLight3D)']
+[02:50:00]   runtime: running checks...
+[02:50:02]   runtime: 0p/2f/4e = 0/32
+[02:50:02]     [fail] game_fps: FPS = 0 (dead?)
+[02:50:02]     [error] movement_process: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:50:02]     [error] movement_input: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:50:02]     [error] collect_handler: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:50:02]     [error] collect_qfree: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[02:50:02]     [fail] collect_score: No score tracking found
+[02:50:02]   reset: restoring pristine shootout scene
+[02:50:02]   DONE: [error] score=6/100 (99626ms)
+[02:50:02] [shootout:scored] 4/5 Gemma 4 12B Obliterated = 6/100 (error)
+[02:50:02] 
+── [5/5] Cydonia Redux 22B (cydonia-redux-22b-v1e-q4-k-m) ──
+[02:50:02] [shootout:model] 5/5 Cydonia Redux 22B
+[02:50:02] START: Cydonia Redux 22B (cydonia-redux-22b-v1e-q4-k-m)
+[02:50:02]   swap: starting...
+[02:50:03]   swap: FAILED
+[02:50:03]   reset: restoring pristine shootout scene
+[02:50:03]   DONE: [error] score=0/100 (737ms)
+[02:50:03] [shootout:scored] 5/5 Cydonia Redux 22B = 0/100 (error)
+[02:50:03] restored editor scene → res://scenes/main.tscn
+[02:50:03] [shootout:done]
+[02:50:03] 
+→ saved shootout-20260614-024744.json
+[02:50:03] Total: 138s for 2 models

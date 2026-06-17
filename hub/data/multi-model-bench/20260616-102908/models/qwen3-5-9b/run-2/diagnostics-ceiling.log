@@ -1,0 +1,17 @@
+═══ Test 3: Model Ceiling ═══
+Prompt: 'a wizard's tower where the wizard grew afraid of heights — upper floors sealed and dusty, living area migrated down to the ground floor'
+Planner: room (skip_cache=True)
+
+  RUN THIS TWICE: once on 4B, once on 27B, then compare.
+
+─── Result ───
+  Model:        qwen3-5-9b-q8-0
+  Nodes built:  3
+  Errors:       0
+  Latency:      2s
+  Node names:   Ceiling, Floor, counter_center_table
+
+  Hypothesis: near-identical on 4B and 27B (interface is the ceiling).
+  Compare the node_count and error_count across runs.
+
+→ saved /home/mrg/dev/games/Forge/hub/data/diagnostics/diag-ceiling-20260616-104125.json

@@ -1,0 +1,46 @@
+{
+  "slug": "dialogue_ui",
+  "name": "Dialogue UI",
+  "description": "Typewriter text animation with character portrait, speaker nameplate, and choice buttons. Emits signals for dialogue engine integration. Supports rich text formatting.",
+  "version": 1,
+  "slots": [
+    {"name": "parent", "type": "node_path", "default": "/root/Main", "description": "Parent node path for the DialogueUI"},
+    {"name": "characters_per_second", "type": "float", "default": 40.0, "description": "Typewriter speed in characters per second"},
+    {"name": "choice_font_size", "type": "int", "default": 18, "description": "Font size for choice buttons"},
+    {"name": "speaker_font_size", "type": "int", "default": 22, "description": "Font size for the speaker nameplate"}
+  ],
+  "requires": [],
+  "scripts": [
+    {
+      "path": "scripts/ui/dialogue_ui.gd",
+      "content": "extends Control\n\nsignal text_finished\nsignal choice_selected(index: int, choice_id: String)\nsignal dialogue_requested_next\n\n@export var characters_per_second: float = {{characters_per_second}}\n\n@onready var _speaker_label: Label = %SpeakerLabel\n@onready var _dialogue_label: RichTextLabel = %DialogueLabel\n@onready var _portrait: TextureRect = %Portrait\n@onready var _choices_container: VBoxContainer = %ChoicesContainer\n@onready var _continue_indicator: Control = %ContinueIndicator\n@onready var _typewriter: Timer = $TypewriterTimer\n\nvar _full_text: String = \"\"\nvar _visible_chars: int = 0\nvar _is_typing: bool = false\nvar _choices_active: bool = false\nvar _can_continue: bool = false\n\nfunc _ready():\n\thide()\n\t_typewriter.timeout.connect(_on_typewriter_tick)\n\t_clear_choices()\n\nfunc start_dialogue(entry: Dictionary) -> void:\n\t\"\"\"Show a dialogue line with speaker, text, and optional portrait.\n\tentry = { speaker: String, text: String, portrait: Texture2D|null, sfx: AudioStream|null }\n\t\"\"\"\n\tshow()\n\t_clear_choices()\n\t_continue_indicator.hide()\n\t_can_continue = false\n\n\t_speaker_label.text = entry.get(\"speaker\", \"\")\n\t_full_text = entry.get(\"text\", \"\")\n\n\t# Portrait\n\tvar portrait: Texture2D = entry.get(\"portrait\")\n\tif portrait:\n\t\t_portrait.texture = portrait\n\t\t_portrait.show()\n\telse:\n\t\t_portrait.hide()\n\n\t# Start typewriter\n\t_visible_chars = 0\n\t_dialogue_label.text = _full_text\n\t_dialogue_label.visible_characters = 0\n\t_is_typing = true\n\t_typewriter.start(1.0 / characters_per_second)\n\nfunc show_choices(choices: Array[Dictionary]) -> void:\n\t\"\"\"Display choice buttons.\n\tchoices = [{ id: String, text: String, enabled: bool }, ...]\n\t\"\"\"\n\t_clear_choices()\n\t_choices_active = true\n\n\tfor i in range(choices.size()):\n\t\tvar choice := choices[i]\n\t\tvar btn := Button.new()\n\t\tbtn.text = \"%d. %s\" % [i + 1, choice.get(\"text\", \"\")]\n\t\tbtn.flat = false\n\t\tbtn.add_theme_font_size_override(\"font_size\", {{choice_font_size}})\n\t\tbtn.disabled = not choice.get(\"enabled\", true)\n\t\tbtn.size_flags_horizontal = Control.SIZE_FILL\n\t\tbtn.custom_minimum_size = Vector2(0, 44)\n\n\t\tvar idx := i\n\t\tvar choice_id: String = choice.get(\"id\", \"\")\n\t\tbtn.pressed.connect(func(): _on_choice_pressed(idx, choice_id))\n\n\t\t_choices_container.add_child(btn)\n\nfunc skip_typewriter() -> void:\n\t\"\"\"Instantly reveal all text.\"\"\"\n\tif _is_typing:\n\t\t_typewriter.stop()\n\t\t_dialogue_label.visible_characters = -1\n\t\t_is_typing = false\n\t\t_on_text_finished()\n\nfunc is_typing() -> bool:\n\treturn _is_typing\n\nfunc is_showing_choices() -> bool:\n\treturn _choices_active\n\nfunc clear() -> void:\n\thide()\n\t_speaker_label.text = \"\"\n\t_dialogue_label.text = \"\"\n\t_portrait.texture = null\n\t_clear_choices()\n\t_continue_indicator.hide()\n\t_is_typing = false\n\t_typewriter.stop()\n\nfunc _on_typewriter_tick() -> void:\n\t_visible_chars += 1\n\t_dialogue_label.visible_characters = _visible_chars\n\n\t# Check if we should pause for punctuation\n\tvar shown := _full_text.substr(0, min(_visible_chars, _full_text.length()))\n\tif shown.ends_with(\",\") or shown.ends_with(\";\"):\n\t\t_typewriter.wait_time = 0.2\n\telif shown.ends_with(\".\") or shown.ends_with(\"!\") or shown.ends_with(\"?\"):\n\t\t_typewriter.wait_time = 0.4\n\telif shown.ends_with(\"…\"):\n\t\t_typewriter.wait_time = 0.6\n\telse:\n\t\t_typewriter.wait_time = 1.0 / characters_per_second\n\n\tif _visible_chars >= _full_text.length():\n\t\t_typewriter.stop()\n\t\t_is_typing = false\n\t\t_on_text_finished()\n\nfunc _on_text_finished() -> void:\n\t_dialogue_label.visible_characters = -1\n\t_can_continue = true\n\t_continue_indicator.show()\n\ttext_finished.emit()\n\nfunc _on_choice_pressed(index: int, choice_id: String) -> void:\n\tchoice_selected.emit(index, choice_id)\n\t_clear_choices()\n\nfunc _clear_choices() -> void:\n\tfor child in _choices_container.get_children():\n\t\tchild.queue_free()\n\t_choices_active = false\n\nfunc _input(event: InputEvent) -> void:\n\tif not visible:\n\t\treturn\n\n\tif event.is_action_pressed(\"ui_accept\") or event.is_action_pressed(\"interact\"):\n\t\tif _is_typing:\n\t\t\tskip_typewriter()\n\t\t\tget_viewport().set_input_as_handled()\n\t\telif _can_continue and not _choices_active:\n\t\t\tdialogue_requested_next.emit()\n\t\t\tget_viewport().set_input_as_handled()\n"
+    }
+  ],
+  "operations": [
+    {"type": "add_node", "parent": "{{parent}}", "node_type": "Control", "name": "DialogueUI"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI", "property": "anchors_preset", "value": 15},
+    {"type": "set_property", "node": "/root/Main/DialogueUI", "property": "visible", "value": false},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI", "node_type": "Panel", "name": "DialoguePanel"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel", "property": "anchors_preset", "value": 14},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel", "property": "position", "value": {"x": 0, "y": 0, "z": 0}},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel", "node_type": "MarginContainer", "name": "DialogueMargin"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin", "node_type": "VBoxContainer", "name": "DialogueVBox"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox", "node_type": "HBoxContainer", "name": "TopRow"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow", "node_type": "TextureRect", "name": "Portrait"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow/Portrait", "property": "expand_mode", "value": 1},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow", "node_type": "VBoxContainer", "name": "TextArea"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow/TextArea", "node_type": "Label", "name": "SpeakerLabel"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow/TextArea/SpeakerLabel", "property": "theme_override_font_sizes/font_size", "value": "{{speaker_font_size}}"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow/TextArea", "node_type": "RichTextLabel", "name": "DialogueLabel"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow/TextArea/DialogueLabel", "property": "bbcode_enabled", "value": true},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/TopRow/TextArea/DialogueLabel", "property": "fit_content", "value": true},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox", "node_type": "VBoxContainer", "name": "ChoicesContainer"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox", "node_type": "Control", "name": "ContinueIndicator"},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/ContinueIndicator", "node_type": "Label", "name": "ContinueLabel"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/ContinueIndicator/ContinueLabel", "property": "text", "value": "▼"},
+    {"type": "set_property", "node": "/root/Main/DialogueUI/DialoguePanel/DialogueMargin/DialogueVBox/ContinueIndicator/ContinueLabel", "property": "horizontal_alignment", "value": 1},
+    {"type": "add_node", "parent": "/root/Main/DialogueUI", "node_type": "Timer", "name": "TypewriterTimer"},
+    {"type": "attach_script", "node": "/root/Main/DialogueUI", "script": "scripts/ui/dialogue_ui.gd"}
+  ],
+  "collision_check": ["/root/Main/DialogueUI"]
+}

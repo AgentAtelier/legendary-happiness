@@ -1,0 +1,562 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 05:59:47",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-6-27b",
+  "status": "complete",
+  "total": 1,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 4,
+      "built_depth": 2,
+      "applied": 8,
+      "operations_total": 8,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 1
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 1,
+      "latency_ms": 33939,
+      "nodes_sample": [
+        "/Main/Hero",
+        "/Main/Hero/CollisionShape3D",
+        "/Main/SpawnTimer",
+        "/Main/SpawnerSystem"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "4/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "signals",
+          "ok": true,
+          "detail": "1/1"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner.",
+      "runs": [
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 33939,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 718,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 808,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 801,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 805,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 808,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 806,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 807,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 805,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        },
+        {
+          "built_nodes": 4,
+          "built_depth": 2,
+          "applied": 8,
+          "operations_total": 8,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 1
+          },
+          "scripts": 2,
+          "attached": 2,
+          "signals": 1,
+          "latency_ms": 806,
+          "nodes_sample": [
+            "/Main/Hero",
+            "/Main/Hero/CollisionShape3D",
+            "/Main/SpawnTimer",
+            "/Main/SpawnerSystem"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "4/2"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "2/1"
+            },
+            {
+              "label": "signals",
+              "ok": true,
+              "detail": "1/1"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G5_scripts_signals",
+          "axis": "scripts + signal wiring",
+          "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+        }
+      ],
+      "mean_coverage": 100,
+      "stddev_coverage": 0,
+      "mean_latency_ms": 4110
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

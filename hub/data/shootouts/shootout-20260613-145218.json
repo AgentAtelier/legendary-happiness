@@ -1,0 +1,466 @@
+{
+  "ts": "2026-06-13 14:52:18",
+  "scene": "res://shootout.tscn",
+  "models_tested": 2,
+  "total_ms": 155876,
+  "results": [
+    {
+      "model_alias": "qwen3-14b-q6-k",
+      "model_label": "Qwen3 14B",
+      "status": "error",
+      "static_assertions": [
+        {
+          "status": "pass",
+          "assertion": "arena_exists",
+          "message": "/Main/Arena found"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_type",
+          "message": "Player type = "
+        },
+        {
+          "status": "error",
+          "assertion": "player_mesh",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "error",
+          "assertion": "player_script",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_camera",
+          "message": "PlayerCamera type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_exists",
+          "message": "Coin_Red missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_exists",
+          "message": "Coin_Green missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_exists",
+          "message": "Coin_Blue missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_exists",
+          "message": "Coin_Gold missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_exists",
+          "message": "Coin_Purple missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_type",
+          "message": "Coin_Red type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_type",
+          "message": "Coin_Green type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_type",
+          "message": "Coin_Blue type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_type",
+          "message": "Coin_Gold type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_type",
+          "message": "Coin_Purple type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_collision",
+          "message": "No CollisionShape3D found"
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_mesh",
+          "message": "No MeshInstance3D children"
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_label",
+          "message": "ScoreLabel missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_label_type",
+          "message": "ScoreLabel type = "
+        },
+        {
+          "status": "error",
+          "assertion": "score_text",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_dup_cameras",
+          "message": "2 Camera3D nodes (ok)"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_pollution",
+          "message": "Unexpected: ['/Main/Sun(DirectionalLight3D)', '/Main/Ground/CollisionShape3D(CollisionShape3D)', '/Main/Ground/MeshInstance3D(MeshInstance3D)', '/Main/CenterCube(MeshInstance3D)', '/Main/Player(MeshInstance3D)']"
+        }
+      ],
+      "runtime_assertions": [
+        {
+          "status": "fail",
+          "assertion": "game_fps",
+          "message": "FPS = 0 (dead?)"
+        },
+        {
+          "status": "error",
+          "assertion": "movement_process",
+          "message": "find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "movement_input",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_handler",
+          "message": "find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_qfree",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_score",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        }
+      ],
+      "static_score": 6,
+      "runtime_score": 0,
+      "total_score": 6,
+      "max_score": 100,
+      "ms_total": 67136,
+      "errors": []
+    },
+    {
+      "model_alias": "gemma-4-12b-it-qat-ud-q4-k-xl",
+      "model_label": "Gemma 4 12B QAT",
+      "status": "error",
+      "static_assertions": [],
+      "runtime_assertions": [],
+      "static_score": 0,
+      "runtime_score": 0,
+      "total_score": 0,
+      "max_score": 100,
+      "ms_total": 683,
+      "errors": [
+        "swap failed"
+      ]
+    },
+    {
+      "model_alias": "gemma-4-12b-it-qat-ud-q4-k-xl",
+      "model_label": "Gemma 4 12B QAT",
+      "status": "error",
+      "static_assertions": [],
+      "runtime_assertions": [],
+      "static_score": 0,
+      "runtime_score": 0,
+      "total_score": 0,
+      "max_score": 100,
+      "ms_total": 683,
+      "errors": [
+        "swap failed"
+      ]
+    },
+    {
+      "model_alias": "gemma-4-26b-a4b-it-qat-ud-q4-k-xl",
+      "model_label": "Gemma 4 26B MoE",
+      "status": "error",
+      "static_assertions": [],
+      "runtime_assertions": [],
+      "static_score": 0,
+      "runtime_score": 0,
+      "total_score": 0,
+      "max_score": 100,
+      "ms_total": 28,
+      "errors": [
+        "swap failed"
+      ]
+    },
+    {
+      "model_alias": "gemma-4-26b-a4b-it-qat-ud-q4-k-xl",
+      "model_label": "Gemma 4 26B MoE",
+      "status": "error",
+      "static_assertions": [],
+      "runtime_assertions": [],
+      "static_score": 0,
+      "runtime_score": 0,
+      "total_score": 0,
+      "max_score": 100,
+      "ms_total": 28,
+      "errors": [
+        "swap failed"
+      ]
+    },
+    {
+      "model_alias": "gemma-4-12b-obliterated-q6-k",
+      "model_label": "Gemma 4 12B Obliterated",
+      "status": "error",
+      "static_assertions": [
+        {
+          "status": "fail",
+          "assertion": "arena_exists",
+          "message": "/Main/Arena missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_type",
+          "message": "Player type = "
+        },
+        {
+          "status": "error",
+          "assertion": "player_mesh",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "error",
+          "assertion": "player_script",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_camera",
+          "message": "PlayerCamera type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_exists",
+          "message": "Coin_Red missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_exists",
+          "message": "Coin_Green missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_exists",
+          "message": "Coin_Blue missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_exists",
+          "message": "Coin_Gold missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_exists",
+          "message": "Coin_Purple missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_type",
+          "message": "Coin_Red type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_type",
+          "message": "Coin_Green type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_type",
+          "message": "Coin_Blue type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_type",
+          "message": "Coin_Gold type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_type",
+          "message": "Coin_Purple type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_collision",
+          "message": "No CollisionShape3D found"
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_mesh",
+          "message": "No MeshInstance3D children"
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_label",
+          "message": "ScoreLabel missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_label_type",
+          "message": "ScoreLabel type = "
+        },
+        {
+          "status": "error",
+          "assertion": "score_text",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_dup_cameras",
+          "message": "2 Camera3D nodes (ok)"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_pollution",
+          "message": "Unexpected: ['/Main/Sun(DirectionalLight3D)', '/Main/Ground/CollisionShape3D(CollisionShape3D)', '/Main/Ground/MeshInstance3D(MeshInstance3D)', '/Main/CenterCube(MeshInstance3D)', '/Main/Player(MeshInstance3D)']"
+        }
+      ],
+      "runtime_assertions": [
+        {
+          "status": "fail",
+          "assertion": "game_fps",
+          "message": "FPS = 0 (dead?)"
+        },
+        {
+          "status": "error",
+          "assertion": "movement_process",
+          "message": "find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "movement_input",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_handler",
+          "message": "find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_qfree",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        },
+        {
+          "status": "error",
+          "assertion": "collect_score",
+          "message": "read failed: unhandled errors in a TaskGroup (1 sub-exception)"
+        }
+      ],
+      "static_score": 3,
+      "runtime_score": 0,
+      "total_score": 3,
+      "max_score": 100,
+      "ms_total": 87337,
+      "errors": []
+    },
+    {
+      "model_alias": "cydonia-redux-22b-v1e-q4-k-m",
+      "model_label": "Cydonia Redux 22B",
+      "status": "error",
+      "static_assertions": [],
+      "runtime_assertions": [],
+      "static_score": 0,
+      "runtime_score": 0,
+      "total_score": 0,
+      "max_score": 100,
+      "ms_total": 690,
+      "errors": [
+        "swap failed"
+      ]
+    },
+    {
+      "model_alias": "cydonia-redux-22b-v1e-q4-k-m",
+      "model_label": "Cydonia Redux 22B",
+      "status": "error",
+      "static_assertions": [],
+      "runtime_assertions": [],
+      "static_score": 0,
+      "runtime_score": 0,
+      "total_score": 0,
+      "max_score": 100,
+      "ms_total": 690,
+      "errors": [
+        "swap failed"
+      ]
+    }
+  ],
+  "rankings": [
+    {
+      "rank": 1,
+      "model": "Qwen3 14B",
+      "alias": "qwen3-14b-q6-k",
+      "score": 6,
+      "status": "error"
+    },
+    {
+      "rank": 2,
+      "model": "Gemma 4 12B Obliterated",
+      "alias": "gemma-4-12b-obliterated-q6-k",
+      "score": 3,
+      "status": "error"
+    },
+    {
+      "rank": 3,
+      "model": "Gemma 4 12B QAT",
+      "alias": "gemma-4-12b-it-qat-ud-q4-k-xl",
+      "score": 0,
+      "status": "error"
+    },
+    {
+      "rank": 4,
+      "model": "Gemma 4 12B QAT",
+      "alias": "gemma-4-12b-it-qat-ud-q4-k-xl",
+      "score": 0,
+      "status": "error"
+    },
+    {
+      "rank": 5,
+      "model": "Gemma 4 26B MoE",
+      "alias": "gemma-4-26b-a4b-it-qat-ud-q4-k-xl",
+      "score": 0,
+      "status": "error"
+    },
+    {
+      "rank": 6,
+      "model": "Gemma 4 26B MoE",
+      "alias": "gemma-4-26b-a4b-it-qat-ud-q4-k-xl",
+      "score": 0,
+      "status": "error"
+    },
+    {
+      "rank": 7,
+      "model": "Cydonia Redux 22B",
+      "alias": "cydonia-redux-22b-v1e-q4-k-m",
+      "score": 0,
+      "status": "error"
+    },
+    {
+      "rank": 8,
+      "model": "Cydonia Redux 22B",
+      "alias": "cydonia-redux-22b-v1e-q4-k-m",
+      "score": 0,
+      "status": "error"
+    }
+  ]
+}

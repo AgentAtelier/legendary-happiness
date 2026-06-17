@@ -1,0 +1,510 @@
+{
+  "kind": "scenarios",
+  "ts": "2026-06-15 15:14:41",
+  "model": "qwen3-6-27b",
+  "template": "chatml",
+  "config_hash": "6af84c10",
+  "scenarios": [
+    {
+      "scenario_id": "cube_create",
+      "category": "geometry",
+      "status": "pass",
+      "ms": 25070,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/TestCube)",
+          "message": "/Main/TestCube exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/TestCube, MeshInstance3D)",
+          "message": "/Main/TestCube is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "has_mesh(/Main/TestCube)",
+          "message": "/Main/TestCube has mesh assigned"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "sphere_create",
+      "category": "geometry",
+      "status": "pass",
+      "ms": 27047,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/TestSphere)",
+          "message": "/Main/TestSphere exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/TestSphere, MeshInstance3D)",
+          "message": "/Main/TestSphere is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "has_mesh(/Main/TestSphere)",
+          "message": "/Main/TestSphere has mesh assigned"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "light_create",
+      "category": "geometry",
+      "status": "pass",
+      "ms": 25572,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/TestSun)",
+          "message": "/Main/TestSun exists (type=DirectionalLight3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/TestSun, DirectionalLight3D)",
+          "message": "/Main/TestSun is DirectionalLight3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "camera_create",
+      "category": "geometry",
+      "status": "pass",
+      "ms": 25206,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/TestCam)",
+          "message": "/Main/TestCam exists (type=Camera3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/TestCam, Camera3D)",
+          "message": "/Main/TestCam is Camera3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "batch_three",
+      "category": "multi-node",
+      "status": "pass",
+      "ms": 31039,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/BlockA)",
+          "message": "/Main/BlockA exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/BlockB)",
+          "message": "/Main/BlockB exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/BlockC)",
+          "message": "/Main/BlockC exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/BlockA, MeshInstance3D)",
+          "message": "/Main/BlockA is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/BlockB, MeshInstance3D)",
+          "message": "/Main/BlockB is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/BlockC, MeshInstance3D)",
+          "message": "/Main/BlockC is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_extra_nodes(exclude={'BlockA', 'BlockC', 'BlockB'})",
+          "message": "No extra nodes beyond excluded set"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "script_attach",
+      "category": "scripting",
+      "status": "pass",
+      "ms": 28429,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/ScriptedCube)",
+          "message": "/Main/ScriptedCube exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/ScriptedCube, MeshInstance3D)",
+          "message": "/Main/ScriptedCube is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "has_script(/Main/ScriptedCube)",
+          "message": "/Main/ScriptedCube has script assigned"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_duplicate_cameras",
+          "message": "1 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "property_edit",
+      "category": "editing",
+      "status": "pass",
+      "ms": 27750,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/PropTarget)",
+          "message": "/Main/PropTarget exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_type(/Main/PropTarget, MeshInstance3D)",
+          "message": "/Main/PropTarget is MeshInstance3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "node_delete",
+      "category": "editing",
+      "status": "pass",
+      "ms": 27026,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/ToDelete)",
+          "message": "/Main/ToDelete correctly absent"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "node_rename",
+      "category": "editing",
+      "status": "pass",
+      "ms": 28131,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/NewName)",
+          "message": "/Main/NewName exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/OldName)",
+          "message": "/Main/OldName correctly absent"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "delete_existing",
+      "category": "editing",
+      "status": "pass",
+      "ms": 431,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/Target)",
+          "message": "/Main/Target correctly absent"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "delete_existing_bare",
+      "category": "editing",
+      "status": "pass",
+      "ms": 432,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/Gizmo)",
+          "message": "/Main/Gizmo correctly absent"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "rename_existing",
+      "category": "editing",
+      "status": "pass",
+      "ms": 493,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/Renamed)",
+          "message": "/Main/Renamed exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/Origin)",
+          "message": "/Main/Origin correctly absent"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "small_room",
+      "category": "composite",
+      "status": "pass",
+      "ms": 37992,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/WallFront)",
+          "message": "/Main/WallFront exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/WallBack)",
+          "message": "/Main/WallBack exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/WallLeft)",
+          "message": "/Main/WallLeft exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/WallRight)",
+          "message": "/Main/WallRight exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/RoomLight)",
+          "message": "/Main/RoomLight exists (type=DirectionalLight3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_duplicate_cameras",
+          "message": "1 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    },
+    {
+      "scenario_id": "player_movement",
+      "category": "composite",
+      "status": "fail",
+      "ms": 34603,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/Player)",
+          "message": "/Main/Player exists (type=CharacterBody3D)"
+        },
+        {
+          "status": "fail",
+          "assertion": "node_type(/Main/Player, MeshInstance3D)",
+          "message": "/Main/Player is CharacterBody3D, expected MeshInstance3D"
+        },
+        {
+          "status": "fail",
+          "assertion": "has_mesh(/Main/Player)",
+          "message": "/Main/Player has NO mesh \u2014 invisible-node regression"
+        },
+        {
+          "status": "pass",
+          "assertion": "has_script(/Main/Player)",
+          "message": "/Main/Player has script assigned"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/Player/PlayerCam)",
+          "message": "/Main/Player/PlayerCam exists (type=Camera3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_duplicate_cameras",
+          "message": "2 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false,
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "scenario_id": "no_dup_camera",
+      "category": "regression",
+      "status": "pass",
+      "ms": 26462,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_exists(/Main/RedBlock)",
+          "message": "/Main/RedBlock exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_duplicate_cameras",
+          "message": "1 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline + execution errors"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {},
+      "truncated": false
+    }
+  ],
+  "summary": {
+    "pass": 14,
+    "fail": 1,
+    "error": 0,
+    "total": 15,
+    "pass_rate": 0.9333,
+    "total_ms": 345683,
+    "avg_ms": 23046
+  }
+}

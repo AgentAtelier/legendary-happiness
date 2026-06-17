@@ -1,0 +1,217 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 09:59:04",
+  "set": "ssp-v1",
+  "set_title": "SSP \u2014 Semantic Spatial Primitives",
+  "model": "qwen3-6-27b",
+  "status": "complete",
+  "total": 4,
+  "done": 4,
+  "results": [
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": null,
+      "operations_total": null,
+      "error_count": 1,
+      "errors": [
+        "apply_spec crashed: ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)"
+      ],
+      "props": {},
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 5,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "SSP1_kitchen",
+      "axis": "ssp:kitchen",
+      "prompt": "Build a kitchen with a stove, a fridge, and a table",
+      "plugin_logs": [
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Floor\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Ceiling\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/counter_cook_counter\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/stove_cook_appliance_left\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/table_center_table\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/chair_chair_inner\"})"
+      ]
+    },
+    {
+      "built_nodes": 6,
+      "built_depth": 1,
+      "applied": 26,
+      "operations_total": 26,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6,
+        "mesh": 6,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 26800,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_chair_north",
+        "/Main/chair_chair_south",
+        "/Main/shelf_east_storage",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "6/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "4/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "SSP2_living",
+      "axis": "ssp:living",
+      "prompt": "Build a living room with a table and chairs"
+    },
+    {
+      "built_nodes": 4,
+      "built_depth": 1,
+      "applied": 18,
+      "operations_total": 18,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "mesh": 4,
+        "color": 4
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 23576,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/cabinet_east_storage",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "4/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "2/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "SSP3_bedroom",
+      "axis": "ssp:bedroom",
+      "prompt": "Build a small bedroom with a table and a cabinet"
+    },
+    {
+      "built_nodes": 7,
+      "built_depth": 1,
+      "applied": 30,
+      "operations_total": 30,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 7,
+        "mesh": 7,
+        "color": 7
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 23948,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_chair_east",
+        "/Main/chair_chair_north",
+        "/Main/chair_chair_south",
+        "/Main/chair_chair_west",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "7/6"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "5/5 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "SSP4_dining",
+      "axis": "ssp:dining",
+      "prompt": "Build a dining room with a table and four chairs"
+    }
+  ],
+  "summary": {
+    "full": 3,
+    "partial": 0,
+    "broke": 1,
+    "avg_coverage": 83
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "slug": "lootable_container",
+  "name": "Lootable Container",
+  "description": "Interaction-based lootable container with random loot generation from configurable loot tables, visual open/closed states, and optional respawn timer. Works with the interaction system for raycast-based activation.",
+  "version": 1,
+  "slots": [
+    {"name": "parent", "type": "node_path", "default": "/root/Main", "description": "Parent node path for the LootableContainer"},
+    {"name": "loot_table_path", "type": "str", "default": "res://data/loot_tables/default.json", "description": "Path to the loot table JSON defining possible drops"},
+    {"name": "respawn_time", "type": "float", "default": 0.0, "description": "Seconds until container refills (0 to never respawn)"},
+    {"name": "interaction_prompt", "type": "str", "default": "Open", "description": "Prompt text shown when player looks at the container"},
+    {"name": "open_animation_duration", "type": "float", "default": 0.3, "description": "Duration of the open/close animation in seconds"}
+  ],
+  "requires": [],
+  "scripts": [
+    {
+      "path": "scripts/objects/lootable_container.gd",
+      "content": "extends StaticBody3D\n\nclass_name LootableContainer\n\nsignal container_opened\nsignal container_closed\nsignal loot_generated(items: Array[Dictionary])\nsignal loot_collected(item: Dictionary)\n\n@export var loot_table_path: String = \"{{loot_table_path}}\"\n@export var respawn_time: float = {{respawn_time}}\n\nvar _is_open: bool = false\nvar _is_empty: bool = false\nvar _loot_items: Array[Dictionary] = []\nvar _respawn_timer: float = 0.0\nvar _open_progress: float = 0.0\n\n@onready var _mesh: MeshInstance3D = $MeshInstance3D\n@onready var _lid: MeshInstance3D = $Lid\n@onready var _interaction_area: Area3D = $InteractionArea\n@onready var _particles: GPUParticles3D = $OpenParticles\n\nfunc _ready():\n\tadd_to_group(\"interactable\")\n\tadd_to_group(\"lootable\")\n\n\tif _interaction_area:\n\t\t_interaction_area.body_entered.connect(_on_body_entered)\n\t\t_interaction_area.body_exited.connect(_on_body_exited)\n\n\t# Generate initial loot\n\t_generate_loot()\n\nfunc get_interaction_prompt() -> String:\n\tif _is_empty and respawn_time > 0:\n\t\treturn \"Empty\"\n\treturn \"{{interaction_prompt}}\"\n\nfunc interact(player: Node) -> void:\n\tif _is_open:\n\t\t_close()\n\t\treturn\n\n\tif _is_empty:\n\t\treturn\n\n\t_open()\n\nfunc _open() -> void:\n\t_is_open = true\n\tcontainer_opened.emit()\n\n\tif _particles:\n\t\t_particles.emitting = true\n\nfunc _close() -> void:\n\t_is_open = false\n\tcontainer_closed.emit()\n\n\tif _loot_items.is_empty():\n\t\t_is_empty = true\n\t\tif respawn_time > 0:\n\t\t\t_respawn_timer = respawn_time\n\nfunc collect_all(player: Node) -> Array[Dictionary]:\n\tvar collected := _loot_items.duplicate()\n\t_loot_items.clear()\n\tfor item in collected:\n\t\t_grant_item(player, item)\n\t\tloot_collected.emit(item)\n\treturn collected\n\nfunc collect_item(index: int, player: Node) -> Dictionary:\n\tif index < 0 or index >= _loot_items.size():\n\t\treturn {}\n\tvar item := _loot_items[index]\n\t_loot_items.remove_at(index)\n\t_grant_item(player, item)\n\tloot_collected.emit(item)\n\treturn item\n\nfunc get_loot_items() -> Array[Dictionary]:\n\treturn _loot_items\n\nfunc is_open() -> bool:\n\treturn _is_open\n\nfunc is_empty() -> bool:\n\treturn _is_empty\n\nfunc force_respawn() -> void:\n\t_respawn_timer = 0.0\n\t_is_empty = false\n\t_generate_loot()\n\nfunc _process(delta: float) -> void:\n\t_respawn_timer -= delta\n\tif _respawn_timer <= 0 and _is_empty:\n\t\tforce_respawn()\n\n\t# Lid animation\n\tvar target: float = 1.0 if _is_open else 0.0\n\tvar speed := 1.0 / max({{open_animation_duration}}, 0.05)\n\t_open_progress = move_toward(_open_progress, target, delta * speed)\n\n\tif _lid and _mesh:\n\t\t_lid.position.y = _mesh.position.y + lerp(0.0, 1.2, ease(_open_progress, -1.5))\n\nfunc _generate_loot() -> void:\n\t_loot_items = LootTable.roll(loot_table_path)\n\tif _loot_items.is_empty():\n\t\t_is_empty = true\n\telse:\n\t\t_is_empty = false\n\tloot_generated.emit(_loot_items)\n\nfunc _grant_item(player: Node, item: Dictionary) -> void:\n\tvar item_id := item.get(\"id\", \"\")\n\tvar count := item.get(\"count\", 1)\n\n\tvar inv := player.get_parent().find_child(\"InventoryManager\", true, false)\n\tif inv and inv.has_method(\"add_item\"):\n\t\tinv.add_item(item_id, count)\n\nfunc _on_body_entered(body: Node) -> void:\n\tif body.is_in_group(\"player\"):\n\t\t# Optional: show a nearby prompt\n\t\tpass\n\nfunc _on_body_exited(body: Node) -> void:\n\tif body.is_in_group(\"player\"):\n\t\tif _is_open:\n\t\t\t_close()\n\nfunc serialize() -> Dictionary:\n\treturn {\n\t\t\"is_open\": _is_open,\n\t\t\"is_empty\": _is_empty,\n\t\t\"loot_items\": _loot_items,\n\t\t\"respawn_timer\": _respawn_timer,\n\t}\n\nfunc deserialize(data: Dictionary) -> void:\n\t_is_open = data.get(\"is_open\", false)\n\t_is_empty = data.get(\"is_empty\", false)\n\t_loot_items = data.get(\"loot_items\", [])\n\t_respawn_timer = data.get(\"respawn_timer\", 0.0)\n"
+    }
+  ],
+  "operations": [
+    {"type": "add_node", "parent": "{{parent}}", "node_type": "StaticBody3D", "name": "LootableContainer"},
+    {"type": "set_property", "node": "/root/Main/LootableContainer", "property": "collision_layer", "value": 1},
+    {"type": "add_node", "parent": "/root/Main/LootableContainer", "node_type": "MeshInstance3D", "name": "MeshInstance3D"},
+    {"type": "add_node", "parent": "/root/Main/LootableContainer", "node_type": "CollisionShape3D", "name": "CollisionShape3D"},
+    {"type": "add_node", "parent": "/root/Main/LootableContainer", "node_type": "MeshInstance3D", "name": "Lid"},
+    {"type": "set_property", "node": "/root/Main/LootableContainer/Lid", "property": "position", "value": {"x": 0, "y": 1.5, "z": 0}},
+    {"type": "add_node", "parent": "/root/Main/LootableContainer", "node_type": "Area3D", "name": "InteractionArea"},
+    {"type": "add_node", "parent": "/root/Main/LootableContainer/InteractionArea", "node_type": "CollisionShape3D", "name": "InteractionShape"},
+    {"type": "add_node", "parent": "/root/Main/LootableContainer", "node_type": "GPUParticles3D", "name": "OpenParticles"},
+    {"type": "set_property", "node": "/root/Main/LootableContainer/OpenParticles", "property": "one_shot", "value": true},
+    {"type": "set_property", "node": "/root/Main/LootableContainer/OpenParticles", "property": "emitting", "value": false},
+    {"type": "attach_script", "node": "/root/Main/LootableContainer", "script": "scripts/objects/lootable_container.gd"}
+  ],
+  "collision_check": ["/root/Main/LootableContainer"]
+}

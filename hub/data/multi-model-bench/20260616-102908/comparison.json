@@ -1,0 +1,220 @@
+{
+  "models_tested": [
+    "qwen3-5-4b",
+    "qwen3-5-9b",
+    "qwen3-14b",
+    "qwen3-6-27b"
+  ],
+  "test_matrix": {
+    "diagnostics:repeat": {
+      "qwen3-5-4b": {
+        "runs": 3,
+        "mean_coverage": 0.4,
+        "mean_nodes": null,
+        "latencies_ms": [
+          58694,
+          53137,
+          32161
+        ]
+      },
+      "qwen3-5-9b": {
+        "runs": 3,
+        "mean_coverage": 0.7,
+        "mean_nodes": null,
+        "latencies_ms": [
+          34641,
+          25004,
+          25001
+        ]
+      },
+      "qwen3-14b": {
+        "runs": 3,
+        "mean_coverage": 0.4,
+        "mean_nodes": null,
+        "latencies_ms": [
+          47764,
+          34685,
+          34644
+        ]
+      },
+      "qwen3-6-27b": {
+        "runs": 3,
+        "mean_coverage": 0.1,
+        "mean_nodes": null,
+        "latencies_ms": [
+          98645,
+          112469,
+          75590
+        ]
+      }
+    },
+    "diagnostics:intent": {
+      "qwen3-5-4b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          19426,
+          14133,
+          14193
+        ]
+      },
+      "qwen3-5-9b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          11154,
+          11270,
+          11247
+        ]
+      },
+      "qwen3-14b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          14487,
+          14177,
+          14167
+        ]
+      },
+      "qwen3-6-27b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          32624,
+          30331,
+          30208
+        ]
+      }
+    },
+    "diagnostics:ceiling": {
+      "qwen3-5-4b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": 2.7,
+        "latencies_ms": [
+          15809,
+          15522,
+          4311
+        ]
+      },
+      "qwen3-5-9b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": 3.0,
+        "latencies_ms": [
+          7998,
+          3068,
+          3109
+        ]
+      },
+      "qwen3-14b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": 3.0,
+        "latencies_ms": [
+          16532,
+          4254,
+          4246
+        ]
+      },
+      "qwen3-6-27b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": 3.0,
+        "latencies_ms": [
+          27617,
+          27506,
+          8768
+        ]
+      }
+    },
+    "probes:all": {
+      "qwen3-5-4b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          52671,
+          30943,
+          30857
+        ]
+      },
+      "qwen3-5-9b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          31254,
+          30683,
+          30661
+        ]
+      },
+      "qwen3-14b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          23546,
+          22782,
+          22763
+        ]
+      },
+      "qwen3-6-27b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          75888,
+          47775,
+          49592
+        ]
+      }
+    },
+    "gauntlet:key": {
+      "qwen3-5-4b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          164671,
+          17773,
+          17727
+        ]
+      },
+      "qwen3-5-9b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          28453,
+          17913,
+          17964
+        ]
+      },
+      "qwen3-14b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          44053,
+          16029,
+          15894
+        ]
+      },
+      "qwen3-6-27b": {
+        "runs": 3,
+        "mean_coverage": null,
+        "mean_nodes": null,
+        "latencies_ms": [
+          272597,
+          33771,
+          33870
+        ]
+      }
+    }
+  }
+}

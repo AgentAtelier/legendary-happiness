@@ -1,0 +1,46 @@
+# building_planner.gbnf
+# GBNF grammar for building (BSP multi-room) JSON output.
+# Constrains the LLM to produce depth-bounded split trees (max depth 4).
+#
+# Schema: {building, footprint{w,d}, tree}
+# tree ::= LEAF {room, pattern, slot_fills} | SPLIT {axis, ratio, left, right}
+# Recursion unrolled to 4 depth levels (d0→d1→d2→d3, d3 = leaf only).
+
+root ::= "{" ws "\"building\"" ws ":" ws string ws "," ws "\"footprint\"" ws ":" ws footprint-object ws "," ws "\"tree\"" ws ":" ws tree-d0 ws "}"
+
+footprint-object ::= "{" ws "\"width\"" ws ":" ws number ws "," ws "\"depth\"" ws ":" ws number ws "}"
+
+# ── depth-bounded split tree (unrolled recursion, max 4 split levels → ≤16 rooms) ──
+
+tree-d0 ::= leaf-node | split-node-d0
+tree-d1 ::= leaf-node | split-node-d1
+tree-d2 ::= leaf-node | split-node-d2
+tree-d3 ::= leaf-node | split-node-d3
+tree-d4 ::= leaf-node
+
+leaf-node ::= "{" ws "\"room\"" ws ":" ws string ws "," ws "\"pattern\"" ws ":" ws string ws "," ws "\"slot_fills\"" ws ":" ws slot-fills-object ws "}"
+
+split-node-d0 ::= "{" ws "\"axis\"" ws ":" ws axis ws "," ws "\"ratio\"" ws ":" ws number ws "," ws "\"left\"" ws ":" ws tree-d1 ws "," ws "\"right\"" ws ":" ws tree-d1 ws "}"
+split-node-d1 ::= "{" ws "\"axis\"" ws ":" ws axis ws "," ws "\"ratio\"" ws ":" ws number ws "," ws "\"left\"" ws ":" ws tree-d2 ws "," ws "\"right\"" ws ":" ws tree-d2 ws "}"
+split-node-d2 ::= "{" ws "\"axis\"" ws ":" ws axis ws "," ws "\"ratio\"" ws ":" ws number ws "," ws "\"left\"" ws ":" ws tree-d3 ws "," ws "\"right\"" ws ":" ws tree-d3 ws "}"
+split-node-d3 ::= "{" ws "\"axis\"" ws ":" ws axis ws "," ws "\"ratio\"" ws ":" ws number ws "," ws "\"left\"" ws ":" ws tree-d4 ws "," ws "\"right\"" ws ":" ws tree-d4 ws "}"
+
+axis ::= "\"x\"" | "\"z\""
+
+# ── slot fills ──
+
+slot-fills-object ::= "{" ws "}" | "{" ws slot-fill-pair (ws "," ws slot-fill-pair)* ws "}"
+slot-fill-pair ::= string ws ":" ws string
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

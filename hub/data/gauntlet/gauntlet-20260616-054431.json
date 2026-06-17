@@ -1,0 +1,1002 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 05:44:50",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 1,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 31,
+      "built_depth": 4,
+      "applied": 69,
+      "operations_total": 69,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 16,
+        "shape": 6,
+        "mesh": 6,
+        "color": 6,
+        "text": 1
+      },
+      "scripts": 3,
+      "attached": 3,
+      "signals": 0,
+      "latency_ms": 857,
+      "nodes_sample": [
+        "/Main/Arena",
+        "/Main/Arena/Coins",
+        "/Main/Arena/Coins/Coin1",
+        "/Main/Arena/Coins/Coin1/Coin1Mesh",
+        "/Main/Arena/Coins/Coin1/Coin1Script",
+        "/Main/Arena/Coins/Coin1/Coin1Shape",
+        "/Main/Arena/Coins/Coin2",
+        "/Main/Arena/Coins/Coin2/Coin2Mesh",
+        "/Main/Arena/Coins/Coin2/Coin2Script",
+        "/Main/Arena/Coins/Coin2/Coin2Shape",
+        "/Main/Arena/Coins/Coin3",
+        "/Main/Arena/Coins/Coin3/Coin3Mesh",
+        "/Main/Arena/Coins/Coin3/Coin3Script",
+        "/Main/Arena/Coins/Coin3/Coin3Shape",
+        "/Main/Arena/Coins/Coin4",
+        "/Main/Arena/Coins/Coin4/Coin4Mesh",
+        "/Main/Arena/Coins/Coin4/Coin4Script",
+        "/Main/Arena/Coins/Coin4/Coin4Shape",
+        "/Main/Arena/Coins/Coin5",
+        "/Main/Arena/Coins/Coin5/Coin5Mesh"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "31/25"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "4/4"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "3/2"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "3/2"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'.",
+      "runs": [
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 857,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 856,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 855,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 857,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 858,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 856,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 860,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 857,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 857,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        },
+        {
+          "built_nodes": 31,
+          "built_depth": 4,
+          "applied": 69,
+          "operations_total": 69,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "shape": 6,
+            "mesh": 6,
+            "color": 6,
+            "text": 1
+          },
+          "scripts": 3,
+          "attached": 3,
+          "signals": 0,
+          "latency_ms": 855,
+          "nodes_sample": [
+            "/Main/Arena",
+            "/Main/Arena/Coins",
+            "/Main/Arena/Coins/Coin1",
+            "/Main/Arena/Coins/Coin1/Coin1Mesh",
+            "/Main/Arena/Coins/Coin1/Coin1Script",
+            "/Main/Arena/Coins/Coin1/Coin1Shape",
+            "/Main/Arena/Coins/Coin2",
+            "/Main/Arena/Coins/Coin2/Coin2Mesh",
+            "/Main/Arena/Coins/Coin2/Coin2Script",
+            "/Main/Arena/Coins/Coin2/Coin2Shape",
+            "/Main/Arena/Coins/Coin3",
+            "/Main/Arena/Coins/Coin3/Coin3Mesh",
+            "/Main/Arena/Coins/Coin3/Coin3Script",
+            "/Main/Arena/Coins/Coin3/Coin3Shape",
+            "/Main/Arena/Coins/Coin4",
+            "/Main/Arena/Coins/Coin4/Coin4Mesh",
+            "/Main/Arena/Coins/Coin4/Coin4Script",
+            "/Main/Arena/Coins/Coin4/Coin4Shape",
+            "/Main/Arena/Coins/Coin5",
+            "/Main/Arena/Coins/Coin5/Coin5Mesh"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "31/25"
+            },
+            {
+              "label": "depth",
+              "ok": true,
+              "detail": "4/4"
+            },
+            {
+              "label": "prop:shape",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:mesh",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:color",
+              "ok": true,
+              "detail": "6/6"
+            },
+            {
+              "label": "prop:text",
+              "ok": true,
+              "detail": "1/1"
+            },
+            {
+              "label": "scripts",
+              "ok": true,
+              "detail": "3/2"
+            },
+            {
+              "label": "attached",
+              "ok": true,
+              "detail": "3/2"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "G7_integration",
+          "axis": "integration ceiling (everything at once)",
+          "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+        }
+      ],
+      "mean_coverage": 100,
+      "stddev_coverage": 0,
+      "mean_latency_ms": 857
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

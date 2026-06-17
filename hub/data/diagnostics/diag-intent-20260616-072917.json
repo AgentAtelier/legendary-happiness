@@ -1,0 +1,46 @@
+{
+  "kind": "move1-diagnostics",
+  "test": "intent_sensitivity",
+  "ts": "2026-06-16 07:29:17",
+  "model": "qwen3-6-27b",
+  "planner": "room",
+  "skip_cache": true,
+  "pairs_checked": 6,
+  "pairs_different": 0,
+  "intent_coverage": 0.0,
+  "results": [
+    {
+      "label": "cramped",
+      "prompt": "build a cramped kitchen",
+      "node_count": 0,
+      "node_names": [],
+      "latency_ms": 10440,
+      "crashed": false
+    },
+    {
+      "label": "spacious",
+      "prompt": "build a spacious kitchen",
+      "node_count": 0,
+      "node_names": [],
+      "latency_ms": 7200,
+      "crashed": false
+    },
+    {
+      "label": "abandoned",
+      "prompt": "build an abandoned kitchen",
+      "node_count": 0,
+      "node_names": [],
+      "latency_ms": 7731,
+      "crashed": false
+    },
+    {
+      "label": "luxurious",
+      "prompt": "build a luxurious kitchen",
+      "node_count": 0,
+      "node_names": [],
+      "latency_ms": 8099,
+      "crashed": false
+    }
+  ],
+  "hypothesis": "0/6 pairs differ (adjective ignored)"
+}

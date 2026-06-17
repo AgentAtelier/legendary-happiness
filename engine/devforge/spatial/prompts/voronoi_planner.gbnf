@@ -1,0 +1,28 @@
+# voronoi_planner.gbnf
+# GBNF grammar for Voronoi town/district generation JSON output.
+# Constrains the LLM to emit region size and district count.
+#
+# Schema: {region{w,d}, districts, tile_size?, seed?}
+
+root ::= "{" ws "\"region\"" ws ":" ws region-object ws ("," ws extra)* ws "}"
+
+extra ::= districts-kv | tile-size-kv | seed-kv
+
+region-object ::= "{" ws "\"width\"" ws ":" ws number ws "," ws "\"depth\"" ws ":" ws number ws "}"
+
+districts-kv ::= "\"districts\"" ws ":" ws number
+tile-size-kv ::= "\"tile_size\"" ws ":" ws number
+seed-kv ::= "\"seed\"" ws ":" ws number
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

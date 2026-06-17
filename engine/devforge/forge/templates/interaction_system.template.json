@@ -1,0 +1,28 @@
+{
+  "slug": "interaction_system",
+  "name": "Interaction System",
+  "description": "Raycast-based interaction system with prompt UI. Detects interactable objects in front of the player and shows a context-sensitive prompt.",
+  "version": 1,
+  "slots": [
+    {"name": "parent", "type": "node_path", "default": "/root/Main", "description": "Parent node path for the InteractionManager"},
+    {"name": "raycast_length", "type": "float", "default": 3.0, "description": "Maximum interaction distance in meters"},
+    {"name": "prompt_font_size", "type": "int", "default": 16, "description": "Font size for the interaction prompt label"}
+  ],
+  "requires": [],
+  "scripts": [
+    {
+      "path": "scripts/systems/interaction_manager.gd",
+      "content": "extends Node\n\nsignal interacted(target: Node)\nsignal focus_changed(target: Node)\n\n@export var raycast_length: float = {{raycast_length}}\n\nvar _current_target: Node = null\nvar _prompt_label: Label = null\n\nfunc _ready():\n\t_prompt_label = $InteractionPrompt\n\nfunc _physics_process(_delta):\n\tvar camera := get_viewport().get_camera_3d()\n\tif camera == null:\n\t\treturn\n\n\tvar space_state := camera.get_world_3d().direct_space_state\n\tvar origin := camera.global_position\n\tvar end := origin + -camera.global_transform.basis.z * raycast_length\n\tvar query := PhysicsRayQueryParameters3D.create(origin, end)\n\tvar result := space_state.intersect_ray(query)\n\n\tif result.is_empty():\n\t\t_clear_target()\n\t\treturn\n\n\tvar collider: Node = result.collider\n\tvar target: Node = _find_interactable(collider)\n\tif target != _current_target:\n\t\t_clear_target()\n\t\tif target:\n\t\t\t_current_target = target\n\t\t\tfocus_changed.emit(target)\n\t\t\t_show_prompt(target)\n\nfunc _input(event):\n\tif event.is_action_pressed(\"interact\") and _current_target:\n\t\tinteracted.emit(_current_target)\n\nfunc _find_interactable(node: Node) -> Node:\n\tvar current := node\n\twhile current:\n\t\tif current.is_in_group(\"interactable\"):\n\t\t\treturn current\n\t\tcurrent = current.get_parent()\n\treturn null\n\nfunc _clear_target():\n\tif _current_target:\n\t\tfocus_changed.emit(null)\n\t_current_target = null\n\t_hide_prompt()\n\nfunc _show_prompt(target: Node) -> void:\n\tif _prompt_label and target.has_method(\"get_interaction_prompt\"):\n\t\t_prompt_label.text = target.get_interaction_prompt()\n\t\t_prompt_label.visible = true\n\nfunc _hide_prompt():\n\tif _prompt_label:\n\t\t_prompt_label.visible = false\n"
+    }
+  ],
+  "operations": [
+    {"type": "add_node", "parent": "{{parent}}", "node_type": "Node", "name": "InteractionManager"},
+    {"type": "add_node", "parent": "/root/Main/InteractionManager", "node_type": "Label", "name": "InteractionPrompt"},
+    {"type": "set_property", "node": "/root/Main/InteractionManager/InteractionPrompt", "property": "anchors_preset", "value": 8},
+    {"type": "set_property", "node": "/root/Main/InteractionManager/InteractionPrompt", "property": "position", "value": {"x": 0, "y": -40, "z": 0}},
+    {"type": "set_property", "node": "/root/Main/InteractionManager/InteractionPrompt", "property": "visible", "value": false},
+    {"type": "set_property", "node": "/root/Main/InteractionManager/InteractionPrompt", "property": "horizontal_alignment", "value": 1},
+    {"type": "attach_script", "node": "/root/Main/InteractionManager", "script": "scripts/systems/interaction_manager.gd"}
+  ],
+  "collision_check": ["/root/Main/InteractionManager"]
+}

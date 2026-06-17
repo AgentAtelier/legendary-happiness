@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://dkinlc1idgp4a"]
+
+[ext_resource type="Script" uid="uid://t1ve31bbi3kk" path="res://addons/devforge_ai/devforge_panel.gd" id="1_386vn"]
+
+[node name="DevForgePanel" type="VBoxContainer" unique_id=714163629]
+script = ExtResource("1_386vn")
+
+[node name="PromptInput" type="TextEdit" parent="." unique_id=304269727]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RunButton" type="Button" parent="." unique_id=1909897945]
+layout_mode = 2
+text = "Run"

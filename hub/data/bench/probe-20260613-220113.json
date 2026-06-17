@@ -1,0 +1,71 @@
+{
+  "ts": "2026-06-13 21:59:28",
+  "model": "merged-22b-q4-k-m",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "planned 3 entities: ['Hero', 'Eye', 'Body']",
+      "thresholds": "\u22653 entities w/ valid types",
+      "data": {
+        "entity_count": 3,
+        "names": [
+          "Hero",
+          "Eye",
+          "Body"
+        ],
+        "types": [
+          "CharacterBody3D",
+          "Camera3D",
+          "MeshInstance3D"
+        ],
+        "systems": 1,
+        "parents": {}
+      },
+      "id": "devforge.plan",
+      "ms": 104851,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "works",
+      "summary": "built all ['Body', 'Eye', 'Hero'], +5 nodes, 0 errors",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 7,
+        "operations_total": 7,
+        "error_count": 0,
+        "errors": [],
+        "nodes_added": [
+          "/Main/Body",
+          "/Main/DirectionalLight",
+          "/Main/Eye",
+          "/Main/Hero",
+          "/Main/Hero/CollisionShape3D"
+        ],
+        "requested_built": [
+          "Body",
+          "Eye",
+          "Hero"
+        ],
+        "coverage": "3/3",
+        "before_n": 1,
+        "after_n": 6
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    }
+  ],
+  "counts": {
+    "works": 2,
+    "degraded": 0,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "devforge": "works"
+  }
+}

@@ -1,0 +1,107 @@
+=== SHOOTOUT LOG 20260614-031948 ===
+
+[03:19:48] === FORGE MODEL SHOOTOUT ===
+[03:19:48] Scene: res://shootout.tscn
+[03:19:49] Models to test: 5
+[03:19:49]   • Qwen3 14B (qwen3-14b-q6-k)
+[03:19:49]   • Gemma 4 12B QAT (gemma-4-12b-it-qat-ud-q4-k-xl)
+[03:19:49]   • Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-ud-q4-k-xl)
+[03:19:49]   • Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[03:19:49]   • Cydonia Redux 22B (cydonia-redux-22b-v1e-q4-k-m)
+[03:19:49] 
+── [1/5] Qwen3 14B (qwen3-14b-q6-k) ──
+[03:19:49] [shootout:model] 1/5 Qwen3 14B
+[03:19:49] START: Qwen3 14B (qwen3-14b-q6-k)
+[03:19:49]   swap: starting...
+[03:20:22]   swap: OK
+[03:20:22]   reset: pristine shootout scene
+[03:20:22]   scene_before: 4 nodes
+[03:20:22]   apply_spec: sending prompt (1672 chars)...
+[03:20:55]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[03:20:55]   apply_spec: reading artifact 178c90c32b2c
+[03:20:55]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[03:20:55]   apply_spec: done — applied=?, ops=13, errors=0
+[03:20:55]   scene_after: 15 nodes
+[03:20:55]   static: running 23 checks...
+[03:20:55]   static: 18p/5f/0e = 53/68
+[03:20:55]     [fail] player_script: Player has NO script
+[03:20:55]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[03:20:55]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[03:20:55]     [fail] score_text: Label text = '' (expected 'Score: 0')
+[03:20:55]     [fail] no_pollution: Unexpected: ['/Main/DirectionalLight(DirectionalLight3D)']
+[03:20:55]   runtime: running checks...
+[03:20:57]   runtime: 0p/2f/4e = 0/32
+[03:20:57]     [fail] game_fps: FPS = 0 (dead?)
+[03:20:57]     [error] movement_process: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:20:57]     [error] movement_input: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:20:57]     [error] collect_handler: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:20:57]     [error] collect_qfree: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:20:57]     [fail] collect_score: No score tracking found
+[03:20:57]   reset: restoring pristine shootout scene
+[03:20:58]   DONE: [fail] score=53/100 (68402ms)
+[03:20:58] [shootout:scored] 1/5 Qwen3 14B = 53/100 (fail)
+[03:20:58] 
+── [2/5] Gemma 4 12B QAT (gemma-4-12b-it-qat-ud-q4-k-xl) ──
+[03:20:58] [shootout:model] 2/5 Gemma 4 12B QAT
+[03:20:58] START: Gemma 4 12B QAT (gemma-4-12b-it-qat-ud-q4-k-xl)
+[03:20:58]   swap: starting...
+[03:20:58]   swap: FAILED
+[03:20:58]   reset: restoring pristine shootout scene
+[03:20:58]   DONE: [error] score=0/100 (762ms)
+[03:20:58] [shootout:scored] 2/5 Gemma 4 12B QAT = 0/100 (error)
+[03:20:58] 
+── [3/5] Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-ud-q4-k-xl) ──
+[03:20:58] [shootout:model] 3/5 Gemma 4 26B MoE
+[03:20:58] START: Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-ud-q4-k-xl)
+[03:20:58]   swap: starting...
+[03:20:58]   swap: FAILED
+[03:20:58]   reset: restoring pristine shootout scene
+[03:20:58]   DONE: [error] score=0/100 (80ms)
+[03:20:58] [shootout:scored] 3/5 Gemma 4 26B MoE = 0/100 (error)
+[03:20:58] 
+── [4/5] Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k) ──
+[03:20:58] [shootout:model] 4/5 Gemma 4 12B Obliterated
+[03:20:58] START: Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[03:20:58]   swap: starting...
+[03:21:21]   swap: OK
+[03:21:21]   reset: pristine shootout scene
+[03:21:21]   scene_before: 15 nodes
+[03:21:21]   apply_spec: sending prompt (1672 chars)...
+[03:21:45]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[03:21:45]   apply_spec: reading artifact 63560390e88b
+[03:21:45]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[03:21:45]   apply_spec: done — applied=?, ops=0, errors=1
+[03:21:45]   scene_after: 15 nodes
+[03:21:45]   static: running 23 checks...
+[03:21:45]   static: 17p/6f/0e = 50/68
+[03:21:45]     [fail] player_script: Player has NO script
+[03:21:45]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[03:21:45]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[03:21:45]     [fail] score_text: Label text = '' (expected 'Score: 0')
+[03:21:45]     [fail] no_pollution: Unexpected: ['/Main/DirectionalLight(DirectionalLight3D)']
+[03:21:45]     [fail] no_errors: 1 pipeline errors
+[03:21:45]   runtime: running checks...
+[03:21:47]   runtime: 0p/2f/4e = 0/32
+[03:21:47]     [fail] game_fps: FPS = 0 (dead?)
+[03:21:47]     [error] movement_process: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:21:47]     [error] movement_input: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:21:47]     [error] collect_handler: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:21:47]     [error] collect_qfree: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[03:21:47]     [fail] collect_score: No score tracking found
+[03:21:47]   reset: restoring pristine shootout scene
+[03:21:47]   DONE: [fail] score=50/100 (48895ms)
+[03:21:47] [shootout:scored] 4/5 Gemma 4 12B Obliterated = 50/100 (fail)
+[03:21:47] 
+── [5/5] Cydonia Redux 22B (cydonia-redux-22b-v1e-q4-k-m) ──
+[03:21:47] [shootout:model] 5/5 Cydonia Redux 22B
+[03:21:47] START: Cydonia Redux 22B (cydonia-redux-22b-v1e-q4-k-m)
+[03:21:47]   swap: starting...
+[03:21:48]   swap: FAILED
+[03:21:48]   reset: restoring pristine shootout scene
+[03:21:48]   DONE: [error] score=0/100 (747ms)
+[03:21:48] [shootout:scored] 5/5 Cydonia Redux 22B = 0/100 (error)
+[03:21:48] restored editor scene → res://scenes/main.tscn
+[03:21:48] [shootout:done]
+[03:21:48] 
+→ saved shootout-20260614-031948.json
+[03:21:48] Total: 119s for 2 models

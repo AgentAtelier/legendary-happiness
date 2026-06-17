@@ -1,0 +1,130 @@
+{
+  "ts": "2026-06-14 09:31:33",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 2,
+  "done": 2,
+  "results": [
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 3,
+      "operations_total": 17,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "mesh": 1,
+        "color": 1,
+        "shape": 1
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 1,
+      "latency_ms": 19235,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "signals",
+          "ok": true,
+          "detail": "1/1"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 51,
+      "operations_total": 66,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 11,
+        "shape": 6,
+        "mesh": 6,
+        "color": 6,
+        "text": 1
+      },
+      "scripts": 4,
+      "attached": 4,
+      "signals": 6,
+      "latency_ms": 53892,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/25"
+        },
+        {
+          "label": "depth",
+          "ok": false,
+          "detail": "0/4"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "4/2"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "4/2"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+    }
+  ],
+  "summary": {
+    "full": 0,
+    "partial": 2,
+    "broke": 0,
+    "avg_coverage": 75
+  }
+}

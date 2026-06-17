@@ -1,0 +1,245 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-15 08:56:44",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "merged-22b-q4-k-m",
+  "status": "complete",
+  "total": 4,
+  "done": 4,
+  "results": [
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 33,
+      "operations_total": 45,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 4,
+        "color": 4,
+        "shape": 4
+      },
+      "scripts": 3,
+      "attached": 3,
+      "signals": 8,
+      "latency_ms": 81070,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "S1_kitchen",
+      "axis": "spatial:kitchen",
+      "prompt": "Build a medium kitchen with a stove, a fridge, and a counter along the north wall. Put a table in the center.",
+      "plugin_logs": [
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe_bounce.tscn",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Kitchen\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 17,
+      "operations_total": 18,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6
+      },
+      "scripts": 3,
+      "attached": 3,
+      "signals": 1,
+      "latency_ms": 55741,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/5 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "S2_L_kitchen",
+      "axis": "spatial:L-shape",
+      "prompt": "Build an L-shaped kitchen. Put a stove and counter in the main cooking wing, and a table with two chairs in the dining wing.",
+      "plugin_logs": [
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 8,
+      "operations_total": 10,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 2,
+      "latency_ms": 41650,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "S3_corridor",
+      "axis": "spatial:corridor",
+      "prompt": "Build a long corridor, 10 metres. Place shelves along both walls.",
+      "plugin_logs": [
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Corridor\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 10,
+      "operations_total": 15,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 3,
+      "latency_ms": 44633,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override.",
+      "plugin_logs": [
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})"
+      ]
+    }
+  ],
+  "summary": {
+    "full": 0,
+    "partial": 0,
+    "broke": 4,
+    "avg_coverage": 33
+  }
+}

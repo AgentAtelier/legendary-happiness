@@ -1,0 +1,11 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 11:02:28",
+  "set": "building-v1",
+  "set_title": "BSP Multi-Room Buildings \u2014 Stage 3 Slice",
+  "model": "qwen3-6-27b",
+  "status": "running",
+  "total": 1,
+  "done": 0,
+  "results": []
+}

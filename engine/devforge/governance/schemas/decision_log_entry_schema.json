@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevForge Decision Log Entry",
+  "description": "Append-only architectural decision record. One entry per merge. The approve action is unavailable until explicit_question_answer is populated.",
+  "type": "object",
+  "required": [
+    "run_id",
+    "timestamp",
+    "decision",
+    "explicit_question",
+    "explicit_question_answer",
+    "human_rationale",
+    "unplanned_patterns_reviewed",
+    "risk_score",
+    "model_version"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "pattern": "^DF-[0-9]{4}-[0-9]{4}$",
+      "description": "Unique run identifier. Format: DF-MMDD-NNNN (month-day-sequence)."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the decision."
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["approved", "revision_requested", "rejected"],
+      "description": "Human decision on the change."
+    },
+    "commit_hash": {
+      "type": ["string", "null"],
+      "description": "Git commit hash tagged with this RunID. Null if rejected."
+    },
+    "risk_score": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Computed risk score from risk formula."
+    },
+    "risk_tier": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Derived from risk_score: <=3 low, 4-7 medium, 8-11 high, >=12 critical."
+    },
+    "files_modified": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of files in the staged diff."
+    },
+    "subsystems_touched": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Subsystem categories affected (e.g., 'ecology', 'persistence')."
+    },
+    "explicit_question": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Generated question based on risk tier. Must be answered before approval."
+    },
+    "explicit_question_answer": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Human's written answer. Approve action locked until this is populated."
+    },
+    "human_rationale": {
+      "type": "string",
+      "minLength": 20,
+      "description": "1-3 sentences minimum explaining the decision."
+    },
+    "unplanned_patterns_reviewed": {
+      "type": "object",
+      "required": ["present", "disposition"],
+      "properties": {
+        "present": {
+          "type": "boolean",
+          "description": "Were unplanned patterns flagged in the change report?"
+        },
+        "disposition": {
+          "type": "string",
+          "description": "Written disposition if present=true. 'N/A' if present=false."
+        }
+      }
+    },
+    "gate_results": {
+      "type": "object",
+      "properties": {
+        "gate_1_passed": { "type": ["boolean", "null"] },
+        "gate_1_violations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "gate_2_passed": { "type": ["boolean", "null"] },
+        "gate_2_hash_match": { "type": ["boolean", "null"] },
+        "gate_3_passed": { "type": ["boolean", "null"] },
+        "gate_3_tick_delta_percent": { "type": ["number", "null"] }
+      }
+    },
+    "performance_delta_acknowledgment": {
+      "type": ["string", "null"],
+      "description": "Required if gate_3_tick_delta_percent is non-zero. Written acknowledgment of performance change."
+    },
+    "model_version": {
+      "type": ["string", "null"],
+      "description": "AI model version used (if any). Null for pure human commits."
+    },
+    "scope_lock_ref": {
+      "type": ["string", "null"],
+      "description": "Reference to scope lock document (if coder model was used)."
+    }
+  },
+  "additionalProperties": false
+}

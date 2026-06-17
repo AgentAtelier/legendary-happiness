@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>forge-hub</title>
+<style>
+/* forge-hub theme — "middle ground": neon-green brand accent + headline numbers,
+   gray-green body text, amber/red verdicts, on a dark slate. The palette lives
+   entirely in these CSS variables; the rest of the stylesheet references them,
+   so the look is restored by remapping here. --border drives every box outline. */
+:root { --bg:#0a0e0a; --panebg:#0e160e; --fg:#b8e6c4; --dim:#6f8a76; --border:#3f9657;
+  --accent:#00ff41; --ok:#00ff41; --warn-amber:#e0b341; --warn:#e0b341; --err:#ff5b5b; --blue:#3fd0ff; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--bg); color:var(--fg); font-size:12.5px; line-height:1.55; padding:16px 24px; }
+h2 { font-size:14px; margin-bottom:6px; }
+a { color:var(--accent); }
+button { background:var(--panebg); color:var(--fg); border:1px solid var(--border); border-radius:3px; padding:4px 10px; cursor:pointer; font:inherit; font-size:12px; white-space:nowrap; }
+button:hover { border-color:var(--accent); color:#fff; }
+button.primary { background:var(--accent); border-color:var(--accent); color:#000; }
+button.danger { border-color:var(--err); color:var(--err); }
+button.danger:hover { background:var(--err); color:#000; }
+button:disabled { opacity:.4; cursor:default; border-color:var(--border); }
+#header { display:flex; align-items:center; gap:18px; margin-bottom:10px; flex-wrap:wrap; }
+#header h1 { font-size:15px; letter-spacing:2px; color:var(--accent); }
+#chips { display:flex; gap:6px; }
+.chip { padding:2px 8px; border-radius:3px; font-size:11px; border:1px solid var(--border); }
+.chip.on { border-color:var(--ok); color:var(--ok); }
+.chip.off { border-color:var(--err); color:var(--err); }
+.chip.warn { border-color:var(--warn); color:var(--warn); }
+.chip.failed { border-color:var(--err); color:var(--err); background:#1a0707; }
+#driftbanner { display:none; background:#1a0707; border:1px solid var(--err); border-radius:4px;
+  padding:8px 14px; margin-bottom:12px; color:var(--err); font-size:12.5px; }
+#driftbanner button { margin-left:10px; color:var(--warn); }
+.vram-warn { color:var(--warn); font-size:11px; }
+
+nav { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
+nav button { border-radius:3px 3px 0 0; border-bottom:none; position:relative; top:1px; }
+nav button.active { background:var(--panebg); border-color:var(--border); color:#fff; z-index:1; }
+.tab { display:none; background:var(--panebg); border:1px solid var(--border); border-radius:0 4px 4px 4px; padding:12px; min-height:120px; }
+.tab.active { display:block; }
+
+/* Testing tab — layout B: config rail left, results right */
+#tab-testing { gap:12px; }
+#tab-testing.active { display:flex; }
+#testing-rail { width:34%; min-width:220px; border:1px solid var(--border); border-radius:6px; padding:10px; background:var(--panebg); align-self:flex-start; }
+#testing-results { flex:1; min-width:0; }
+.flabel { color:var(--dim); font-size:10px; text-transform:uppercase; letter-spacing:1px; margin:8px 0 3px; }
+.frow { display:flex; gap:6px; flex-wrap:wrap; }
+.facet { padding:2px 9px; border:1px solid var(--border); border-radius:4px; cursor:pointer; color:var(--dim); }
+.facet.on { background:#143a1d; color:var(--accent); }
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+/* Press feedback */
+button:active { transform:translateY(1px); }
+.flash-ok { animation:flashok .7s; } .flash-err { animation:flasherr .7s; }
+@keyframes flashok { 0%{box-shadow:0 0 0 2px var(--ok)} 100%{box-shadow:none} }
+@keyframes flasherr { 0%{box-shadow:0 0 0 2px var(--err)} 100%{box-shadow:none} }
+
+#term { white-space:pre-wrap; font-family:inherit; font-size:11.5px; max-height:52vh; overflow-y:auto; background:#050805; padding:8px; border-radius:3px; margin-bottom:10px; }
+#term .bad { color:var(--err); }
+#term .ok { color:var(--ok); }
+#term .dim { color:var(--dim); }
+
+.actions { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.actions label { font-size:11px; color:var(--dim); align-self:center; }
+
+#bench table { width:100%; border-collapse:collapse; margin-top:8px; table-layout:fixed; }
+#bench td, #bench th { padding:3px 6px; border-bottom:1px solid var(--border); text-align:left; overflow:hidden; text-overflow:ellipsis; }
+#bench th { color:var(--dim); font-size:11px; position:sticky; top:0; background:var(--panebg); }
+#bench td:nth-child(1), #bench th:nth-child(1) { width:130px; }
+#bench td:nth-child(2), #bench th:nth-child(2) { width:65px; }
+#bench td:nth-child(3), #bench th:nth-child(3) { width:140px; }
+#bench td:nth-child(4), #bench th:nth-child(4) { width:55px; }
+/* detail column gets the rest with word-wrap */
+#bench td:nth-child(5) { white-space:normal; word-break:break-word; }
+/* Deep Probe cards: kill the default disclosure triangle so it can't overlap the verdict chip */
+.probe-card > summary { list-style:none; }
+.probe-card > summary::-webkit-details-marker { display:none; }
+#termBench, #termProbe { background:#050805; border-radius:3px; }
+.s-pass { color:var(--ok); }
+.s-fail { color:var(--err); }
+.s-skip { color:var(--warn); }
+.s-err { color:var(--err); }
+
+#models table { width:100%; border-collapse:collapse; margin-top:8px; }
+#models td, #models th { padding:4px 8px; border-bottom:1px solid var(--border); text-align:left; }
+#models th { color:var(--dim); font-size:11px; }
+#models td button { font-size:10.5px; padding:2px 6px; }
+
+#config textarea { width:100%; min-height:280px; background:#050805; color:var(--fg); font:inherit; font-size:11.5px; border:1px solid var(--border); padding:8px; border-radius:3px; resize:vertical; }
+#config .diff { margin-top:8px; font-size:11px; color:var(--warn); }
+.config-actions { display:flex; gap:6px; margin-top:8px; }
+
+#activity table { width:100%; border-collapse:collapse; font-size:11px; }
+#activity td { padding:2px 6px; border-bottom:1px solid #0f1f0f; }
+#activity .cause { color:var(--warn); }
+
+/* Stream A: scorecards */
+#score table { width:100%; border-collapse:collapse; margin-top:8px; font-size:11px; }
+#score td, #score th { padding:3px 6px; border-bottom:1px solid var(--border); text-align:left; }
+#score th { color:var(--dim); font-size:11px; }
+#score .sc-pass { color:var(--ok); font-weight:bold; }
+#score .sc-fail { color:var(--err); }
+#score .sc-error { color:var(--warn); }
+#score .sc-nodata { color:var(--dim); }
+.comp-col { font-size:10px; }
+#score .summary-box { display:flex; gap:20px; margin:8px 0 14px; flex-wrap:wrap; }
+#score .summary-box .card { background:#050805; border:1px solid var(--border); border-radius:4px; padding:8px 14px; min-width:180px; }
+#score .summary-box .card h3 { font-size:11px; color:var(--dim); margin-bottom:4px; }
+#score .summary-box .card .big { font-size:24px; font-weight:bold; }
+
+#docpane { white-space:pre-wrap; font-size:12.5px; max-height:58vh; overflow-y:auto; }
+
+/* ── Chain health sidebar ─────────────────────────────────────── */
+#health-sidebar { position:fixed; right:0; top:0; width:230px; height:100vh;
+  background:var(--panebg); border-left:1px solid var(--border); z-index:100;
+  overflow-y:auto; padding:12px 10px; font-size:11px; display:flex;
+  flex-direction:column; gap:0; }
+#health-sidebar.collapsed { width:28px; padding:8px 4px; }
+#health-toggle { position:absolute; top:6px; left:0; background:var(--panebg);
+  color:var(--dim); border:1px solid var(--border); border-left:none;
+  border-radius:0 3px 3px 0; padding:4px 5px; cursor:pointer; font-size:10px;
+  z-index:101; }
+body.has-sidebar { margin-right:230px; }
+body.has-sidebar.collapsed { margin-right:28px; }
+#health-sidebar h3 { font-size:11px; color:var(--dim); margin:0 0 8px 0;
+  letter-spacing:1px; text-transform:uppercase; }
+.health-link { display:flex; align-items:center; gap:6px; padding:4px 6px;
+  margin:1px 0; border-radius:3px; cursor:pointer; position:relative; }
+.health-link:hover { background:#0f1f0f; }
+.health-link .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.health-link .dot.healthy { background:var(--ok); box-shadow:0 0 4px var(--ok); }
+.health-link .dot.degraded { background:var(--warn); box-shadow:0 0 4px var(--warn); }
+.health-link .dot.stale { background:var(--warn); }
+.health-link .dot.down { background:var(--err); }
+.health-link .dot.unknown { background:var(--dim); }
+.health-link .name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.health-link .port { color:var(--dim); font-size:10px; }
+.health-link .detail-row { display:none; font-size:10px; color:var(--dim);
+  padding:2px 0 2px 18px; }
+.health-link.expanded .detail-row { display:block; }
+.health-link .fix { display:none; font-size:10px; color:var(--accent);
+  padding:2px 0 2px 18px; }
+.health-link.expanded .fix { display:block; }
+#health-warnings { margin-top:8px; border-top:1px solid var(--border); padding-top:8px; }
+#health-warnings .warn-item { font-size:10px; padding:3px 4px; margin:2px 0;
+  border-radius:2px; background:#1a0707; color:var(--warn); }
+#health-timestamp { font-size:9px; color:var(--dim); margin-top:auto;
+  padding-top:6px; text-align:center; }
+#health-sidebar.collapsed .health-link .name,
+#health-sidebar.collapsed .health-link .port,
+#health-sidebar.collapsed .health-link .detail-row,
+#health-sidebar.collapsed .health-link .fix,
+#health-sidebar.collapsed #health-warnings,
+#health-sidebar.collapsed #health-persona,
+#health-sidebar.collapsed #health-timestamp,
+#health-sidebar.collapsed h3 { display:none; }
+#health-sidebar.collapsed .health-link { justify-content:center; padding:3px 2px;
+  position:relative; }
+#health-sidebar.collapsed .health-link .dot { width:10px; height:10px; }
+/* Mini-chain: vertical connecting lines between dots */
+#health-sidebar.collapsed #health-links { display:flex; flex-direction:column;
+  align-items:center; padding-top:6px; gap:0; }
+#health-sidebar.collapsed .health-link:not(:last-child)::after {
+  content:''; position:absolute; bottom:-6px; left:50%; z-index:-1;
+  width:1px; height:8px; background:var(--border); transform:translateX(-50%); }
+
+#health-refresh { width:100%; padding:3px 6px; margin-bottom:8px; font-size:10px;
+  border:1px solid var(--border); border-radius:3px; background:var(--panebg);
+  color:var(--dim); cursor:pointer; font:inherit; }
+#health-refresh:hover { border-color:var(--accent); color:#fff; }
+#health-refresh.checking { color:var(--warn); border-color:var(--warn); }
+#health-sidebar.collapsed #health-refresh { display:none; }
+
+@media (max-width:900px) { #health-sidebar { display:none; } body.has-sidebar { margin-right:0; } }
+</style>
+</head>
+<body>
+
+<div id="health-sidebar">
+  <div id="health-toggle" onclick="toggleHealth()" title="Toggle chain health sidebar">◀</div>
+  <h3>Chain Health</h3>
+  <button id="health-refresh" onclick="runHealthCheck()" title="Run all checks now">↻ Check now</button>
+  <div id="health-links"></div>
+  <div id="health-warnings"></div>
+  <div id="health-persona" style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;font-size:10px;"></div>
+  <div id="health-timestamp"></div>
+</div>
+
+<div id="header">
+  <h1 style="display:flex;align-items:center;gap:8px;">
+    <svg id="forge-logo" viewBox="0 0 48 48" width="30" height="30" role="img" aria-label="Forge Hub logo" style="flex:none;">
+      <!-- RPG hex emblem frame -->
+      <polygon points="24,2 44,13 44,35 24,46 4,35 4,13" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <!-- Terraform: terrain contour lines -->
+      <path d="M9 34 Q16 31 24 34 T39 34" fill="none" stroke="var(--dim)" stroke-width="1.6"/>
+      <path d="M11 38 Q18 35.5 24 38 T37 38" fill="none" stroke="var(--dim)" stroke-width="1.3" opacity="0.7"/>
+      <!-- DevForge: anvil -->
+      <path d="M15 19 H33 V22 H27 L26 26 H22 L21 22 H15 Z M19 26 H29 V29 H19 Z" fill="var(--accent)"/>
+      <!-- Climate disaster: heat/lightning streak -->
+      <path d="M31 7 L23 21 L27 21 L19 35" fill="none" stroke="var(--warn-amber)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    FORGE-HUB
+  </h1>
+  <span id="chips"></span>
+  <span id="reloadbanner" style="display:none;color:var(--err);font-size:11px;"></span>
+</div>
+<div id="driftbanner"></div>
+<div id="busybanner" style="display:none; background:#0a1f0a; border:1px solid var(--accent); border-radius:4px; padding:8px 14px; margin-bottom:12px; color:var(--accent); font-size:12px;">
+  ⏳ <span id="busyLabel">Running...</span> <span id="busyTimer" style="color:var(--dim);font-size:11px;"></span>
+</div>
+<nav id="nav">
+  <button data-tab="overview" class="active">Overview</button>
+  <button data-tab="testing">Testing</button>
+  <button data-tab="models">Models</button>
+  <button data-tab="config">Config</button>
+  <button data-tab="activity">Activity</button>
+  <button data-tab="doc">Doc</button>
+</nav>
+
+<!-- Testing — unified faceted runner (replaces Test Bench / Score / Shootout / Gauntlet) -->
+<div id="tab-testing" class="tab">
+  <div id="testing-rail"></div>      <!-- left config rail (Task 8) -->
+  <div id="testing-results"></div>   <!-- right results column (Task 9) -->
+</div>
+
+<!-- Overview -->
+<div id="tab-overview" class="tab active">
+  <div class="actions" id="actions">
+    <button data-action="up">▶ Stack up</button>
+    <button data-action="down" class="danger">■ Stack down</button>
+    <button data-action="down-all" class="danger">■ Down --all</button>
+    <button data-action="doctor">⚕ Doctor</button>
+    <button data-action="godot">🎮 Godot</button>
+    <span style="margin:0 6px;">|</span>
+    <button data-action="restart-all" class="danger">↻ Restart all</button>
+    <button data-action="restart-llama">↻ Llama</button>
+    <button data-action="restart-devforge">↻ DevForge</button>
+    <button data-action="restart-godot-ai">↻ Godot-AI</button>
+    <button data-action="odysseus-restart">↻ Odysseus</button>
+    <span style="margin:0 6px;">|</span>
+    <button id="modeBuild" style="font-size:11px;" title="Swap to qwen3-14b (best for building), set persona temp 0.2">⚒ Build</button>
+    <button id="modeWrite" style="font-size:11px;" title="Swap to Cydonia-22B (best for writing), set persona temp 1.0">✍ Write</button>
+    <button id="warmupBtn" style="font-size:10px;" title="Post a warmup chat to Odysseus to index MCP tools">🔥 Warmup</button>
+    <span style="margin:0 6px;">|</span>
+    <label>Model <input id="modelArg" size="12" placeholder="fragment" style="background:#050805;color:var(--fg);border:1px solid #333;padding:2px 6px;font:inherit;font-size:11px;"></label>
+    <button id="modelBtn">Swap</button>
+  </div>
+  <div id="swapProgress" style="display:none; margin-bottom:8px; background:#050805; border:1px solid var(--border); border-radius:3px; height:18px; overflow:hidden;">
+    <div id="swapBar" style="height:100%; width:0%; background:var(--accent); transition:width 0.3s ease;"></div>
+  </div>
+  <div id="swapPhase" style="display:none; font-size:11px; color:var(--dim); margin-bottom:6px;"></div>
+  <div id="term"></div>
+</div>
+
+<!-- ═══ D1: Dead tabs below (replaced by Testing tab) — remove after June 2026 ═══ -->
+<!-- tab-bench: removed (dead, replaced by Testing tab) -->
+
+<!-- tab-score: removed (dead, replaced by Testing tab) -->
+
+<!-- tab-shootout: removed (dead, replaced by Testing tab) -->
+
+<!-- tab-gauntlet: removed (dead, replaced by Testing tab) -->
+
+<!-- Models -->
+<div id="tab-models" class="tab">
+  <div id="models">
+    <div id="modelsMeta" style="font-size:11px;color:var(--dim);margin-bottom:6px;"></div>
+    <table id="modelsTable">
+      <thead><tr><th>Alias</th><th>Size</th><th>Fit (need)</th><th>VRAM</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Config -->
+<div id="tab-config" class="tab">
+  <textarea id="configText"></textarea>
+  <div class="config-actions">
+    <button id="configSave">Save</button>
+    <button id="configRestore">Restore last backup</button>
+    <button id="configLoad">Reload</button>
+    <span style="font-size:11px;color:var(--dim);margin-left:10px;" id="configStatus"></span>
+  </div>
+  <div class="diff" id="configDiff"></div>
+</div>
+
+<!-- Activity -->
+<div id="tab-activity" class="tab">
+  <table id="activityTable"><thead><tr><th>Time</th><th>Action</th><th>Exit</th><th>Dur</th><th>Diagnostic</th></tr></thead><tbody></tbody></table>
+</div>
+
+<!-- Doc -->
+<div id="tab-doc" class="tab">
+  <div id="docpane"></div>
+</div>
+
+<script>
+const SELF = { build: '??', csrf: 'x-forge-hub' };
+let running = false;
+
+const $ = id => document.getElementById(id);
+
+function safe(v, fallback) { return (v === undefined || v === null) ? (fallback || '\u2014') : v; }
+
+// ── Version check ───────────────────────────────────────────────
+async function versionCheck() {
+  try {
+    const r = await api('/api/version');
+    const d = await r.json();
+    SELF.build = safe(d.build, '??');
+    const sc = await api('/api/selfcheck');
+    const sd = await sc.json();
+    // validate we're not stale
+    let ok = true;
+    for (const [endpoint, fields] of Object.entries(sd.expected_fields || {})) {
+      // just check selfcheck itself
+    }
+    const stored = localStorage.getItem('forge-hub-build');
+    if (stored && stored !== SELF.build) {
+      $('reloadbanner').style.display = '';
+      $('reloadbanner').innerHTML = '⚠ Page stale — server restarted. <a href="#" onclick="location.reload()">Reload now</a> for the latest version.';
+    }
+    localStorage.setItem('forge-hub-build', SELF.build);
+  } catch (e) { /* offline, no big deal */ }
+}
+
+// ── API helpers ─────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const h = new Headers(opts.headers || {});
+  if (opts.method === 'POST') h.set(SELF.csrf, '1');
+  return fetch(path, { ...opts, headers: h });
+}
+
+async function streamJob(jobId, termEl, onDone) {
+  const url = `/api/stream/${jobId}`;
+  const r = await fetch(url);
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let attempts = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() || '';
+    for (const l of lines) {
+      if (l.startsWith(':')) continue;  // SSE heartbeat comment — keeps stream alive
+      if (l.startsWith('data: ')) {
+        const txt = l.slice(6);
+        // Suppress pure control markers from the terminal — they drive the
+        // progress bar, not the log readout.
+        if (!txt.startsWith('[shootout:') && !txt.startsWith('[probe:run]')) {
+          const cls = txt.includes('FAIL') ? 'bad' : (txt.startsWith('▶') ? 'dim' : '');
+          termEl.innerHTML += `<span class="${cls}">${txt}</span>\n`;
+          termEl.scrollTop = termEl.scrollHeight;
+        }
+        // Update progress bar from stream phases (only when visible)
+        if ($('swapProgress').style.display !== 'none') {
+          if (txt.includes('checking VRAM')) setSwapPhase(10, 'Checking VRAM…');
+          else if (txt.startsWith('VRAM ok')) setSwapPhase(25, 'VRAM OK');
+          else if (txt.includes('snapshot taken')) setSwapPhase(35, 'Snapshot saved');
+          else if (txt.includes('writing config')) setSwapPhase(45, 'Writing config…');
+          else if (txt.includes('restarting llama')) setSwapPhase(55, 'Restarting llama…');
+          else if (txt.includes('waiting for /health')) {
+            attempts++;
+            setSwapPhase(55 + Math.min(attempts * 2, 30), 'Waiting for llama (' + attempts + 's)…');
+          }
+          else if (txt.includes('verified: model=')) setSwapPhase(90, 'Model verified');
+          else if (txt.includes('template/context changed')) setSwapPhase(95, 'Restarting DevForge…');
+        }
+        // ── Shootout progress markers (now correctly inside the data branch) ──
+        handleShootoutMarker(txt);
+      } else if (l.startsWith('event: done')) {
+        if ($('swapProgress').style.display !== 'none') setSwapPhase(100, 'Done');
+        // (tab-shootout removed — marker kept for stream compatibility)
+      }
+    }
+  }
+  if (onDone) onDone();
+  setBusy(false);
+  stopShootoutTimer();
+  setTimeout(() => showSwapProgress(false), 1500);
+}
+
+// ── Shootout live progress + per-phase elapsed timer ──────────────
+// The phase line shows the current step AND seconds elapsed in it, ticking
+// every second, so long silent phases (swap, 40s+ planner) never look frozen.
+let _shootTimer = null, _shootT0 = 0, _shootLabel = '', _shootModel = '';
+function setShootoutPhase(label, pin) {
+  _shootLabel = label;
+  _shootT0 = Date.now();
+  if (pin) stopShootoutTimer();
+  renderShootoutPhase();
+}
+function renderShootoutPhase() {
+  const secs = Math.floor((Date.now() - _shootT0) / 1000);
+  const prefix = _shootModel ? _shootModel + ' — ' : '';
+  $('shootoutPhase').textContent = `${prefix}${_shootLabel}${secs >= 2 ? ' · ' + secs + 's' : ''}`;
+}
+function startShootoutTimer() {
+  if (_shootTimer) return;
+  _shootTimer = setInterval(renderShootoutPhase, 1000);
+}
+function stopShootoutTimer() {
+  if (_shootTimer) { clearInterval(_shootTimer); _shootTimer = null; }
+}
+function handleShootoutMarker(txt) {
+  const sm = txt.match(/\[shootout:model\] (\d+)\/(\d+) (.+)/);
+  if (sm) {
+    const cur = parseInt(sm[1]), tot = parseInt(sm[2]);
+    $('shootoutBar').style.width = Math.round((cur - 1) / tot * 100) + '%';
+    _shootModel = `Model ${cur}/${tot}: ${sm[3]}`;
+    setShootoutPhase('starting…');
+    startShootoutTimer();
+    return;
+  }
+  const sc = txt.match(/\[shootout:scored\] (\d+)\/(\d+) .+ = (\d+)\/100 \((\w+)\)/);
+  if (sc) {
+    $('shootoutBar').style.width = Math.round(parseInt(sc[1]) / parseInt(sc[2]) * 100) + '%';
+    setShootoutPhase(`scored ${sc[3]}/100 (${sc[4]})`);
+    return;
+  }
+  if (txt.startsWith('[shootout:phase]')) {
+    setShootoutPhase(txt.replace('[shootout:phase] ', '') + '…');
+    startShootoutTimer();
+    return;
+  }
+  if (txt.startsWith('[shootout:done]')) {
+    $('shootoutBar').style.width = '100%';
+    _shootModel = '';
+    setShootoutPhase('✅ Shootout complete!', /*pin*/true);
+  }
+}
+
+function setBusy(b) { running = b; document.querySelectorAll('#actions button, #modelBtn, .swapBtn, #benchAll, #benchFast, #benchBundle, #benchShootoutRun, #benchShootoutRunOne, #scoreAll, #scoreFast, #scoreTool, #scoreBoth, #cmpBtn, #configSave, #configRestore, #configLoad, #shootoutRun, #shootoutRunOne, #shootoutCheck, #probeAll, #probeLlama, #probeDevforge, #probeFast, #probeQuick, #modeBuild, #modeWrite, #warmupBtn, button.danger').forEach(bt => bt.disabled = b);
+  if (b) { $('busybanner').style.display = ''; $('busyLabel').textContent = 'Running...'; $('busyTimer').textContent = ''; }
+  else { $('busybanner').style.display = 'none'; }
+}
+
+// ── Swap progress bar ───────────────────────────────────────────
+function showSwapProgress(show) {
+  $('swapProgress').style.display = show ? '' : 'none';
+  $('swapPhase').style.display = show ? '' : 'none';
+  if (!show) { $('swapBar').style.width = '0%'; $('swapPhase').textContent = ''; }
+}
+function setSwapPhase(pct, label) {
+  $('swapBar').style.width = pct + '%';
+  if (label) $('swapPhase').textContent = label;
+}
+
+// ── Swap (with ambiguity handling) ─────────────────────────────
+async function handleSwap(frag, exactFile) {
+  // Switch to Overview tab so user sees progress
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-tab="overview"]').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $('tab-overview').classList.add('active');
+  $('term').textContent = '';
+
+  const body = exactFile ? { file: exactFile } : {};
+
+  // If no exact file, search first to check for ambiguity
+  if (!exactFile && frag) {
+    try {
+      const sr = await api('/api/models/search?q=' + encodeURIComponent(frag));
+      const sd = await sr.json();
+      if (sd.ambiguous && sd.matches.length > 1) {
+        showAmbiguityPicker(sd.matches);
+        return;
+      }
+      if (sd.matches.length === 1) {
+        body.file = sd.matches[0].file;
+      } else {
+        $('term').textContent = 'no model matches "' + frag + '"';
+        return;
+      }
+    } catch (e) {
+      // Fall back to fragment-based swap
+      body.fragment = frag;
+    }
+  } else if (frag) {
+    body.fragment = frag;
+  }
+
+  if (!body.file && !body.fragment) {
+    $('term').textContent = 'no model specified';
+    return;
+  }
+
+  setBusy(true); showSwapProgress(true);
+  try {
+    const r = await api('/api/swap', {method:'POST', body: JSON.stringify(body)});
+    streamJob((await r.json()).job, $('term'), () => { loadModels(); showSwapProgress(false); });
+  } catch (e) { $('term').textContent = 'swap error: ' + e.message; setBusy(false); showSwapProgress(false); }
+}
+
+function showAmbiguityPicker(matches) {
+  $('term').innerHTML = '<b>Ambiguous — pick one:</b><br><br>' +
+    matches.map((m, i) => {
+      const gb = (m.size_bytes / 1073741824).toFixed(1);
+      return `<button class="pickBtn" data-file="${safe(m.file)}" style="display:block;margin:4px 0;text-align:left;">` +
+        `${safe(m.alias)} (${gb}G, ${safe(m.fit?.status)} ${safe(m.fit?.need_gb)}G)</button>`;
+    }).join('');
+  $('term').querySelectorAll('.pickBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      handleSwap(null, btn.dataset.file);
+    });
+  });
+}
+
+// ── Refresh ─────────────────────────────────────────────────────
+async function refresh() {
+  try {
+    const d = await (await api('/api/status')).json();
+    const order = ['llama','devforge','godot-ai','godot','odysseus'];
+    $('chips').innerHTML = order.map(k => {
+      const v = d.chips[k] || '?';
+      const cls = v === 'active' ? 'on' : (v === 'inactive' || v === 'failed' ? 'off' : '');
+      return `<span class="chip ${cls}" title="${k} — ${v}">${k}</span>`;
+    }).join(' ') + ` <span style="color:var(--dim);font-size:11px;">${safe(d.alias)}</span>`;
+
+    // Drift banner
+    const drift = d.drift;
+    const db = $('driftbanner');
+    if (drift && drift.drift) {
+      db.style.display = '';
+      db.innerHTML = `⚠ <b>DRIFT:</b> ${safe(drift.reason)} <button onclick="reconcile()">Reconcile (restart llama)</button>`;
+    } else if (drift && !drift.drift) {
+      db.style.display = 'none';
+    } else {
+      db.style.display = '';
+      db.innerHTML = '⚠ llama not reachable — check stack status';
+    }
+    // Phase 2a: update busy banner from job state
+    if (d.busy) {
+      try {
+        const ja = await (await api('/api/job/active')).json();
+        if (ja.active) {
+          $('busybanner').style.display = '';
+          $('busyLabel').textContent = '⏳ ' + (ja.label || 'Running...');
+          $('busyTimer').textContent = ja.elapsed_s ? ` · ${ja.elapsed_s}s` : '';
+        }
+      } catch(e) {}
+    } else {
+      $('busybanner').style.display = 'none';
+    }
+    setBusy(d.busy);
+
+    // Bench history summary
+    try {
+      const bh = await (await api('/api/bench/history')).json();
+      if (bh.runs && bh.runs.length) {
+        const r = bh.runs[0];
+        const pct = r.counts ? Math.round(r.counts.pass / (r.counts.pass + r.counts.fail + r.counts.error + r.counts.skip) * 100) : 0;
+        $('benchHist').textContent = `${r.ts} ${safe(r.model)} ${pct}%`;
+      }
+    } catch (e) {}
+  } catch (e) {
+    $('chips').innerHTML = `<span style="color:var(--err);">hub unreachable</span>`;
+  }
+}
+
+// ── Reconcile ───────────────────────────────────────────────────
+async function reconcile() {
+  if (running) return;
+  $('term').textContent = ''; setBusy(true);
+  try {
+    const r = await api('/api/reconcile', {method:'POST'});
+    streamJob((await r.json()).job, $('term'));
+  } catch (e) { $('term').textContent = 'reconcile error: ' + e.message; setBusy(false); }
+}
+
+// ── Actions ─────────────────────────────────────────────────────
+document.getElementById('actions').addEventListener('click', async e => {
+  if (e.target.tagName !== 'BUTTON' || running) return;
+  const action = e.target.dataset.action;
+
+  if (e.target.id === 'modeBuild') { runMode('build'); return; }
+  if (e.target.id === 'modeWrite') { runMode('write'); return; }
+  if (e.target.id === 'warmupBtn') { runWarmup(); return; }
+
+  if (!action) return;
+
+  if (action === 'swap' || e.target.id === 'modelBtn') {
+    const frag = $('modelArg').value.trim();
+    if (!frag) return;
+    handleSwap(frag);
+    return;
+  }
+
+  $('term').textContent = ''; setBusy(true);
+  try {
+    const r = await api('/api/run', {method:'POST', body: JSON.stringify({action})});
+    streamJob((await r.json()).job, $('term'));
+  } catch (e) { $('term').textContent = 'error: ' + e.message; setBusy(false); }
+});
+
+// ── Phase 2d: Build/Write mode toggle ──────────────────────────
+async function runMode(mode) {
+  if (running) return;
+  const label = mode === 'build' ? 'Build (qwen3)' : 'Write (Cydonia)';
+  if (!confirm(`Switch to ${label} mode? This swaps the model, updates persona temp, and restarts Odysseus.`)) return;
+  $('term').textContent = ''; showSwapProgress(true); setBusy(true);
+  try {
+    const r = await api('/api/mode', {method:'POST', body: JSON.stringify({mode})});
+    streamJob((await r.json()).job, $('term'), () => { showSwapProgress(false); loadModels(); });
+  } catch(e) { $('term').textContent = 'mode error: ' + e.message; setBusy(false); showSwapProgress(false); }
+}
+
+// Phase 3a: tool-index warmup (opens Odysseus UI since auth blocks hub API calls)
+async function runWarmup() {
+  // The hub cannot authenticate to Odysseus's chat API from localhost.
+  // Instead, open the Odysseus UI and show the manual warmup step.
+  const url = 'http://127.0.0.1:7000';
+  $('term').innerHTML = `<span style="color:var(--warn);">Tool index warmup: open <a href="${url}" target="_blank" style="color:var(--accent);">Odysseus (${url})</a> and send ONE agent-mode chat.</span>\n` +
+    `<span style="color:var(--dim);">  e.g. "Read the scene hierarchy" with the Godot Developer persona in agent mode.\n` +
+    `<span style="color:var(--dim);">  This triggers index_mcp_tools and populates the tool retrieval index.\n` +
+    `<span style="color:var(--dim);">  After this, the odysseus.retrieval probe should show 'works'.</span>\n`;
+  window.open(url, '_blank');
+}
+
+// ── Tabs ────────────────────────────────────────────────────────
+document.getElementById('nav').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  const tab = e.target.dataset.tab;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $('tab-' + tab).classList.add('active');
+  if (tab === 'models') loadModels();
+  if (tab === 'config') loadConfig();
+  if (tab === 'activity') loadActivity();
+  if (tab === 'doc') loadDoc();
+  if (tab === 'testing') initTesting();
+});
+
+// ── Capability Gauntlet ───────────────────────────────────────────
+const GV = {full:{c:'var(--ok)',l:'FULL'}, partial:{c:'var(--warn)',l:'PARTIAL'}, broke:{c:'var(--err)',l:'BROKE'}};
+async function loadGauntletSets() {
+  try {
+    const d = await (await api('/api/gauntlet/sets')).json();
+    const sel = $('gauntletSet');
+    sel.innerHTML = (d.sets||[]).map(s => `<option value="${safe(s.id)}">${safe(s.title)} (${s.count})</option>`).join('');
+    await loadLatestGauntlet();
+  } catch(e) {}
+}
+async function runGauntlet() {
+  const set = $('gauntletSet').value;
+  if (!set) return;
+  $('termGauntlet').innerHTML=''; $('gauntletSummary').textContent='⏳ running…'; setBusy(true);
+  try {
+    const r = await api('/api/gauntlet/run', {method:'POST', body: JSON.stringify({set})});
+    const jd = await r.json();
+    if (jd.detail) { $('termGauntlet').textContent = jd.detail; setBusy(false); return; }
+    const termEl = document.createElement('div');
+    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
+    $('termGauntlet').appendChild(termEl);
+    await streamJob(jd.job, termEl, () => { loadLatestGauntlet(); loadGauntletHistory(); });
+  } catch(e) { $('termGauntlet').textContent = 'error: '+e.message; setBusy(false); }
+}
+async function loadLatestGauntlet() {
+  try {
+    const h = await (await api('/api/gauntlet/history')).json();
+    if (!h.runs || !h.runs.length) { $('gauntletResults').innerHTML=''; return; }
+    const ts = h.runs[0].file.replace('gauntlet-','').replace('.json','');
+    renderGauntlet(await (await api('/api/gauntlet/'+ts)).json());
+  } catch(e) {}
+}
+function renderGauntlet(run) {
+  const s = run.summary || {};
+  $('gauntletSummary').innerHTML = `<span style="color:var(--ok)">${s.full||0} full</span> · <span style="color:var(--warn)">${s.partial||0} partial</span> · <span style="color:var(--err)">${s.broke||0} broke</span> · avg <b>${s.avg_coverage||0}%</b> <span style="color:var(--dim)">· ${safe(run.model)} · ${safe(run.ts)}</span>`;
+  $('gauntletResults').innerHTML = (run.results||[]).map(r => {
+    const v = GV[r.verdict] || GV.broke;
+    const checks = (r.checks||[]).map(c => `<span style="color:${c.ok?'var(--ok)':'var(--err)'};margin-right:8px;">${c.ok?'✓':'✗'} ${safe(c.label)} ${safe(c.detail)}</span>`).join('');
+    const props = Object.entries(r.props||{}).map(([k,v2])=>`${k}:${v2}`).join(' ');
+    return `<details style="border:1px solid var(--border);border-radius:3px;margin-bottom:4px;background:#050805;">
+      <summary style="cursor:pointer;padding:5px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;list-style:none;">
+        <span style="flex:none;background:${v.c}22;color:${v.c};border:1px solid ${v.c};border-radius:3px;padding:0 6px;font-size:10px;font-weight:bold;min-width:64px;text-align:center;">${v.l}</span>
+        <span style="flex:none;font-weight:bold;color:${v.c};width:46px;">${r.coverage}%</span>
+        <span style="flex:none;color:var(--fg);font-size:11px;width:130px;">${safe(r.id)}</span>
+        <span style="flex:1;min-width:0;color:var(--dim);font-size:11px;overflow-wrap:anywhere;">${safe(r.axis)}</span>
+        <span style="flex:none;color:var(--dim);font-size:10px;">${Math.round((r.latency_ms||0)/1000)}s</span>
+      </summary>
+      <div style="padding:5px 8px 8px;border-top:1px solid var(--border);font-size:11px;">
+        <div style="margin:3px 0;">${checks||'<span style="color:var(--dim)">no checks</span>'}</div>
+        <div style="color:var(--dim);font-size:10px;margin:3px 0;">built ${r.built_nodes} nodes · depth ${r.built_depth} · props {${safe(props)}} · scripts ${r.scripts} · attached ${r.attached} · signals ${r.signals} · errors ${r.error_count}</div>
+        <div style="color:var(--blue);font-size:10px;white-space:pre-wrap;">${safe(r.prompt||'')}</div>
+        ${(r.errors&&r.errors.length)?`<div style="color:var(--err);font-size:10px;margin-top:3px;">${safe(JSON.stringify(r.errors))}</div>`:''}
+      </div>
+    </details>`;
+  }).join('');
+}
+async function loadGauntletHistory() {
+  try {
+    const h = await (await api('/api/gauntlet/history')).json();
+    $('gauntletHistory').innerHTML = (h.runs||[]).slice(0,12).map(r => {
+      const s = r.summary||{};
+      return `<div>${safe(r.ts)} · ${safe(r.set)} · ${safe(r.model)} · avg ${s.avg_coverage||0}% (${s.full||0}f/${s.partial||0}p/${s.broke||0}b)</div>`;
+    }).join('') || '(none yet)';
+  } catch(e) {}
+}
+document.addEventListener('click', e => { if (e.target && e.target.id === 'gauntletRun') runGauntlet(); });
+
+// ── Models Tab ──────────────────────────────────────────────────
+async function loadModels() {
+  try {
+    const d = await (await api('/api/models')).json();
+    const rows = d.models.map(m => {
+      const gb = (m.size_bytes/1073741824).toFixed(1);
+      const f = m.fit || {};
+      const fitCls = (f.status||'').startsWith('fits') ? 's-pass' : ((f.status||'').startsWith('spills') ? 's-fail' : '');
+      const vram = m.vram_fatal ? `<span class="vram-warn">⚠ ${m.vram_fatal}</span>` : '';
+      return `<tr><td>${safe(m.alias)}</td><td>${gb}G</td><td class="${fitCls}">${safe(f.status)} (${safe(f.need_gb)}G)</td><td>${vram}</td>
+        <td><button data-file="${safe(m.file)}" data-alias="${safe(m.alias)}" class="swapBtn">Swap</button></td></tr>`;
+    }).join('');
+    $('modelsTable').querySelector('tbody').innerHTML = rows;
+    $('modelsMeta').innerHTML =
+      `Configured: ${safe(d.alias)} &nbsp;|&nbsp; Template: ${safe(d.template)} &nbsp;|&nbsp; Free VRAM: ${safe(d.vram_free_gb)} GiB`;
+  } catch (e) { $('modelsTable').querySelector('tbody').innerHTML = `<tr><td colspan="5">error: ${e.message}</td></tr>`; }
+}
+const _modelsTableEl = document.getElementById('modelsTable');
+if (_modelsTableEl) _modelsTableEl.addEventListener('click', async e => {
+  if (e.target.classList.contains('swapBtn')) {
+    const alias = e.target.dataset.alias;
+    const file = e.target.dataset.file;
+    if (!confirm('Swap model to ' + alias + '? This will restart llama and may take up to 2 minutes.')) return;
+    // Switch to Overview tab to show progress
+    document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-tab="overview"]').classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    $('tab-overview').classList.add('active');
+    $('term').textContent = ''; setBusy(true); showSwapProgress(true);
+    try {
+      const r = await api('/api/swap', {method:'POST', body: JSON.stringify({file: file})});
+      streamJob((await r.json()).job, $('term'), () => { loadModels(); showSwapProgress(false); });
+    } catch (e) { $('term').textContent = 'swap error: ' + e.message; setBusy(false); showSwapProgress(false); }
+  }
+});
+
+// ── Config Tab ──────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const d = await (await api('/api/config')).text();
+    $('configText').value = d;
+  } catch (e) { $('configStatus').textContent = 'error: ' + e.message; }
+}
+$('configSave').addEventListener('click', async () => {
+  const text = $('configText').value;
+  try {
+    const r = await api('/api/config', {method:'POST', body: JSON.stringify({text})});
+    const d = await r.json();
+    $('configStatus').textContent = 'saved. backup: ' + safe(d.backup);
+    if (d.diff_added && d.diff_added.length) {
+      $('configDiff').innerHTML = '<b>Changed lines:</b><br>' + d.diff_added.map(l => '+' + l).join('<br>');
+    } else { $('configDiff').textContent = ''; }
+  } catch (e) {
+    try {
+      const err = e.response ? await e.response.json().catch(() => e.response) : null;
+      $('configStatus').textContent = '❌ ' + ((err && err.detail) || e.message);
+    } catch(_) { $('configStatus').textContent = '❌ ' + e.message; }
+  }
+});
+$('configRestore').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/config/restore', {method:'POST'});
+    const d = await r.json();
+    $('configStatus').textContent = 'restored: ' + safe(d.restored);
+    loadConfig();
+  } catch (e) { $('configStatus').textContent = 'restore error: ' + e.message; }
+});
+$('configLoad').addEventListener('click', loadConfig);
+
+// ── Activity Tab ────────────────────────────────────────────────
+async function loadActivity() {
+  try {
+    const d = await (await api('/api/actions?n=30')).json();
+    const rows = (d.actions || []).map(a => {
+      const ts = a.epoch ? new Date(a.epoch * 1000).toISOString().slice(11,19) : (a.ts ? a.ts.slice(11,19) : '?');
+      const cls = a.exit === 0 ? 's-pass' : (a.exit ? 's-fail' : '');
+      const diag = a.classification ? `<span class="cause">${safe(a.classification.cause)} — ${safe(a.classification.fix)}</span>` : '';
+      return `<tr><td>${ts}</td><td>${safe(a.action)}</td><td class="${cls}">${safe(a.exit)}</td><td>${safe(a.duration_s)}s</td><td>${diag}</td></tr>`;
+    }).join('');
+    $('activityTable').querySelector('tbody').innerHTML = rows;
+  } catch (e) { $('activityTable').querySelector('tbody').innerHTML = `<tr><td colspan="5">error: ${e.message}</td></tr>`; }
+}
+
+// ── Doc Tab ─────────────────────────────────────────────────────
+async function loadDoc() { try { $('docpane').textContent = await (await api('/api/doc')).text(); } catch(e) { $('docpane').textContent = 'Could not load doc: ' + e.message; } }
+
+// ── Bench Tab ───────────────────────────────────────────────────
+let benchTests = [];
+async function loadBenchTests() {
+  try {
+    const d = await (await api('/api/bench/tests')).json();
+    benchTests = d.tests;
+    const sel = $('bundleSelect');
+    sel.innerHTML = '<option value="">— bundle —</option>' + Object.keys(d.bundles).map(b => `<option value="${b}">${b}</option>`).join('');
+    rendBench(benchTests);
+    // Load shootout history into bench tab
+    loadBenchShootout();
+  } catch (e) {}
+}
+function rendBench(tests) {
+  $('benchTable').querySelector('tbody').innerHTML = tests.map(t =>
+    `<tr><td title="${safe(t.id)}">${safe(t.id)}</td><td>${safe(t.layer)}</td><td title="${safe(t.title)}">${safe(t.title)}</td><td><span id="b-${safe(t.id)}">—</span></td><td id="bd-${safe(t.id)}" title=""></td></tr>`
+  ).join('');
+}
+async function runBench(ids) {
+  $('termBench').innerHTML = ''; setBusy(true);
+  try {
+    const r = await api('/api/bench/run', {method:'POST', body: JSON.stringify({ids})});
+    const jd = await r.json();
+    const termEl = document.createElement('div');
+    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
+    $('termBench').appendChild(termEl);
+    await streamJob(jd.job, termEl, () => { loadBenchTests(); });
+  } catch(e) { $('termBench').textContent = 'error: ' + e.message; setBusy(false); }
+}
+var _b=$('benchAll'); if(_b) _b.addEventListener('click', () => runBench(benchTests.map(t => t.id)));
+var _b=$('benchFast'); if(_b) _b.addEventListener('click', () => runBench(benchTests.filter(t => t.speed === 'fast').map(t => t.id)));
+var _b=$('benchBundle'); if(_b) _b.addEventListener('click', async () => {
+  const name = $('bundleSelect').value;
+  if (!name) return;
+  const d = await (await api('/api/bench/tests')).json();
+  const ids = d.bundles[name];
+  if (ids) runBench(ids);
+});
+
+// ── Deep Probe (chain probes with data + 3-tier verdicts) ─────────
+let probeList = [];
+const VERDICT = {
+  works:    { color: 'var(--ok)',  chip: '#0c2a12', label: 'WORKS' },
+  degraded: { color: 'var(--warn)', chip: '#2a2400', label: 'DEGRADED' },
+  broken:   { color: 'var(--err)', chip: '#2a0a0a', label: 'BROKEN' },
+  skip:     { color: 'var(--dim)', chip: '#0f1f0f', label: 'skip' },
+};
+async function loadProbes() {
+  try {
+    const d = await (await api('/api/bench/probes')).json();
+    probeList = d.probes || [];
+    await loadLatestProbe();
+  } catch (e) {}
+}
+async function runProbe(ids) {
+  if (!ids.length) return;
+  $('termProbe').innerHTML = ''; $('probeRollup').textContent = '⏳ running…'; setBusy(true);
+  try {
+    const r = await api('/api/bench/probe', {method:'POST', body: JSON.stringify({ids})});
+    const jd = await r.json();
+    const termEl = document.createElement('div');
+    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
+    $('termProbe').appendChild(termEl);
+    await streamJob(jd.job, termEl, () => { loadLatestProbe(); });
+  } catch(e) { $('termProbe').textContent = 'error: ' + e.message; setBusy(false); }
+}
+async function loadLatestProbe() {
+  try {
+    const h = await (await api('/api/bench/probe/history')).json();
+    if (!h.runs || !h.runs.length) { $('probeResults').innerHTML = ''; return; }
+    const ts = h.runs[0].file.replace('probe-','').replace('.json','');
+    const run = await (await api('/api/bench/probe/' + ts)).json();
+    renderProbes(run);
+  } catch (e) {}
+}
+function renderProbes(run) {
+  const roll = run.layer_rollup || {};
+  $('probeRollup').innerHTML = Object.entries(roll).map(([lyr, v]) =>
+    `<span style="color:${(VERDICT[v]||VERDICT.skip).color};margin-right:8px;">${safe(lyr)}: ${(VERDICT[v]||VERDICT.skip).label}</span>`
+  ).join('') + `<span style="color:var(--dim);">· ${safe(run.ts)} · ${safe(run.model)}</span>`;
+  const order = probeList.map(p => p.id);
+  const probes = (run.probes || []).slice().sort((a,b) => order.indexOf(a.id) - order.indexOf(b.id));
+  let lastLayer = '';
+  $('probeResults').innerHTML = probes.map(p => {
+    const vd = VERDICT[p.verdict] || VERDICT.skip;
+    const hdr = p.layer !== lastLayer ? (lastLayer = p.layer,
+      `<div style="font-size:10px;color:var(--dim);margin:8px 0 2px;text-transform:uppercase;letter-spacing:1px;">${safe(p.layer)}</div>`) : '';
+    const dataJson = JSON.stringify(p.data || {}, null, 2);
+    return hdr + `
+      <details class="probe-card" style="border:1px solid var(--border);border-radius:3px;margin-bottom:4px;background:#050805;">
+        <summary style="cursor:pointer;padding:5px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="flex:none;background:${vd.chip};color:${vd.color};border:1px solid ${vd.color};border-radius:3px;padding:0 6px;font-size:10px;font-weight:bold;min-width:74px;text-align:center;">${vd.label}</span>
+          <span style="flex:none;color:var(--fg);font-size:11px;width:150px;">${safe(p.id)}</span>
+          <span style="flex:1;min-width:0;color:var(--dim);font-size:11px;overflow-wrap:anywhere;">${safe(p.summary||'')}</span>
+          <span style="flex:none;color:var(--dim);font-size:10px;">${p.ms} ms</span>
+        </summary>
+        <div style="padding:4px 8px 8px;border-top:1px solid var(--border);">
+          <div style="font-size:10px;color:var(--dim);margin:4px 0;">rule: ${safe(p.thresholds||'—')}</div>
+          <pre style="font-size:10px;white-space:pre-wrap;color:var(--blue);margin:0;max-height:30vh;overflow:auto;">${safe(dataJson)}</pre>
+        </div>
+      </details>`;
+  }).join('');
+}
+var _b=$('probeAll'); if(_b) _b.addEventListener('click', () => runProbe(probeList.map(p => p.id)));
+var _b=$('probeLlama'); if(_b) _b.addEventListener('click', () => runProbe(probeList.filter(p => p.layer==='llama').map(p => p.id)));
+var _b=$('probeDevforge'); if(_b) _b.addEventListener('click', () => runProbe(probeList.filter(p => p.layer==='devforge').map(p => p.id)));
+var _b=$('probeFast'); if(_b) _b.addEventListener('click', () => runProbe(probeList.filter(p => p.speed==='fast').map(p => p.id)));
+var _b=$('probeQuick'); if(_b) _b.addEventListener('click', async () => {
+  // Phase 2b: run fast probes for a quick (<10s) health check
+  try {
+    const d = await (await api('/api/bench/probes')).json();
+    const fastIds = (d.probes || []).filter(p => p.speed === 'fast').map(p => p.id);
+    runProbe(fastIds);
+  } catch(e) { $('termProbe').textContent = 'error: ' + e.message; }
+});
+
+// ── Bench Shootout integration ────────────────────────────────────
+async function loadBenchShootout() {
+  try {
+    const r = await api('/api/shootout/history');
+    const d = await r.json();
+    const shootouts = d.shootouts || [];
+    if (!shootouts.length) {
+      $('benchShootout').style.display = 'none';
+      return;
+    }
+    $('benchShootout').style.display = '';
+    const latest = shootouts[0];
+    const top = latest.rankings?.[0];
+    const logTs = latest.log_ts || '';
+    $('benchShootoutSummary').innerHTML =
+      `<b>${latest.ts || '?'}</b> — ${latest.models_tested || 0} models tested` +
+      (top ? ` · 🥇 <b>${safe(top.model)}</b> — ${safe(top.score)}/100` : '') +
+      ` · <a href="#" onclick="document.querySelector('[data-tab=shootout]').click();return false;" style="color:var(--accent);font-size:10px;">full detail →</a>` +
+      (logTs ? ` · <a href="#" onclick="toggleBenchShootoutLog('${logTs}');return false;" style="color:var(--blue);font-size:10px;">📄 log</a>` : '') +
+      (logTs ? `<pre id="benchShootoutLogView" style="display:none;margin-top:6px;max-height:20vh;overflow-y:auto;background:#050805;padding:6px;border-radius:3px;font-size:9px;white-space:pre-wrap;"></pre>` : '');
+
+    // Shared renderer for bar chart + medal table
+    const c = renderShootoutCompact(latest, 'compact');
+    $('benchShootoutBody').innerHTML = c.bars + c.table;
+  } catch(e) {
+    $('benchShootout').style.display = 'none';
+  }
+}
+
+var _b=$('benchShootoutRun'); if(_b) _b.addEventListener('click', () => runShootout(null));
+var _b=$('benchShootoutRunOne'); if(_b) _b.addEventListener('click', async () => {
+  try {
+    const s = await api('/api/status');
+    const d = await s.json();
+    const alias = safe(d.alias, '');
+    if (alias) runShootout(alias);
+    else alert('Could not detect current model alias.');
+  } catch(e) { alert('Could not fetch current model: ' + e.message); }
+});
+
+async function toggleBenchShootoutLog(logTs) {
+  const el = $('benchShootoutLogView');
+  if (!el) return;
+  if (el.style.display !== 'none') {
+    el.style.display = 'none';
+    return;
+  }
+  if (!el.textContent) {
+    try {
+      const r = await fetch(`/api/shootout/${logTs}/log`);
+      el.textContent = r.ok ? await r.text() : 'Log not available (404)';
+    } catch(e) {
+      el.textContent = 'Failed to load log: ' + e.message;
+    }
+  }
+  el.style.display = '';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Stream A: Scenario Suite + Scorecards
+// ══════════════════════════════════════════════════════════════════
+
+let scoreScenarios = [];
+let scoreProbes = [];
+
+async function loadScoreHistory() {
+  try {
+    // Load scenario list
+    const d = await (await api('/api/scenarios')).json();
+    scoreScenarios = d.scenarios || [];
+    scoreProbes = d.tool_call_probes || [];
+    // Load scorecard history
+    const sc = await (await api('/api/scorecards')).json();
+    const cards = sc.scorecards || [];
+    if (cards.length) {
+      const last = cards[0];
+      $('scoreHistory').innerHTML = `<b>Previous scores:</b> ${cards.slice(0,5).map(c =>
+        `<span style="margin-right:12px;">${safe(c.model)} (${safe(c.summary?.pass_rate)} pass ${safe(c.ts)})</span>`
+      ).join('')}`;
+    }
+    // Render scenario table
+    rendScoreTable(scoreScenarios);
+  } catch(e) { $('scoreHistory').textContent = 'error: ' + e.message; }
+}
+
+function rendScoreTable(scenarios) {
+  $('scoreTable').querySelector('tbody').innerHTML = scenarios.map(s =>
+    `<tr><td>${safe(s.id)}</td><td>${safe(s.category)}</td><td id="ss-${safe(s.id)}">—</td><td id="st-${safe(s.id)}">—</td><td id="sd-${safe(s.id)}">—</td></tr>`
+  ).join('');
+  // Re-render comparison if there is one
+}
+
+async function runScore(ids, runTools, title) {
+  $('termScore').innerHTML = ''; setBusy(true);
+  try {
+    const r = await api('/api/scenarios/run', {method:'POST', body: JSON.stringify({ids, run_tools: runTools})});
+    const jd = await r.json();
+    const termEl = document.createElement('div');
+    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;max-height:25vh;overflow-y:auto;';
+    $('termScore').innerHTML = '';
+    $('termScore').appendChild(termEl);
+    await streamJob(jd.job, termEl, () => {
+      loadScoreHistory();
+      showLatestScorecard();
+    });
+  } catch(e) { $('termScore').textContent = 'error: ' + e.message; setBusy(false); }
+}
+
+async function showLatestScorecard() {
+  try {
+    const sc = await (await api('/api/scorecards')).json();
+    const cards = sc.scorecards || [];
+    if (!cards.length) return;
+    // Fetch full latest card
+    const env = await (await api('/api/status')).json();
+    const alias = safe(env.alias, '?');
+    // Show latest summary
+    const last = cards[0];
+    $('scoreSummary').innerHTML = `
+      <div class="card"><h3>${safe(last.model)}</h3>
+        <div class="big s-pass">${safe(last.summary?.pass_rate)}</div>
+        <div>pass ${safe(last.summary?.pass)} / fail ${safe(last.summary?.fail)} / error ${safe(last.summary?.error)}</div>
+        <div style="font-size:10px;color:var(--dim);">${safe(last.summary?.total_ms)}ms total</div>
+        ${last.summary?.tool_pass !== undefined ? `<div style="margin-top:4px;font-size:10px;">🛠 tools: ${last.summary.tool_pass}/${last.summary.tool_total} pass</div>` : ''}
+      </div>`;
+  } catch(e) {}
+}
+
+var _b=$('scoreAll'); if(_b) _b.addEventListener('click', () => runScore(scoreScenarios.map(s => s.id), false, 'Full scenario suite'));
+var _b=$('scoreFast'); if(_b) _b.addEventListener('click', () => runScore(scoreScenarios.filter(s => s.category === 'geometry').map(s => s.id), false, 'Geometry scenarios'));
+var _b=$('scoreTool'); if(_b) _b.addEventListener('click', () => runScore([], true, 'Tool-call probes'));
+var _b=$('scoreBoth'); if(_b) _b.addEventListener('click', () => runScore(scoreScenarios.map(s => s.id), true, 'Full score (scenarios + tools)'));
+
+var _b=$('cmpBtn'); if(_b) _b.addEventListener('click', async () => {
+  const a = $('cmpA').value.trim();
+  const b = $('cmpB').value.trim();
+  if (!a || !b) return;
+  try {
+    const r = await api(`/api/scorecards/compare?model_a=${encodeURIComponent(a)}&model_b=${encodeURIComponent(b)}`);
+    const d = await r.json();
+    if (d.error) { $('scoreHistory').textContent = d.error; return; }
+    // Render comparison
+    $('scoreSummary').innerHTML = `
+      <div class="card"><h3>${safe(d.model_a)}</h3>
+        <div class="big s-pass">${safe(d.summary_a?.pass_rate)}</div>
+        <div>${safe(d.summary_a?.pass)}/${safe(d.summary_a?.total)} pass</div>
+      </div>
+      <div class="card"><h3>${safe(d.model_b)}</h3>
+        <div class="big s-pass">${safe(d.summary_b?.pass_rate)}</div>
+        <div>${safe(d.summary_b?.pass)}/${safe(d.summary_b?.total)} pass</div>
+      </div>`;
+    $('scoreTable').querySelector('tbody').innerHTML = (d.rows || []).map(row => {
+      const aSt = row.model_a ? row.model_a.status : 'no data';
+      const bSt = row.model_b ? row.model_b.status : 'no data';
+      const aCls = aSt === 'pass' ? 'sc-pass' : (aSt === 'fail' ? 'sc-fail' : (aSt === 'error' ? 'sc-error' : 'sc-nodata'));
+      const bCls = bSt === 'pass' ? 'sc-pass' : (bSt === 'fail' ? 'sc-fail' : (bSt === 'error' ? 'sc-error' : 'sc-nodata'));
+      return `<tr>
+        <td>${safe(row.scenario_id)}</td>
+        <td>${safe(row.category)}</td>
+        <td><span class="${aCls}">${aSt}</span> <span class="comp-col">|</span> <span class="${bCls}">${bSt}</span></td>
+        <td><span class="comp-col">${row.model_a ? row.model_a.ms + 'ms' : '—'} | ${row.model_b ? row.model_b.ms + 'ms' : '—'}</span></td>
+        <td>${safe(row.description)}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { $('scoreHistory').textContent = 'compare error: ' + e.message; }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Chain Health Sidebar
+// ══════════════════════════════════════════════════════════════════
+
+let healthExpanded = null;
+let healthChecking = false;
+
+async function runHealthCheck() {
+  if (healthChecking) return;
+  healthChecking = true;
+  const btn = $('health-refresh');
+  btn.textContent = '↻ Checking…';
+  btn.classList.add('checking');
+  await healthCheck();
+  btn.textContent = '↻ Check now';
+  btn.classList.remove('checking');
+  healthChecking = false;
+}
+
+async function healthCheck() {
+  if (healthChecking) return;  // skip — manual check in progress
+  try {
+    const r = await api('/api/chain-health');
+    const d = await r.json();
+    renderHealth(d);
+  } catch(e) { /* sidebar offline — no big deal */ }
+  // Phase 3d: also check persona health
+  try {
+    const pr = await api('/api/persona/check');
+    const pd = await pr.json();
+    renderPersonaHealth(pd);
+  } catch(e) { $('health-persona').innerHTML = ''; }
+}
+
+function renderPersonaHealth(d) {
+  let html = '<div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Persona</div>';
+  if (!d.enabled) {
+    html += '<div style="color:var(--err);">⚠ Persona disabled</div>';
+  } else if (d.ok) {
+    html += `<div style="color:var(--ok);">✅ Godot Developer · temp ${d.temp} · ${d.system_prompt_chars} chars · MCP+no_think</div>`;
+  } else {
+    html += '<div style="color:var(--warn);">⚠ ' + (d.issues || []).join('; ') + '</div>';
+  }
+  if (d.vault_backup) {
+    html += '<div style="margin-top:2px;"><a href="#" onclick="restorePersona();return false;" style="font-size:9px;color:var(--accent);">↺ Restore from vault</a></div>';
+  }
+  $('health-persona').innerHTML = html;
+}
+
+async function restorePersona() {
+  if (running) return;
+  if (!confirm('Restore the Godot Developer persona from vault? This overwrites presets.json and restarts Odysseus.')) return;
+  $('term').textContent = ''; setBusy(true);
+  // Switch to Overview tab
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-tab="overview"]').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $('tab-overview').classList.add('active');
+  try {
+    const r = await api('/api/persona/restore', {method:'POST'});
+    streamJob((await r.json()).job, $('term'), () => { healthCheck(); });
+  } catch(e) { $('term').textContent = 'restore error: ' + e.message; setBusy(false); }
+}
+
+function renderHealth(d) {
+  // Links with colored dots
+  const dotColors = { healthy: 'healthy', degraded: 'degraded', stale: 'stale', down: 'down', unknown: 'unknown' };
+  $('health-links').innerHTML = (d.links || []).map(l => {
+    const cls = dotColors[l.status] || 'unknown';
+    const port = l.port ? `<span class="port">:${l.port}</span>` : '';
+    return `<div class="health-link" data-id="${l.id}" onclick="toggleLinkDetail(this)">
+      <span class="dot ${cls}" title="${safe(l.label)} — ${l.status}"></span>
+      <span class="name">${safe(l.label)}</span>${port}
+      <div class="detail-row">${safe(l.detail)}</div>
+      ${l.fix ? `<div class="fix">↪ ${safe(l.fix)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Warnings
+  const warns = d.warnings || [];
+  $('health-warnings').innerHTML = warns.length
+    ? warns.map(w => `<div class="warn-item">⚠ ${safe(w)}</div>`).join('')
+    : '';
+
+  // Timestamp
+  $('health-timestamp').textContent = 'checked ' + safe(d.ts, '?') + (d.ms ? ' (' + d.ms + 'ms)' : '');
+
+  // Apply body class for sidebar margin
+  document.body.classList.add('has-sidebar');
+}
+
+function toggleLinkDetail(el) {
+  if (healthExpanded && healthExpanded !== el) healthExpanded.classList.remove('expanded');
+  el.classList.toggle('expanded');
+  healthExpanded = el.classList.contains('expanded') ? el : null;
+}
+
+function toggleHealth() {
+  const sb = $('health-sidebar');
+  const btn = $('health-toggle');
+  const collapsed = sb.classList.toggle('collapsed');
+  document.body.classList.toggle('collapsed', collapsed);
+  btn.textContent = collapsed ? '▶' : '◀';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Pipeline Shootout (all models, comprehensive test)
+// ══════════════════════════════════════════════════════════════════
+
+let shootoutScorecard = null;
+let shootoutHistoryData = [];
+let shootoutHistorySort = {field:'ts', asc:false};
+
+async function loadShootoutHistory() {
+  try {
+    const r = await api('/api/shootout/history');
+    const d = await r.json();
+    shootoutHistoryData = d.shootouts || [];
+    renderShootoutHistory();
+  } catch(e) {}
+}
+
+function sortShootoutHistory(field) {
+  if (shootoutHistorySort.field === field) shootoutHistorySort.asc = !shootoutHistorySort.asc;
+  else { shootoutHistorySort.field = field; shootoutHistorySort.asc = false; }
+  renderShootoutHistory();
+}
+
+function renderShootoutHistory() {
+  let data = [...shootoutHistoryData];
+  const sf = shootoutHistorySort.field;
+  const sa = shootoutHistorySort.asc ? 1 : -1;
+  data.sort((a,b) => {
+    if (sf === 'ts') return sa * (a.ts || '').localeCompare(b.ts || '');
+    if (sf === 'winner') return sa * ((a.rankings?.[0]?.model || '').localeCompare(b.rankings?.[0]?.model || ''));
+    if (sf === 'models') return sa * ((a.models_tested || 0) - (b.models_tested || 0));
+    if (sf === 'score') return sa * ((a.rankings?.[0]?.score || 0) - (b.rankings?.[0]?.score || 0));
+    return 0;
+  });
+  $('shootoutHistoryBody').innerHTML = data.map(c => {
+    const top = c.rankings?.[0];
+    const topCls = top?.score >= 60 ? 's-pass' : 's-fail';
+    const tsShort = (c.ts || '').slice(0, 16);
+    return `<tr>
+      <td style="cursor:pointer;" onclick="loadShootoutDetail('${safe(c.file).replace('shootout-','').replace('.json','')}')">${tsShort}</td>
+      <td class="${topCls}">${top ? `🥇 ${safe(top.model)}` : '—'}</td>
+      <td>${safe(c.models_tested)}</td>
+      <td class="${topCls}">${top ? safe(top.score) + '/100' : '—'}</td>
+      <td>
+        <button style="font-size:10px;padding:1px 5px;" onclick="loadShootoutDetail('${safe(c.file).replace('shootout-','').replace('.json','')}')">View</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--dim);">No past shootouts. Run one first!</td></tr>';
+}
+
+async function deleteShootout(file) {
+  if (!confirm('Delete this shootout scorecard?')) return;
+  try {
+    const d = await api('/api/shootout/' + file.replace('shootout-','').replace('.json',''));
+    // We can't delete via API yet — clear the file manually via config
+    alert('Deletion not yet wired. Scorecard: ' + file);
+  } catch(e) {}
+}
+
+async function loadShootoutDetail(ts) {
+  try {
+    const r = await api('/api/shootout/' + ts);
+    shootoutScorecard = await r.json();
+    renderShootoutResults(shootoutScorecard);
+  } catch(e) { $('shootoutResults').innerHTML = 'error: ' + e.message; }
+}
+
+// ── Shared shootout rendering (used by bench tab + shootout tab) ─
+// Returns {bars, table} HTML strings built from a scorecard object.
+// mode: 'full' (shootout tab — legend, larger bars, alias row, Time col)
+//       'compact' (bench tab — no legend, smaller, no Time col)
+function renderShootoutCompact(d, mode) {
+  const rankings = d.rankings || [];
+  const results = d.results || [];
+  const maxStatic = 68, maxRuntime = 32;
+  const medals = ['🥇','🥈','🥉','4','5'];
+  const isFull = mode === 'full';
+  const fontSize = isFull ? '11px' : '10px';
+
+  // Bar chart
+  let bars = '';
+  if (isFull) {
+    bars += '<div style="display:flex;gap:6px;margin-bottom:4px;"><span style="color:var(--accent);">■ Static</span> <span style="color:var(--blue);">■ Runtime</span></div>';
+  }
+  for (const r of rankings) {
+    const row = results.find(x => x.model_alias === r.alias) || {};
+    const stPct = Math.round((row.static_score || 0) / maxStatic * 100);
+    const rtPct = Math.round((row.runtime_score || 0) / maxRuntime * 100);
+    const scoreText = isFull ? `${r.score}/100` : r.score;
+    if (isFull) {
+      // Two-row layout for shootout tab: model+score on top, label+bar below
+      bars += `<div style="margin:3px 0;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:1px;">
+          <span style="width:130px;text-align:right;font-size:10px;">${safe(r.model)}</span>
+          <span style="font-weight:bold;font-size:12px;">${scoreText}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;">
+          <span style="width:130px;text-align:right;font-size:9px;color:var(--dim);">${safe(row.static_score)}/${maxStatic} + ${safe(row.runtime_score)}/${maxRuntime}</span>
+          <div style="width:200px;height:12px;background:#0a120a;border-radius:2px;overflow:hidden;display:flex;">
+            <div style="width:${stPct}%;height:100%;background:var(--accent);opacity:0.8;"></div>
+            <div style="width:${rtPct}%;height:100%;background:var(--blue);opacity:0.8;"></div>
+            <div style="flex:1;height:100%;background:transparent;"></div>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      // Single-row layout for bench tab
+      bars += `<div style="display:flex;align-items:center;gap:4px;margin:2px 0;">
+        <span style="width:120px;text-align:right;font-size:10px;">${safe(r.model)}</span>
+        <span style="font-weight:bold;font-size:11px;width:35px;">${scoreText}</span>
+        <div style="width:160px;height:10px;background:#0a120a;border-radius:2px;overflow:hidden;display:flex;">
+          <div style="width:${stPct}%;height:100%;background:var(--accent);opacity:0.8;" title="Static: ${safe(row.static_score)}/${maxStatic}"></div>
+          <div style="width:${rtPct}%;height:100%;background:var(--blue);opacity:0.8;" title="Runtime: ${safe(row.runtime_score)}/${maxRuntime}"></div>
+          <div style="flex:1;height:100%;background:transparent;"></div>
+        </div>
+        <span style="font-size:9px;color:var(--dim);">${safe(row.static_score)}+${safe(row.runtime_score)}</span>
+      </div>`;
+    }
+  }
+
+  // Medal table
+  const timeHeader = isFull ? '<th>Time</th>' : '';
+  let table = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:${fontSize};">`;
+  table += `<thead><tr><th>#</th><th>Model</th><th>Score</th><th>Static</th><th>Runtime</th><th>Status</th>${timeHeader}</tr></thead><tbody>`;
+  for (let i = 0; i < rankings.length; i++) {
+    const r = rankings[i];
+    const row = results.find(x => x.model_alias === r.alias) || {};
+    const cls = r.score >= 60 ? 's-pass' : (r.score >= 30 ? 's-fail' : 's-err');
+    const aliasRow = isFull ? `<br><span style="font-size:9px;color:var(--dim);">${safe(r.alias)}</span>` : '';
+    const scoreSz = isFull ? 'font-size:16px;' : '';
+    const timeCell = isFull ? `<td style="font-size:9px;color:var(--dim);">${safe(row.ms_total)}ms</td>` : '';
+    table += `<tr>
+      <td style="font-size:${isFull ? 14 : 12}px;">${medals[i] || (i+1)}</td>
+      <td><b>${safe(r.model)}</b>${aliasRow}</td>
+      <td class="${cls}" style="font-weight:bold;${scoreSz}">${r.score}/100</td>
+      <td>${safe(row.static_score)}</td>
+      <td>${safe(row.runtime_score)}</td>
+      <td><span class="${cls}">${safe(r.status)}</span></td>
+      ${timeCell}
+    </tr>`;
+  }
+  table += '</tbody></table>';
+  // Untested models (swap/VRAM failure) — shown separately, NOT as 0-score.
+  const untested = d.untested || [];
+  if (untested.length) {
+    table += `<div style="font-size:${fontSize};color:var(--warn);margin-top:2px;">⚠ not tested (swap failed): ${untested.map(safe).join(', ')}</div>`;
+  }
+
+  return {bars, table};
+}
+
+function renderShootoutResults(d) {
+  let html = '<h3 style="margin-bottom:4px;">🏆 Rankings</h3>';
+
+  // Bar chart + medal table from shared renderer
+  const c = renderShootoutCompact(d, 'full');
+  html += '<div style="margin:8px 0 12px;font-size:10px;">' + c.bars + '</div>';
+  html += c.table;
+
+  // Per-model assertion detail
+  html += '<h3 style="margin-bottom:4px;">📋 Assertion Details</h3>';
+  for (const row of results) {
+    const cls = row.status === 'pass' ? 's-pass' : (row.status === 'fail' ? 's-fail' : 's-err');
+    html += `<div style="margin-bottom:6px;border:1px solid var(--border);border-radius:3px;padding:6px 8px;background:#050805;">`;
+    html += `<b class="${cls}">${safe(row.model_label)}</b> — ${row.total_score}/100 `;
+    html += `<span style="color:var(--dim);font-size:9px;">(${safe(row.static_score)}s + ${safe(row.runtime_score)}r)</span>`;
+    if (row.errors && row.errors.length) {
+      html += `<div style="color:var(--err);font-size:9px;margin-top:2px;">⚠ ${row.errors.map(e => safe(e)).join('; ')}</div>`;
+    }
+    // Static assertions
+    const sa = row.static_assertions || [];
+    if (sa.length) {
+      html += '<div style="margin-top:3px;font-size:9px;line-height:1.6;"><b>Static:</b> ';
+      html += sa.map(a => {
+        const acls = a.status === 'pass' ? 's-pass' : (a.status === 'fail' ? 's-fail' : 's-err');
+        return `<span class="${acls}" title="${safe(a.message)}">${a.status === 'pass' ? '✓' : '✗'}${safe(a.assertion)}</span>`;
+      }).join('  ');
+      html += '</div>';
+    }
+    // Runtime assertions
+    const ra = row.runtime_assertions || [];
+    if (ra.length) {
+      html += '<div style="font-size:9px;line-height:1.6;"><b>Runtime:</b> ';
+      html += ra.map(a => {
+        const acls = a.status === 'pass' ? 's-pass' : (a.status === 'fail' ? 's-fail' : 's-err');
+        return `<span class="${acls}" title="${safe(a.message)}">${a.status === 'pass' ? '✓' : '✗'}${safe(a.assertion)}</span>`;
+      }).join('  ');
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Log viewer link — use the log_ts field from the scorecard
+  const logTs = d.log_ts || '';
+  const logUrl = logTs ? `/api/shootout/${logTs}/log` : '';
+  html += `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+    <a href="#" onclick="toggleShootoutLog('${logUrl}');return false;" style="color:var(--accent);font-size:11px;">📄 View detailed log</a>
+    <pre id="shootoutLogView" style="display:none;margin-top:8px;max-height:40vh;overflow-y:auto;background:#050805;padding:8px;border-radius:3px;font-size:10px;white-space:pre-wrap;"></pre>
+  </div>`;
+
+  $('shootoutResults').innerHTML = html;
+}
+
+async function toggleShootoutLog(url) {
+  const el = $('shootoutLogView');
+  if (el.style.display !== 'none') {
+    el.style.display = 'none';
+    return;
+  }
+  if (!el.textContent) {
+    try {
+      const r = await fetch(url);
+      el.textContent = r.ok ? await r.text() : 'Log not available (404)';
+    } catch(e) {
+      el.textContent = 'Failed to load log: ' + e.message;
+    }
+  }
+  el.style.display = '';
+}
+
+async function shootoutPreflight() {
+  $('termShootout').innerHTML = 'Running pre-flight checks...\\n';
+  try {
+    const r = await api('/api/shootout/preflight');
+    const d = await r.json();
+    let out = '=== PRE-FLIGHT CHECK ===\\n\\n';
+    for (const [k,v] of Object.entries(d.checks || {})) {
+      const icon = v === 'ok' ? '✅' : (v === 'warn' ? '⚠️' : '❌');
+      out += `${icon} ${k}: ${v}\\n`;
+    }
+    if (d.issues && d.issues.length) {
+      out += '\\n❌ Issues found:\\n';
+      d.issues.forEach(i => out += `  • ${i}\\n`);
+    }
+    out += `\\nOverall: ${d.ok ? '✅ READY' : '❌ NOT READY'}`;
+    $('termShootout').textContent = out;
+  } catch(e) { $('termShootout').textContent = 'Pre-flight error: ' + e.message; }
+}
+
+async function runShootout(modelFilter) {
+  const label = modelFilter || 'all models';
+  if (!confirm(`Run shootout against ${label}? This will swap models and may take several minutes. Godot must be open with shootout.tscn.`)) return;
+
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-tab="shootout"]').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  $('tab-shootout').classList.add('active');
+
+  $('termShootout').innerHTML = '';
+  $('shootoutResults').innerHTML = '';
+  $('shootoutPhase').textContent = '';
+  $('shootoutBar').style.width = '0%';
+  setBusy(true);
+
+  try {
+    const body = modelFilter ? JSON.stringify({model: modelFilter}) : '{}';
+    const r = await api('/api/shootout', {method:'POST', body});
+    const jd = await r.json();
+    const termEl = document.createElement('div');
+    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
+    $('termShootout').appendChild(termEl);
+    await streamJob(jd.job, termEl, () => {
+      $('shootoutBar').style.width = '100%';
+      $('shootoutPhase').textContent = 'Shootout complete!';
+      loadShootoutHistory();
+      setTimeout(async () => {
+        try {
+          const hr = await api('/api/shootout/history');
+          const hd = await hr.json();
+          const latest = hd.shootouts?.[0];
+          if (latest) {
+            const ts = latest.file.replace('shootout-','').replace('.json','');
+            loadShootoutDetail(ts);
+          }
+        } catch(e) {}
+      }, 500);
+    });
+  } catch(e) {
+    $('termShootout').textContent = 'shootout error: ' + e.message;
+    setBusy(false);
+  }
+}
+
+var _b=$('shootoutRun'); if(_b) _b.addEventListener('click', () => runShootout(null));
+var _b=$('shootoutRunOne'); if(_b) _b.addEventListener('click', async () => {
+  try {
+    const s = await api('/api/status');
+    const d = await s.json();
+    const alias = safe(d.alias, '');
+    if (alias) runShootout(alias);
+    else alert('Could not detect current model alias.');
+  } catch(e) { alert('Could not fetch current model: ' + e.message); }
+});
+var _b=$('shootoutCheck'); if(_b) _b.addEventListener('click', shootoutPreflight);
+
+// ── Init ────────────────────────────────────────────────────────
+versionCheck();
+refresh();
+healthCheck();
+setInterval(refresh, 8000);
+setInterval(healthCheck, 30000);
+</script>
+
+<!-- ── Unified Testing tab (faceted runner + unified scorecard) ───── -->
+<script>
+const TESTING = {target:'current', suite:'gauntlet', depth:'full', gset:'', running:false, t0:0, repeat:1, models:[]};
+
+// JS mirror of forge_score.score_to_verdict (canonical, unit-tested in forge_score.py)
+function scoreToVerdict(s, passAt=90, partialAt=60){ return s>=passAt?'pass':(s>=partialAt?'partial':'fail'); }
+const VERDICT_COLOR = {pass:'var(--ok)', partial:'var(--warn-amber)', fail:'var(--err)'};
+
+// ── Press feedback (global) ───────────────────────────────────────
+function buttonBusy(id, busy){
+  const b = (typeof id==='string') ? $(id) : id; if(!b) return;
+  if(busy){ b.dataset.label = b.dataset.label || b.textContent; b.disabled=true;
+            b.textContent = '… ' + b.dataset.label.replace(/^▶\s*/, 'Running '); }
+  else { b.disabled=false; if(b.dataset.label) b.textContent=b.dataset.label; }
+}
+function buttonFlash(id, kind){   // kind: 'ok' | 'err'
+  const b = (typeof id==='string') ? $(id) : id; if(!b) return;
+  b.classList.add(kind==='ok'?'flash-ok':'flash-err');
+  setTimeout(()=>b.classList.remove('flash-ok','flash-err'), 700);
+  toast(kind==='ok' ? 'Done' : 'Failed', kind);
+}
+function toast(msg, kind){
+  let host = $('toast-host');
+  if(!host){ host=document.createElement('div'); host.id='toast-host';
+    host.style.cssText='position:fixed;bottom:16px;right:16px;z-index:99;display:flex;flex-direction:column;gap:6px;';
+    document.body.appendChild(host); }
+  const t=document.createElement('div'); t.textContent=msg;
+  const col = kind==='err' ? 'var(--err)' : 'var(--ok)';
+  t.style.cssText=`padding:6px 12px;border-radius:5px;font-size:12px;border:1px solid ${col};color:${col};background:var(--panebg);`;
+  host.appendChild(t); setTimeout(()=>t.remove(), 2500);
+}
+
+// Per-suite adapters: how to RUN and how to fetch+map the RESULT into a scorecard.
+const SUITES = {
+  health: {
+    targets:['current'],
+    run: async (depth) => {
+      const d = await (await api('/api/bench/tests')).json();
+      let tests = d.tests||[];
+      let ids = (depth==='fast' ? tests.filter(t=>t.speed==='fast') : tests).map(t=>t.id);
+      if (!ids.length) ids = tests.map(t=>t.id);
+      return {url:'/api/bench/run', body:{ids}};
+    },
+    result: async () => {
+      const d = await (await api('/api/bench/history')).json();
+      const r = (d.runs||[])[0]; if(!r) return null;
+      const c = r.counts||{}; const total=(c.pass||0)+(c.fail||0)+(c.error||0);
+      const score = total ? Math.round(100*(c.pass||0)/total) : 0;
+      const metrics=[{label:'pass', value:`${c.pass||0}/${total}`, good:(c.fail||0)+(c.error||0)===0}];
+      // A5: surface failed test IDs as execution errors
+      const execErrs = (r.failed||[]).slice(0,6).map(f=>`${f}: fail`);
+      (r.failed||[]).slice(0,6).forEach(f=>metrics.push({label:f, value:'fail', good:false}));
+      return {suite:'health', target:'current', label:safe(r.model,'health'), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs};
+    }
+  },
+  scenarios: {
+    targets:['current','compare'],
+    run: async (depth) => {
+      const d = await (await api('/api/scenarios')).json();
+      const ids=(d.scenarios||[]).map(s=>s.id);
+      return {url:'/api/scenarios/run', body:{ids, run_tools: depth==='full'}};
+    },
+    result: async () => {
+      const d = await (await api('/api/scorecards')).json();
+      const r = (d.scorecards||[])[0]; if(!r) return null;
+      const sm=r.summary||{}; const score=Math.round((sm.pass_rate||0)*100);
+      const metrics=[{label:'pass', value:`${sm.pass||0}/${sm.total||0}`, good:(sm.fail||0)+(sm.error||0)===0}];
+      // A5: extract per-scenario assertion failures as execution errors
+      const execErrs = [];
+      if(r.scenarios) r.scenarios.forEach(s=>{
+        (s.assertions||[]).filter(a=>a.status==='fail'||a.status==='error').forEach(a=>{
+          execErrs.push(`${s.scenario_id}: ${(a.message||a.assertion||'').slice(0,100)}`);
+        });
+      });
+      return {suite:'scenarios', target:'current', label:safe(r.model,'scenarios'), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs.slice(0,12)};
+    }
+  },
+  gauntlet: {
+    targets:['current','compare'], needsSet:true,
+    run: async (depth) => ({url:'/api/gauntlet/run', body:{set:TESTING.gset, runs:TESTING.repeat}}),
+    result: async () => {
+      const d = await (await api('/api/gauntlet/history')).json();
+      const rh=(d.runs||[])[0]; if(!rh) return null;
+      const sm=rh.summary||{}; let score=Math.round(sm.avg_coverage||0);
+      const metrics=[{label:'full', value:sm.full||0, good:true},
+                     {label:'partial', value:sm.partial||0, good:(sm.partial||0)===0},
+                     {label:'broke', value:sm.broke||0, good:(sm.broke||0)===0}];
+      // A5: fetch full run detail for per-result errors + latency; when the run
+      // was repeated (runs>1) surface the mean score + the spread (σ).
+      const execErrs = [], latencies = {}, per_prompt = {};
+      let nRuns=1; const sigmas=[], means=[];
+      try {
+        const ts = rh.file.replace('gauntlet-','').replace('.json','');
+        const rd = await (await api('/api/gauntlet/'+ts)).json();
+        (rd.results||[]).forEach(r=>{
+          if(r.latency_ms) latencies[r.id] = r.latency_ms;
+          per_prompt[r.id] = (typeof r.mean_coverage==='number') ? r.mean_coverage : (r.coverage||0);
+          if(Array.isArray(r.runs) && r.runs.length>nRuns) nRuns=r.runs.length;
+          if(typeof r.stddev_coverage==='number') sigmas.push(r.stddev_coverage);
+          if(typeof r.mean_coverage==='number') means.push(r.mean_coverage);
+          (r.errors||[]).forEach(e=>execErrs.push(`${r.id}: ${typeof e==='string'?e.slice(0,100):JSON.stringify(e)}`));
+        });
+      } catch(e) {}
+      if(nRuns>1 && means.length){
+        score = Math.round(means.reduce((a,b)=>a+b,0)/means.length);
+        const avgSig = sigmas.reduce((a,b)=>a+b,0)/(sigmas.length||1);
+        metrics.unshift({label:`×${nRuns} runs · σ`, value:`±${avgSig.toFixed(1)}`, good: avgSig<10});
+      }
+      return {suite:'gauntlet', target:'current', label:safe(rh.set,'gauntlet')+(nRuns>1?` ×${nRuns}`:''), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs.slice(0,12), stage_latencies: latencies, per_prompt};
+    }
+  },
+  tools: {
+    targets:['current'],
+    run: async (depth) => ({url:'/api/tools/run', body:{}}),
+    result: async () => {
+      const d = await (await api('/api/tools/history')).json();
+      if(!d.summary || !d.summary.total) return null;
+      const sm=d.summary; const score=Math.round((sm.pass_rate||0)*100);
+      const metrics=[{label:'pass', value:`${sm.pass||0}/${sm.total||0}`, good:(sm.fail||0)+(sm.error||0)===0}];
+      const execErrs = (d.probes||[]).filter(p=>p.status!=='pass').map(p=>`${p.probe_id}: ${p.detail||''}`);
+      return {suite:'tools', target:'current', label:safe(d.model,'tools'), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs.slice(0,10)};
+    }
+  }
+};
+// compare target → shootout (best-effort mapping; shootout file shape is defensive)
+async function compareRun(){
+  const a=document.querySelector('#cmpA')?.value?.trim();
+  const b=document.querySelector('#cmpB')?.value?.trim();
+  if(!a||!b) throw new Error('enter two model names to compare');
+  return {url:`/api/scorecards/compare?model_a=${encodeURIComponent(a)}&model_b=${encodeURIComponent(b)}`, body:null, method:'GET'};
+}
+async function compareResult(){
+  // Result is fetched inline in runTesting — compareRun returns the url directly
+  return null;
+}
+
+// ── Rail (user-friendly: a plain-language explainer under every option) ──
+let _gsets=[], _models=[], _testingInit=false;
+
+// What each test actually checks, in everyday language.
+const SUITE_INFO = {
+  health:    {label:'Health',     desc:'Is the whole AI→Godot chain alive? Pings each layer (the model, DevForge, the Godot plugin) and reports what is up or down. Start here if something feels broken.', when:'~10–60s'},
+  scenarios: {label:'Scenarios',  desc:'Can the AI do basic, exact editor actions — create a cube or a light, delete or rename a node? Small, predictable checks of the building blocks.', when:'~3–6 min'},
+  gauntlet:  {label:'Capability', desc:'Can the AI build a whole scene from a plain-English prompt? Pick a test set below — each one targets a different skill (general scenes, room layouts, buildings, dungeons, towns…).', when:'~1 min per prompt'},
+  tools:     {label:'Tool calls', desc:'When asked to do something, does the AI call the correct Godot tool with the right arguments? Checks tool-use accuracy.', when:'~1–2 min'},
+};
+// Plain-language description per gauntlet test set (fallback if the set has none).
+const GSET_INFO = {
+  'capability-v1':'General scene-building — nesting, properties, scripts, signals, and graceful failure (G1–G8).',
+  'spatial-v1':'Room layouts from the pattern engine — kitchens, L-shapes, corridors.',
+  'ssp-v1':'Rooms via the archetype / intent system — kitchen, living room, bedroom, dining.',
+  'building-v1':'Multi-room buildings (houses) via the room-splitter.',
+  'garden-v1':'Outdoor scatter — trees and plants placed around a structure.',
+  'wfc-v1':'Dungeons — rooms joined by corridors.',
+  'voronoi-v1':'Towns and districts.',
+};
+const TARGET_LABEL = {current:'This model', compare:'Compare two'};
+const DEPTH_LABEL  = {fast:'Fast', full:'Full'};
+function _help(t){ return `<div class="dim" style="font-size:10px;margin:3px 0 9px;line-height:1.4;">${t}</div>`; }
+
+function renderRail(){
+  const a=SUITES[TESTING.suite];
+  const isCmp = TESTING.target==='compare';
+  const info = SUITE_INFO[TESTING.suite] || {label:TESTING.suite, desc:''};
+  const pill=(g,v,lbl)=>`<span class="facet ${TESTING[g]===v?'on':''}" data-group="${g}" data-val="${v}">${lbl||v}</span>`;
+
+  // Gauntlet test-set picker + its description
+  let setSel='';
+  if(a.needsSet){
+    const cur=_gsets.find(s=>s.id===TESTING.gset);
+    const sdesc = cur ? (cur.description || GSET_INFO[cur.id] || '') : '';
+    setSel = `<div class="flabel">Which test set</div>
+      <select id="facet-gset" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:3px;">`
+      + _gsets.map(s=>`<option value="${safe(s.id)}" ${TESTING.gset===s.id?'selected':''}>${safe(s.title)} (${s.count})</option>`).join('')
+      + `</select>` + (sdesc?_help(sdesc):'');
+  }
+  // Compare: two model-name inputs
+  let cmpRow='';
+  if(isCmp){
+    cmpRow = `<div class="flabel">Two models to compare</div>
+      <input id="cmpA" placeholder="model A (e.g. qwen3-14b-q6-k)" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:3px;margin-bottom:4px;font:inherit;font-size:11px;">
+      <input id="cmpB" placeholder="model B (e.g. qwen3-6-27b)" style="width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:3px;font:inherit;font-size:11px;">`;
+  }
+
+  $('testing-rail').innerHTML = `
+    <div class="dim" style="font-size:10px;margin-bottom:11px;line-height:1.45;">Pick what to test, then press <b>Run</b>. A scorecard appears on the right. Every option has a one-line explainer.</div>
+
+    <div class="flabel">1 · What to test</div>
+    <div id="facet-suite" class="frow">${['health','scenarios','gauntlet','tools'].map(s=>pill('suite',s,SUITE_INFO[s].label)).join('')}</div>
+    ${_help('<b>'+info.label+'</b> — '+info.desc+' <span style="opacity:.65;">('+(info.when||'')+')</span>')}
+
+    ${setSel}
+
+    <div class="flabel">2 · Run against</div>
+    <div id="facet-target" class="frow">${pill('target','current',TARGET_LABEL.current)}${a.targets.includes('compare')?pill('target','compare',TARGET_LABEL.compare):''}</div>
+    ${_help('“This model” tests whatever model is loaded now. “Compare two” scores two models side by side'+(a.targets.includes('compare')?'.':' — not available for this test.'))}
+    ${cmpRow}
+
+    <div class="flabel">3 · How much</div>
+    <div id="facet-depth" class="frow">${pill('depth','fast',DEPTH_LABEL.fast)}${pill('depth','full',DEPTH_LABEL.full)}</div>
+    ${_help('“Fast” runs a quick subset for a sanity check. “Full” runs the whole set.')}
+
+    <div class="flabel">Repeat the run</div>
+    <div class="frow" style="align-items:center;gap:6px;">
+      <input id="facet-repeat" type="number" min="1" max="20" value="${TESTING.repeat}" style="width:56px;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:3px;font:inherit;font-size:11px;">
+      <span class="dim" style="font-size:10px;">× times</span>
+    </div>
+    ${_help('Run the same test this many times. With 2 or more, the Capability test reports the average <b>± how much it wobbled (σ)</b> — the spread tells you how reliable the model is.')}
+
+    <div class="flabel">Models (optional — up to 5)</div>
+    <div id="facet-models" class="frow">${_models.map(m=>`<span class="facet ${TESTING.models.some(x=>x.alias===m.alias)?'on':''}" data-model="${safe(m.alias)}">${safe(m.alias)}</span>`).join('') || '<span class="dim" style="font-size:10px;">no models found</span>'}</div>
+    ${_help('Leave empty to test the model loaded now. Pick up to 5 and the run swaps to each in turn, then shows them side by side. (Each swap takes ~1 min.)')}
+
+    <div class="flabel">Thinking</div>
+    <div class="frow"><span id="thinking-pill" class="facet on" onclick="toggleThinking()">ON</span></div>
+    ${_help('Whether the model may reason step-by-step before answering. OFF is faster; ON can be more accurate.')}
+
+    <button id="testing-run" class="primary" style="width:100%;margin-top:10px;">${isCmp?'▶ Compare':'▶ Run'}</button>
+    <button id="testing-screenshot" style="width:100%;margin-top:4px;font-size:10px;" onclick="takeScreenshot()">📸 Screenshot the Godot view</button>
+    <div id="screenshot-host" style="display:none;margin-top:6px;max-height:40vh;overflow:auto;"></div>
+    <div id="testing-plan" style="margin-top:9px;font-size:10px;line-height:1.4;padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);"></div>`;
+
+  // Only real facets carry a data-group; the Thinking pill keeps its own onclick.
+  $('testing-rail').querySelectorAll('.facet[data-group]').forEach(el=> el.onclick=()=>{
+    const g=el.dataset.group, v=el.dataset.val;
+    TESTING[g]=v;
+    if(g==='suite' && !SUITES[v].targets.includes(TESTING.target)) TESTING.target='current';
+    renderRail();
+  });
+  const sel=$('facet-gset'); if(sel) sel.onchange=()=>{ TESTING.gset=sel.value; renderRail(); };
+  const rep=$('facet-repeat'); if(rep) rep.oninput=()=>{ TESTING.repeat=Math.max(1,Math.min(20,parseInt(rep.value)||1)); };
+  $('testing-rail').querySelectorAll('.facet[data-model]').forEach(el=> el.onclick=()=>{
+    const al=el.dataset.model; const i=TESTING.models.findIndex(x=>x.alias===al);
+    if(i>=0){ TESTING.models.splice(i,1); }
+    else { if(TESTING.models.length>=5){ toast('up to 5 models','err'); return; } const m=_models.find(x=>x.alias===al); if(m) TESTING.models.push(m); }
+    renderRail();
+  });
+  $('testing-run').onclick=runTesting;
+  updatePlan();
+}
+function updatePlan(){
+  const a=SUITES[TESTING.suite];
+  const info=SUITE_INFO[TESTING.suite]||{label:TESTING.suite};
+  if(TESTING.target==='compare' && !a.targets.includes('compare')){
+    $('testing-plan').innerHTML = `⚠ The <b>${info.label}</b> test can’t compare two models — switch to “This model”.`;
+    return;
+  }
+  const setBit = a.needsSet ? ` · set “${safe(((_gsets.find(s=>s.id===TESTING.gset)||{}).title)||TESTING.gset)}”` : '';
+  const tgt = TESTING.target==='compare' ? 'comparing two models' : 'the current model';
+  $('testing-plan').innerHTML = `▶ Will run the <b>${info.label}</b> test${setBit} on ${tgt} — ${DEPTH_LABEL[TESTING.depth].toLowerCase()} run.`;
+}
+
+// ── Run flow: POST → stream → fetch result → render ───────────────
+async function streamTesting(jobId, onLine){
+  const r = await fetch(`/api/stream/${jobId}`);
+  const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='';
+  while(true){
+    const {done,value}=await reader.read(); if(done) break;
+    buf+=dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop()||'';
+    for(const l of lines){
+      if(l.startsWith('data: ')){ const t=l.slice(6); if(t.trim()) onLine(t); }
+      else if(l.startsWith('event: done')) return;
+    }
+  }
+}
+// Multi-model: swap to each selected model in turn (reusing the transactional
+// /api/swap), run the chosen suite, and show every model's scorecard together.
+async function runTestingMulti(){
+  if(TESTING.running) return;
+  const suite=TESTING.suite, a=SUITES[suite];
+  if(a.needsSet && !TESTING.gset){ toast('pick a test set','err'); return; }
+  const models=TESTING.models.slice(0,5);
+  TESTING.running=true; TESTING.t0=Date.now();
+  buttonBusy('testing-run',true); startStatusStrip();
+  const extra=$('testing-extra'); if(extra) extra.innerHTML='';
+  const cards=[];
+  try{
+    for(let i=0;i<models.length;i++){
+      const m=models[i];
+      setPhase(`(${i+1}/${models.length}) swapping to ${m.alias}…`);
+      try{
+        const sr=await api('/api/swap',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:m.file})});
+        const sj=await sr.json().catch(()=>({}));
+        if(sr.status===409) throw new Error('another job is running');
+        if(!sr.ok || !sj.job){ toast(`swap to ${m.alias} failed`,'err'); continue; }
+        await streamTesting(sj.job, setPhase);
+      }catch(e){ toast(`swap ${m.alias}: ${e.message}`,'err'); continue; }
+      setPhase(`(${i+1}/${models.length}) ${m.alias}: running ${SUITE_INFO[suite].label}…`);
+      try{
+        const plan=await a.run(TESTING.depth);
+        const r=await api(plan.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(plan.body)});
+        const data=await r.json().catch(()=>({}));
+        if(r.status===409) throw new Error('another job is running');
+        if(!r.ok || !data.job) throw new Error(data.detail||'no job started');
+        await streamTesting(data.job, setPhase);
+        const card=await a.result();
+        if(card){ card.label=m.alias; cards.push(card); }
+      }catch(e){ toast(`${m.alias}: ${e.message}`,'err'); }
+    }
+    $('status-strip').style.display='none';
+    $('scorecard-host').innerHTML = renderMatrix(cards) + (cards.length ? cards.map(renderScorecard).join('') : '<div class="dim">No results.</div>');
+    pushHistory(cards);
+    buttonFlash('testing-run','ok');
+  }catch(e){ statusFailed(e.message); buttonFlash('testing-run','err'); }
+  finally{ TESTING.running=false; buttonBusy('testing-run',false); stopStatusStrip(); }
+}
+async function runTesting(){
+  if(TESTING.running) return;
+  if(TESTING.models.length>=1){ return runTestingMulti(); }
+  const suite=TESTING.suite, target=TESTING.target, a=SUITES[suite];
+  if(target==='compare' && !a.targets.includes('compare')){ toast(`${suite} has no compare mode`,'err'); return; }
+  if(a.needsSet && !TESTING.gset){ toast('pick a gauntlet set','err'); return; }
+  let plan;
+  let isCmpGet = false;
+  try { plan = target==='compare' ? await compareRun() : await a.run(TESTING.depth); }
+  catch(e){ toast('run setup failed: '+e.message,'err'); return; }
+  isCmpGet = target==='compare';
+  TESTING.running=true; TESTING.t0=Date.now();
+  buttonBusy('testing-run', true); startStatusStrip();
+  // Clear any stale comparison table from a previous run
+  const extra = $('testing-extra'); if(extra) extra.innerHTML = '';
+  try{
+    let r, data;
+    if(isCmpGet){
+      // Compare is a GET — fetch directly, no streaming
+      r = await api(plan.url);
+      data = await r.json().catch(()=>({}));
+      stopStatusStrip();
+    } else {
+      r = await api(plan.url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(plan.body)});
+      data = await r.json().catch(()=>({}));
+      if(r.status===409){ throw new Error('another job is still running'); }
+      if(!r.ok || !data.job){ throw new Error(data.detail || 'no job started'); }
+      await streamTesting(data.job, setPhase);
+    }
+    let cards;
+    if(isCmpGet){
+      // Build scorecards from the compare response
+      cards = [
+        {suite:'compare', target:'compare', label:data.model_a||'A',
+         score:data.summary_a?Math.round((data.summary_a.pass_rate||0)*100):0,
+         verdict:data.summary_a?scoreToVerdict(Math.round((data.summary_a.pass_rate||0)*100)):'fail',
+         metrics:[{label:'pass',value:`${data.summary_a?.pass||0}/${data.summary_a?.total||0}`,good:(data.summary_a?.fail||0)+(data.summary_a?.error||0)===0}]},
+        {suite:'compare', target:'compare', label:data.model_b||'B',
+         score:data.summary_b?Math.round((data.summary_b.pass_rate||0)*100):0,
+         verdict:data.summary_b?scoreToVerdict(Math.round((data.summary_b.pass_rate||0)*100)):'fail',
+         metrics:[{label:'pass',value:`${data.summary_b?.pass||0}/${data.summary_b?.total||0}`,good:(data.summary_b?.fail||0)+(data.summary_b?.error||0)===0}]},
+      ];
+      // Render comparison rows underneath
+      if(data.rows){
+        const rows = data.rows.map(row => {
+          const aSt = row.model_a?.status||'no data'; const bSt = row.model_b?.status||'no data';
+          const aCls = aSt==='pass'?'sc-pass':(aSt==='fail'?'sc-fail':'sc-nodata');
+          const bCls = bSt==='pass'?'sc-pass':(bSt==='fail'?'sc-fail':'sc-nodata');
+          return `<tr><td>${safe(row.scenario_id)}</td><td>${safe(row.category)}</td>
+            <td><span class="${aCls}">${aSt}</span> | <span class="${bCls}">${bSt}</span></td>
+            <td>${safe(row.description)}</td></tr>`;
+        }).join('');
+        $('testing-extra').innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;">
+          <thead><tr><th>Scenario</th><th>Cat</th><th>A | B</th><th>Desc</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+    } else {
+      cards = [await a.result()].filter(Boolean);
+    }
+    renderCards(cards);
+    recordEta(suite, target, Math.round((Date.now()-TESTING.t0)/1000));
+    pushHistory(cards);
+    // C3: fetch stability analysis for this suite after each run
+    fetchStability(target==='compare'?'scenarios':suite);
+    buttonFlash('testing-run','ok');
+  }catch(e){ statusFailed(e.message); buttonFlash('testing-run','err'); }
+  finally{ TESTING.running=false; buttonBusy('testing-run', false); stopStatusStrip(); }
+}
+
+// ── Live status strip ─────────────────────────────────────────────
+let _statusTimer=null, _phase='starting…';
+function setPhase(line){ _phase = line.length>90 ? line.slice(0,90)+'…' : line; }
+function startStatusStrip(){
+  _phase='starting…';
+  const strip=$('status-strip'); strip.style.display='block';
+  const eta = etaFor(TESTING.suite, TESTING.target);
+  _statusTimer=setInterval(()=>{
+    const sec=Math.floor((Date.now()-TESTING.t0)/1000);
+    const mm=`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
+    const left = eta ? ` · ~${Math.max(0,Math.round(eta-sec))}s left · based on history` : '';
+    const bar = eta ? `width:${Math.min(100,100*sec/eta)}%;background:var(--warn-amber);`
+                    : `width:40%;background:var(--dim);animation:pulse 1s infinite;`;
+    strip.innerHTML = `<div style="display:flex;gap:8px;align-items:center;">
+        <span style="color:var(--warn-amber)">● running</span>
+        <span class="dim" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_phase}</span>
+        <span class="dim" style="white-space:nowrap;">${mm}${left}</span></div>
+      <div style="height:5px;background:#16241a;border-radius:3px;margin-top:6px;overflow:hidden;"><div style="height:5px;${bar}border-radius:3px;"></div></div>`;
+  },250);
+}
+function stopStatusStrip(){ clearInterval(_statusTimer); }
+function statusFailed(msg){ clearInterval(_statusTimer); const s=$('status-strip'); s.style.display='block';
+  s.innerHTML=`<span style="color:var(--err)">● failed</span> · <span class="dim">${safe(msg)}</span>`; }
+
+// ── Scorecard + history (unified renderer for ALL suites) ─────────
+function renderScorecard(card){
+  const c=VERDICT_COLOR[card.verdict]||'var(--fg)';
+  const metrics=(card.metrics||[]).map(m=>`<span>${m.label} <b style="color:${m.good?'var(--ok)':'var(--warn-amber)'}">${m.value}</b></span>`).join('');
+  // Workstream A5: surface stage_latencies + per-op errors when available
+  let diag='';
+  const lat = card.stage_latencies;
+  const errs = card.execution_errors || card.per_op_errors;
+  const diagInfo = [];
+  if(card.truncated) diagInfo.push(`<span style="color:var(--err);">⚠ truncated</span>`);
+  if(card.plan_retries) diagInfo.push(`retries: ${card.plan_retries}`);
+  if(card.repair_count) diagInfo.push(`repaired: ${card.repair_count}`);
+  if(lat && Object.keys(lat).length){
+    const stages = [];
+    for(const [k,v] of Object.entries(lat)){
+      const ms = typeof v === 'number' ? Math.round(v) : v;
+      const label = k.replace(/_/g,' ');
+      stages.push(`${label}: ${ms}ms`);
+    }
+    diagInfo.push(stages.join(' · '));
+  }
+  if(diagInfo.length){
+    diag = `<details style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;font-size:10px;"><summary style="color:var(--dim);cursor:pointer;">🔬 Pipeline diagnostics</summary><div style="margin-top:4px;color:var(--dim);">${diagInfo.join(' | ')}</div></details>`;
+  }
+  if(errs && errs.length){
+    diag += `<details style="margin-top:4px;font-size:10px;"><summary style="color:var(--err);cursor:pointer;">⚠ ${errs.length} execution error(s)</summary><div style="margin-top:4px;max-height:20vh;overflow-y:auto;">${errs.map(e=>`<div style="color:var(--err);padding:2px 0;">${safe(typeof e==='string'?e:JSON.stringify(e))}</div>`).join('')}</div></details>`;
+  }
+  return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--panebg);margin-bottom:8px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:28px;font-weight:700;color:${c}">${card.score}</span>
+      <span style="background:#3a3216;color:${c};padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;">${String(card.verdict).toUpperCase()}</span>
+      <span class="dim" style="margin-left:auto;font-size:11px;">${card.suite} · ${safe(card.label)}</span>
+    </div>
+    ${metrics?`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;font-size:11px;">${metrics}</div>`:''}
+    ${diag}
+  </div>`;
+}
+// Compact model × score matrix for the multi-model run. Per-prompt rows when
+// every card carries per_prompt (gauntlet); else one row per metric. ★ = best.
+function renderMatrix(cards){
+  if(!cards || cards.length<2) return '';   // needs ≥2 models to compare
+  const models = cards.map(c=>c.label);
+  const colorFor = v => (typeof v!=='number')?'var(--fg)':(v>=90?'var(--ok)':v>=60?'var(--warn-amber)':'var(--err)');
+  const rows=[];
+  const havePer = cards.every(c=>c.per_prompt && Object.keys(c.per_prompt).length);
+  if(havePer){
+    const ids=[...new Set(cards.flatMap(c=>Object.keys(c.per_prompt)))].sort();
+    ids.forEach(id=> rows.push({label:id, values:cards.map(c=>c.per_prompt[id]), pct:true}));
+    rows.push({label:'▸ Average', values:cards.map(c=>c.score), pct:true, bold:true});
+  } else {
+    rows.push({label:'Score', values:cards.map(c=>c.score), pct:true, bold:true});
+    (cards[0].metrics||[]).forEach(m0=>{
+      rows.push({label:m0.label, values:cards.map(c=>{const m=(c.metrics||[]).find(x=>x.label===m0.label); return m?m.value:'—';})});
+    });
+  }
+  const fmt=(v,pct)=> (typeof v==='number') ? (pct?Math.round(v):v) : safe(String(v));
+  const head = `<tr><th style="text-align:left;padding:3px 8px;"></th>${models.map(m=>`<th style="padding:3px 8px;font-size:10px;color:var(--dim);white-space:nowrap;">${safe(m)}</th>`).join('')}</tr>`;
+  const body = rows.map(r=>{
+    const nums=r.values.filter(v=>typeof v==='number');
+    const max=(r.pct && nums.length>1)?Math.max(...nums):null;
+    return `<tr style="border-top:1px solid #0f1f0f;${r.bold?'font-weight:700;':''}">
+      <td style="text-align:left;padding:3px 8px;color:var(--dim);font-size:10px;white-space:nowrap;">${safe(r.label)}</td>
+      ${r.values.map(v=>{const best=(max!==null && v===max);
+        return `<td style="text-align:center;padding:3px 8px;color:${r.pct?colorFor(v):'var(--fg)'};${best?'font-weight:700;':''}">${fmt(v,r.pct)}${best?' ★':''}</td>`;}).join('')}
+    </tr>`;
+  }).join('');
+  return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--panebg);overflow-x:auto;">
+    <div class="flabel" style="margin:0 0 6px;">Model × score</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">${head}${body}</table>
+    <div class="dim" style="font-size:9px;margin-top:5px;">★ best per row · <span style="color:var(--ok);">●</span> ≥90 · <span style="color:var(--warn-amber);">●</span> 60–89 · <span style="color:var(--err);">●</span> &lt;90</div></div>`;
+}
+function renderCards(cards){
+  $('status-strip').style.display='none';
+  $('scorecard-host').innerHTML = (cards&&cards.length) ? cards.map(renderScorecard).join('') : '<div class="dim">No result returned.</div>';
+}
+const _thist=[];
+function pushHistory(cards){
+  // Newest-first: API returns newest-first; push preserves that order.
+  (cards||[]).forEach(c => {
+    // Dedupe only when ts is present (server-sourced runs).
+    // In-session results from runTesting() have no ts yet — always admit them.
+    const dup = c.ts && _thist.some(h => h.ts && h.label === c.label && h.score === c.score && h.ts === c.ts);
+    if (!dup) _thist.push(c);
+  });
+  // Keep at most 40 entries
+  if (_thist.length > 40) _thist.length = 40;
+
+  const KIND_ICON = {bench:'⚕',probe:'🔬',scenarios:'🎯',gauntlet:'🏋',compare:'⚖',shootout:'⚔'};
+  const KIND_LABEL = {bench:'health',probe:'probe',scenarios:'scenarios',gauntlet:'gauntlet',compare:'compare',shootout:'shootout'};
+
+  $('testing-history').innerHTML = `<div class="flabel">History — all runs</div>` +
+    _thist.slice(0,20).map(c => {
+      const icon = KIND_ICON[c.suite] || '?';
+      const klabel = KIND_LABEL[c.suite] || c.suite;
+      const tsShort = c.ts ? c.ts.slice(5,16) : '';
+      const vc = VERDICT_COLOR[c.verdict] || 'var(--dim)';
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 6px;border-radius:3px;border-bottom:1px solid #0f1f0f;">
+        <span style="color:var(--dim);font-size:10px;width:96px;text-align:right;flex:none;">${tsShort}</span>
+        <span title="${klabel}" style="flex:none;width:22px;text-align:center;">${icon}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safe(c.label)}</span>
+        <b style="color:${vc};flex:none;width:34px;text-align:right;">${c.score}</b>
+        <span style="color:${vc};flex:none;font-size:10px;width:60px;text-align:right;">${String(c.verdict).toUpperCase()}</span>
+      </div>`;
+    }).join('') || '<div class="dim" style="padding:6px;">No runs yet — run a suite to populate.</div>';
+}
+
+// ── A6: editor screenshot (visual ground truth) ──
+async function takeScreenshot(){
+  const host = $('screenshot-host');
+  if(!host) return;
+  host.style.display = 'block';
+  host.innerHTML = '<span class="dim">Capturing screenshot...</span>';
+  try {
+    const r = await api('/api/screenshot?source=editor');
+    const d = await r.json();
+    if(d.error){ host.innerHTML = '<span style="color:var(--err);">'+d.error+'</span>'; return; }
+    host.innerHTML = '<img src="'+d.data_uri+'" style="max-width:100%;border:1px solid var(--border);border-radius:4px;" alt="Godot editor screenshot">';
+    toast('Screenshot captured', 'ok');
+  } catch(e){ host.innerHTML = '<span style="color:var(--err);">'+e.message+'</span>'; }
+}
+
+// ── ETA history (localStorage, per suite+target) ─────────────────
+function etaKey(s,t){ return `forge_eta_${s}_${t}`; }
+function recordEta(s,t,sec){ try{ const a=JSON.parse(localStorage.getItem(etaKey(s,t))||'[]'); a.push(sec); localStorage.setItem(etaKey(s,t), JSON.stringify(a.slice(-10))); }catch(e){} }
+function etaFor(s,t){ try{ const a=JSON.parse(localStorage.getItem(etaKey(s,t))||'[]'); if(a.length<2) return null; const w=a.slice(-5).sort((x,y)=>x-y); return w[Math.floor(w.length/2)]; }catch(e){ return null; } }
+
+// ── Init ──────────────────────────────────────────────────────────
+
+// -- N1: Thinking toggle for A/B test --
+async function toggleThinking(){
+  const pill = $('thinking-pill');
+  if(!pill) return;
+  try {
+    const r = await api('/api/thinking/toggle', {method:'POST'});
+    const d = await r.json();
+    pill.textContent = d.thinking_enabled ? 'ON' : 'OFF';
+    pill.className = 'facet ' + (d.thinking_enabled ? 'on' : '');
+    toast(d.thinking_enabled ? 'Thinking ON (default)' : 'Thinking OFF — restart llama', 'ok');
+    if(d.needs_restart) toast('Restart llama for the change to take effect', 'err');
+  } catch(e) { toast('toggle failed: '+e.message, 'err'); }
+}
+async function initTesting(){
+  if(!_testingInit){
+    _testingInit=true;
+    $('testing-results').innerHTML = `
+      <div id="testing-legend" class="dim" style="font-size:10px;margin-bottom:9px;line-height:1.55;border:1px solid var(--border);border-radius:5px;padding:6px 8px;background:var(--bg);">
+        <b>Reading the scorecard:</b> the big number is the score (0–100).
+        <span style="color:var(--ok);">●</span>&nbsp;pass ≥90 ·
+        <span style="color:var(--warn-amber);">●</span>&nbsp;partial 60–89 ·
+        <span style="color:var(--err);">●</span>&nbsp;fail &lt;90.
+        <span title="The percent of a prompt's required checks the build satisfied.">“coverage”</span>
+        = % of the build's required checks that passed.</div>
+      <div id="status-strip" style="display:none;border:1px solid var(--border);border-radius:6px;padding:9px;margin-bottom:10px;background:var(--panebg);"></div>
+      <div id="scorecard-host"></div>
+      <div id="stability-panel" style="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:10px;background:var(--panebg);display:none;">
+        <div class="flabel" style="margin:0 0 4px;">Stability · last 10 runs</div>
+      </div>
+      <div id="testing-extra"></div>
+      <div id="testing-history" style="margin-top:10px;"></div>`;
+    try{ const d=await (await api('/api/gauntlet/sets')).json(); _gsets=d.sets||[]; if(_gsets[0]) TESTING.gset=_gsets[0].id; }catch(e){}
+    try{ const md=await (await api('/api/models')).json(); _models=(md.models||[]).map(m=>({alias:m.alias, file:m.file})); }catch(e){}
+    // Load persistent history from all 4 suites (not just in-session)
+    loadPersistentHistory();
+  }
+  renderRail();
+  // N1: fetch initial thinking state on tab open
+  fetchThinkingState();
+}
+// Fetch initial thinking config state
+async function fetchThinkingState(){
+  try {
+    const r = await api('/api/thinking/status');
+    const d = await r.json();
+    const pill = $('thinking-pill');
+    if(pill){
+      pill.textContent = d.thinking_enabled ? 'ON' : 'OFF';
+      pill.className = 'facet ' + (d.thinking_enabled ? 'on' : '');
+    }
+  } catch(e) {}
+}
+
+// ── Unified run history from /api/runs (single fetch, all kinds) ───
+// Score extraction adapts to per-kind count shapes (bench/probe/scenarios/gauntlet).
+function _scoreFromRun(run) {
+  const c = run.counts || {};
+  switch (run.kind) {
+    case 'bench': case 'probe': {
+      const total = (c.pass||0)+(c.fail||0)+(c.error||0)+(c.skip||0);
+      return total ? Math.round(100*(c.pass||0)/total) : 0;
+    }
+    case 'scenarios': return Math.round((c.pass_rate||0)*100);
+    case 'gauntlet':  return Math.round(c.avg_coverage||0);
+    default:          return 0;
+  }
+}
+
+async function loadPersistentHistory() {
+  const cards = [];
+  try {
+    const r = await api('/api/runs?limit=20');
+    const d = await r.json();
+    (d.runs||[]).forEach(run => {
+      const score = _scoreFromRun(run);
+      cards.push({
+        suite: run.kind, target: 'current',
+        label: safe(run.model||run.file,'?'), score,
+        verdict: scoreToVerdict(score), metrics: [],
+        ts: run.ts
+      });
+    });
+  } catch(e) {}
+  if(cards.length) pushHistory(cards);
+}
+
+// -- C3: Stability analysis (uses /api/runs/stability -- variance, trend, failure signature) --
+async function fetchStability(kind){
+  const panel = $('stability-panel');
+  if(!panel) return;
+  try {
+    const r = await api('/api/runs/stability?kind='+encodeURIComponent(kind)+'&n=10');
+    const d = await r.json();
+    if(d.stability_score == null && d.trend === 'insufficient data'){
+      panel.style.display = 'none';
+      return;
+    }
+    const trendIcon = {improving:'\ud83d\udcc8', degrading:'\ud83d\udcc9', stable:'\u27a1\ufe0f'};
+    const trendLabel = d.trend ? (trendIcon[d.trend]||'') + ' ' + d.trend : '?';
+    let sig = '';
+    if(d.failure_signature) sig += ' \u00b7 sig <code style="color:var(--blue);">' + d.failure_signature + '</code>';
+    if(d.failure_items && d.failure_items.length) sig += ' \u00b7 failures: ' + d.failure_items.join(' ');
+    const spark = (d.scores||[]).map(function(s){
+      var sc = s.verdict==='pass' ? 'var(--ok)' : (s.verdict==='partial' ? 'var(--warn-amber)' : 'var(--err)');
+      return '<span title="'+(s.ts||'')+' \u2014 '+s.score+'" style="display:inline-block;width:14px;height:24px;margin-right:3px;background:'+sc+';border-radius:2px;vertical-align:middle;"></span>';
+    }).join('');
+    panel.style.display = '';
+    panel.innerHTML = '<div class="flabel" style="margin:0 0 4px;">Stability \u00b7 last '+(d.runs_analyzed||'?')+' '+kind+' runs</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+        '<b style="color:'+(d.stability_score>=90?'var(--ok)':d.stability_score>=60?'var(--warn-amber)':'var(--err)')+'">'+(d.stability_score||'?')+'</b>' +
+        '<span class="dim">\u03c3 '+(d.variance||'?')+'</span>' +
+        '<span>'+trendLabel+'</span>'+sig+
+      '</div>' +
+      (spark?'<div style="margin-top:4px;">'+spark+'</div>':'') +
+      '<div style="font-size:9px;color:var(--dim);">' +
+        (d.truncation_rate!=null?('Truncation: '+d.truncation_rate+'% · '):'') +
+        (d.hint||'')+'</div>';
+  } catch(e) { panel.style.display = 'none'; }
+}
+</script>
+</body>
+</html>

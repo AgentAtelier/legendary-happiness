@@ -1,0 +1,48 @@
+{
+  "id": "spatial-v1",
+  "title": "Spatial Layout — Greybox Slice",
+  "planner": "layout",
+  "description": "Room generation: pattern selection, slot→asset assignment, non-clipping placement from greybox primitives. LLM emits semantic intent only; deterministic engine resolves transforms.",
+  "prompts": [
+    {
+      "id": "S1_kitchen",
+      "axis": "spatial:kitchen",
+      "prompt": "Build a medium kitchen with a stove, a fridge, and a counter along the north wall. Put a table in the center.",
+      "expect": {
+        "min_nodes": 5,
+        "min_spatial_assets": 3,
+        "no_overlap": true
+      }
+    },
+    {
+      "id": "S2_L_kitchen",
+      "axis": "spatial:L-shape",
+      "prompt": "Build an L-shaped kitchen. Put a stove and counter in the main cooking wing, and a table with two chairs in the dining wing.",
+      "expect": {
+        "min_nodes": 5,
+        "min_spatial_assets": 5,
+        "no_overlap": true
+      }
+    },
+    {
+      "id": "S3_corridor",
+      "axis": "spatial:corridor",
+      "prompt": "Build a long corridor, 10 metres. Place shelves along both walls.",
+      "expect": {
+        "min_nodes": 3,
+        "min_spatial_assets": 2,
+        "no_overlap": true
+      }
+    },
+    {
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override.",
+      "expect": {
+        "min_nodes": 4,
+        "min_spatial_assets": 2,
+        "no_overlap": true
+      }
+    }
+  ]
+}

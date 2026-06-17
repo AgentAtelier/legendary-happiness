@@ -1,0 +1,32 @@
+
+── G7_integration ──
+[gauntlet] set=capability-v1 model=qwen3-14b-q6-k prompts=1 runs=1
+[gauntlet:prompt] 1/1 G7_integration ×1
+▶ G7_integration — integration ceiling (everything at once)
+ERROR: name '_measure' is not defined
+
+── G5_scripts_signals ──
+[gauntlet] set=capability-v1 model=qwen3-14b-q6-k prompts=1 runs=1
+[gauntlet:prompt] 1/1 G5_scripts_signals ×1
+▶ G5_scripts_signals — scripts + signal wiring
+ERROR: name '_measure' is not defined
+
+── G8_adversarial ──
+[gauntlet] set=capability-v1 model=qwen3-14b-q6-k prompts=1 runs=1
+[gauntlet:prompt] 1/1 G8_adversarial ×1
+▶ G8_adversarial — validation / graceful failure
+ERROR: name '_measure' is not defined
+
+── B1_small_house ──
+[gauntlet] set=building-v1 model=qwen3-14b-q6-k prompts=1 runs=1
+[gauntlet:prompt] 1/1 B1_small_house ×1
+▶ B1_small_house — building:3-rooms
+    …B1_small_house R1 planning+executing (5s)
+ERROR: name '_measure' is not defined
+
+── S4_adjacency ──
+[gauntlet] set=spatial-v1 model=qwen3-14b-q6-k prompts=1 runs=1
+[gauntlet:prompt] 1/1 S4_adjacency ×1
+▶ S4_adjacency — spatial:ARCS
+    …S4_adjacency R1 planning+executing (5s)
+ERROR: name '_measure' is not defined

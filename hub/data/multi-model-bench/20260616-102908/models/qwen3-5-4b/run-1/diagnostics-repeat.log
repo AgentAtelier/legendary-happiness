@@ -1,0 +1,21 @@
+═══ Test 1: Repeat-Diversity ═══
+Prompt: 'build a kitchen' ×10 (skip_cache=True, planner=room)
+
+  run 1/10... 3 nodes, 13s
+  run 2/10... 4 nodes, 3s
+  run 3/10... 3 nodes, 3s
+  run 4/10... 4 nodes, 3s
+  run 5/10... 4 nodes, 3s
+  run 6/10... 4 nodes, 3s
+  run 7/10... 4 nodes, 3s
+  run 8/10... 4 nodes, 3s
+  run 9/10... 4 nodes, 3s
+  run 10/10... 4 nodes, 3s
+
+─── Results ───
+  Jaccard distance:     0.667  (0=identical, 1=all different)
+  Asset similarity:     0.776  (1=identical, 0=all different)
+  Distinct outputs:     3/10
+  Hypothesis:           ~0.0 jaccard, ~1 distinct (engine bottleneck)
+
+→ saved /home/mrg/dev/games/Forge/hub/data/diagnostics/diag-repeat-20260616-103024.json

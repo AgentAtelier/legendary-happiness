@@ -1,0 +1,41 @@
+# ssp_planner.gbnf
+# GBNF grammar for SSP (Semantic Spatial Primitives) room JSON output.
+# Constrains the LLM to pick a room archetype + optional slot/dimension overrides.
+#
+# Schema: {archetype, dimensions?, slot_overrides?, arcs_overrides?, pattern?}
+
+root ::= "{" ws "\"archetype\"" ws ":" ws string ws ("," ws room-extra)* ws "}"
+
+room-extra ::= dimensions-kv | slot-overrides-kv | arcs-overrides-kv | pattern-kv
+
+dimensions-kv ::= "\"dimensions\"" ws ":" ws dimensions-object
+slot-overrides-kv ::= "\"slot_overrides\"" ws ":" ws slot-overrides-object
+arcs-overrides-kv ::= "\"arcs_overrides\"" ws ":" ws arcs-overrides-array
+pattern-kv ::= "\"pattern\"" ws ":" ws string
+
+dimensions-object ::= "{" ws "\"width\"" ws ":" ws number ws "," ws "\"height\"" ws ":" ws number ws "," ws "\"depth\"" ws ":" ws number ws "}"
+
+slot-overrides-object ::= "{" ws "}" | "{" ws slot-fill-pair (ws "," ws slot-fill-pair)* ws "}"
+slot-fill-pair ::= string ws ":" ws string
+
+arcs-overrides-array ::= "[" ws "]" | "[" ws arcs-object (ws "," ws arcs-object)* ws "]"
+arcs-object ::= "{" ws "\"asset\"" ws ":" ws string ws "," ws "\"anchor\"" ws ":" ws anchor-spec ws "," ws "\"offset\"" ws ":" ws offset-array ws "}"
+
+anchor-spec ::= string | chain-object
+chain-object ::= "{" ws "\"chain\"" ws ":" ws chain-array ws "}"
+chain-array ::= "[" ws string (ws "," ws string)? (ws "," ws number)? ws "]"
+
+offset-array ::= "[" ws number ws "," ws number ws "," ws number ws "]"
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

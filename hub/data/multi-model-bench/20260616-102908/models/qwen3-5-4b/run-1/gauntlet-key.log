@@ -1,0 +1,60 @@
+
+── G7_integration ──
+[gauntlet] set=capability-v1 model=qwen3-5-4b prompts=1 runs=1
+[gauntlet:prompt] 1/1 G7_integration ×1
+▶ G7_integration — integration ceiling (everything at once)
+    …G7_integration R1 planning+executing (5s)
+    …G7_integration R1 planning+executing (10s)
+    …G7_integration R1 planning+executing (15s)
+    …G7_integration R1 planning+executing (20s)
+    …G7_integration R1 planning+executing (25s)
+    …G7_integration R1 planning+executing (30s)
+    …G7_integration R1 planning+executing (35s)
+    …G7_integration R1 planning+executing (40s)
+    …G7_integration R1 planning+executing (45s)
+    …G7_integration R1 planning+executing (50s)
+    …G7_integration R1 planning+executing (55s)
+    …G7_integration R1 planning+executing (60s)
+    …G7_integration R1 planning+executing (65s)
+ERROR: name '_measure' is not defined
+
+── G5_scripts_signals ──
+[gauntlet] set=capability-v1 model=qwen3-5-4b prompts=1 runs=1
+[gauntlet:prompt] 1/1 G5_scripts_signals ×1
+▶ G5_scripts_signals — scripts + signal wiring
+    …G5_scripts_signals R1 planning+executing (5s)
+    …G5_scripts_signals R1 planning+executing (10s)
+    …G5_scripts_signals R1 planning+executing (15s)
+    …G5_scripts_signals R1 planning+executing (20s)
+ERROR: name '_measure' is not defined
+
+── G8_adversarial ──
+[gauntlet] set=capability-v1 model=qwen3-5-4b prompts=1 runs=1
+[gauntlet:prompt] 1/1 G8_adversarial ×1
+▶ G8_adversarial — validation / graceful failure
+    …G8_adversarial R1 planning+executing (5s)
+    …G8_adversarial R1 planning+executing (10s)
+    …G8_adversarial R1 planning+executing (15s)
+    …G8_adversarial R1 planning+executing (20s)
+    …G8_adversarial R1 planning+executing (25s)
+    …G8_adversarial R1 planning+executing (30s)
+ERROR: name '_measure' is not defined
+
+── B1_small_house ──
+[gauntlet] set=building-v1 model=qwen3-5-4b prompts=1 runs=1
+[gauntlet:prompt] 1/1 B1_small_house ×1
+▶ B1_small_house — building:3-rooms
+    …B1_small_house R1 planning+executing (5s)
+    …B1_small_house R1 planning+executing (10s)
+    …B1_small_house R1 planning+executing (15s)
+    …B1_small_house R1 planning+executing (20s)
+ERROR: name '_measure' is not defined
+
+── S4_adjacency ──
+[gauntlet] set=spatial-v1 model=qwen3-5-4b prompts=1 runs=1
+[gauntlet:prompt] 1/1 S4_adjacency ×1
+▶ S4_adjacency — spatial:ARCS
+    …S4_adjacency R1 planning+executing (5s)
+    …S4_adjacency R1 planning+executing (10s)
+    …S4_adjacency R1 planning+executing (15s)
+ERROR: name '_measure' is not defined

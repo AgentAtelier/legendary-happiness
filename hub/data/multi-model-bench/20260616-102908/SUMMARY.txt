@@ -1,0 +1,23 @@
+╔══════════════════════════════════════════════════════════╗
+║     Multi-Model Benchmark — Complete                     ║
+╚══════════════════════════════════════════════════════════╝
+  Total time:   37m 9s
+  Models:       qwen3-5-4b, qwen3-5-9b, qwen3-14b, qwen3-6-27b
+  Output:       /home/mrg/dev/games/Forge/hub/data/multi-model-bench/20260616-102908
+
+
+═══ Cross-Model Comparison ═══
+
+                              qwen3-5-4b        qwen3-5-9b         qwen3-14b       qwen3-6-27b
+──────────────────────────────────────────────────────────────────────────────────────────────
+  diagnostics:repeat      0.4%             0.7%★            0.4%             0.1%         
+  diagnostics:intent                   —                 —                 —                 —
+  diagnostics:ceiling      3n               3n               3n               3n          
+  probes:all                           —                 —                 —                 —
+  gauntlet:key                         —                 —                 —                 —
+
+  Rankings:
+    1. qwen3-5-9b           avg 0.7%
+    2. qwen3-5-4b           avg 0.4%
+    3. qwen3-14b            avg 0.4%
+    4. qwen3-6-27b          avg 0.1%

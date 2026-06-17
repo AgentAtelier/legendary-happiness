@@ -1,0 +1,180 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 08:30:33",
+  "set": "building-v1",
+  "set_title": "BSP Multi-Room Buildings \u2014 Stage 3 Slice",
+  "model": "qwen3-5-9b-q8-0",
+  "status": "complete",
+  "total": 3,
+  "done": 3,
+  "results": [
+    {
+      "built_nodes": 33,
+      "built_depth": 2,
+      "applied": 123,
+      "operations_total": 123,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 30,
+        "mesh": 30,
+        "color": 30
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 15042,
+      "nodes_sample": [
+        "/Main/Bedroom",
+        "/Main/Bedroom/cabinet_east_storage",
+        "/Main/Bedroom/chair_chair_east",
+        "/Main/Bedroom/chair_chair_north",
+        "/Main/Bedroom/chair_chair_south",
+        "/Main/Bedroom/chair_chair_west",
+        "/Main/Bedroom/shelf_north_counter_center",
+        "/Main/Bedroom/shelf_north_counter_left",
+        "/Main/Bedroom/shelf_north_counter_right",
+        "/Main/Bedroom/table_center_table",
+        "/Main/BuildingFloor",
+        "/Main/Kitchen",
+        "/Main/Kitchen/cabinet_corner_storage",
+        "/Main/Kitchen/chair_chair_inner",
+        "/Main/Kitchen/chair_chair_outer",
+        "/Main/Kitchen/counter_cook_counter",
+        "/Main/Kitchen/stove_cook_appliance_left",
+        "/Main/Kitchen/stove_cook_appliance_right",
+        "/Main/Kitchen/table_center_table",
+        "/Main/Living Room"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "33/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "25/3 placed MeshInstance3Ds"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B1_small_house",
+      "axis": "building:3-rooms",
+      "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+    },
+    {
+      "built_nodes": 11,
+      "built_depth": 2,
+      "applied": 41,
+      "operations_total": 41,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 10,
+        "mesh": 10,
+        "color": 10
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 10741,
+      "nodes_sample": [
+        "/Main/BuildingFloor",
+        "/Main/studio",
+        "/Main/studio/cabinet_east_storage",
+        "/Main/studio/chair_chair_east",
+        "/Main/studio/chair_chair_north",
+        "/Main/studio/chair_chair_south",
+        "/Main/studio/chair_chair_west",
+        "/Main/studio/counter_north_counter_center",
+        "/Main/studio/shelf_north_counter_left",
+        "/Main/studio/shelf_north_counter_right",
+        "/Main/studio/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "11/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "9/1 placed MeshInstance3Ds"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B2_studio",
+      "axis": "building:single-room",
+      "prompt": "Build a tiny studio apartment \u2014 just one room. Put a bed and a small table in it."
+    },
+    {
+      "built_nodes": 45,
+      "built_depth": 2,
+      "applied": 168,
+      "operations_total": 168,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 41,
+        "mesh": 41,
+        "color": 41
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 16003,
+      "nodes_sample": [
+        "/Main/Bedroom 1",
+        "/Main/Bedroom 1/cabinet_east_storage",
+        "/Main/Bedroom 1/chair_chair_east",
+        "/Main/Bedroom 1/chair_chair_north",
+        "/Main/Bedroom 1/chair_chair_south",
+        "/Main/Bedroom 1/chair_chair_west",
+        "/Main/Bedroom 1/counter_north_counter_center",
+        "/Main/Bedroom 1/counter_north_counter_left",
+        "/Main/Bedroom 1/counter_north_counter_right",
+        "/Main/Bedroom 1/table_center_table",
+        "/Main/Bedroom 2",
+        "/Main/Bedroom 2/cabinet_east_storage",
+        "/Main/Bedroom 2/chair_chair_east",
+        "/Main/Bedroom 2/chair_chair_north",
+        "/Main/Bedroom 2/chair_chair_south",
+        "/Main/Bedroom 2/chair_chair_west",
+        "/Main/Bedroom 2/counter_north_counter_center",
+        "/Main/Bedroom 2/counter_north_counter_left",
+        "/Main/Bedroom 2/counter_north_counter_right",
+        "/Main/Bedroom 2/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "45/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "34/4 placed MeshInstance3Ds"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B3_two_bedroom",
+      "axis": "building:4-rooms",
+      "prompt": "Build a house with a living room, a kitchen, and two bedrooms. Put a table in the living room, a stove and a counter in the kitchen, a bed in each bedroom."
+    }
+  ],
+  "summary": {
+    "full": 3,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

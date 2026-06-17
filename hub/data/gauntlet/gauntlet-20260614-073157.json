@@ -1,0 +1,466 @@
+{
+  "ts": "2026-06-14 07:36:40",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 8,
+  "done": 8,
+  "results": [
+    {
+      "built_nodes": 8,
+      "built_depth": 8,
+      "applied": 10,
+      "operations_total": 10,
+      "error_count": 0,
+      "errors": [],
+      "props": {},
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 34377,
+      "nodes_sample": [
+        "/Main/LvlA",
+        "/Main/LvlA/LvlB",
+        "/Main/LvlA/LvlB/LvlC",
+        "/Main/LvlA/LvlB/LvlC/LvlD",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF/LvlG",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF/LvlG/LvlH"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "8/8"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "8/8"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G1_depth",
+      "axis": "nesting depth",
+      "prompt": "Under /Main create a chain of nested Node3D nodes: LvlA as a child of /Main, LvlB under LvlA, LvlC under LvlB, LvlD under LvlC, LvlE under LvlD, LvlF under LvlE, LvlG under LvlF, and LvlH under LvlG."
+    },
+    {
+      "built_nodes": 25,
+      "built_depth": 2,
+      "applied": 73,
+      "operations_total": 73,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "mesh": 24,
+        "position": 24
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 42646,
+      "nodes_sample": [
+        "/Main/Grid",
+        "/Main/Grid/Cell1",
+        "/Main/Grid/Cell10",
+        "/Main/Grid/Cell11",
+        "/Main/Grid/Cell12",
+        "/Main/Grid/Cell13",
+        "/Main/Grid/Cell14",
+        "/Main/Grid/Cell15",
+        "/Main/Grid/Cell16",
+        "/Main/Grid/Cell17",
+        "/Main/Grid/Cell18",
+        "/Main/Grid/Cell19",
+        "/Main/Grid/Cell2",
+        "/Main/Grid/Cell20",
+        "/Main/Grid/Cell21",
+        "/Main/Grid/Cell22",
+        "/Main/Grid/Cell23",
+        "/Main/Grid/Cell24",
+        "/Main/Grid/Cell3",
+        "/Main/Grid/Cell4"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "25/25"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "24/20"
+        },
+        {
+          "label": "prop:position",
+          "ok": true,
+          "detail": "24/20"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G2_breadth",
+      "axis": "breadth + position math",
+      "prompt": "Under /Main create a Node3D named Grid. Under Grid create 24 MeshInstance3D nodes named Cell1 through Cell24, each with a box mesh, arranged in a 6x4 layout spaced 2 units apart on the X and Z axes."
+    },
+    {
+      "built_nodes": 5,
+      "built_depth": 1,
+      "applied": 20,
+      "operations_total": 20,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "mesh": 5,
+        "color": 5,
+        "position": 5
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 24433,
+      "nodes_sample": [
+        "/Main/BoxNode",
+        "/Main/CapsuleNode",
+        "/Main/CylinderNode",
+        "/Main/PlaneNode",
+        "/Main/SphereNode"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:position",
+          "ok": true,
+          "detail": "5/5"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G3_props",
+      "axis": "prop saturation (every mesh + color + position)",
+      "prompt": "Under /Main create five MeshInstance3D nodes: BoxNode (box mesh, red, position -4 0 0), SphereNode (sphere mesh, green, position -2 0 0), CapsuleNode (capsule mesh, blue, position 0 0 0), CylinderNode (cylinder mesh, yellow, position 2 0 0), and PlaneNode (plane mesh, white, position 4 0 0)."
+    },
+    {
+      "built_nodes": 10,
+      "built_depth": 3,
+      "applied": 23,
+      "operations_total": 23,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 22536,
+      "nodes_sample": [
+        "/Main/Pickups",
+        "/Main/Pickups/P1",
+        "/Main/Pickups/P1/P1Mesh",
+        "/Main/Pickups/P1/P1Shape",
+        "/Main/Pickups/P2",
+        "/Main/Pickups/P2/P2Mesh",
+        "/Main/Pickups/P2/P2Shape",
+        "/Main/Pickups/P3",
+        "/Main/Pickups/P3/P3Mesh",
+        "/Main/Pickups/P3/P3Shape"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "10/10"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "3/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G4_children",
+      "axis": "collider/mesh children (the regression case)",
+      "prompt": "Under /Main create a Node3D named Pickups. Under it create three Area3D nodes named P1, P2, P3. Each Area3D must have a CollisionShape3D child with a sphere shape AND a MeshInstance3D child with a sphere mesh, each colored differently."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 8,
+      "operations_total": 14,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "mesh": 1,
+        "color": 1,
+        "shape": 1
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 0,
+      "latency_ms": 24926,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "signals",
+          "ok": false,
+          "detail": "0/1"
+        }
+      ],
+      "coverage": 50,
+      "verdict": "partial",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 3,
+      "operations_total": 15,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "text": 4
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 22238,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/7"
+        },
+        {
+          "label": "depth",
+          "ok": false,
+          "detail": "0/3"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "4/1"
+        },
+        {
+          "label": "type:CanvasLayer",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:VBoxContainer",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:Button",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:Label",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:CharacterBody3D",
+          "ok": false,
+          "detail": "MISSING"
+        }
+      ],
+      "coverage": 12,
+      "verdict": "broke",
+      "id": "G6_mixed",
+      "axis": "mixed 3D + 2D/UI node types",
+      "prompt": "Under /Main create a CharacterBody3D named Player. Also create a CanvasLayer named HUD; under HUD a VBoxContainer named Menu; under Menu three Button nodes named StartBtn, OptionsBtn, QuitBtn, and a Label named Title with text 'Main Menu'."
+    },
+    {
+      "built_nodes": 27,
+      "built_depth": 4,
+      "applied": 47,
+      "operations_total": 47,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 2,
+        "shape": 6,
+        "mesh": 6,
+        "color": 6,
+        "text": 1
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 78727,
+      "nodes_sample": [
+        "/Main/Arena",
+        "/Main/Arena/Coins",
+        "/Main/Arena/Coins/Coin1",
+        "/Main/Arena/Coins/Coin1/Coin1Mesh",
+        "/Main/Arena/Coins/Coin1/Coin1Shape",
+        "/Main/Arena/Coins/Coin2",
+        "/Main/Arena/Coins/Coin2/Coin2Mesh",
+        "/Main/Arena/Coins/Coin2/Coin2Shape",
+        "/Main/Arena/Coins/Coin3",
+        "/Main/Arena/Coins/Coin3/Coin3Mesh",
+        "/Main/Arena/Coins/Coin3/Coin3Shape",
+        "/Main/Arena/Coins/Coin4",
+        "/Main/Arena/Coins/Coin4/Coin4Mesh",
+        "/Main/Arena/Coins/Coin4/Coin4Shape",
+        "/Main/Arena/Coins/Coin5",
+        "/Main/Arena/Coins/Coin5/Coin5Mesh",
+        "/Main/Arena/Coins/Coin5/Coin5Shape",
+        "/Main/Arena/Coins/Coin6",
+        "/Main/Arena/Coins/Coin6/Coin6Mesh",
+        "/Main/Arena/Coins/Coin6/Coin6Shape"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "27/25"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "4/4"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "scripts",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "attached",
+          "ok": false,
+          "detail": "0/2"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": null,
+      "operations_total": null,
+      "error_count": 1,
+      "errors": [
+        "apply_spec crashed: ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)"
+      ],
+      "props": {},
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 29216,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/20"
+        },
+        {
+          "label": "rejected-bad-ops",
+          "ok": true,
+          "detail": "1 errors (expected)"
+        },
+        {
+          "label": "no-crash",
+          "ok": false,
+          "detail": "CRASHED"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "G8_adversarial",
+      "axis": "validation / graceful failure",
+      "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+    }
+  ],
+  "summary": {
+    "full": 4,
+    "partial": 2,
+    "broke": 2,
+    "avg_coverage": 71
+  }
+}

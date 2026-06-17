@@ -1,0 +1,11 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 10:41:56",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-5-9b-q8-0",
+  "status": "running",
+  "total": 1,
+  "done": 0,
+  "results": []
+}

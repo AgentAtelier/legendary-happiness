@@ -1,0 +1,37 @@
+{
+  "ts": "2026-06-13 04:38:23",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "nested tree OK \u2014 root 'Main' with 4 children",
+      "id": "devforge.scene",
+      "ms": 4942,
+      "layer": "devforge",
+      "title": "Scene tree is nested (not flat)"
+    },
+    {
+      "status": "pass",
+      "detail": "created visible node via LLM plan (2 ops), cleaned up",
+      "id": "devforge.apply",
+      "ms": 3394,
+      "layer": "devforge",
+      "title": "Full pipeline write (LLM plan \u2192 editor)"
+    },
+    {
+      "status": "pass",
+      "detail": "grammar constrained the output exactly",
+      "id": "llama.grammar",
+      "ms": 665,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    }
+  ],
+  "counts": {
+    "pass": 3,
+    "fail": 0,
+    "skip": 0,
+    "error": 0
+  }
+}

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+
+<title>DevForge Dashboard</title>
+
+<link rel="stylesheet" href="/static/dashboard.css">
+
+</head>
+
+<body>
+
+<header>
+DEVFORGE
+</header>
+
+<div class="container">
+
+<!-- LEFT COLUMN -->
+<div class="panel">
+
+<h3>Prompt Runs</h3>
+
+<div id="trace_list" class="trace_list"></div>
+
+</div>
+
+
+<!-- RIGHT COLUMN -->
+<div class="panel">
+
+<h3>System Status</h3>
+
+<pre id="status"></pre>
+
+</div>
+
+
+<!-- RUN DETAILS -->
+<div class="panel" style="grid-column: span 2;">
+
+<h3>Selected Run</h3>
+
+<pre id="trace_details">Select a run on the left.</pre>
+
+<button onclick="copyRunLog()">Copy Run Log</button>
+
+</div>
+
+
+<!-- PROMPT CONSOLE -->
+<div class="panel" style="grid-column: span 2;">
+
+<h3>Prompt Console</h3>
+
+<textarea id="prompt_input"></textarea>
+
+<br><br>
+
+<button onclick="sendPrompt()">Generate</button>
+
+</div>
+
+
+</div>
+
+<script src="/static/dashboard.js"></script>
+
+</body>
+</html>

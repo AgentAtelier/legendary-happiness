@@ -1,0 +1,339 @@
+{
+  "ts": "2026-06-14 05:31:29",
+  "model": "qwen3-14b-q6-k",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "33.4 tok/s, TTFT 67 ms",
+      "thresholds": "\u226515 works \u00b7 5\u201315 degraded \u00b7 <5 broken",
+      "data": {
+        "tok_per_sec": 33.4,
+        "gen_tok": 200,
+        "prompt_tok": 16,
+        "ttft_ms": 67,
+        "gen_ms": 5990
+      },
+      "id": "llama.throughput",
+      "ms": 6095,
+      "layer": "llama",
+      "title": "Generation throughput"
+    },
+    {
+      "verdict": "works",
+      "summary": "ctx 32768 (q4_0 KV)",
+      "thresholds": "loaded==configured",
+      "data": {
+        "n_ctx_loaded": 32768,
+        "configured_ctx": 32768,
+        "kv_cache": "q4_0",
+        "model_alias": "qwen3-14b-q6-k"
+      },
+      "id": "llama.context",
+      "ms": 4,
+      "layer": "llama",
+      "title": "Context window actually loaded"
+    },
+    {
+      "verdict": "works",
+      "summary": "grammar enforced exactly \u2192 'ANVIL'",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "id": "llama.grammar",
+      "ms": 227,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "verdict": "works",
+      "summary": "answered directly in 7 chars (reasoning 0)",
+      "thresholds": "/no_think \u2192 direct answer, no reasoning leak",
+      "data": {
+        "model_is_qwen": true,
+        "no_think_sent": true,
+        "content_chars": 7,
+        "reasoning_chars": 0,
+        "finish_reason": "stop",
+        "content_sample": "Camera."
+      },
+      "id": "llama.thinking",
+      "ms": 276,
+      "layer": "llama",
+      "title": "Answer vs hidden reasoning"
+    },
+    {
+      "verdict": "works",
+      "summary": "native tool call \u2192 scene_get_hierarchy",
+      "thresholds": "structured tool_call",
+      "data": {
+        "emitted_tool_call": true,
+        "tool_name": "scene_get_hierarchy",
+        "finish_reason": "tool_calls"
+      },
+      "id": "llama.tools",
+      "ms": 2926,
+      "layer": "llama",
+      "title": "Native tool calling"
+    },
+    {
+      "verdict": "works",
+      "summary": "planned 3 entities in 17s: ['Hero', 'Eye', 'Body']",
+      "thresholds": "\u22653 entities w/ valid types, planning <60s",
+      "data": {
+        "entity_count": 3,
+        "names": [
+          "Hero",
+          "Eye",
+          "Body"
+        ],
+        "types": [
+          "CharacterBody3D",
+          "Camera3D",
+          "MeshInstance3D"
+        ],
+        "systems": 0,
+        "parents": {
+          "Eye": "Hero",
+          "Body": "Hero"
+        },
+        "apply_ms": 17504,
+        "model": "qwen3-14b-q6-k"
+      },
+      "id": "devforge.plan",
+      "ms": 17931,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "works",
+      "summary": "all ['Body', 'Eye', 'Hero'] compiled under /root/Main",
+      "thresholds": "requested ops present, parented /root/Main",
+      "data": {
+        "op_count": 9,
+        "requested_ops": [
+          "Hero",
+          "Eye",
+          "Body",
+          "CollisionShape3D"
+        ],
+        "scaffold_ops": [
+          "DirectionalLight"
+        ],
+        "parents": {
+          "Hero": "/root/Main",
+          "Eye": "/root/Main/Hero",
+          "Body": "/root/Main/Hero",
+          "CollisionShape3D": "/root/Main/Hero",
+          "DirectionalLight": "/root/Main"
+        },
+        "bad_parents": {},
+        "coverage": "3/3"
+      },
+      "id": "devforge.compile",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Compiler operations + parent paths"
+    },
+    {
+      "verdict": "works",
+      "summary": "auto-injected {'DirectionalLight': '/root/Main'} at valid parent",
+      "thresholds": "injected nodes parented at /root/Main",
+      "data": {
+        "injected": {
+          "DirectionalLight": "/root/Main"
+        },
+        "bad_parents": {},
+        "parent_errors": []
+      },
+      "id": "devforge.completeness",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Completeness injector parents"
+    },
+    {
+      "verdict": "works",
+      "summary": "built all ['Body', 'Eye', 'Hero'], +5 nodes, 0 errors",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 9,
+        "operations_total": 9,
+        "error_count": 0,
+        "errors": [],
+        "nodes_added": [
+          "/Main/DirectionalLight",
+          "/Main/Hero",
+          "/Main/Hero/Body",
+          "/Main/Hero/CollisionShape3D",
+          "/Main/Hero/Eye"
+        ],
+        "requested_built": [
+          "Body",
+          "Eye",
+          "Hero"
+        ],
+        "coverage": "3/3",
+        "before_n": 1,
+        "after_n": 6
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    },
+    {
+      "verdict": "works",
+      "summary": "accepted the valid op, rejected the bad parent",
+      "thresholds": "good\u2192valid, bad\u2192error",
+      "data": {
+        "valid_count": 1,
+        "error_count": 1,
+        "errors": [
+          "Op 1 (add_node): parent '/root/Ghost' not found in scene"
+        ],
+        "caught_bad_parent": true
+      },
+      "id": "devforge.validate",
+      "ms": 17,
+      "layer": "devforge",
+      "title": "Validator accept/reject"
+    },
+    {
+      "verdict": "works",
+      "summary": "both see 6 nodes (root 'Main')",
+      "thresholds": "counts match",
+      "data": {
+        "devforge_nodes": 6,
+        "godot_nodes": 6,
+        "devforge_root": "Main"
+      },
+      "id": "devforge.roundtrip",
+      "ms": 480,
+      "layer": "devforge",
+      "title": "Scene view parity"
+    },
+    {
+      "verdict": "works",
+      "summary": "create 97 + delete 100 ms round-trip",
+      "thresholds": "verified \u00b7 <1.5s works \u00b7 <5s degraded",
+      "data": {
+        "create_ms": 97,
+        "delete_ms": 100,
+        "verified": true
+      },
+      "id": "godotai.latency",
+      "ms": 602,
+      "layer": "godot-ai",
+      "title": "Write round-trip latency"
+    },
+    {
+      "verdict": "works",
+      "summary": "6 nodes, root 'Main'",
+      "thresholds": "\u22651 node, named root",
+      "data": {
+        "node_count": 6,
+        "root": "Main",
+        "has_more": false,
+        "sample": [
+          "/Main",
+          "/Main/Hero",
+          "/Main/Hero/Eye",
+          "/Main/Hero/Body",
+          "/Main/Hero/CollisionShape3D"
+        ]
+      },
+      "id": "godotai.fidelity",
+      "ms": 399,
+      "layer": "godot-ai",
+      "title": "Scene tree fidelity"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "launched + capture ready but FPS monitor read 0 (editor monitor quirk)",
+      "thresholds": "FPS>0, no errors",
+      "data": {
+        "launched": true,
+        "fps": 0,
+        "capture_ready": true,
+        "polls": 6
+      },
+      "id": "runtime.launch",
+      "ms": 9805,
+      "layer": "runtime",
+      "title": "Game actually runs"
+    },
+    {
+      "verdict": "works",
+      "summary": "enabled, 3880 char prompt, temp 0.2, MCP+/no_think",
+      "thresholds": "enabled, ~3.9k prompt, 'MCP'+/no_think",
+      "data": {
+        "enabled": true,
+        "system_prompt_chars": 3880,
+        "temperature": 0.2,
+        "has_mcp": true,
+        "has_nothink": true,
+        "character_name": "Godot Developer"
+      },
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Live persona is the real prompt"
+    },
+    {
+      "verdict": "works",
+      "summary": "apply_spec retrieved (MCP in top-k: ['mcp__devforge__apply_spec', 'mcp__devforge__audit_scene', 'mcp__devforge__get_scene', 'mcp__devforge__triage_errors', 'mcp__godot-ai__game_manage', 'mcp__godot-ai__node_create', 'mcp__godot-ai__project_manage', 'mcp__godot-ai__project_run'])",
+      "thresholds": "apply_spec retrievable",
+      "data": {
+        "retrieved": [
+          "ask_user",
+          "manage_memory",
+          "mcp__devforge__apply_spec",
+          "mcp__devforge__audit_scene",
+          "mcp__devforge__get_scene",
+          "mcp__devforge__triage_errors",
+          "mcp__godot-ai__game_manage",
+          "mcp__godot-ai__node_create",
+          "mcp__godot-ai__project_manage",
+          "mcp__godot-ai__project_run",
+          "update_plan"
+        ],
+        "mcp_tools": [
+          "mcp__devforge__apply_spec",
+          "mcp__devforge__audit_scene",
+          "mcp__devforge__get_scene",
+          "mcp__devforge__triage_errors",
+          "mcp__godot-ai__game_manage",
+          "mcp__godot-ai__node_create",
+          "mcp__godot-ai__project_manage",
+          "mcp__godot-ai__project_run"
+        ],
+        "apply_spec_present": true,
+        "mcp_in_collection": true,
+        "lane_counts": {
+          "fastembed": 139
+        },
+        "error": null
+      },
+      "id": "odysseus.retrieval",
+      "ms": 2194,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "works": 15,
+    "degraded": 1,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "works",
+    "devforge": "works",
+    "godot-ai": "works",
+    "runtime": "degraded",
+    "odysseus": "works"
+  }
+}

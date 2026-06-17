@@ -1,0 +1,52 @@
+{
+  "id": "voronoi-v1",
+  "title": "Voronoi — Town Slice",
+  "planner": "voronoi",
+  "description": "Voronoi district/town generation: LLM picks region size + district count; deterministic engine computes Voronoi cells, roads, and buildings.",
+  "prompts": [
+    {
+      "id": "V1_village",
+      "axis": "voronoi:village",
+      "prompt": "Build a small village with 4 districts. Use a 60x60 metre region.",
+      "expect": {
+        "min_nodes": 20,
+        "min_voronoi_roads": 5,
+        "voronoi_in_bounds": true,
+        "voronoi_has_districts": 4
+      }
+    },
+    {
+      "id": "V2_town",
+      "axis": "voronoi:town",
+      "prompt": "Generate a medium town with 6 districts. Use an 80x80 metre region and 4m tile size.",
+      "expect": {
+        "min_nodes": 30,
+        "min_voronoi_roads": 10,
+        "voronoi_in_bounds": true,
+        "voronoi_has_districts": 6
+      }
+    },
+    {
+      "id": "V3_city",
+      "axis": "voronoi:city",
+      "prompt": "Build a small city with 10 districts in a 100x100 metre region.",
+      "expect": {
+        "min_nodes": 40,
+        "min_voronoi_roads": 15,
+        "voronoi_in_bounds": true,
+        "voronoi_has_districts": 10
+      }
+    },
+    {
+      "id": "V4_industrial",
+      "axis": "voronoi:industrial",
+      "prompt": "Create an industrial park with 5 districts in a 100x80 metre region.",
+      "expect": {
+        "min_nodes": 15,
+        "min_voronoi_roads": 5,
+        "voronoi_in_bounds": true,
+        "voronoi_has_districts": 5
+      }
+    }
+  ]
+}

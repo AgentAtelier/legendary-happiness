@@ -1,0 +1,89 @@
+# Rectangle Room — the simplest enclosed space.
+# 4 walls, floor, ceiling. Slots defined as ARCS (anchor + offset).
+# The room spans from (0,0,0) to (w, h, d).
+
+name: "Rectangle Room"
+description: "A rectangular enclosed room with floor, ceiling, and 4 walls"
+parameters:
+  width:   { min: 3, max: 12, default: 5 }
+  height:  { min: 2.5, max: 4, default: 3 }
+  depth:   { min: 3, max: 12, default: 5 }
+
+# ── Anchors (named reference points) ──
+anchors:
+  center:       { position: ["$width/2", 0, "$depth/2"] }
+  floor_center: { position: ["$width/2", 0, "$depth/2"] }
+  north_wall:   { position: ["$width/2", "$height/2", 0],         facing: [0, 0, 1] }
+  south_wall:   { position: ["$width/2", "$height/2", "$depth"],  facing: [0, 0, -1] }
+  east_wall:    { position: ["$width", "$height/2", "$depth/2"],  facing: [-1, 0, 0] }
+  west_wall:    { position: [0, "$height/2", "$depth/2"],         facing: [1, 0, 0] }
+  nw_corner:    { position: [0.6, 0, 0.6] }
+  ne_corner:    { position: ["$width-0.6", 0, 0.6] }
+  sw_corner:    { position: [0.6, 0, "$depth-0.6"] }
+  se_corner:    { position: ["$width-0.6", 0, "$depth-0.6"] }
+
+# ── Shell (structural nodes — always created) ──
+shell:
+  - { name: "Floor", type: "MeshInstance3D", mesh: "plane", color: [0.35, 0.3, 0.25], position: ["$width/2", -0.05, "$depth/2"], scale: ["$width/10", 1, "$depth/10"] }
+  - { name: "Ceiling", type: "MeshInstance3D", mesh: "plane", color: [0.7, 0.7, 0.75], position: ["$width/2", "$height", "$depth/2"], scale: ["$width/10", 1, "$depth/10"] }
+
+# ── Slots (semantic placement zones) ──
+# Each slot is an ARCS location: anchor + offset from that anchor.
+slots:
+  # Along the north wall (back of room, typically the cooking wall)
+  north_counter_left:
+    anchor: nw_corner
+    offset: [0, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 1.5, depth: 0.8 }
+
+  north_counter_center:
+    anchor: nw_corner
+    offset: [1.5, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 1.5, depth: 0.8 }
+
+  north_counter_right:
+    anchor: ne_corner
+    offset: [-1.5, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 1.5, depth: 0.8 }
+
+  # Center of room (table area)
+  center_table:
+    anchor: center
+    offset: [0, 0, 0]
+    facing: [0, 0, 0]
+    max_footprint: { width: 2.0, depth: 2.0 }
+
+  # Chairs around center (relative to center_table after it's placed)
+  chair_north:
+    anchor: { chain: ["center_table", "north", "1.2"] }
+    offset: [0, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 0.6, depth: 0.6 }
+
+  chair_south:
+    anchor: { chain: ["center_table", "south", "1.2"] }
+    offset: [0, 0, 0]
+    facing: [0, 0, -1]
+    max_footprint: { width: 0.6, depth: 0.6 }
+
+  chair_east:
+    anchor: { chain: ["center_table", "east", "1.2"] }
+    offset: [0, 0, 0]
+    facing: [-1, 0, 0]
+    max_footprint: { width: 0.6, depth: 0.6 }
+
+  chair_west:
+    anchor: { chain: ["center_table", "west", "1.2"] }
+    offset: [0, 0, 0]
+    facing: [1, 0, 0]
+    max_footprint: { width: 0.6, depth: 0.6 }
+
+  # East wall storage
+  east_storage:
+    anchor: east_wall
+    offset: [0, 0, 0]
+    facing: [-1, 0, 0]
+    max_footprint: { width: 1.2, depth: 0.6 }

@@ -1,0 +1,20 @@
+═══ Test 2: Intent-Sensitivity ═══
+4 adjective variants, pairwise comparison (skip_cache=True, planner=room)
+
+  [cramped] 'build a cramped kitchen'... 5 nodes in 3s
+  [spacious] 'build a spacious kitchen'... 4 nodes in 3s
+  [abandoned] 'build an abandoned kitchen'... 4 nodes in 2s
+  [luxurious] 'build a luxurious kitchen'... 4 nodes in 3s
+
+─── Pairwise Comparison ───
+    cramped vs spacious   ≠  (DIFFERENT)
+    cramped vs abandoned  ≠  (DIFFERENT)
+    cramped vs luxurious  ≠  (DIFFERENT)
+   spacious vs abandoned  ≠  (DIFFERENT)
+   spacious vs luxurious  ≠  (DIFFERENT)
+  abandoned vs luxurious  ≠  (DIFFERENT)
+
+  Intent coverage: 6/6 pairs differ (100%)
+  Hypothesis: 0/6 (adjective completely ignored)
+
+→ saved /home/mrg/dev/games/Forge/hub/data/diagnostics/diag-intent-20260616-104728.json

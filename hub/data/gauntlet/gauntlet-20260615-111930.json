@@ -1,0 +1,299 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-15 11:21:31",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 4,
+  "done": 4,
+  "results": [
+    {
+      "built_nodes": 8,
+      "built_depth": 2,
+      "applied": 21,
+      "operations_total": 21,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "mesh": 4,
+        "color": 4
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 34119,
+      "nodes_sample": [
+        "/Main/Counter",
+        "/Main/Counter/CounterMesh",
+        "/Main/Fridge",
+        "/Main/Fridge/FridgeMesh",
+        "/Main/Stove",
+        "/Main/Stove/StoveMesh",
+        "/Main/Table",
+        "/Main/Table/TableMesh"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "8/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S1_kitchen",
+      "axis": "spatial:kitchen",
+      "prompt": "Build a medium kitchen with a stove, a fridge, and a counter along the north wall. Put a table in the center.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] create_script({\"content\":\"extends Area3D\\n\\n# CollectibleArenaSystem\\n# Handles coin collection logic: when a coin is collected, it is removed and the score is updated.\\n\\nfunc _ready() -> void:\\n    if not body_entered.is_connected(_on_body_entered):\\n        body_entered.connect(_on_body_entered)\\n\\nfunc _on_body_entered(body: Node3D) -> void:\\n    queue_free()\\n    # Try to increment the ScoreLabel if it exists\\n    var sl = get_node_or_null(\\\"/root/Main/Arena/UI/ScoreLabel\\\")\\n    if sl and sl is Label:\\n        var parts = sl.text.split(\\\": \\\")\\n        if parts.size() >= 2 and parts[1].is_valid_int():\\n            sl.text = \\\"Score: \\\" + str(int(parts[1]) + 1)\\n\",\"path\":\"res://scripts/collectiblearenasystem.gd\"})",
+        "MCP | [send] create_script -> ok",
+        "MCP | [recv] create_script({\"content\":\"extends Node3D\\n\\n# PlayerMovementSystem\\n# Processes WASD input to move the Player CharacterBody3D.\\n\\nvar speed: float = 5.0\\n\\nfunc _process(delta: float) -> void:\\n    var input_dir := Vector3.ZERO\\n    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):\\n        input_dir.z -= 1.0\\n    if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):\\n        input_dir.z += 1.0\\n    if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):\\n        input_dir.x -= 1.0\\n    if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):\\n        input_dir.x += 1.0\\n    if input_dir != Vector3.ZERO:\\n        input_dir = input_dir.normalized()\\n    position += input_dir * speed * delta\\n\",\"path\":\"res://scripts/playermovementsystem.gd\"})",
+        "MCP | [send] create_script -> ok",
+        "MCP | [recv] create_script({\"content\":\"extends Area3D\\n\\n# ScoreUpdateSystem\\n# Maintains and updates the ScoreLabel text based on collected coins.\\n\\nfunc _ready() -> void:\\n    if not body_entered.is_connected(_on_body_entered):\\n        body_entered.connect(_on_body_entered)\\n\\nfunc _on_body_entered(body: Node3D) -> void:\\n    queue_free()\\n    # Try to increment the ScoreLabel if it exists\\n    var sl = get_node_or_null(\\\"/root/Main/Arena/UI/ScoreLabel\\\")\\n    if sl and sl is Label:\\n        var parts = sl.text.split(\\\": \\\")\\n        if parts.size() >= 2 and parts[1].is_valid_int():\\n            sl.text = \\\"Score: \\\" + str(int(parts[1]) + 1)\\n\",\"path\":\"res://scripts/scoreupdatesystem.gd\"})",
+        "MCP | [send] create_script -> ok",
+        "MCP | [recv] create_script({\"content\":\"extends Node\\n\\n# ScoreSystem\\n# tracks and displays the score\\n\\nvar score: int = 0\\n\\nfunc add_score(amount: int) -> void:\\n    score += amount\\n    if has_method(\\\"set_text\\\"):\\n        text = \\\"Score: \\\" + str(score)\\n\",\"path\":\"res://scripts/scoresystem.gd\"})",
+        "MCP | [send] create_script -> ok",
+        "MCP | [recv] batch_execute({\"commands\":[{\"command\":\"create_node\",\"params\":{\"name\":\"Arena\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Player\",\"parent_path\":\"/root/Main/Arena\",\"type\":\"CharacterBody3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Player\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":1.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"PlayerCam\",\"parent_path\":\"/root/Main/Arena/Player\",\"type\":\"Camera3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Player/PlayerCam\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":3.0,\"z\":6.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coins\",\"parent_path\":\"/root/Main/Arena\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin1\",\"parent_path\":\"/root/Main/Arena/Coins\",\"type\":\"Area3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin1\",\"property\":\"position\",\"value\":{\"x\":-4.0,\"y\":1.0,\"z\":-4.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin1Shape\",\"parent_path\":\"/root/Main/Arena/Coins/Coin1\",\"type\":\"CollisionShape3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin1/Coin1Shape\",\"property\":\"shape\",\"value\":{\"__class__\":\"SphereShape3D\",\"radius\":0.5}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin1Mesh\",\"parent_path\":\"/root/Main/Arena/Coins/Coin1\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin1/Coin1Mesh\",\"property\":\"mesh\",\"value\":{\"__class__\":\"SphereMesh\",\"height\":2.0,\"radius\":1.0}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin1/Coin1Mesh\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":0.0,\"g\":0.0,\"r\":1.0}}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin2\",\"parent_path\":\"/root/Main/Arena/Coins\",\"type\":\"Area3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin2\",\"property\":\"position\",\"value\":{\"x\":-2.0,\"y\":1.0,\"z\":-4.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin2Shape\",\"parent_path\":\"/root/Main/Arena/Coins/Coin2\",\"type\":\"CollisionShape3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin2/Coin2Shape\",\"property\":\"shape\",\"value\":{\"__class__\":\"SphereShape3D\",\"radius\":0.5}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin2Mesh\",\"parent_path\":\"/root/Main/Arena/Coins/Coin2\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin2/Coin2Mesh\",\"property\":\"mesh\",\"value\":{\"__class__\":\"SphereMesh\",\"height\":2.0,\"radius\":1.0}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin2/Coin2Mesh\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":0.0,\"g\":1.0,\"r\":0.0}}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin3\",\"parent_path\":\"/root/Main/Arena/Coins\",\"type\":\"Area3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin3\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":1.0,\"z\":-4.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin3Shape\",\"parent_path\":\"/root/Main/Arena/Coins/Coin3\",\"type\":\"CollisionShape3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin3/Coin3Shape\",\"property\":\"shape\",\"value\":{\"__class__\":\"SphereShape3D\",\"radius\":0.5}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin3Mesh\",\"parent_path\":\"/root/Main/Arena/Coins/Coin3\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin3/Coin3Mesh\",\"property\":\"mesh\",\"value\":{\"__class__\":\"SphereMesh\",\"height\":2.0,\"radius\":1.0}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin3/Coin3Mesh\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":1.0,\"g\":0.0,\"r\":0.0}}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin4\",\"parent_path\":\"/root/Main/Arena/Coins\",\"type\":\"Area3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin4\",\"property\":\"position\",\"value\":{\"x\":2.0,\"y\":1.0,\"z\":-4.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin4Shape\",\"parent_path\":\"/root/Main/Arena/Coins/Coin4\",\"type\":\"CollisionShape3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin4/Coin4Shape\",\"property\":\"shape\",\"value\":{\"__class__\":\"SphereShape3D\",\"radius\":0.5}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin4Mesh\",\"parent_path\":\"/root/Main/Arena/Coins/Coin4\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin4/Coin4Mesh\",\"property\":\"mesh\",\"value\":{\"__class__\":\"SphereMesh\",\"height\":2.0,\"radius\":1.0}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin4/Coin4Mesh\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":0.0,\"g\":1.0,\"r\":1.0}}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin5\",\"parent_path\":\"/root/Main/Arena/Coins\",\"type\":\"Area3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin5\",\"property\":\"position\",\"value\":{\"x\":-4.0,\"y\":1.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin5Shape\",\"parent_path\":\"/root/Main/Arena/Coins/Coin5\",\"type\":\"CollisionShape3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin5/Coin5Shape\",\"property\":\"shape\",\"value\":{\"__class__\":\"SphereShape3D\",\"radius\":0.5}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin5Mesh\",\"parent_path\":\"/root/Main/Arena/Coins/Coin5\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin5/Coin5Mesh\",\"property\":\"mesh\",\"value\":{\"__class__\":\"SphereMesh\",\"height\":2.0,\"radius\":1.0}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin5/Coin5Mesh\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":1.0,\"g\":0.0,\"r\":1.0}}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin6\",\"parent_path\":\"/root/Main/Arena/Coins\",\"type\":\"Area3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin6\",\"property\":\"position\",\"value\":{\"x\":-2.0,\"y\":1.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin6Shape\",\"parent_path\":\"/root/Main/Arena/Coins/Coin6\",\"type\":\"CollisionShape3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin6/Coin6Shape\",\"property\":\"shape\",\"value\":{\"__class__\":\"SphereShape3D\",\"radius\":0.5}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Coin6Mesh\",\"parent_path\":\"/root/Main/Arena/Coins/Coin6\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin6/Coin6Mesh\",\"property\":\"mesh\",\"value\":{\"__class__\":\"SphereMesh\",\"height\":2.0,\"radius\":1.0}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/Coins/Coin6/Coin6Mesh\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":1.0,\"g\":1.0,\"r\":0.0}}}},{\"command\":\"create_node\",\"params\":{\"name\":\"UI\",\"parent_path\":\"/root/Main/Arena\",\"type\":\"CanvasLayer\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/UI\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"ScoreLabel\",\"parent_path\":\"/root/Main/Arena/UI\",\"type\":\"Label\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Arena/UI/ScoreLabel\",\"property\":\"text\",\"value\":\"Score: 0\"}},{\"command\":\"attach_script\",\"params\":{\"path\":\"/root/Main/Arena\",\"script_path\":\"res://scripts/collectiblearenasystem.gd\"}},{\"command\":\"attach_script\",\"params\":{\"path\":\"/root/Main/Arena/Player\",\"script_path\":\"res://scripts/playermovementsystem.gd\"}},{\"command\":\"attach_script\",\"params\":{\"path\":\"/root/Main/Arena\",\"script_path\":\"res://scripts/scoreupdatesystem.gd\"}},{\"command\":\"attach_script\",\"params\":{\"path\":\"/root/Main/Arena\",\"script_path\":\"res://scripts/scoresystem.gd\"}},{\"command\":\"connect_signal\",\"params\":{\"method\":\"_on_coin_collected\",\"path\":\"/root/Main/Arena/Coins/Coin1\",\"signal\":\"body_entered\",\"target\":\"/root/Main/Arena/UI/ScoreLabel\"}},{\"command\":\"connect_signal\",\"params\":{\"method\":\"_on_coin_collected\",\"path\":\"/root/Main/Arena/Coins/Coin2\",\"signal\":\"body_entered\",\"target\":\"/root/Main/Arena/UI/ScoreLabel\"}},{\"command\":\"connect_signal\",\"params\":{\"method\":\"_on_coin_collected\",\"path\":\"/root/Main/Arena/Coins/Coin3\",\"signal\":\"body_entered\",\"target\":\"/root/Main/Arena/UI/ScoreLabel\"}},{\"command\":\"connect_signal\",\"params\":{\"method\":\"_on_coin_collected\",\"path\":\"/root/Main/Arena/Coins/Coin4\",\"signal\":\"body_entered\",\"target\":\"/root/Main/Arena/UI/ScoreLabel\"}},{\"command\":\"connect_signal\",\"params\":{\"method\":\"_on_coin_collected\",\"path\":\"/root/Main/Arena/Coins/Coin5\",\"signal\":\"body_entered\",\"target\":\"/root/Main/Arena/UI/ScoreLabel\"}},{\"command\":\"connect_signal\",\"params\":{\"method\":\"_on_coin_collected\",\"path\":\"/root/Main/Arena/Coins/Coin6\",\"signal\":\"body_entered\",\"target\":\"/root/Main/Arena/UI/ScoreLabel\"}},{\"command\":\"create_node\",\"params\":{\"name\":\"CollisionShape3D\",\"parent_path\":\"/root/Main/Arena/Player\",\"type\":\"CollisionShape3D\"}}],\"undo\":true})",
+        "MCP | [send] batch_execute -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok"
+      ]
+    },
+    {
+      "built_nodes": 11,
+      "built_depth": 4,
+      "applied": 28,
+      "operations_total": 28,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "mesh": 4,
+        "color": 4,
+        "shape": 4
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 0,
+      "latency_ms": 30259,
+      "nodes_sample": [
+        "/Main/LKitchen",
+        "/Main/LKitchen/DiningWing",
+        "/Main/LKitchen/DiningWing/Chair1",
+        "/Main/LKitchen/DiningWing/Chair1/Chair1Collision",
+        "/Main/LKitchen/DiningWing/Chair2",
+        "/Main/LKitchen/DiningWing/Chair2/Chair2Collision",
+        "/Main/LKitchen/DiningWing/DiningTable",
+        "/Main/LKitchen/DiningWing/DiningTable/DiningTableCollision",
+        "/Main/LKitchen/StoveCounter",
+        "/Main/LKitchen/StoveCounter/StoveCounterCollision",
+        "/Main/LKitchen/StoveCounter/StoveCounterMesh"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "11/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/5 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S2_L_kitchen",
+      "axis": "spatial:L-shape",
+      "prompt": "Build an L-shaped kitchen. Put a stove and counter in the main cooking wing, and a table with two chairs in the dining wing.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] create_script({\"content\":\"extends Node\\n\\n# CameraSetupSystem\\n# Sets up the BadCam Camera3D with a box mesh and handles any camera-related behaviors if needed.\\n\\nfunc _ready() -> void:\\n    pass\\n\\nfunc _process(delta: float) -> void:\\n    pass\\n\",\"path\":\"res://scripts/camerasetupsystem.gd\"})",
+        "MCP | [defer] create_script (request 9b55e2901ae047c6b8748c96953fbc02)",
+        "MCP | [recv] batch_execute({\"commands\":[{\"command\":\"create_node\",\"params\":{\"name\":\"BadCam\",\"parent_path\":\"/root/Main\",\"type\":\"Camera3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/BadCam\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":1.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Ghost\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Ghost\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Orphan\",\"parent_path\":\"/root/Main/Ghost\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Ghost/Orphan\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler1\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler1\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler2\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler2\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler3\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler3\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler4\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler4\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler5\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler5\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler6\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler6\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler7\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler7\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler8\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler8\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler9\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler9\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler10\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler10\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler11\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler11\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler12\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler12\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler13\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler13\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler14\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler14\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler15\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler15\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler16\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler16\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler17\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler17\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler18\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler18\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler19\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler19\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Filler20\",\"parent_path\":\"/root/Main\",\"type\":\"Node3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Filler20\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}},{\"command\":\"attach_script\",\"params\":{\"path\":\"/root/Main/BadCam\",\"script_path\":\"res://scripts/camerasetupsystem.gd\"}}],\"undo\":true})",
+        "MCP | [send] batch_execute -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok"
+      ]
+    },
+    {
+      "built_nodes": 10,
+      "built_depth": 3,
+      "applied": 24,
+      "operations_total": 24,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 24620,
+      "nodes_sample": [
+        "/Main/Corridor",
+        "/Main/Corridor/CorridorLight",
+        "/Main/Corridor/CorridorMesh",
+        "/Main/Corridor/CorridorShape",
+        "/Main/Corridor/LeftShelf",
+        "/Main/Corridor/LeftShelf/LeftShelfMesh",
+        "/Main/Corridor/LeftShelf/LeftShelfShape",
+        "/Main/Corridor/RightShelf",
+        "/Main/Corridor/RightShelf/RightShelfMesh",
+        "/Main/Corridor/RightShelf/RightShelfShape"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "10/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S3_corridor",
+      "axis": "spatial:corridor",
+      "prompt": "Build a long corridor, 10 metres. Place shelves along both walls.",
+      "plugin_logs": [
+        "MCP | [recv] delete_node({\"path\":\"/Main/BadCam\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Ghost\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler1\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler2\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler3\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler4\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler5\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler6\"})"
+      ]
+    },
+    {
+      "built_nodes": 13,
+      "built_depth": 3,
+      "applied": 30,
+      "operations_total": 30,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "mesh": 4,
+        "color": 4,
+        "shape": 4
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 26726,
+      "nodes_sample": [
+        "/Main/Kitchen",
+        "/Main/Kitchen/Counter",
+        "/Main/Kitchen/Counter/CounterCollision",
+        "/Main/Kitchen/Counter/CounterMesh",
+        "/Main/Kitchen/Fridge",
+        "/Main/Kitchen/Fridge/FridgeCollision",
+        "/Main/Kitchen/Fridge/FridgeMesh",
+        "/Main/Kitchen/Stove",
+        "/Main/Kitchen/Stove/StoveCollision",
+        "/Main/Kitchen/Stove/StoveMesh",
+        "/Main/Kitchen/Table",
+        "/Main/Kitchen/Table/TableCollision",
+        "/Main/Kitchen/Table/TableMesh"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "13/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override.",
+      "plugin_logs": [
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler18\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler19\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] delete_node({\"path\":\"/Main/Filler20\"})",
+        "MCP | [send] delete_node -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] batch_execute({\"commands\":[{\"command\":\"create_node\",\"params\":{\"name\":\"TestCube\",\"parent_path\":\"/root/Main\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/TestCube\",\"property\":\"mesh\",\"value\":{\"__class__\":\"BoxMesh\",\"size\":{\"x\":1.0,\"y\":1.0,\"z\":1.0}}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/TestCube\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":0.0,\"z\":0.0}}}],\"undo\":true})",
+        "MCP | [send] batch_execute -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})"
+      ]
+    }
+  ],
+  "summary": {
+    "full": 0,
+    "partial": 4,
+    "broke": 0,
+    "avg_coverage": 67
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "kind": "move1-diagnostics",
+  "test": "intent_sensitivity",
+  "ts": "2026-06-16 07:32:28",
+  "model": "qwen3-6-27b",
+  "planner": "room",
+  "skip_cache": true,
+  "pairs_checked": 6,
+  "pairs_different": 5,
+  "intent_coverage": 0.833,
+  "results": [
+    {
+      "label": "cramped",
+      "prompt": "build a cramped kitchen",
+      "node_count": 4,
+      "node_names": [
+        "Ceiling",
+        "Floor",
+        "counter_north_counter_right",
+        "stove_north_counter_left"
+      ],
+      "latency_ms": 7722,
+      "crashed": false
+    },
+    {
+      "label": "spacious",
+      "prompt": "build a spacious kitchen",
+      "node_count": 5,
+      "node_names": [
+        "Ceiling",
+        "Floor",
+        "chair_north_counter_left",
+        "counter_north_counter_right",
+        "sink_center_table"
+      ],
+      "latency_ms": 8517,
+      "crashed": false
+    },
+    {
+      "label": "abandoned",
+      "prompt": "build an abandoned kitchen",
+      "node_count": 4,
+      "node_names": [
+        "Ceiling",
+        "Floor",
+        "counter_north_counter_right",
+        "stove_north_counter_left"
+      ],
+      "latency_ms": 7717,
+      "crashed": false
+    },
+    {
+      "label": "luxurious",
+      "prompt": "build a luxurious kitchen",
+      "node_count": 0,
+      "node_names": [],
+      "latency_ms": 8216,
+      "crashed": false
+    }
+  ],
+  "hypothesis": "0/6 pairs differ (adjective ignored)"
+}

@@ -1,0 +1,199 @@
+# ============================================================================
+# DEVFORGE — Architectural Contracts
+# Version: 1.0.0
+# Owner: HUMAN ONLY — This file is permanently human-controlled (C-11)
+# Gate 1 consumes this file. Changes require explicit rationale in Decision Log.
+# ============================================================================
+
+schema_version: "1.0.0"
+last_modified: "2026-02-26"
+last_modified_by: "human"
+
+# --------------------------------------------------------------------------
+# LAYER DEFINITIONS
+# Defines the architectural layers and their filesystem roots.
+# --------------------------------------------------------------------------
+layers:
+  simulation:
+    paths: ["sim/"]
+    description: "Pure data. No Node references. No scene tree calls."
+  interface:
+    paths: ["interface/"]
+    description: "Shared data structures only. No logic."
+  render:
+    paths: ["render/"]
+    description: "Presentation layer. Godot scene nodes."
+  ui:
+    paths: ["ui/"]
+    description: "HUD, menus, player-facing interface."
+  presentation:
+    paths: ["presentation/"]
+    description: "Camera, input mapping, visual orchestration."
+  persistence:
+    paths: ["persistence/"]
+    description: "Save/load system."
+
+# --------------------------------------------------------------------------
+# BOUNDARY RULES
+# Gate 1 enforces these via static import analysis on every commit.
+# --------------------------------------------------------------------------
+boundary_rules:
+  - id: BR-01
+    description: "Simulation layer must not import from presentation layers."
+    source_layer: simulation
+    forbidden_imports:
+      - render
+      - ui
+      - presentation
+    severity: critical
+    action: block_merge
+
+  - id: BR-02
+    description: "Presentation layer must not call simulation functions directly."
+    source_layer: render
+    forbidden_patterns:
+      - "sim/core/"
+      - "sim/ecology/"
+      - "sim/survival/"
+      - "sim/combat/"
+      - "sim/terrain/"
+    severity: critical
+    action: block_merge
+    note: "Presentation reads from state snapshot only."
+
+  - id: BR-03
+    description: "Interface layer must contain no logic — data structures only."
+    source_layer: interface
+    forbidden_patterns:
+      - "func "  # No function definitions beyond getters/property declarations
+    severity: high
+    action: flag_for_review
+    note: "Pure data containers. Getters and static factory methods are permitted."
+
+  - id: BR-04
+    description: "UI layer must not import from simulation layer."
+    source_layer: ui
+    forbidden_imports:
+      - simulation
+    severity: critical
+    action: block_merge
+
+  - id: BR-05
+    description: "Presentation layer UI must not import from simulation layer."
+    source_layer: presentation
+    forbidden_imports:
+      - simulation
+    severity: critical
+    action: block_merge
+
+# --------------------------------------------------------------------------
+# RETURN TYPE RESTRICTIONS
+# Public simulation methods must not leak engine types.
+# --------------------------------------------------------------------------
+return_type_rules:
+  - id: RT-01
+    scope: simulation
+    description: "No public simulation method may return a type inheriting from Node."
+    forbidden_return_types:
+      - "Node"
+      - "Node2D"
+      - "Node3D"
+      - "Control"
+      - "Resource"  # Godot Resource, not game resources
+    severity: critical
+    action: block_merge
+
+  - id: RT-02
+    scope: simulation
+    description: "No public simulation method may declare Variant as a return type."
+    forbidden_return_types:
+      - "Variant"
+    severity: critical
+    action: block_merge
+
+# --------------------------------------------------------------------------
+# PROTECTED FILES
+# Human modification only. Must never appear in coder-model scope locks.
+# Any feature requiring modification → Architectural Change Proposal first.
+# --------------------------------------------------------------------------
+protected_files:
+  - path: "sim/core/sim_clock.gd"
+    description: "Tick scheduler"
+    line_count_guard: 200
+    constraint_refs: [C-09]
+
+  - path: "sim/core/entity_registry.gd"
+    description: "Entity identity system"
+    constraint_refs: []
+
+  - path: "sim/core/sim_rng.gd"
+    description: "Determinism foundation"
+    constraint_refs: []
+
+  - path: "persistence/save_schema.gd"
+    description: "Save format definition"
+    constraint_refs: [C-10]
+
+  - path: "contracts/architectural_contracts.yaml"
+    description: "This file. Contract definitions."
+    constraint_refs: [C-11]
+
+# --------------------------------------------------------------------------
+# PERMITTED SINGLETONS
+# Constitution allows exactly four. No others without Architectural Change Proposal.
+# --------------------------------------------------------------------------
+permitted_singletons:
+  - name: "SimClock"
+    autoload_path: "sim/core/sim_clock.gd"
+  - name: "EntityRegistry"
+    autoload_path: "sim/core/entity_registry.gd"
+  - name: "WorldConfig"
+    autoload_path: "sim/core/world_config.gd"
+  - name: "RecipeRegistry"
+    autoload_path: "sim/core/recipe_registry.gd"
+
+# --------------------------------------------------------------------------
+# CONTRACT EXCEPTIONS
+# Hard ceiling: 5 exceptions maximum (C-12).
+# Exceeding ceiling requires full contract rewrite, NOT a new exception.
+# --------------------------------------------------------------------------
+exception_ceiling: 5
+
+exceptions: []
+  # Format for future exceptions:
+  # - id: EX-01
+  #   rule_id: BR-01
+  #   description: "Why this exception exists."
+  #   scope: "Exact file or pattern this applies to."
+  #   approved_date: "YYYY-MM-DD"
+  #   rationale: "Human rationale for granting the exception."
+  #   review_date: "YYYY-MM-DD"  # Next quarterly review must re-justify or remove.
+
+# --------------------------------------------------------------------------
+# HARD CONSTRAINTS (Constitutional — cannot be suspended)
+# --------------------------------------------------------------------------
+hard_constraints:
+  - id: C-01
+    text: "No branch may initiate development work without human prompt."
+  - id: C-02
+    text: "No branch may modify world state without explicit human approval."
+  - id: C-03
+    text: "No branch may escalate mechanic creation autonomously."
+  - id: C-04
+    text: "No branch may depend on another branch's runtime output as a required input."
+  - id: C-05
+    text: "Diffusion may never be required for visual correctness."
+  - id: C-06
+    text: "Style must be versioned as data (style schema + LoRA version hash)."
+  - id: C-07
+    text: "Asset metadata must exist for every generated asset before it is considered complete."
+  - id: C-08
+    text: "Simulation schema changes are human-only. No automated modification."
+  - id: C-09
+    text: "The tick scheduler is permanently human-controlled. Protected file."
+  - id: C-10
+    text: "The save schema is permanently human-controlled. Protected file."
+  - id: C-11
+    text: "The architectural contract file is permanently human-controlled. Protected file."
+  - id: C-12
+    text: "Contract exception ceiling: maximum 5. Exceeding requires full contract rewrite."

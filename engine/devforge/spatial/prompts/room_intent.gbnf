@@ -1,0 +1,46 @@
+# room_intent.gbnf
+# GBNF grammar for Room Intent Descriptor — the LLM authors a rich creative
+# brief, the engine resolves it deterministically.
+#
+# Schema: {room_type, size?, style?, clutter?, mood_tags?, must_have?,
+#           special_features?, seed?}
+#
+# Enumerated fields (size, style) are constrained to valid values.
+# Free-form arrays (mood_tags, must_have, special_features) are
+# structure-constrained but content-open — the engine degrades gracefully
+# on unknown values.
+
+root ::= "{" ws "\"room_type\"" ws ":" ws string ws room-extra* ws "}"
+
+room-extra ::= "," ws ( size-kv | style-kv | clutter-kv | mood-tags-kv | must-have-kv | special-features-kv | seed-kv )
+
+size-kv ::= "\"size\"" ws ":" ws size-value
+size-value ::= "\"cramped\"" | "\"normal\"" | "\"spacious\""
+
+style-kv ::= "\"style\"" ws ":" ws style-value
+style-value ::= "\"rustic\"" | "\"industrial\"" | "\"noble\"" | "\"derelict\""
+
+clutter-kv ::= "\"clutter\"" ws ":" ws number
+
+mood-tags-kv ::= "\"mood_tags\"" ws ":" ws string-array
+must-have-kv ::= "\"must_have\"" ws ":" ws string-array
+special-features-kv ::= "\"special_features\"" ws ":" ws string-array
+
+seed-kv ::= "\"seed\"" ws ":" ws integer
+
+string-array ::= "[" ws "]" | "[" ws string (ws "," ws string)* ws "]"
+
+integer ::= "-"? [0-9]+
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

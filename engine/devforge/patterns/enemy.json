@@ -1,0 +1,13 @@
+{
+  "name": "Enemy",
+  "triggers": ["enemy", "hostile", "monster", "foe", "boss", "mob", "adversary"],
+  "delta": {
+    "systems": [
+      {"name": "EnemyAI", "description": "Handles enemy aggro, patrol, and combat"}
+    ],
+    "entities": [
+      {"name": "Enemy", "type": "CharacterBody3D"}
+    ],
+    "connections": []
+  }
+}

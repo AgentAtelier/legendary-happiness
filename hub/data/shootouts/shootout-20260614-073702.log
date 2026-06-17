@@ -1,0 +1,89 @@
+=== SHOOTOUT LOG 20260614-073702 ===
+
+[07:37:02] === FORGE MODEL SHOOTOUT (A/B: arch + ops planner) ===
+[07:37:02] Scene: res://shootout.tscn
+[07:37:04] Models to test: 1
+[07:37:04]   • Qwen3 14B (qwen3-14b-q6-k)
+[07:37:04] 
+── [1/1] Qwen3 14B (qwen3-14b-q6-k) ──
+[07:37:04] [shootout:model] 1/1 Qwen3 14B
+[07:37:04] START: Qwen3 14B (qwen3-14b-q6-k)
+[07:37:04]   swap: starting...
+[07:37:08]   swap: OK
+[07:37:08]   reset: pristine shootout scene
+[07:37:08]   scene_before: 29 nodes
+[07:37:08]   apply_spec: sending prompt (1672 chars)...
+[07:39:00]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[07:39:00]   apply_spec: reading artifact a52dd64c1b80
+[07:39:19]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[07:39:19]   apply_spec: done — applied=?, ops=45, errors=0
+[07:39:19]   diagnostics: plan_retries=0, repair=0, completeness_added=0
+[07:39:19]   scene_after: 80 nodes
+[07:39:19]   static: running 23 checks...
+[07:39:20]   static: 19p/3f/1e = 56/68
+[07:39:20]     [fail] player_mesh: Player has NO mesh
+[07:39:20]     [fail] player_script: Player has NO script
+[07:39:20]     [error] score_text: Property fetch failed
+[07:39:20]     [fail] no_pollution: Unexpected: ['/Main/LvlA(Node3D)', '/Main/LvlA/LvlB(Node3D)', '/Main/LvlA/LvlB/LvlC(Node3D)', '/Main/LvlA/LvlB/LvlC/LvlD(Node3D)', '/Main/LvlA/LvlB/LvlC/LvlD/LvlE(Node3D)']
+[07:39:20]   runtime: running checks...
+[07:39:29]   runtime: 1p/6f/0e = 5/32
+[07:39:29]     [fail] scripts_created: no scripts generated
+[07:39:29]     [fail] movement_process: _process NOT found
+[07:39:29]     [fail] movement_input: no Input calls
+[07:39:29]     [fail] collect_handler: no signal handler
+[07:39:29]     [fail] collect_qfree: queue_free NOT found
+[07:39:29]     [fail] collect_score: no score tracking
+[07:39:29]   reset: restoring pristine shootout scene
+[07:39:29]   DONE: [pass] score=61/100 (145633ms)
+[07:39:29] [shootout:scored] 1/1 Qwen3 14B [arch] = 61/100 (pass)
+[07:39:29]   ── switching to ops planner ──
+[07:39:31]   ops planner active — running test
+[07:39:31] START: Qwen3 14B (qwen3-14b-q6-k)
+[07:39:31]   reset: pristine shootout scene
+[07:39:31]   scene_before: 29 nodes
+[07:39:31]   apply_spec: sending prompt (1672 chars)...
+[07:44:27]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[07:44:27]   apply_spec: reading artifact 0002ffdd5aed
+[07:44:27]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[07:44:27]   apply_spec: done — applied=?, ops=2, errors=0
+[07:44:27]   diagnostics: plan_retries=0, repair=0, completeness_added=0
+[07:44:27]   scene_after: 3 nodes
+[07:44:27]   static: running 23 checks...
+[07:44:27]   static: 3p/19f/1e = 9/68
+[07:44:27]     [fail] arena_exists: /Main/Arena missing
+[07:44:27]     [fail] player_type: Player type = 
+[07:44:27]     [fail] player_mesh: Player has NO mesh
+[07:44:27]     [fail] player_script: Player has NO script
+[07:44:27]     [fail] player_camera: PlayerCamera type = 
+[07:44:27]     [fail] coin_coin_red_exists: Coin_Red missing
+[07:44:27]     [fail] coin_coin_green_exists: Coin_Green missing
+[07:44:27]     [fail] coin_coin_blue_exists: Coin_Blue missing
+[07:44:27]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[07:44:27]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[07:44:27]     [fail] coin_coin_red_type: Coin_Red type = 
+[07:44:27]     [fail] coin_coin_green_type: Coin_Green type = 
+[07:44:27]     [fail] coin_coin_blue_type: Coin_Blue type = 
+[07:44:27]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[07:44:27]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[07:44:27]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[07:44:27]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[07:44:27]     [fail] ui_canvas: UI type = 
+[07:44:27]     [fail] ui_label: ScoreLabel missing
+[07:44:27]     [error] score_text: Property fetch failed
+[07:44:27]   runtime: running checks...
+[07:44:37]   runtime: 1p/6f/0e = 5/32
+[07:44:37]     [fail] scripts_created: no scripts generated
+[07:44:37]     [fail] movement_process: _process NOT found
+[07:44:37]     [fail] movement_input: no Input calls
+[07:44:37]     [fail] collect_handler: no signal handler
+[07:44:37]     [fail] collect_qfree: queue_free NOT found
+[07:44:37]     [fail] collect_score: no score tracking
+[07:44:37]   reset: restoring pristine shootout scene
+[07:44:37]   DONE: [error] score=14/100 (306420ms)
+[07:44:37] [shootout:scored] 1/1 Qwen3 14B [ops] = 14/100 (error)
+[07:44:38]   restored arch planner default
+[07:44:38] restored editor scene → res://scenes/main.tscn
+[07:44:38] [shootout:done]
+[07:44:38] 
+→ saved shootout-20260614-073702.json
+[07:44:38] Total: 455s for 2 models

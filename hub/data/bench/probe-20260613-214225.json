@@ -1,0 +1,277 @@
+{
+  "ts": "2026-06-13 21:42:11",
+  "model": "merged-22b-q4-k-m",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "broken",
+      "summary": "no timings \u2014 server did not generate",
+      "thresholds": "tok/s \u226515 works",
+      "data": {
+        "tok_per_sec": 0,
+        "gen_tok": null,
+        "prompt_tok": null,
+        "ttft_ms": 0,
+        "gen_ms": 0
+      },
+      "id": "llama.throughput",
+      "ms": 33,
+      "layer": "llama",
+      "title": "Generation throughput"
+    },
+    {
+      "verdict": "broken",
+      "summary": "serving 'None', config wants 'merged-22b-q4-k-m'",
+      "thresholds": "alias must match",
+      "data": {
+        "n_ctx_loaded": 0,
+        "configured_ctx": 16384,
+        "kv_cache": "q4_0",
+        "model_alias": null
+      },
+      "id": "llama.context",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Context window actually loaded"
+    },
+    {
+      "verdict": "broken",
+      "summary": "grammar NOT enforced \u2192 '' \u2014 DevForge plans run unconstrained",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "",
+        "honored": false
+      },
+      "id": "llama.grammar",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "verdict": "broken",
+      "summary": "probe crashed: KeyError: 'choices'",
+      "thresholds": "",
+      "data": {},
+      "id": "llama.thinking",
+      "ms": 4,
+      "layer": "llama",
+      "title": "Answer vs hidden reasoning"
+    },
+    {
+      "verdict": "broken",
+      "summary": "probe crashed: KeyError: 'choices'",
+      "thresholds": "",
+      "data": {},
+      "id": "llama.tools",
+      "ms": 4,
+      "layer": "llama",
+      "title": "Native tool calling"
+    },
+    {
+      "verdict": "broken",
+      "summary": "planner produced an EMPTY delta (0 entities)",
+      "thresholds": "\u22653 entities w/ valid types",
+      "data": {
+        "entity_count": 0,
+        "names": [],
+        "types": [],
+        "systems": 0,
+        "parents": {}
+      },
+      "id": "devforge.plan",
+      "ms": 492,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "broken",
+      "summary": "compiler emitted ONLY scaffolding (camera/light) \u2014 none of ['Body', 'Eye', 'Hero'] requested",
+      "thresholds": "requested ops present, parented /root/Main",
+      "data": {
+        "op_count": 0,
+        "requested_ops": [],
+        "scaffold_ops": [],
+        "parents": {},
+        "bad_parents": {},
+        "coverage": "0/3"
+      },
+      "id": "devforge.compile",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Compiler operations + parent paths"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "no auto-injection observed (light may already exist)",
+      "thresholds": "injected nodes parented at /root/Main",
+      "data": {
+        "injected": {},
+        "bad_parents": {},
+        "parent_errors": []
+      },
+      "id": "devforge.completeness",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Completeness injector parents"
+    },
+    {
+      "verdict": "broken",
+      "summary": "1 execution error(s): ['Architecture planning failed after 3 attempts: LLM HTTP error: 503 Server Error: Service Unavailable for url: http://127.0.0.1:8002/completion; LLM HTTP error: 503 Server Error: Service Unavailable fo\u2026']",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 0,
+        "operations_total": 0,
+        "error_count": 1,
+        "errors": [
+          "Architecture planning failed after 3 attempts: LLM HTTP error: 503 Server Error: Service Unavailable for url: http://127.0.0.1:8002/completion; LLM HTTP error: 503 Server Error: Service Unavailable fo\u2026"
+        ],
+        "nodes_added": [],
+        "requested_built": [],
+        "coverage": "0/3",
+        "before_n": 7,
+        "after_n": 7
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    },
+    {
+      "verdict": "works",
+      "summary": "accepted the valid op, rejected the bad parent",
+      "thresholds": "good\u2192valid, bad\u2192error",
+      "data": {
+        "valid_count": 1,
+        "error_count": 1,
+        "errors": [
+          "Op 1 (add_node): parent '/root/Ghost' not found in scene"
+        ],
+        "caught_bad_parent": true
+      },
+      "id": "devforge.validate",
+      "ms": 18,
+      "layer": "devforge",
+      "title": "Validator accept/reject"
+    },
+    {
+      "verdict": "works",
+      "summary": "both see 7 nodes (root 'Main')",
+      "thresholds": "counts match",
+      "data": {
+        "devforge_nodes": 7,
+        "godot_nodes": 7,
+        "devforge_root": "Main"
+      },
+      "id": "devforge.roundtrip",
+      "ms": 133,
+      "layer": "devforge",
+      "title": "Scene view parity"
+    },
+    {
+      "verdict": "works",
+      "summary": "create 26 + delete 29 ms round-trip",
+      "thresholds": "verified \u00b7 <1.5s works \u00b7 <5s degraded",
+      "data": {
+        "create_ms": 26,
+        "delete_ms": 29,
+        "verified": true
+      },
+      "id": "godotai.latency",
+      "ms": 174,
+      "layer": "godot-ai",
+      "title": "Write round-trip latency"
+    },
+    {
+      "verdict": "works",
+      "summary": "7 nodes, root 'Main'",
+      "thresholds": "\u22651 node, named root",
+      "data": {
+        "node_count": 7,
+        "root": "Main",
+        "has_more": false,
+        "sample": [
+          "/Main",
+          "/Main/MainCamera",
+          "/Main/DirectionalLight",
+          "/Main/Hero",
+          "/Main/Hero/CollisionShape3D"
+        ]
+      },
+      "id": "godotai.fidelity",
+      "ms": 112,
+      "layer": "godot-ai",
+      "title": "Scene tree fidelity"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "launched + capture ready but FPS monitor read 0 (editor monitor quirk)",
+      "thresholds": "FPS>0, no errors",
+      "data": {
+        "launched": true,
+        "fps": 0,
+        "capture_ready": true,
+        "polls": 6
+      },
+      "id": "runtime.launch",
+      "ms": 9534,
+      "layer": "runtime",
+      "title": "Game actually runs"
+    },
+    {
+      "verdict": "works",
+      "summary": "enabled, 3880 char prompt, temp 0.2, MCP+/no_think",
+      "thresholds": "enabled, ~3.9k prompt, 'MCP'+/no_think",
+      "data": {
+        "enabled": true,
+        "system_prompt_chars": 3880,
+        "temperature": 0.2,
+        "has_mcp": true,
+        "has_nothink": true,
+        "character_name": "Godot Developer"
+      },
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Live persona is the real prompt"
+    },
+    {
+      "verdict": "broken",
+      "summary": "no MCP tools retrieved \u2014 model will see only generic tools",
+      "thresholds": "apply_spec in top-k",
+      "data": {
+        "retrieved": [
+          "ask_teacher",
+          "ask_user",
+          "bash",
+          "chat_with_model",
+          "manage_mcp",
+          "manage_memory",
+          "pipeline",
+          "suggest_document",
+          "trigger_research",
+          "update_plan"
+        ],
+        "mcp_tools": [],
+        "apply_spec_present": false
+      },
+      "id": "odysseus.retrieval",
+      "ms": 3703,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "works": 5,
+    "degraded": 2,
+    "broken": 9,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "broken",
+    "devforge": "broken",
+    "godot-ai": "works",
+    "runtime": "degraded",
+    "odysseus": "broken"
+  }
+}

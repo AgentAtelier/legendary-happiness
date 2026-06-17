@@ -1,0 +1,133 @@
+{
+  "kind": "scenarios",
+  "ts": "2026-06-15 06:42:10",
+  "model": "qwen3-14b-q6-k",
+  "template": "chatml",
+  "config_hash": "d5b393a2",
+  "scenarios": [
+    {
+      "scenario_id": "delete_existing",
+      "category": "editing",
+      "status": "fail",
+      "ms": 6999,
+      "assertions": [
+        {
+          "status": "fail",
+          "assertion": "node_not_exists(/Main/Target)",
+          "message": "/Main/Target STILL exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_errors",
+          "message": "1 pipeline error(s): ['Architecture plan truncated \u2014 response hit n_predict limit. Try a simpler prompt or raise max_tokens.']"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {}
+    },
+    {
+      "scenario_id": "delete_existing_bare",
+      "category": "editing",
+      "status": "fail",
+      "ms": 700,
+      "assertions": [
+        {
+          "status": "fail",
+          "assertion": "node_not_exists(/Main/Gizmo)",
+          "message": "/Main/Gizmo STILL exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_errors",
+          "message": "1 pipeline error(s): ['Architecture plan truncated \u2014 response hit n_predict limit. Try a simpler prompt or raise max_tokens.']"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {}
+    },
+    {
+      "scenario_id": "rename_existing",
+      "category": "editing",
+      "status": "fail",
+      "ms": 799,
+      "assertions": [
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/Renamed)",
+          "message": "/Main/Renamed NOT found in scene. Present: ['/Main', '/Main/DirectionalLight', '/Main/MainCamera', '/Main/Origin']"
+        },
+        {
+          "status": "fail",
+          "assertion": "node_not_exists(/Main/Origin)",
+          "message": "/Main/Origin STILL exists (type=MeshInstance3D)"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_errors",
+          "message": "1 pipeline error(s): ['Architecture plan truncated \u2014 response hit n_predict limit. Try a simpler prompt or raise max_tokens.']"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {}
+    },
+    {
+      "scenario_id": "node_delete",
+      "category": "editing",
+      "status": "fail",
+      "ms": 7203,
+      "assertions": [
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/ToDelete)",
+          "message": "/Main/ToDelete correctly absent"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_errors",
+          "message": "1 pipeline error(s): [\"Op 5 (remove_node): node '/root/Main/ToDelete' not found\"]"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {}
+    },
+    {
+      "scenario_id": "node_rename",
+      "category": "editing",
+      "status": "fail",
+      "ms": 4196,
+      "assertions": [
+        {
+          "status": "fail",
+          "assertion": "node_exists(/Main/NewName)",
+          "message": "/Main/NewName NOT found in scene. Present: ['/Main', '/Main/DirectionalLight', '/Main/MainCamera']"
+        },
+        {
+          "status": "pass",
+          "assertion": "node_not_exists(/Main/OldName)",
+          "message": "/Main/OldName correctly absent"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_errors",
+          "message": "1 pipeline error(s): [\"Op 3 (rename_node): node '/root/Main/OldName' not found\"]"
+        }
+      ],
+      "errors": [],
+      "cleanup_errors": [],
+      "stage_latencies": {}
+    }
+  ],
+  "summary": {
+    "pass": 0,
+    "fail": 5,
+    "error": 0,
+    "total": 5,
+    "pass_rate": 0.0,
+    "total_ms": 19897,
+    "avg_ms": 3979
+  }
+}

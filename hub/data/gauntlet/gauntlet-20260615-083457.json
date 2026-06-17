@@ -1,0 +1,288 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-15 08:37:09",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 4,
+  "done": 4,
+  "results": [
+    {
+      "built_nodes": 9,
+      "built_depth": 3,
+      "applied": 23,
+      "operations_total": 23,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 4,
+        "color": 4
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 26628,
+      "nodes_sample": [
+        "/Main/Kitchen",
+        "/Main/Kitchen/Counter",
+        "/Main/Kitchen/Counter/CounterMesh",
+        "/Main/Kitchen/Fridge",
+        "/Main/Kitchen/Fridge/FridgeMesh",
+        "/Main/Kitchen/Stove",
+        "/Main/Kitchen/Stove/StoveMesh",
+        "/Main/Kitchen/Table",
+        "/Main/Kitchen/Table/TableMesh"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "9/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S1_kitchen",
+      "axis": "spatial:kitchen",
+      "prompt": "Build a medium kitchen with a stove, a fridge, and a counter along the north wall. Put a table in the center.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 33,
+      "operations_total": 38,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 8,
+        "mesh": 5,
+        "color": 5,
+        "text": 1
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 1,
+      "latency_ms": 30239,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/5 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "S2_L_kitchen",
+      "axis": "spatial:L-shape",
+      "prompt": "Build an L-shaped kitchen. Put a stove and counter in the main cooking wing, and a table with two chairs in the dining wing.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] create_script({\"content\":\"extends Node3D\\n\\n# PlayerMovement\\n# WASD keyboard movement\\n\\nvar speed: float = 5.0\\n\\nfunc _process(delta: float) -> void:\\n    var input_dir := Vector3.ZERO\\n    if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):\\n        input_dir.z -= 1.0\\n    if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):\\n        input_dir.z += 1.0\\n    if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):\\n        input_dir.x -= 1.0\\n    if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):\\n        input_dir.x += 1.0\\n    if input_dir != Vector3.ZERO:\\n        input_dir = input_dir.normalized()\\n    position += input_dir * speed * delta\\n\",\"path\":\"res://scripts/playermovement.gd\"})",
+        "MCP | [send] create_script -> ok",
+        "MCP | [recv] batch_execute({\"commands\":[{\"command\":\"create_node\",\"params\":{\"name\":\"Hero\",\"parent_path\":\"/root/Main\",\"type\":\"CharacterBody3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Hero\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":1.0,\"z\":0.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Eye\",\"parent_path\":\"/root/Main/Hero\",\"type\":\"Camera3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Hero/Eye\",\"property\":\"position\",\"value\":{\"x\":0.0,\"y\":1.5,\"z\":5.0}}},{\"command\":\"create_node\",\"params\":{\"name\":\"Body\",\"parent_path\":\"/root/Main/Hero\",\"type\":\"MeshInstance3D\"}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Hero/Body\",\"property\":\"mesh\",\"value\":{\"__class__\":\"CapsuleMesh\",\"height\":2.0,\"radius\":0.5}}},{\"command\":\"set_property\",\"params\":{\"path\":\"/root/Main/Hero/Body\",\"property\":\"material_override\",\"value\":{\"__class__\":\"StandardMaterial3D\",\"albedo_color\":{\"a\":1.0,\"b\":0.0,\"g\":0.0,\"r\":1.0}}}},{\"command\":\"attach_script\",\"params\":{\"path\":\"/root/Main/Hero\",\"script_path\":\"res://scripts/playermovement.gd\"}},{\"command\":\"create_node\",\"params\":{\"name\":\"CollisionShape3D\",\"parent_path\":\"/root/Main/Hero\",\"type\":\"CollisionShape3D\"}}],\"undo\":true})",
+        "MCP | [send] batch_execute -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebounce0001\\\"]\\n\\n[node name=\\\"_bounce\\\" type=\\\"Node3D\\\"]\\n\",\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebench0001\\\"]\\n\\n[node name=\\\"Main\\\" type=\\\"Node3D\\\"]\\n\\n[node name=\\\"MainCamera\\\" type=\\\"Camera3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\\n\\n[node name=\\\"DirectionalLight\\\" type=\\\"DirectionalLight3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\\n\",\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] write_file -> ok"
+      ]
+    },
+    {
+      "built_nodes": 13,
+      "built_depth": 3,
+      "applied": 27,
+      "operations_total": 27,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 13
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 30328,
+      "nodes_sample": [
+        "/Main/Corridor",
+        "/Main/Corridor/LeftWall",
+        "/Main/Corridor/LeftWall/Shelf1",
+        "/Main/Corridor/LeftWall/Shelf2",
+        "/Main/Corridor/LeftWall/Shelf3",
+        "/Main/Corridor/LeftWall/Shelf4",
+        "/Main/Corridor/LeftWall/Shelf5",
+        "/Main/Corridor/RightWall",
+        "/Main/Corridor/RightWall/Shelf10",
+        "/Main/Corridor/RightWall/Shelf6",
+        "/Main/Corridor/RightWall/Shelf7",
+        "/Main/Corridor/RightWall/Shelf8",
+        "/Main/Corridor/RightWall/Shelf9"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "13/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S3_corridor",
+      "axis": "spatial:corridor",
+      "prompt": "Build a long corridor, 10 metres. Place shelves along both walls.",
+      "plugin_logs": [
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebench0001\\\"]\\n\\n[node name=\\\"Main\\\" type=\\\"Node3D\\\"]\\n\\n[node name=\\\"MainCamera\\\" type=\\\"Camera3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\\n\\n[node name=\\\"DirectionalLight\\\" type=\\\"DirectionalLight3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\\n\",\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe_bounce.tscn",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 13,
+      "built_depth": 3,
+      "applied": 33,
+      "operations_total": 33,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 4,
+        "color": 4,
+        "shape": 4
+      },
+      "scripts": 3,
+      "attached": 3,
+      "signals": 0,
+      "latency_ms": 39839,
+      "nodes_sample": [
+        "/Main/Kitchen",
+        "/Main/Kitchen/Counter",
+        "/Main/Kitchen/Counter/CounterCollision",
+        "/Main/Kitchen/Counter/CounterMesh",
+        "/Main/Kitchen/Fridge",
+        "/Main/Kitchen/Fridge/FridgeCollision",
+        "/Main/Kitchen/Fridge/FridgeMesh",
+        "/Main/Kitchen/Stove",
+        "/Main/Kitchen/Stove/StoveCollision",
+        "/Main/Kitchen/Stove/StoveMesh",
+        "/Main/Kitchen/Table",
+        "/Main/Kitchen/Table/TableCollision",
+        "/Main/Kitchen/Table/TableMesh"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "13/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override.",
+      "plugin_logs": [
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebounce0001\\\"]\\n\\n[node name=\\\"_bounce\\\" type=\\\"Node3D\\\"]\\n\",\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebench0001\\\"]\\n\\n[node name=\\\"Main\\\" type=\\\"Node3D\\\"]\\n\\n[node name=\\\"MainCamera\\\" type=\\\"Camera3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\\n\\n[node name=\\\"DirectionalLight\\\" type=\\\"DirectionalLight3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\\n\",\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe_bounce.tscn"
+      ]
+    }
+  ],
+  "summary": {
+    "full": 0,
+    "partial": 3,
+    "broke": 1,
+    "avg_coverage": 58
+  }
+}

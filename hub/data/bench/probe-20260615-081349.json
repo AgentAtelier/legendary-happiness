@@ -1,0 +1,180 @@
+{
+  "kind": "probe",
+  "ts": "2026-06-15 08:13:20",
+  "model": "qwen3-14b-q6-k",
+  "template": "chatml",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "34.6 tok/s, TTFT 89 ms",
+      "thresholds": "\u226515 works \u00b7 5\u201315 degraded \u00b7 <5 broken",
+      "data": {
+        "tok_per_sec": 34.6,
+        "gen_tok": 200,
+        "prompt_tok": 18,
+        "ttft_ms": 89,
+        "gen_ms": 5785
+      },
+      "id": "llama.throughput",
+      "ms": 5883,
+      "layer": "llama",
+      "title": "Generation throughput"
+    },
+    {
+      "verdict": "works",
+      "summary": "ctx 32768 (q4_0 KV)",
+      "thresholds": "loaded==configured",
+      "data": {
+        "n_ctx_loaded": 32768,
+        "configured_ctx": 32768,
+        "kv_cache": "q4_0",
+        "model_alias": "qwen3-14b-q6-k"
+      },
+      "id": "llama.context",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Context window actually loaded"
+    },
+    {
+      "verdict": "works",
+      "summary": "grammar enforced exactly \u2192 'ANVIL'",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "id": "llama.grammar",
+      "ms": 225,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "verdict": "works",
+      "summary": "answered directly in 7 chars (reasoning 0)",
+      "thresholds": "/no_think \u2192 direct answer, no reasoning leak",
+      "data": {
+        "model_is_qwen": true,
+        "no_think_sent": true,
+        "content_chars": 7,
+        "reasoning_chars": 0,
+        "finish_reason": "stop",
+        "content_sample": "Camera."
+      },
+      "id": "llama.thinking",
+      "ms": 266,
+      "layer": "llama",
+      "title": "Answer vs hidden reasoning"
+    },
+    {
+      "verdict": "works",
+      "summary": "planned 3 entities in 19s: ['Hero', 'Eye', 'Body']",
+      "thresholds": "\u22653 entities w/ valid types, planning <60s",
+      "data": {
+        "entity_count": 3,
+        "names": [
+          "Hero",
+          "Eye",
+          "Body"
+        ],
+        "types": [
+          "CharacterBody3D",
+          "Camera3D",
+          "MeshInstance3D"
+        ],
+        "systems": 1,
+        "parents": {
+          "Eye": "Hero",
+          "Body": "Hero"
+        },
+        "apply_ms": 19611,
+        "model": "qwen3-14b-q6-k",
+        "plan_stage_ms": 0,
+        "compile_ms": 0,
+        "plan_retries": 0,
+        "stage_latencies": {},
+        "truncated": false
+      },
+      "id": "devforge.plan",
+      "ms": 20500,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "works",
+      "summary": "built all ['Body', 'Eye', 'Hero'], +4 nodes, 0 errors",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 9,
+        "operations_total": 9,
+        "error_count": 0,
+        "errors": [],
+        "nodes_added": [
+          "/Main/Hero",
+          "/Main/Hero/Body",
+          "/Main/Hero/CollisionShape3D",
+          "/Main/Hero/Eye"
+        ],
+        "requested_built": [
+          "Body",
+          "Eye",
+          "Hero"
+        ],
+        "coverage": "3/3",
+        "before_n": 3,
+        "after_n": 7,
+        "plan_retries": 0,
+        "repair_count": 0,
+        "completeness_added": 0,
+        "truncated": false
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    },
+    {
+      "verdict": "works",
+      "summary": "create 99 + delete 98 ms round-trip",
+      "thresholds": "verified \u00b7 <1.5s works \u00b7 <5s degraded",
+      "data": {
+        "create_ms": 99,
+        "delete_ms": 98,
+        "verified": true
+      },
+      "id": "godotai.latency",
+      "ms": 1100,
+      "layer": "godot-ai",
+      "title": "Write round-trip latency"
+    },
+    {
+      "verdict": "works",
+      "summary": "3 nodes, root 'Main'",
+      "thresholds": "\u22651 node, named root",
+      "data": {
+        "node_count": 3,
+        "root": "Main",
+        "has_more": false,
+        "sample": [
+          "/Main",
+          "/Main/MainCamera",
+          "/Main/DirectionalLight"
+        ]
+      },
+      "id": "godotai.fidelity",
+      "ms": 800,
+      "layer": "godot-ai",
+      "title": "Scene tree fidelity"
+    }
+  ],
+  "counts": {
+    "works": 8,
+    "degraded": 0,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "works",
+    "devforge": "works",
+    "godot-ai": "works"
+  }
+}

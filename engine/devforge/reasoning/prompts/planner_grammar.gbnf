@@ -1,0 +1,174 @@
+# devforge_planner_grammar.gbnf
+# GBNF grammar for DevForge operation planner JSON output.
+# Phase 10: Grammar-constrained operation JSON.
+#
+# NOTE: This grammar is for the AGENT/COORDINATOR path only.
+# The PipelineEngine uses arch_planner.gbnf via ArchitecturePlanner.
+# Keep the godot-type enum in sync with arch_planner.gbnf.
+
+root ::= "[" ws operation_list ws "]"
+
+operation_list ::= operation
+                 | operation ws "," ws operation_list
+
+operation ::= add_node
+            | remove_node
+            | rename_node
+            | attach_script
+            | set_property
+            | connect_signal
+            | add_child_scene
+            | create_file
+
+
+# ---------------------------
+# add_node
+# ---------------------------
+
+add_node ::= "{"
+    ws "\"type\"" ws ":" ws "\"add_node\"" ws ","
+    ws "\"name\"" ws ":" ws string ws ","
+    ws "\"node_type\"" ws ":" ws godot-type ws ","
+    ws "\"parent\"" ws ":" ws node-path
+ws "}"
+
+
+# ---------------------------
+# remove_node
+# ---------------------------
+
+remove_node ::= "{"
+    ws "\"type\"" ws ":" ws "\"remove_node\"" ws ","
+    ws "\"node\"" ws ":" ws node-path
+ws "}"
+
+
+# ---------------------------
+# rename_node
+# ---------------------------
+
+rename_node ::= "{"
+    ws "\"type\"" ws ":" ws "\"rename_node\"" ws ","
+    ws "\"node\"" ws ":" ws node-path ws ","
+    ws "\"new_name\"" ws ":" ws string
+ws "}"
+
+
+# ---------------------------
+# attach_script
+# ---------------------------
+
+attach_script ::= "{"
+    ws "\"type\"" ws ":" ws "\"attach_script\"" ws ","
+    ws "\"node\"" ws ":" ws node-path ws ","
+    ws "\"script\"" ws ":" ws string
+ws "}"
+
+
+# ---------------------------
+# set_property
+# ---------------------------
+
+set_property ::= "{"
+    ws "\"type\"" ws ":" ws "\"set_property\"" ws ","
+    ws "\"node\"" ws ":" ws node-path ws ","
+    ws "\"property\"" ws ":" ws string ws ","
+    ws "\"value\"" ws ":" ws string
+ws "}"
+
+
+# ---------------------------
+# connect_signal
+# ---------------------------
+
+connect_signal ::= "{"
+    ws "\"type\"" ws ":" ws "\"connect_signal\"" ws ","
+    ws "\"source\"" ws ":" ws node-path ws ","
+    ws "\"signal\"" ws ":" ws string ws ","
+    ws "\"target\"" ws ":" ws node-path ws ","
+    ws "\"method\"" ws ":" ws string
+ws "}"
+
+
+# ---------------------------
+# add_child_scene
+# ---------------------------
+
+add_child_scene ::= "{"
+    ws "\"type\"" ws ":" ws "\"add_child_scene\"" ws ","
+    ws "\"parent\"" ws ":" ws node-path ws ","
+    ws "\"scene\"" ws ":" ws string
+ws "}"
+
+
+# ---------------------------
+# create_file
+# ---------------------------
+
+create_file ::= "{"
+    ws "\"type\"" ws ":" ws "\"create_file\"" ws ","
+    ws "\"path\"" ws ":" ws string ws ","
+    ws "\"content\"" ws ":" ws string
+ws "}"
+
+
+# ---------------------------
+# Godot node types (sync with arch_planner.gbnf)
+# ---------------------------
+
+godot-type ::= "\"Node3D\""
+             | "\"CharacterBody3D\""
+             | "\"StaticBody3D\""
+             | "\"Area3D\""
+             | "\"Camera3D\""
+             | "\"MeshInstance3D\""
+             | "\"CollisionShape3D\""
+             | "\"CSGBox3D\""
+             | "\"CSGSphere3D\""
+             | "\"Path3D\""
+             | "\"NavigationAgent3D\""
+             | "\"Timer\""
+             | "\"AnimationPlayer\""
+             | "\"Sprite3D\""
+             | "\"Label3D\""
+             | "\"RayCast3D\""
+             | "\"AudioStreamPlayer3D\""
+             | "\"GPUParticles3D\""
+             | "\"OmniLight3D\""
+             | "\"SpotLight3D\""
+             | "\"DirectionalLight3D\""
+             | "\"WorldEnvironment\""
+             | "\"Node\""
+             | "\"Node2D\""
+             | "\"Control\""
+             | "\"ColorRect\""
+             | "\"Panel\""
+             | "\"Button\""
+             | "\"Label\""
+             | "\"LineEdit\""
+             | "\"TextEdit\""
+             | "\"GridContainer\""
+             | "\"VBoxContainer\""
+             | "\"HBoxContainer\""
+
+
+# ---------------------------
+# JSON string (allows any character via escapes — needed for GDScript content)
+# ---------------------------
+
+string ::= "\"" char* "\""
+
+# Node path — enforces /root/Main/... prefix, prevents space-containing paths
+node-path ::= "\"" "\/root\/Main" ("\/" [a-zA-Z0-9_-]+)* "\""
+
+char ::= unescaped
+       | "\\" escape
+
+unescaped ::= [^"\\\x00-\x1F]
+
+escape ::= ["\\/bfnrt]
+         | "u" hex hex hex hex
+
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

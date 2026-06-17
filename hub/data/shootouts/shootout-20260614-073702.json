@@ -1,0 +1,1965 @@
+{
+  "ts": "2026-06-14 07:44:38",
+  "log_ts": "20260614-073702",
+  "scene": "res://shootout.tscn",
+  "model_filter": "qwen3",
+  "status": "complete",
+  "models_planned": 1,
+  "models_done": 2,
+  "models_tested": 2,
+  "untested": [],
+  "total_ms": 454708,
+  "results": [
+    {
+      "model_alias": "qwen3-14b-q6-k",
+      "model_label": "Qwen3 14B",
+      "planner_mode": "arch",
+      "status": "pass",
+      "static_assertions": [
+        {
+          "status": "pass",
+          "assertion": "arena_exists",
+          "message": "/Main/Arena found"
+        },
+        {
+          "status": "pass",
+          "assertion": "player_type",
+          "message": "Player type = MeshInstance3D"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_mesh",
+          "message": "Player has NO mesh"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_script",
+          "message": "Player has NO script"
+        },
+        {
+          "status": "pass",
+          "assertion": "player_camera",
+          "message": "PlayerCamera type = Camera3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_red_exists",
+          "message": "Coin_Red found"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_green_exists",
+          "message": "Coin_Green found"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_blue_exists",
+          "message": "Coin_Blue found"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_gold_exists",
+          "message": "Coin_Gold found"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_purple_exists",
+          "message": "Coin_Purple found"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_red_type",
+          "message": "Coin_Red type = Area3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_green_type",
+          "message": "Coin_Green type = Area3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_blue_type",
+          "message": "Coin_Blue type = Area3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_gold_type",
+          "message": "Coin_Gold type = Area3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coin_coin_purple_type",
+          "message": "Coin_Purple type = Area3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coins_collision",
+          "message": "All coins have CollisionShape3D"
+        },
+        {
+          "status": "pass",
+          "assertion": "coins_mesh",
+          "message": "All coins have MeshInstance3D children"
+        },
+        {
+          "status": "pass",
+          "assertion": "ui_canvas",
+          "message": "UI type = CanvasLayer"
+        },
+        {
+          "status": "pass",
+          "assertion": "ui_label",
+          "message": "ScoreLabel found"
+        },
+        {
+          "status": "error",
+          "assertion": "score_text",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_dup_cameras",
+          "message": "2 Camera3D nodes (ok)"
+        },
+        {
+          "status": "fail",
+          "assertion": "no_pollution",
+          "message": "Unexpected: ['/Main/LvlA(Node3D)', '/Main/LvlA/LvlB(Node3D)', '/Main/LvlA/LvlB/LvlC(Node3D)', '/Main/LvlA/LvlB/LvlC/LvlD(Node3D)', '/Main/LvlA/LvlB/LvlC/LvlD/LvlE(Node3D)']"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline errors"
+        }
+      ],
+      "runtime_assertions": [
+        {
+          "status": "pass",
+          "assertion": "game_runs",
+          "message": "FPS=0 (launched, capture ready)"
+        },
+        {
+          "status": "fail",
+          "assertion": "scripts_created",
+          "message": "no scripts generated"
+        },
+        {
+          "status": "fail",
+          "assertion": "movement_process",
+          "message": "_process NOT found"
+        },
+        {
+          "status": "fail",
+          "assertion": "movement_input",
+          "message": "no Input calls"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_handler",
+          "message": "no signal handler"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_qfree",
+          "message": "queue_free NOT found"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_score",
+          "message": "no score tracking"
+        }
+      ],
+      "static_score": 56,
+      "runtime_score": 5,
+      "total_score": 61,
+      "max_score": 100,
+      "ms_total": 145633,
+      "errors": [],
+      "raw_apply_spec": {
+        "artifact_id": "a52dd64c1b80",
+        "applied": 45,
+        "operations_total": 45,
+        "files": [],
+        "errors": [],
+        "error_count": 0,
+        "scene_version": 2,
+        "has_full_detail": true,
+        "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+      },
+      "raw_artifact": {
+        "files": [],
+        "operations": [
+          {
+            "type": "add_node",
+            "parent": "/root/Main",
+            "node_type": "Node3D",
+            "name": "Arena"
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena",
+            "node_type": "MeshInstance3D",
+            "name": "Player"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Player",
+            "property": "mesh",
+            "value": {
+              "__class__": "CapsuleMesh",
+              "radius": 0.5,
+              "height": 2
+            }
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Player",
+            "property": "position",
+            "value": {
+              "x": 0.0,
+              "y": 1.0,
+              "z": 0.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Player",
+            "node_type": "Camera3D",
+            "name": "PlayerCamera"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Player/PlayerCamera",
+            "property": "position",
+            "value": {
+              "x": 0.0,
+              "y": 1.5,
+              "z": 5.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena",
+            "node_type": "Node3D",
+            "name": "Collectibles"
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles",
+            "node_type": "Area3D",
+            "name": "Coin_Red"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Red",
+            "property": "position",
+            "value": {
+              "x": -4.0,
+              "y": 0.5,
+              "z": 0.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Red",
+            "node_type": "CollisionShape3D",
+            "name": "Coin_Red_Shape"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Red/Coin_Red_Shape",
+            "property": "shape",
+            "value": {
+              "__class__": "SphereShape3D",
+              "radius": 0.5
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Red",
+            "node_type": "MeshInstance3D",
+            "name": "Coin_Red_Mesh"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Red/Coin_Red_Mesh",
+            "property": "mesh",
+            "value": {
+              "__class__": "SphereMesh",
+              "radius": 1,
+              "height": 2
+            }
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Red/Coin_Red_Mesh",
+            "property": "material_override",
+            "value": {
+              "__class__": "StandardMaterial3D",
+              "albedo_color": {
+                "r": "<max depth>",
+                "g": "<max depth>",
+                "b": "<max depth>",
+                "a": "<max depth>"
+              }
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles",
+            "node_type": "Area3D",
+            "name": "Coin_Green"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Green",
+            "property": "position",
+            "value": {
+              "x": 0.0,
+              "y": 0.5,
+              "z": 4.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Green",
+            "node_type": "CollisionShape3D",
+            "name": "Coin_Green_Shape"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Green/Coin_Green_Shape",
+            "property": "shape",
+            "value": {
+              "__class__": "SphereShape3D",
+              "radius": 0.5
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Green",
+            "node_type": "MeshInstance3D",
+            "name": "Coin_Green_Mesh"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Green/Coin_Green_Mesh",
+            "property": "mesh",
+            "value": {
+              "__class__": "SphereMesh",
+              "radius": 1,
+              "height": 2
+            }
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Green/Coin_Green_Mesh",
+            "property": "material_override",
+            "value": {
+              "__class__": "StandardMaterial3D",
+              "albedo_color": {
+                "r": "<max depth>",
+                "g": "<max depth>",
+                "b": "<max depth>",
+                "a": "<max depth>"
+              }
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles",
+            "node_type": "Area3D",
+            "name": "Coin_Blue"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Blue",
+            "property": "position",
+            "value": {
+              "x": 4.0,
+              "y": 0.5,
+              "z": 0.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Blue",
+            "node_type": "CollisionShape3D",
+            "name": "Coin_Blue_Shape"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Blue/Coin_Blue_Shape",
+            "property": "shape",
+            "value": {
+              "__class__": "SphereShape3D",
+              "radius": 0.5
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Blue",
+            "node_type": "MeshInstance3D",
+            "name": "Coin_Blue_Mesh"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Blue/Coin_Blue_Mesh",
+            "property": "mesh",
+            "value": {
+              "__class__": "SphereMesh",
+              "radius": 1,
+              "height": 2
+            }
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Blue/Coin_Blue_Mesh",
+            "property": "material_override",
+            "value": {
+              "__class__": "StandardMaterial3D",
+              "albedo_color": {
+                "r": "<max depth>",
+                "g": "<max depth>",
+                "b": "<max depth>",
+                "a": "<max depth>"
+              }
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles",
+            "node_type": "Area3D",
+            "name": "Coin_Gold"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Gold",
+            "property": "position",
+            "value": {
+              "x": 0.0,
+              "y": 0.5,
+              "z": -4.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Gold",
+            "node_type": "CollisionShape3D",
+            "name": "Coin_Gold_Shape"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Gold/Coin_Gold_Shape",
+            "property": "shape",
+            "value": {
+              "__class__": "SphereShape3D",
+              "radius": 0.5
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Gold",
+            "node_type": "MeshInstance3D",
+            "name": "Coin_Gold_Mesh"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Gold/Coin_Gold_Mesh",
+            "property": "mesh",
+            "value": {
+              "__class__": "SphereMesh",
+              "radius": 1,
+              "height": 2
+            }
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Gold/Coin_Gold_Mesh",
+            "property": "material_override",
+            "value": {
+              "__class__": "StandardMaterial3D",
+              "albedo_color": {
+                "r": "<max depth>",
+                "g": "<max depth>",
+                "b": "<max depth>",
+                "a": "<max depth>"
+              }
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles",
+            "node_type": "Area3D",
+            "name": "Coin_Purple"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Purple",
+            "property": "position",
+            "value": {
+              "x": 0.0,
+              "y": 1.5,
+              "z": 0.0
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Purple",
+            "node_type": "CollisionShape3D",
+            "name": "Coin_Purple_Shape"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Purple/Coin_Purple_Shape",
+            "property": "shape",
+            "value": {
+              "__class__": "SphereShape3D",
+              "radius": 0.5
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/Collectibles/Coin_Purple",
+            "node_type": "MeshInstance3D",
+            "name": "Coin_Purple_Mesh"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Purple/Coin_Purple_Mesh",
+            "property": "mesh",
+            "value": {
+              "__class__": "SphereMesh",
+              "radius": 1,
+              "height": 2
+            }
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/Collectibles/Coin_Purple/Coin_Purple_Mesh",
+            "property": "material_override",
+            "value": {
+              "__class__": "StandardMaterial3D",
+              "albedo_color": {
+                "r": "<max depth>",
+                "g": "<max depth>",
+                "b": "<max depth>",
+                "a": "<max depth>"
+              }
+            }
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena",
+            "node_type": "CanvasLayer",
+            "name": "UI"
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main/Arena/UI",
+            "node_type": "Label",
+            "name": "ScoreLabel"
+          },
+          {
+            "type": "set_property",
+            "node": "/root/Main/Arena/UI/ScoreLabel",
+            "property": "text",
+            "value": "Score: 0"
+          }
+        ],
+        "errors": [],
+        "scene_version": 2,
+        "arch_delta": {
+          "systems": [],
+          "entities": [
+            {
+              "name": "Arena",
+              "type": "Node3D",
+              "parent": "Main"
+            },
+            {
+              "name": "Player",
+              "type": "MeshInstance3D",
+              "parent": "Arena",
+              "props": {
+                "mesh": "<max depth>",
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "PlayerCamera",
+              "type": "Camera3D",
+              "parent": "Player",
+              "props": {
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "Collectibles",
+              "type": "Node3D",
+              "parent": "Arena"
+            },
+            {
+              "name": "Coin_Red",
+              "type": "Area3D",
+              "parent": "Collectibles",
+              "props": {
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Red_Shape",
+              "type": "CollisionShape3D",
+              "parent": "Coin_Red",
+              "props": {
+                "shape": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Red_Mesh",
+              "type": "MeshInstance3D",
+              "parent": "Coin_Red",
+              "props": {
+                "mesh": "<max depth>",
+                "color": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Green",
+              "type": "Area3D",
+              "parent": "Collectibles",
+              "props": {
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Green_Shape",
+              "type": "CollisionShape3D",
+              "parent": "Coin_Green",
+              "props": {
+                "shape": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Green_Mesh",
+              "type": "MeshInstance3D",
+              "parent": "Coin_Green",
+              "props": {
+                "mesh": "<max depth>",
+                "color": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Blue",
+              "type": "Area3D",
+              "parent": "Collectibles",
+              "props": {
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Blue_Shape",
+              "type": "CollisionShape3D",
+              "parent": "Coin_Blue",
+              "props": {
+                "shape": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Blue_Mesh",
+              "type": "MeshInstance3D",
+              "parent": "Coin_Blue",
+              "props": {
+                "mesh": "<max depth>",
+                "color": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Gold",
+              "type": "Area3D",
+              "parent": "Collectibles",
+              "props": {
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Gold_Shape",
+              "type": "CollisionShape3D",
+              "parent": "Coin_Gold",
+              "props": {
+                "shape": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Gold_Mesh",
+              "type": "MeshInstance3D",
+              "parent": "Coin_Gold",
+              "props": {
+                "mesh": "<max depth>",
+                "color": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Purple",
+              "type": "Area3D",
+              "parent": "Collectibles",
+              "props": {
+                "position": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Purple_Shape",
+              "type": "CollisionShape3D",
+              "parent": "Coin_Purple",
+              "props": {
+                "shape": "<max depth>"
+              }
+            },
+            {
+              "name": "Coin_Purple_Mesh",
+              "type": "MeshInstance3D",
+              "parent": "Coin_Purple",
+              "props": {
+                "mesh": "<max depth>",
+                "color": "<max depth>"
+              }
+            },
+            {
+              "name": "UI",
+              "type": "CanvasLayer",
+              "parent": "Arena"
+            },
+            {
+              "name": "ScoreLabel",
+              "type": "Label",
+              "parent": "UI",
+              "props": {
+                "text": "<max depth>"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "from": "Coin_Red",
+              "to": "ScoreLabel",
+              "type": "signal"
+            },
+            {
+              "from": "Coin_Green",
+              "to": "ScoreLabel",
+              "type": "signal"
+            },
+            {
+              "from": "Coin_Blue",
+              "to": "ScoreLabel",
+              "type": "signal"
+            },
+            {
+              "from": "Coin_Gold",
+              "to": "ScoreLabel",
+              "type": "signal"
+            },
+            {
+              "from": "Coin_Purple",
+              "to": "ScoreLabel",
+              "type": "signal"
+            }
+          ],
+          "parents": {
+            "Arena": "Main",
+            "Player": "Arena",
+            "PlayerCamera": "Player",
+            "Collectibles": "Arena",
+            "Coin_Red": "Collectibles",
+            "Coin_Red_Shape": "Coin_Red",
+            "Coin_Red_Mesh": "Coin_Red",
+            "Coin_Green": "Collectibles",
+            "Coin_Green_Shape": "Coin_Green",
+            "Coin_Green_Mesh": "Coin_Green",
+            "Coin_Blue": "Collectibles",
+            "Coin_Blue_Shape": "Coin_Blue",
+            "Coin_Blue_Mesh": "Coin_Blue",
+            "Coin_Gold": "Collectibles",
+            "Coin_Gold_Shape": "Coin_Gold",
+            "Coin_Gold_Mesh": "Coin_Gold",
+            "Coin_Purple": "Collectibles",
+            "Coin_Purple_Shape": "Coin_Purple",
+            "Coin_Purple_Mesh": "Coin_Purple",
+            "UI": "Arena",
+            "ScoreLabel": "UI"
+          }
+        },
+        "execution": {
+          "success": true,
+          "results": [
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "set_property",
+              "data": {
+                "old_value": "<max depth>",
+                "path": "<max depth>",
+                "property": "<max depth>",
+                "undoable": "<max depth>",
+                "value": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            }
+          ],
+          "errors": [],
+          "success_count": 45,
+          "failure_count": 0
+        }
+      },
+      "scene_before": {
+        "/Main": "Node3D",
+        "/Main/Camera3D": "Camera3D",
+        "/Main/Ground": "StaticBody3D",
+        "/Main/Arena": "Node3D",
+        "/Main/Arena/Player": "CharacterBody3D",
+        "/Main/Arena/Player/PlayerCam": "Camera3D",
+        "/Main/Arena/Player/CollisionShape3D": "CollisionShape3D",
+        "/Main/Arena/Coins": "Node3D",
+        "/Main/Arena/Coins/Coin1": "Area3D",
+        "/Main/Arena/Coins/Coin1/Coin1Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin1/Coin1Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin2": "Area3D",
+        "/Main/Arena/Coins/Coin2/Coin2Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin2/Coin2Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin3": "Area3D",
+        "/Main/Arena/Coins/Coin3/Coin3Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin3/Coin3Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin4": "Area3D",
+        "/Main/Arena/Coins/Coin4/Coin4Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin4/Coin4Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin5": "Area3D",
+        "/Main/Arena/Coins/Coin5/Coin5Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin5/Coin5Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin6": "Area3D",
+        "/Main/Arena/Coins/Coin6/Coin6Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin6/Coin6Mesh": "MeshInstance3D",
+        "/Main/Arena/UI": "CanvasLayer",
+        "/Main/Arena/UI/ScoreLabel": "Label",
+        "/Main/DirectionalLight": "DirectionalLight3D"
+      },
+      "scene_after": {
+        "/Main": "Node3D",
+        "/Main/LvlA": "Node3D",
+        "/Main/LvlA/LvlB": "Node3D",
+        "/Main/LvlA/LvlB/LvlC": "Node3D",
+        "/Main/LvlA/LvlB/LvlC/LvlD": "Node3D",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE": "Node3D",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF": "Node3D",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF/LvlG": "Node3D",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF/LvlG/LvlH": "Node3D",
+        "/Main/MainCamera": "Camera3D",
+        "/Main/DirectionalLight": "DirectionalLight3D",
+        "/Main/Grid": "Node3D",
+        "/Main/Grid/Cell1": "MeshInstance3D",
+        "/Main/Grid/Cell2": "MeshInstance3D",
+        "/Main/Grid/Cell3": "MeshInstance3D",
+        "/Main/Grid/Cell4": "MeshInstance3D",
+        "/Main/Grid/Cell5": "MeshInstance3D",
+        "/Main/Grid/Cell6": "MeshInstance3D",
+        "/Main/Grid/Cell7": "MeshInstance3D",
+        "/Main/Grid/Cell8": "MeshInstance3D",
+        "/Main/Grid/Cell9": "MeshInstance3D",
+        "/Main/Grid/Cell10": "MeshInstance3D",
+        "/Main/Grid/Cell11": "MeshInstance3D",
+        "/Main/Grid/Cell12": "MeshInstance3D",
+        "/Main/Grid/Cell13": "MeshInstance3D",
+        "/Main/Grid/Cell14": "MeshInstance3D",
+        "/Main/Grid/Cell15": "MeshInstance3D",
+        "/Main/Grid/Cell16": "MeshInstance3D",
+        "/Main/Grid/Cell17": "MeshInstance3D",
+        "/Main/Grid/Cell18": "MeshInstance3D",
+        "/Main/Grid/Cell19": "MeshInstance3D",
+        "/Main/Grid/Cell20": "MeshInstance3D",
+        "/Main/Grid/Cell21": "MeshInstance3D",
+        "/Main/Grid/Cell22": "MeshInstance3D",
+        "/Main/Grid/Cell23": "MeshInstance3D",
+        "/Main/Grid/Cell24": "MeshInstance3D",
+        "/Main/BoxNode": "MeshInstance3D",
+        "/Main/SphereNode": "MeshInstance3D",
+        "/Main/CapsuleNode": "MeshInstance3D",
+        "/Main/CylinderNode": "MeshInstance3D",
+        "/Main/PlaneNode": "MeshInstance3D",
+        "/Main/Pickups": "Node3D",
+        "/Main/Pickups/P1": "Area3D",
+        "/Main/Pickups/P1/P1Shape": "CollisionShape3D",
+        "/Main/Pickups/P1/P1Mesh": "MeshInstance3D",
+        "/Main/Pickups/P2": "Area3D",
+        "/Main/Pickups/P2/P2Shape": "CollisionShape3D",
+        "/Main/Pickups/P2/P2Mesh": "MeshInstance3D",
+        "/Main/Pickups/P3": "Area3D",
+        "/Main/Pickups/P3/P3Shape": "CollisionShape3D",
+        "/Main/Pickups/P3/P3Mesh": "MeshInstance3D",
+        "/Main/Arena": "Node3D",
+        "/Main/Arena/Player": "MeshInstance3D",
+        "/Main/Arena/Player/PlayerCamera": "Camera3D",
+        "/Main/Arena/Collectibles": "Node3D",
+        "/Main/Arena/Collectibles/Coin_Red": "Area3D",
+        "/Main/Arena/Collectibles/Coin_Red/Coin_Red_Shape": "CollisionShape3D",
+        "/Main/Arena/Collectibles/Coin_Red/Coin_Red_Mesh": "MeshInstance3D",
+        "/Main/Arena/Collectibles/Coin_Green": "Area3D",
+        "/Main/Arena/Collectibles/Coin_Green/Coin_Green_Shape": "CollisionShape3D",
+        "/Main/Arena/Collectibles/Coin_Green/Coin_Green_Mesh": "MeshInstance3D",
+        "/Main/Arena/Collectibles/Coin_Blue": "Area3D",
+        "/Main/Arena/Collectibles/Coin_Blue/Coin_Blue_Shape": "CollisionShape3D",
+        "/Main/Arena/Collectibles/Coin_Blue/Coin_Blue_Mesh": "MeshInstance3D",
+        "/Main/Arena/Collectibles/Coin_Gold": "Area3D",
+        "/Main/Arena/Collectibles/Coin_Gold/Coin_Gold_Shape": "CollisionShape3D",
+        "/Main/Arena/Collectibles/Coin_Gold/Coin_Gold_Mesh": "MeshInstance3D",
+        "/Main/Arena/Collectibles/Coin_Purple": "Area3D",
+        "/Main/Arena/Collectibles/Coin_Purple/Coin_Purple_Shape": "CollisionShape3D",
+        "/Main/Arena/Collectibles/Coin_Purple/Coin_Purple_Mesh": "MeshInstance3D",
+        "/Main/Arena/UI": "CanvasLayer",
+        "/Main/Arena/UI/ScoreLabel": "Label",
+        "/Main/Player": "CharacterBody3D",
+        "/Main/Player/CollisionShape3D": "CollisionShape3D",
+        "/Main/HUD": "CanvasLayer",
+        "/Main/HUD/Menu": "VBoxContainer",
+        "/Main/HUD/Menu/StartBtn": "Button",
+        "/Main/HUD/Menu/OptionsBtn": "Button",
+        "/Main/HUD/Menu/QuitBtn": "Button",
+        "/Main/HUD/Menu/Title": "Label"
+      },
+      "plan_retries": 0,
+      "repair_count": 0,
+      "completeness_added": 0,
+      "stage_latencies": {},
+      "failure_attribution": [
+        {
+          "assertion": "player_mesh",
+          "stage": "compile",
+          "reason": "planner set mesh but compiler didn't emit SetPropertyStep"
+        },
+        {
+          "assertion": "player_script",
+          "stage": "plan",
+          "reason": "planner did not create a movement/player system"
+        },
+        {
+          "assertion": "score_text",
+          "stage": "execute",
+          "reason": "ScoreLabel text was planned but property not set in editor"
+        },
+        {
+          "assertion": "no_pollution",
+          "stage": "completeness",
+          "reason": "completeness checker injected unexpected nodes"
+        },
+        {
+          "assertion": "scripts_created",
+          "stage": "compile",
+          "reason": "no scripts were generated"
+        },
+        {
+          "assertion": "movement_process",
+          "stage": "compile",
+          "reason": "no GDScript files were generated at all"
+        },
+        {
+          "assertion": "movement_input",
+          "stage": "compile",
+          "reason": "no GDScript files were generated at all"
+        },
+        {
+          "assertion": "collect_handler",
+          "stage": "compile",
+          "reason": "no collectible script was generated"
+        },
+        {
+          "assertion": "collect_qfree",
+          "stage": "compile",
+          "reason": "no collectible script was generated"
+        },
+        {
+          "assertion": "collect_score",
+          "stage": "compile",
+          "reason": "no collectible script was generated"
+        }
+      ]
+    },
+    {
+      "model_alias": "qwen3-14b-q6-k",
+      "model_label": "Qwen3 14B",
+      "planner_mode": "ops",
+      "status": "error",
+      "static_assertions": [
+        {
+          "status": "fail",
+          "assertion": "arena_exists",
+          "message": "/Main/Arena missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_type",
+          "message": "Player type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "player_mesh",
+          "message": "Player has NO mesh"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_script",
+          "message": "Player has NO script"
+        },
+        {
+          "status": "fail",
+          "assertion": "player_camera",
+          "message": "PlayerCamera type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_exists",
+          "message": "Coin_Red missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_exists",
+          "message": "Coin_Green missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_exists",
+          "message": "Coin_Blue missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_exists",
+          "message": "Coin_Gold missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_exists",
+          "message": "Coin_Purple missing"
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_red_type",
+          "message": "Coin_Red type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_green_type",
+          "message": "Coin_Green type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_blue_type",
+          "message": "Coin_Blue type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_gold_type",
+          "message": "Coin_Gold type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coin_coin_purple_type",
+          "message": "Coin_Purple type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_collision",
+          "message": "Missing CollisionShape3D on >=1 coin"
+        },
+        {
+          "status": "fail",
+          "assertion": "coins_mesh",
+          "message": "Missing MeshInstance3D on >=1 coin"
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_canvas",
+          "message": "UI type = "
+        },
+        {
+          "status": "fail",
+          "assertion": "ui_label",
+          "message": "ScoreLabel missing"
+        },
+        {
+          "status": "error",
+          "assertion": "score_text",
+          "message": "Property fetch failed"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_dup_cameras",
+          "message": "1 Camera3D nodes (ok)"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_pollution",
+          "message": "Clean scene"
+        },
+        {
+          "status": "pass",
+          "assertion": "no_errors",
+          "message": "Zero pipeline errors"
+        }
+      ],
+      "runtime_assertions": [
+        {
+          "status": "pass",
+          "assertion": "game_runs",
+          "message": "FPS=0 (launched, capture ready)"
+        },
+        {
+          "status": "fail",
+          "assertion": "scripts_created",
+          "message": "no scripts generated"
+        },
+        {
+          "status": "fail",
+          "assertion": "movement_process",
+          "message": "_process NOT found"
+        },
+        {
+          "status": "fail",
+          "assertion": "movement_input",
+          "message": "no Input calls"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_handler",
+          "message": "no signal handler"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_qfree",
+          "message": "queue_free NOT found"
+        },
+        {
+          "status": "fail",
+          "assertion": "collect_score",
+          "message": "no score tracking"
+        }
+      ],
+      "static_score": 9,
+      "runtime_score": 5,
+      "total_score": 14,
+      "max_score": 100,
+      "ms_total": 306420,
+      "errors": [],
+      "raw_apply_spec": {
+        "artifact_id": "0002ffdd5aed",
+        "applied": 2,
+        "operations_total": 2,
+        "files": [],
+        "errors": [],
+        "error_count": 0,
+        "scene_version": 3,
+        "has_full_detail": true,
+        "hint": "Call read_artifact with this artifact_id to get full operation details, file contents, and execution results."
+      },
+      "raw_artifact": {
+        "files": [],
+        "operations": [
+          {
+            "type": "add_node",
+            "parent": "/root/Main",
+            "node_type": "Camera3D",
+            "name": "MainCamera"
+          },
+          {
+            "type": "add_node",
+            "parent": "/root/Main",
+            "node_type": "DirectionalLight3D",
+            "name": "DirectionalLight"
+          }
+        ],
+        "errors": [],
+        "scene_version": 3,
+        "arch_delta": {},
+        "execution": {
+          "success": true,
+          "results": [
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            },
+            {
+              "command": "create_node",
+              "data": {
+                "name": "<max depth>",
+                "parent_path": "<max depth>",
+                "path": "<max depth>",
+                "type": "<max depth>",
+                "undoable": "<max depth>"
+              },
+              "status": "ok",
+              "success": true
+            }
+          ],
+          "errors": [],
+          "success_count": 2,
+          "failure_count": 0
+        }
+      },
+      "scene_before": {
+        "/Main": "Node3D",
+        "/Main/Camera3D": "Camera3D",
+        "/Main/Ground": "StaticBody3D",
+        "/Main/Arena": "Node3D",
+        "/Main/Arena/Player": "CharacterBody3D",
+        "/Main/Arena/Player/PlayerCam": "Camera3D",
+        "/Main/Arena/Player/CollisionShape3D": "CollisionShape3D",
+        "/Main/Arena/Coins": "Node3D",
+        "/Main/Arena/Coins/Coin1": "Area3D",
+        "/Main/Arena/Coins/Coin1/Coin1Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin1/Coin1Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin2": "Area3D",
+        "/Main/Arena/Coins/Coin2/Coin2Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin2/Coin2Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin3": "Area3D",
+        "/Main/Arena/Coins/Coin3/Coin3Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin3/Coin3Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin4": "Area3D",
+        "/Main/Arena/Coins/Coin4/Coin4Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin4/Coin4Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin5": "Area3D",
+        "/Main/Arena/Coins/Coin5/Coin5Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin5/Coin5Mesh": "MeshInstance3D",
+        "/Main/Arena/Coins/Coin6": "Area3D",
+        "/Main/Arena/Coins/Coin6/Coin6Shape": "CollisionShape3D",
+        "/Main/Arena/Coins/Coin6/Coin6Mesh": "MeshInstance3D",
+        "/Main/Arena/UI": "CanvasLayer",
+        "/Main/Arena/UI/ScoreLabel": "Label",
+        "/Main/DirectionalLight": "DirectionalLight3D"
+      },
+      "scene_after": {
+        "/Main": "Node3D",
+        "/Main/MainCamera": "Camera3D",
+        "/Main/DirectionalLight": "DirectionalLight3D"
+      },
+      "plan_retries": 0,
+      "repair_count": 0,
+      "completeness_added": 0,
+      "stage_latencies": {},
+      "failure_attribution": [
+        {
+          "assertion": "arena_exists",
+          "stage": "plan",
+          "reason": "planner produced NO entities"
+        },
+        {
+          "assertion": "player_type",
+          "stage": "plan",
+          "reason": "planner did not include Player entity"
+        },
+        {
+          "assertion": "player_mesh",
+          "stage": "plan",
+          "reason": "planner did not include Player"
+        },
+        {
+          "assertion": "player_script",
+          "stage": "plan",
+          "reason": "planner produced no entities/systems"
+        },
+        {
+          "assertion": "player_camera",
+          "stage": "plan",
+          "reason": "planner produced no entities/systems"
+        },
+        {
+          "assertion": "coin_coin_red_exists",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_green_exists",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_blue_exists",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_gold_exists",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_purple_exists",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_red_type",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_green_type",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_blue_type",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_gold_type",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coin_coin_purple_type",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coins_collision",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "coins_mesh",
+          "stage": "plan",
+          "reason": "planner produced NO entities at all"
+        },
+        {
+          "assertion": "ui_canvas",
+          "stage": "plan",
+          "reason": "planner did not include UI entity"
+        },
+        {
+          "assertion": "ui_label",
+          "stage": "plan",
+          "reason": "planner did not include UI entity"
+        },
+        {
+          "assertion": "score_text",
+          "stage": "plan",
+          "reason": "planner did not include ScoreLabel"
+        },
+        {
+          "assertion": "scripts_created",
+          "stage": "compile",
+          "reason": "no scripts were generated"
+        },
+        {
+          "assertion": "movement_process",
+          "stage": "compile",
+          "reason": "no GDScript files were generated at all"
+        },
+        {
+          "assertion": "movement_input",
+          "stage": "compile",
+          "reason": "no GDScript files were generated at all"
+        },
+        {
+          "assertion": "collect_handler",
+          "stage": "compile",
+          "reason": "no collectible script was generated"
+        },
+        {
+          "assertion": "collect_qfree",
+          "stage": "compile",
+          "reason": "no collectible script was generated"
+        },
+        {
+          "assertion": "collect_score",
+          "stage": "compile",
+          "reason": "no collectible script was generated"
+        }
+      ]
+    }
+  ],
+  "all_planners": true,
+  "planner_comparison": {
+    "rows": [
+      {
+        "model_alias": "qwen3-14b-q6-k",
+        "model_label": "Qwen3 14B",
+        "arch_score": 61,
+        "ops_score": 14,
+        "delta": -47,
+        "winner": "arch"
+      }
+    ],
+    "summary": "arch avg: 61, ops avg: 14"
+  },
+  "regression_flags": [
+    {
+      "model": "Qwen3 14B",
+      "alias": "qwen3-14b-q6-k",
+      "planner_mode": "arch",
+      "current_score": 61,
+      "previous_best": 82,
+      "previous_ts": "2026-06-14 05:37:03",
+      "delta": -21
+    },
+    {
+      "model": "Qwen3 14B",
+      "alias": "qwen3-14b-q6-k",
+      "planner_mode": "ops",
+      "current_score": 14,
+      "previous_best": 82,
+      "previous_ts": "2026-06-14 05:37:03",
+      "delta": -68
+    }
+  ],
+  "rankings": [
+    {
+      "rank": 1,
+      "model": "Qwen3 14B",
+      "alias": "qwen3-14b-q6-k",
+      "score": 61,
+      "status": "pass",
+      "planner_mode": "arch"
+    },
+    {
+      "rank": 2,
+      "model": "Qwen3 14B",
+      "alias": "qwen3-14b-q6-k",
+      "score": 14,
+      "status": "error",
+      "planner_mode": "ops"
+    }
+  ]
+}

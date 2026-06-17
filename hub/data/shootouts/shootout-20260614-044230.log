@@ -1,0 +1,139 @@
+=== SHOOTOUT LOG 20260614-044230 ===
+
+[04:42:30] === FORGE MODEL SHOOTOUT ===
+[04:42:30] Scene: res://shootout.tscn
+[04:42:31] Models to test: 5
+[04:42:31]   • Qwen3 14B (qwen3-14b-q6-k)
+[04:42:31]   • Gemma 4 12B QAT (gemma-4-12b-it-qat-q4-k-xl)
+[04:42:31]   • Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-q4-k-xl)
+[04:42:31]   • Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[04:42:31]   • Cydonia Redux 22B (merged-22b-q4-k-m)
+[04:42:31] 
+── [1/5] Qwen3 14B (qwen3-14b-q6-k) ──
+[04:42:31] [shootout:model] 1/5 Qwen3 14B
+[04:42:31] START: Qwen3 14B (qwen3-14b-q6-k)
+[04:42:31]   swap: starting...
+[04:43:05]   swap: OK
+[04:43:05]   reset: pristine shootout scene
+[04:43:05]   scene_before: 3 nodes
+[04:43:05]   apply_spec: sending prompt (1672 chars)...
+[04:43:48]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[04:43:48]   apply_spec: reading artifact b632c8012277
+[04:43:48]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[04:43:48]   apply_spec: done — applied=?, ops=29, errors=0
+[04:43:48]   scene_after: 25 nodes
+[04:43:48]   static: running 23 checks...
+[04:43:48]   static: 20p/3f/0e = 59/68
+[04:43:48]     [fail] player_script: Player has NO script
+[04:43:48]     [fail] score_text: Label text = '' (expected 'Score: 0')
+[04:43:48]     [fail] no_pollution: Unexpected: ['/Main/DirectionalLight(DirectionalLight3D)']
+[04:43:48]   runtime: running checks...
+[04:43:57]   runtime: 4p/3f/0e = 18/32
+[04:43:57]     [fail] movement_input: no Input calls
+[04:43:57]     [fail] collect_handler: no signal handler
+[04:43:57]     [fail] collect_qfree: queue_free NOT found
+[04:43:57]   reset: restoring pristine shootout scene
+[04:43:57]   DONE: [pass] score=77/100 (86910ms)
+[04:43:57] [shootout:scored] 1/5 Qwen3 14B = 77/100 (pass)
+[04:43:57] 
+── [2/5] Gemma 4 12B QAT (gemma-4-12b-it-qat-q4-k-xl) ──
+[04:43:57] [shootout:model] 2/5 Gemma 4 12B QAT
+[04:43:57] START: Gemma 4 12B QAT (gemma-4-12b-it-qat-q4-k-xl)
+[04:43:57]   swap: starting...
+[04:44:20]   swap: OK
+[04:44:20]   reset: pristine shootout scene
+[04:44:21]   scene_before: 25 nodes
+[04:44:21]   apply_spec: sending prompt (1672 chars)...
+[04:45:20]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[04:45:20]   apply_spec: reading artifact 815ae6c206d3
+[04:45:20]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[04:45:20]   apply_spec: done — applied=?, ops=8, errors=0
+[04:45:20]   scene_after: 32 nodes
+[04:45:20]   static: running 23 checks...
+[04:45:21]   static: 19p/4f/0e = 56/68
+[04:45:21]     [fail] player_script: Player has NO script
+[04:45:21]     [fail] score_text: Label text = '' (expected 'Score: 0')
+[04:45:21]     [fail] no_dup_cameras: 3 Camera3D nodes TOO MANY
+[04:45:21]     [fail] no_pollution: Unexpected: ['/Main/DirectionalLight(DirectionalLight3D)', '/Main/PlayerCamera(Camera3D)', '/Main/Coin_Red(Area3D)', '/Main/Coin_Green(Area3D)', '/Main/Coin_Blue(Area3D)']
+[04:45:21]   runtime: running checks...
+[04:45:30]   runtime: 4p/3f/0e = 18/32
+[04:45:30]     [fail] movement_input: no Input calls
+[04:45:30]     [fail] collect_handler: no signal handler
+[04:45:30]     [fail] collect_qfree: queue_free NOT found
+[04:45:30]   reset: restoring pristine shootout scene
+[04:45:30]   DONE: [pass] score=74/100 (92590ms)
+[04:45:30] [shootout:scored] 2/5 Gemma 4 12B QAT = 74/100 (pass)
+[04:45:30] 
+── [3/5] Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-q4-k-xl) ──
+[04:45:30] [shootout:model] 3/5 Gemma 4 26B MoE
+[04:45:30] START: Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-q4-k-xl)
+[04:45:30]   swap: starting...
+[04:45:31]   swap: FAILED — model never tested
+[04:45:31]   reset: restoring pristine shootout scene
+[04:45:31]   DONE: [untested] score=0/100 (736ms)
+[04:45:31] [shootout:scored] 3/5 Gemma 4 26B MoE = 0/100 (untested)
+[04:45:31] 
+── [4/5] Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k) ──
+[04:45:31] [shootout:model] 4/5 Gemma 4 12B Obliterated
+[04:45:31] START: Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[04:45:31]   swap: starting...
+[04:45:59]   swap: OK
+[04:45:59]   reset: pristine shootout scene
+[04:45:59]   scene_before: 32 nodes
+[04:45:59]   apply_spec: sending prompt (1672 chars)...
+[04:46:19]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[04:46:19]   apply_spec: reading artifact c3dad061e245
+[04:46:19]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[04:46:19]   apply_spec: done — applied=?, ops=2, errors=0
+[04:46:19]   scene_after: 34 nodes
+[04:46:19]   static: running 23 checks...
+[04:46:19]   static: 19p/4f/0e = 56/68
+[04:46:19]     [fail] player_script: Player has NO script
+[04:46:19]     [fail] score_text: Label text = '' (expected 'Score: 0')
+[04:46:19]     [fail] no_dup_cameras: 3 Camera3D nodes TOO MANY
+[04:46:19]     [fail] no_pollution: Unexpected: ['/Main/DirectionalLight(DirectionalLight3D)', '/Main/PlayerCamera(Camera3D)', '/Main/Coin_Red(Area3D)', '/Main/Coin_Green(Area3D)', '/Main/Coin_Blue(Area3D)']
+[04:46:19]   runtime: running checks...
+[04:46:28]   runtime: 1p/6f/0e = 5/32
+[04:46:28]     [fail] scripts_created: no scripts generated
+[04:46:28]     [fail] movement_process: _process NOT found
+[04:46:28]     [fail] movement_input: no Input calls
+[04:46:28]     [fail] collect_handler: no signal handler
+[04:46:28]     [fail] collect_qfree: queue_free NOT found
+[04:46:28]     [fail] collect_score: no score tracking
+[04:46:28]   reset: restoring pristine shootout scene
+[04:46:28]   DONE: [pass] score=61/100 (57494ms)
+[04:46:28] [shootout:scored] 4/5 Gemma 4 12B Obliterated = 61/100 (pass)
+[04:46:28] 
+── [5/5] Cydonia Redux 22B (merged-22b-q4-k-m) ──
+[04:46:28] [shootout:model] 5/5 Cydonia Redux 22B
+[04:46:28] START: Cydonia Redux 22B (merged-22b-q4-k-m)
+[04:46:28]   swap: starting...
+[04:47:05]   swap: OK
+[04:47:05]   reset: pristine shootout scene
+[04:47:06]   scene_before: 34 nodes
+[04:47:06]   apply_spec: sending prompt (1672 chars)...
+[04:48:07]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[04:48:07]   apply_spec: reading artifact b02a39848af1
+[04:48:07]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[04:48:07]   apply_spec: done — applied=?, ops=8, errors=1
+[04:48:07]   scene_after: 34 nodes
+[04:48:07]   static: running 23 checks...
+[04:48:07]   static: 18p/5f/0e = 53/68
+[04:48:07]     [fail] player_script: Player has NO script
+[04:48:07]     [fail] score_text: Label text = '' (expected 'Score: 0')
+[04:48:07]     [fail] no_dup_cameras: 3 Camera3D nodes TOO MANY
+[04:48:07]     [fail] no_pollution: Unexpected: ['/Main/DirectionalLight(DirectionalLight3D)', '/Main/PlayerCamera(Camera3D)', '/Main/Coin_Red(Area3D)', '/Main/Coin_Green(Area3D)', '/Main/Coin_Blue(Area3D)']
+[04:48:07]     [fail] no_errors: 1 pipeline errors
+[04:48:07]   runtime: running checks...
+[04:48:16]   runtime: 4p/3f/0e = 18/32
+[04:48:16]     [fail] movement_input: no Input calls
+[04:48:16]     [fail] collect_handler: no signal handler
+[04:48:16]     [fail] collect_qfree: queue_free NOT found
+[04:48:16]   reset: restoring pristine shootout scene
+[04:48:16]   DONE: [pass] score=71/100 (107942ms)
+[04:48:16] [shootout:scored] 5/5 Cydonia Redux 22B = 71/100 (pass)
+[04:48:16] restored editor scene → res://scenes/main.tscn
+[04:48:16] [shootout:done]
+[04:48:16] 
+→ saved shootout-20260614-044230.json
+[04:48:16] Total: 346s for 4 models

@@ -1,0 +1,99 @@
+{
+  "ts": "2026-06-13 20:55:15",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "ctx 32768 (q4_0 KV)",
+      "thresholds": "loaded==configured",
+      "data": {
+        "n_ctx_loaded": 32768,
+        "configured_ctx": 32768,
+        "kv_cache": "q4_0",
+        "model_alias": "gemma-4-12b-obliterated-q6-k"
+      },
+      "id": "llama.context",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Context window actually loaded"
+    },
+    {
+      "verdict": "works",
+      "summary": "grammar enforced exactly \u2192 'ANVIL'",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "id": "llama.grammar",
+      "ms": 262,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "verdict": "works",
+      "summary": "accepted the valid op, rejected the bad parent",
+      "thresholds": "good\u2192valid, bad\u2192error",
+      "data": {
+        "valid_count": 1,
+        "error_count": 1,
+        "errors": [
+          "Op 1 (add_node): parent '/root/Ghost' not found in scene"
+        ],
+        "caught_bad_parent": true
+      },
+      "id": "devforge.validate",
+      "ms": 180,
+      "layer": "devforge",
+      "title": "Validator accept/reject"
+    },
+    {
+      "verdict": "works",
+      "summary": "1 nodes, root 'Main'",
+      "thresholds": "\u22651 node, named root",
+      "data": {
+        "node_count": 1,
+        "root": "Main",
+        "has_more": false,
+        "sample": [
+          "/Main"
+        ]
+      },
+      "id": "godotai.fidelity",
+      "ms": 105,
+      "layer": "godot-ai",
+      "title": "Scene tree fidelity"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "'MCP' missing from inject_suffix (tool retrieval won't run); /no_think missing",
+      "thresholds": "enabled, ~3.9k prompt, 'MCP'+/no_think",
+      "data": {
+        "enabled": true,
+        "system_prompt_chars": 3880,
+        "temperature": 0.2,
+        "has_mcp": false,
+        "has_nothink": false,
+        "character_name": "Godot Developer"
+      },
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Live persona is the real prompt"
+    }
+  ],
+  "counts": {
+    "works": 4,
+    "degraded": 1,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "works",
+    "devforge": "works",
+    "godot-ai": "works",
+    "odysseus": "degraded"
+  }
+}

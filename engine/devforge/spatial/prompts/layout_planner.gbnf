@@ -1,0 +1,41 @@
+# layout_planner.gbnf
+# GBNF grammar for DevForge spatial layout JSON output.
+# Constrains the LLM to produce valid layout objects:
+# {pattern, dimensions{w,d,h}, slot_fills:{slot:asset}, arcs_overrides:[{asset,anchor,offset}]}
+
+root ::= "{" ws "\"pattern\"" ws ":" ws string ws "," ws "\"dimensions\"" ws ":" ws dims-object ws "," ws "\"slot_fills\"" ws ":" ws slot-fills-object ws "," ws "\"arcs_overrides\"" ws ":" ws "[" ws arcs-list ws "]" ws "}"
+
+dims-object ::= "{" ws "\"width\"" ws ":" ws number ws "," ws "\"height\"" ws ":" ws number ws "," ws "\"depth\"" ws ":" ws number ws "}"
+
+slot-fills-object ::= "{" ws "}"
+                    | "{" ws slot-fill-pair (ws "," ws slot-fill-pair)* ws "}"
+
+slot-fill-pair ::= string ws ":" ws string
+
+arcs-list ::= ""
+            | arcs-override (ws "," ws arcs-override)*
+
+arcs-override ::= "{" ws "\"asset\"" ws ":" ws string ws "," ws "\"anchor\"" ws ":" ws anchor-object ws "," ws "\"offset\"" ws ":" ws vec3 ws "}"
+
+anchor-object ::= "{" ws "\"chain\"" ws ":" ws "[" ws string ws "," ws direction ws "," ws number ws "]" ws "}"
+
+direction ::= "\"north\"" | "\"south\"" | "\"east\"" | "\"west\"" | "\"up\"" | "\"down\""
+
+vec3 ::= "[" ws number ws "," ws number ws "," ws number ws "]"
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+# JSON string
+string ::= "\"" char* "\""
+
+char ::= unescaped
+       | "\\" escape
+
+unescaped ::= [^"\\\x00-\x1F]
+
+escape ::= ["\\/bfnrt]
+         | "u" hex hex hex hex
+
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

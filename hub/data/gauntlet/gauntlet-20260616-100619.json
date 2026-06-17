@@ -1,0 +1,201 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 10:09:28",
+  "set": "variety-v1",
+  "set_title": "Variety Dashboard \u2014 Stage 4 rebalance metrics",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 5,
+  "done": 5,
+  "results": [
+    {
+      "built_nodes": 5,
+      "built_depth": 1,
+      "applied": 25,
+      "operations_total": 25,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 5,
+        "color": 8
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 23168,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_center_table",
+        "/Main/counter_north_counter_center",
+        "/Main/stove_north_counter_left"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "5/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "V1_kitchen_repeat",
+      "axis": "variety:repeat_diversity",
+      "prompt": "build a kitchen"
+    },
+    {
+      "built_nodes": 5,
+      "built_depth": 1,
+      "applied": 25,
+      "operations_total": 25,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 5,
+        "color": 8
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 3342,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_center_table",
+        "/Main/counter_north_counter_center",
+        "/Main/stove_north_counter_left"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "5/2"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "V2_kitchen_cramped",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a cramped kitchen"
+    },
+    {
+      "built_nodes": 4,
+      "built_depth": 1,
+      "applied": 20,
+      "operations_total": 20,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "mesh": 4,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 3042,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/counter_north_counter_left",
+        "/Main/counter_north_counter_right"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "4/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "V3_kitchen_spacious",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a spacious kitchen"
+    },
+    {
+      "built_nodes": 5,
+      "built_depth": 1,
+      "applied": 25,
+      "operations_total": 25,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 5,
+        "color": 8
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 3256,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_center_table",
+        "/Main/counter_north_counter_center",
+        "/Main/counter_north_counter_left"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "5/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "V4_kitchen_rustic",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a rustic kitchen"
+    },
+    {
+      "built_nodes": 4,
+      "built_depth": 1,
+      "applied": 20,
+      "operations_total": 20,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 4,
+        "mesh": 4,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 150983,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/counter_north_counter_center",
+        "/Main/fridge_north_counter_left"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "4/2"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "V5_kitchen_derelict",
+      "axis": "variety:intent_coverage",
+      "prompt": "build a derelict abandoned kitchen"
+    }
+  ],
+  "summary": {
+    "full": 5,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

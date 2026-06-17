@@ -1,0 +1,187 @@
+{
+  "ts": "2026-06-14 09:06:02",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 3,
+  "done": 3,
+  "results": [
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 5,
+      "operations_total": 14,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 20070,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "signals",
+          "ok": false,
+          "detail": "0/1"
+        }
+      ],
+      "coverage": 50,
+      "verdict": "partial",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+    },
+    {
+      "built_nodes": 26,
+      "built_depth": 4,
+      "applied": 53,
+      "operations_total": 53,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 8,
+        "shape": 6,
+        "mesh": 6,
+        "color": 6,
+        "text": 1
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 42024,
+      "nodes_sample": [
+        "/Main3/Arena",
+        "/Main3/Arena/Coins",
+        "/Main3/Arena/Coins/Coin1",
+        "/Main3/Arena/Coins/Coin1/Coin1Mesh",
+        "/Main3/Arena/Coins/Coin1/Coin1Shape",
+        "/Main3/Arena/Coins/Coin2",
+        "/Main3/Arena/Coins/Coin2/Coin2Mesh",
+        "/Main3/Arena/Coins/Coin2/Coin2Shape",
+        "/Main3/Arena/Coins/Coin3",
+        "/Main3/Arena/Coins/Coin3/Coin3Mesh",
+        "/Main3/Arena/Coins/Coin3/Coin3Shape",
+        "/Main3/Arena/Coins/Coin4",
+        "/Main3/Arena/Coins/Coin4/Coin4Mesh",
+        "/Main3/Arena/Coins/Coin4/Coin4Shape",
+        "/Main3/Arena/Coins/Coin5",
+        "/Main3/Arena/Coins/Coin5/Coin5Mesh",
+        "/Main3/Arena/Coins/Coin5/Coin5Shape",
+        "/Main3/Arena/Coins/Coin6",
+        "/Main3/Arena/Coins/Coin6/Coin6Mesh",
+        "/Main3/Arena/Coins/Coin6/Coin6Shape"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "26/25"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "4/4"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "scripts",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "attached",
+          "ok": false,
+          "detail": "0/2"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 1,
+      "operations_total": 47,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "mesh": 1,
+        "position": 22
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 33138,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/20"
+        },
+        {
+          "label": "rejected-bad-ops",
+          "ok": false,
+          "detail": "0 errors (expected)"
+        },
+        {
+          "label": "no-crash",
+          "ok": true,
+          "detail": "no crash"
+        }
+      ],
+      "coverage": 33,
+      "verdict": "broke",
+      "id": "G8_adversarial",
+      "axis": "validation / graceful failure",
+      "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main."
+    }
+  ],
+  "summary": {
+    "full": 0,
+    "partial": 2,
+    "broke": 1,
+    "avg_coverage": 53
+  }
+}

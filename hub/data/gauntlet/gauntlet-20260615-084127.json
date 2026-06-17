@@ -1,0 +1,528 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-15 08:51:15",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "merged-22b-q4-k-m",
+  "status": "complete",
+  "total": 8,
+  "done": 8,
+  "results": [
+    {
+      "built_nodes": 8,
+      "built_depth": 8,
+      "applied": 9,
+      "operations_total": 9,
+      "error_count": 0,
+      "errors": [],
+      "props": {},
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 51534,
+      "nodes_sample": [
+        "/Main/LvlA",
+        "/Main/LvlA/LvlB",
+        "/Main/LvlA/LvlB/LvlC",
+        "/Main/LvlA/LvlB/LvlC/LvlD",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF/LvlG",
+        "/Main/LvlA/LvlB/LvlC/LvlD/LvlE/LvlF/LvlG/LvlH"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "8/8"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "8/8"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G1_depth",
+      "axis": "nesting depth",
+      "prompt": "Under /Main create a chain of nested Node3D nodes: LvlA as a child of /Main, LvlB under LvlA, LvlC under LvlB, LvlD under LvlC, LvlE under LvlD, LvlF under LvlE, LvlG under LvlF, and LvlH under LvlG."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 75,
+      "operations_total": 99,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "mesh": 24,
+        "position": 24
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 24,
+      "latency_ms": 136434,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/25"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "24/20"
+        },
+        {
+          "label": "prop:position",
+          "ok": true,
+          "detail": "24/20"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "G2_breadth",
+      "axis": "breadth + position math",
+      "prompt": "Under /Main create a Node3D named Grid. Under Grid create 24 MeshInstance3D nodes named Cell1 through Cell24, each with a box mesh, arranged in a 6x4 layout spaced 2 units apart on the X and Z axes.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebounce0001\\\"]\\n\\n[node name=\\\"_bounce\\\" type=\\\"Node3D\\\"]\\n\",\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebench0001\\\"]\\n\\n[node name=\\\"Main\\\" type=\\\"Node3D\\\"]\\n\\n[node name=\\\"MainCamera\\\" type=\\\"Camera3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\\n\\n[node name=\\\"DirectionalLight\\\" type=\\\"DirectionalLight3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\\n\",\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe_bounce.tscn",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok"
+      ]
+    },
+    {
+      "built_nodes": 5,
+      "built_depth": 1,
+      "applied": 22,
+      "operations_total": 22,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "mesh": 5,
+        "color": 5,
+        "position": 5
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 0,
+      "latency_ms": 46247,
+      "nodes_sample": [
+        "/Main/BoxNode",
+        "/Main/CapsuleNode",
+        "/Main/CylinderNode",
+        "/Main/PlaneNode",
+        "/Main/SpereNode"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:position",
+          "ok": true,
+          "detail": "5/5"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G3_props",
+      "axis": "prop saturation (every mesh + color + position)",
+      "prompt": "Under /Main create five MeshInstance3D nodes: BoxNode (box mesh, red, position -4 0 0), SphereNode (sphere mesh, green, position -2 0 0), CapsuleNode (capsule mesh, blue, position 0 0 0), CylinderNode (cylinder mesh, yellow, position 2 0 0), and PlaneNode (plane mesh, white, position 4 0 0)."
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 0,
+      "operations_total": 21,
+      "error_count": 3,
+      "errors": [
+        "Op 21 (connect_signal): target '/root/Main/ScoreLabel' not found",
+        "Op 22 (connect_signal): target '/root/Main/ScoreLabel' not found",
+        "Op 23 (connect_signal): target '/root/Main/ScoreLabel' not found"
+      ],
+      "props": {
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 0,
+      "latency_ms": 60119,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/10"
+        },
+        {
+          "label": "depth",
+          "ok": false,
+          "detail": "0/3"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "3/3"
+        }
+      ],
+      "coverage": 60,
+      "verdict": "broke",
+      "id": "G4_children",
+      "axis": "collider/mesh children (the regression case)",
+      "prompt": "Under /Main create a Node3D named Pickups. Under it create three Area3D nodes named P1, P2, P3. Each Area3D must have a CollisionShape3D child with a sphere shape AND a MeshInstance3D child with a sphere mesh, each colored differently.",
+      "plugin_logs": [
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe_bounce.tscn",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_editor_state({})",
+        "MCP | [send] get_editor_state -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 0,
+      "operations_total": 7,
+      "error_count": 1,
+      "errors": [
+        "Op 6 (connect_signal): target '/root/Main/SpawnerSystem' not found"
+      ],
+      "props": {
+        "position": 2
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 0,
+      "latency_ms": 36318,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "2/1"
+        },
+        {
+          "label": "signals",
+          "ok": false,
+          "detail": "0/1"
+        }
+      ],
+      "coverage": 50,
+      "verdict": "broke",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebounce0001\\\"]\\n\\n[node name=\\\"_bounce\\\" type=\\\"Node3D\\\"]\\n\",\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebench0001\\\"]\\n\\n[node name=\\\"Main\\\" type=\\\"Node3D\\\"]\\n\\n[node name=\\\"MainCamera\\\" type=\\\"Camera3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\\n\\n[node name=\\\"DirectionalLight\\\" type=\\\"DirectionalLight3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\\n\",\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe_bounce.tscn",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://probe.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":2.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 11,
+      "operations_total": 13,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 1,
+        "text": 1
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 1,
+      "latency_ms": 41990,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/7"
+        },
+        {
+          "label": "depth",
+          "ok": false,
+          "detail": "0/3"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "type:CanvasLayer",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:VBoxContainer",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:Button",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:Label",
+          "ok": false,
+          "detail": "MISSING"
+        },
+        {
+          "label": "type:CharacterBody3D",
+          "ok": false,
+          "detail": "MISSING"
+        }
+      ],
+      "coverage": 12,
+      "verdict": "broke",
+      "id": "G6_mixed",
+      "axis": "mixed 3D + 2D/UI node types",
+      "prompt": "Under /Main create a CharacterBody3D named Player. Also create a CanvasLayer named HUD; under HUD a VBoxContainer named Menu; under Menu three Button nodes named StartBtn, OptionsBtn, QuitBtn, and a Label named Title with text 'Main Menu'.",
+      "plugin_logs": [
+        "MCP | [send] batch_execute -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":10.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebounce0001\\\"]\\n\\n[node name=\\\"_bounce\\\" type=\\\"Node3D\\\"]\\n\",\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebench0001\\\"]\\n\\n[node name=\\\"Main\\\" type=\\\"Node3D\\\"]\\n\\n[node name=\\\"MainCamera\\\" type=\\\"Camera3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 10)\\n\\n[node name=\\\"DirectionalLight\\\" type=\\\"DirectionalLight3D\\\" parent=\\\".\\\"]\\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)\\n\",\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] open_scene -> ok"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 51,
+      "operations_total": 64,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 11,
+        "shape": 6,
+        "mesh": 6,
+        "color": 6,
+        "text": 1
+      },
+      "scripts": 3,
+      "attached": 3,
+      "signals": 6,
+      "latency_ms": 111727,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/25"
+        },
+        {
+          "label": "depth",
+          "ok": false,
+          "detail": "0/4"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "6/6"
+        },
+        {
+          "label": "prop:text",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "3/2"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "3/2"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_logs({\"count\":500.0,\"source\":\"plugin\"})",
+        "MCP | [send] get_logs -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://probe.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [recv] open_scene({\"path\":\"res://scenes/main.tscn\"})",
+        "MCP | [send] open_scene -> ok",
+        "MCP | [event] scene_changed -> res://scenes/main.tscn",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})"
+      ]
+    },
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 0,
+      "operations_total": 48,
+      "error_count": 1,
+      "errors": [
+        "Op 48 (connect_signal): source '/root/Main/Ghost' not found"
+      ],
+      "props": {
+        "position": 22
+      },
+      "scripts": 3,
+      "attached": 3,
+      "signals": 1,
+      "latency_ms": 94544,
+      "nodes_sample": [],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/20"
+        },
+        {
+          "label": "rejected-bad-ops",
+          "ok": true,
+          "detail": "1 errors (expected)"
+        },
+        {
+          "label": "no-crash",
+          "ok": true,
+          "detail": "no crash"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "G8_adversarial",
+      "axis": "validation / graceful failure",
+      "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main.",
+      "plugin_logs": [
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] write_file({\"content\":\"[gd_scene format=3 uid=\\\"uid://cprobebounce0001\\\"]\\n\\n[node name=\\\"_bounce\\\" type=\\\"Node3D\\\"]\\n\",\"path\":\"res://probe_bounce.tscn\"})",
+        "MCP | [send] write_file -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})"
+      ]
+    }
+  ],
+  "summary": {
+    "full": 2,
+    "partial": 3,
+    "broke": 3,
+    "avg_coverage": 66
+  }
+}

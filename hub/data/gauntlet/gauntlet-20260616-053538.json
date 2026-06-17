@@ -1,0 +1,849 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 05:38:04",
+  "set": "building-v1",
+  "set_title": "BSP Multi-Room Buildings \u2014 Stage 3 Slice",
+  "model": "qwen3-5-4b",
+  "status": "complete",
+  "total": 1,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 13,
+      "built_depth": 2,
+      "applied": 43,
+      "operations_total": 43,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 10,
+        "mesh": 10,
+        "color": 10
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 18959,
+      "nodes_sample": [
+        "/Main/BuildingFloor",
+        "/Main/Wall_1",
+        "/Main/Wall_2",
+        "/Main/Wall_3",
+        "/Main/Wall_4",
+        "/Main/bedroom",
+        "/Main/bedroom/table_center_table",
+        "/Main/kitchen",
+        "/Main/kitchen/fridge_cook_appliance_right",
+        "/Main/kitchen/stove_cook_appliance_left",
+        "/Main/kitchen/table_center_table",
+        "/Main/living_room",
+        "/Main/living_room/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "13/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "5/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "building:rooms",
+          "ok": true,
+          "detail": "3/3 leaf rooms"
+        },
+        {
+          "label": "building:no_overlap",
+          "ok": true,
+          "detail": "3 rooms, no overlaps"
+        },
+        {
+          "label": "building:in_bounds",
+          "ok": true,
+          "detail": "All rooms within 12\u00d710 footprint"
+        },
+        {
+          "label": "building:walls",
+          "ok": true,
+          "detail": "4/1 wall segments"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B1_small_house",
+      "axis": "building:3-rooms",
+      "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom.",
+      "runs": [
+        {
+          "built_nodes": 13,
+          "built_depth": 2,
+          "applied": 43,
+          "operations_total": 43,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 10,
+            "mesh": 10,
+            "color": 10
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 18959,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "13/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "5/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9425,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d712 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9360,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 22,
+          "built_depth": 2,
+          "applied": 79,
+          "operations_total": 79,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 19,
+            "mesh": 19,
+            "color": 19
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9363,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/cabinet_corner_storage",
+            "/Main/kitchen/chair_chair_inner",
+            "/Main/kitchen/chair_chair_outer",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "22/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "14/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d712 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 20,
+          "built_depth": 2,
+          "applied": 71,
+          "operations_total": 71,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 17,
+            "mesh": 17,
+            "color": 17
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 21124,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/shelf_north_counter_center",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "20/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "12/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d712 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 21061,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9623,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9661,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9658,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        },
+        {
+          "built_nodes": 19,
+          "built_depth": 2,
+          "applied": 67,
+          "operations_total": 67,
+          "error_count": 0,
+          "errors": [],
+          "props": {
+            "position": 16,
+            "mesh": 16,
+            "color": 16
+          },
+          "scripts": 0,
+          "attached": 0,
+          "signals": 0,
+          "latency_ms": 9627,
+          "nodes_sample": [
+            "/Main/BuildingFloor",
+            "/Main/Wall_1",
+            "/Main/Wall_2",
+            "/Main/Wall_3",
+            "/Main/Wall_4",
+            "/Main/bedroom",
+            "/Main/bedroom/cabinet_east_storage",
+            "/Main/bedroom/chair_chair_east",
+            "/Main/bedroom/chair_chair_north",
+            "/Main/bedroom/chair_chair_south",
+            "/Main/bedroom/chair_chair_west",
+            "/Main/bedroom/table_center_table",
+            "/Main/kitchen",
+            "/Main/kitchen/counter_cook_counter",
+            "/Main/kitchen/fridge_cook_appliance_right",
+            "/Main/kitchen/stove_cook_appliance_left",
+            "/Main/kitchen/table_center_table",
+            "/Main/living_room",
+            "/Main/living_room/table_center_table"
+          ],
+          "truncated": false,
+          "checks": [
+            {
+              "label": "nodes",
+              "ok": true,
+              "detail": "19/4"
+            },
+            {
+              "label": "spatial:assets",
+              "ok": true,
+              "detail": "11/3 placed MeshInstance3Ds"
+            },
+            {
+              "label": "building:rooms",
+              "ok": true,
+              "detail": "3/3 leaf rooms"
+            },
+            {
+              "label": "building:no_overlap",
+              "ok": true,
+              "detail": "3 rooms, no overlaps"
+            },
+            {
+              "label": "building:in_bounds",
+              "ok": true,
+              "detail": "All rooms within 12\u00d710 footprint"
+            },
+            {
+              "label": "building:walls",
+              "ok": true,
+              "detail": "4/1 wall segments"
+            }
+          ],
+          "coverage": 100,
+          "verdict": "full",
+          "id": "B1_small_house",
+          "axis": "building:3-rooms",
+          "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+        }
+      ],
+      "mean_coverage": 100,
+      "stddev_coverage": 0,
+      "mean_latency_ms": 12786
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

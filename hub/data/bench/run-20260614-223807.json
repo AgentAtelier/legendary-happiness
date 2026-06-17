@@ -1,0 +1,189 @@
+{
+  "ts": "2026-06-14 22:37:27",
+  "model": "qwen3-14b-q6-k",
+  "template": "chatml",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "server answers /health",
+      "id": "llama.health",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Server alive"
+    },
+    {
+      "status": "pass",
+      "detail": "model=qwen3-14b-q6-k ctx=32768",
+      "id": "llama.props",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Serving the configured model"
+    },
+    {
+      "status": "pass",
+      "detail": "runaway guards present in LLAMA_ARGS",
+      "id": "llama.caps",
+      "ms": 0,
+      "layer": "llama",
+      "title": "Runaway guards configured"
+    },
+    {
+      "status": "pass",
+      "detail": "grammar constrained the output exactly",
+      "id": "llama.grammar",
+      "ms": 437,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "status": "pass",
+      "detail": "model emitted a native tool call (mcp__godot-ai__scene_get_hierarchy)",
+      "id": "llama.tools",
+      "ms": 3244,
+      "layer": "llama",
+      "title": "Native tool calling"
+    },
+    {
+      "status": "pass",
+      "detail": "/no_think suppressed the thinking block",
+      "id": "llama.nothink",
+      "ms": 1028,
+      "layer": "llama",
+      "title": "/no_think switch (Qwen only)"
+    },
+    {
+      "status": "pass",
+      "detail": "chat returned 711 chars of content (finish=stop)",
+      "id": "llama.chat_content",
+      "ms": 9759,
+      "layer": "llama",
+      "title": "Chat returns content, not a thinking essay"
+    },
+    {
+      "status": "pass",
+      "detail": "server 2.7.3 matches the editor plugin",
+      "id": "godotai.status",
+      "ms": 5,
+      "layer": "godot-ai",
+      "title": "Server up + version matches plugin"
+    },
+    {
+      "status": "pass",
+      "detail": "listening on 0.0.0.0 (reachable from the Odysseus container)",
+      "id": "godotai.bind",
+      "ms": 4,
+      "layer": "godot-ai",
+      "title": "Reachable from Docker"
+    },
+    {
+      "status": "pass",
+      "detail": "41 tools",
+      "id": "godotai.tools",
+      "ms": 49,
+      "layer": "godot-ai",
+      "title": "Tool surface complete"
+    },
+    {
+      "status": "error",
+      "detail": "ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)",
+      "id": "godotai.editor",
+      "ms": 64,
+      "layer": "godot-ai",
+      "title": "Editor adopted the server"
+    },
+    {
+      "status": "error",
+      "detail": "ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)",
+      "id": "godotai.scene",
+      "ms": 26,
+      "layer": "godot-ai",
+      "title": "Live scene read"
+    },
+    {
+      "status": "pass",
+      "detail": "container reaches it via IP (200); DNS name correctly rejected (403)",
+      "id": "godotai.guard",
+      "ms": 145,
+      "layer": "godot-ai",
+      "title": "Container access + security guard"
+    },
+    {
+      "status": "pass",
+      "detail": "30 tools incl. apply_spec",
+      "id": "devforge.tools",
+      "ms": 16,
+      "layer": "devforge",
+      "title": "MCP server + apply_spec present"
+    },
+    {
+      "status": "fail",
+      "detail": "scene tree has no children array \u2014 flat-list regression (DevForge would plan against an empty scene and duplicate cameras/lights)",
+      "id": "devforge.scene",
+      "ms": 6387,
+      "layer": "devforge",
+      "title": "Scene tree is nested (not flat)"
+    },
+    {
+      "status": "error",
+      "detail": "ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)",
+      "id": "devforge.apply",
+      "ms": 15779,
+      "layer": "devforge",
+      "title": "Full pipeline write (LLM plan \u2192 editor)"
+    },
+    {
+      "status": "pass",
+      "detail": "web app answers (HTTP 401)",
+      "id": "odysseus.up",
+      "ms": 5,
+      "layer": "odysseus",
+      "title": "Web app running"
+    },
+    {
+      "status": "pass",
+      "detail": "godot-ai (41) and DevForge (30) connected this boot",
+      "id": "odysseus.mcp",
+      "ms": 64,
+      "layer": "odysseus",
+      "title": "Both MCP servers connected THIS boot"
+    },
+    {
+      "status": "pass",
+      "detail": "enabled, temp 0.2, /no_think + 'MCP' present",
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Persona invariants"
+    },
+    {
+      "status": "pass",
+      "detail": "1 endpoint(s) clean",
+      "id": "odysseus.endpoint",
+      "ms": 13,
+      "layer": "odysseus",
+      "title": "Model endpoint records clean"
+    },
+    {
+      "status": "pass",
+      "detail": "container reaches llama via host.docker.internal",
+      "id": "odysseus.reach",
+      "ms": 40,
+      "layer": "odysseus",
+      "title": "Container reaches llama"
+    },
+    {
+      "status": "pass",
+      "detail": "apply_spec retrieved. MCP tools in top-k: ['mcp__devforge__apply_spec', 'mcp__devforge__audit_scene', 'mcp__devforge__get_scene', 'mcp__devforge__triage_errors', 'mcp__godot-ai__game_manage', 'mcp__godot-ai__node_create', 'mcp__godot-ai__project_manage', 'mcp__godot-ai__project_run']",
+      "id": "odysseus.retrieval",
+      "ms": 2402,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "pass": 18,
+    "fail": 1,
+    "skip": 0,
+    "error": 3
+  }
+}

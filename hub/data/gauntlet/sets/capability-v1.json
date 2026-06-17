@@ -1,0 +1,49 @@
+{
+  "id": "capability-v1",
+  "title": "Capability Gauntlet v1",
+  "description": "Escalating prompts that each push ONE capability axis past the breaking point. Coverage (built vs requested), not pass/fail. Run on the build model (qwen3).",
+  "prompts": [
+    {
+      "id": "G1_depth",
+      "axis": "nesting depth",
+      "prompt": "Under /Main create a chain of nested Node3D nodes: LvlA as a child of /Main, LvlB under LvlA, LvlC under LvlB, LvlD under LvlC, LvlE under LvlD, LvlF under LvlE, LvlG under LvlF, and LvlH under LvlG.",
+      "expect": {"min_nodes": 8, "min_depth": 8}
+    },
+    {
+      "id": "G3_props",
+      "axis": "prop saturation (every mesh + color + position)",
+      "prompt": "Under /Main create five MeshInstance3D nodes: BoxNode (box mesh, red, position -4 0 0), SphereNode (sphere mesh, green, position -2 0 0), CapsuleNode (capsule mesh, blue, position 0 0 0), CylinderNode (cylinder mesh, yellow, position 2 0 0), and PlaneNode (plane mesh, white, position 4 0 0).",
+      "expect": {"min_nodes": 5, "props": {"mesh": 5, "color": 5, "position": 5}}
+    },
+    {
+      "id": "G4_children",
+      "axis": "collider/mesh children (the regression case)",
+      "prompt": "Under /Main create a Node3D named Pickups. Under it create three Area3D nodes named P1, P2, P3. Each Area3D must have a CollisionShape3D child with a sphere shape AND a MeshInstance3D child with a sphere mesh, each colored differently.",
+      "expect": {"min_nodes": 10, "min_depth": 3, "props": {"shape": 3, "mesh": 3, "color": 3}}
+    },
+    {
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner.",
+      "expect": {"min_nodes": 2, "min_scripts": 1, "min_attached": 1, "min_signals": 1}
+    },
+    {
+      "id": "G6_mixed",
+      "axis": "mixed 3D + 2D/UI node types",
+      "prompt": "Under /Main create a CharacterBody3D named Player. Also create a CanvasLayer named HUD; under HUD a VBoxContainer named Menu; under Menu three Button nodes named StartBtn, OptionsBtn, QuitBtn, and a Label named Title with text 'Main Menu'.",
+      "expect": {"min_nodes": 7, "min_depth": 3, "types": ["CanvasLayer", "VBoxContainer", "Button", "Label", "CharacterBody3D"], "props": {"text": 1}}
+    },
+    {
+      "id": "G7_integration",
+      "axis": "integration ceiling (everything at once)",
+      "prompt": "Build a collectible arena under /Main. Create a Node3D Arena. Under Arena: a CharacterBody3D Player at 0 1 0 with a WASD movement script and a Camera3D child PlayerCam at 0 3 6; a Node3D Coins containing six Area3D coins (Coin1..Coin6), each with a CollisionShape3D sphere-shape child and a MeshInstance3D sphere-mesh child colored distinctly, each coin with a collect script that frees itself and adds score; and a CanvasLayer UI containing a Label ScoreLabel with text 'Score: 0'.",
+      "expect": {"min_nodes": 25, "min_depth": 4, "props": {"shape": 6, "mesh": 6, "color": 6, "text": 1}, "min_scripts": 2, "min_attached": 2}
+    },
+    {
+      "id": "G8_adversarial",
+      "axis": "validation / graceful failure",
+      "prompt": "Create a Camera3D named BadCam and give it a box mesh. Create a Node3D named Orphan as a child of a node named Ghost. Then create twenty Node3D nodes named Filler1 through Filler20 under /Main.",
+      "expect": {"min_nodes": 20, "expect_errors": true, "no_crash": true}
+    }
+  ]
+}

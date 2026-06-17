@@ -1,0 +1,142 @@
+{
+  "ts": "2026-06-13 21:39:19",
+  "model": "qwen3-14b-q6-k",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "planned 3 entities: ['Hero', 'Eye', 'Body']",
+      "thresholds": "\u22653 entities w/ valid types",
+      "data": {
+        "entity_count": 3,
+        "names": [
+          "Hero",
+          "Eye",
+          "Body"
+        ],
+        "types": [
+          "CharacterBody3D",
+          "Camera3D",
+          "MeshInstance3D"
+        ],
+        "systems": 0,
+        "parents": {}
+      },
+      "id": "devforge.plan",
+      "ms": 50549,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "works",
+      "summary": "all ['Body', 'Eye', 'Hero'] compiled under /root/Main",
+      "thresholds": "requested ops present, parented /root/Main",
+      "data": {
+        "op_count": 5,
+        "requested_ops": [
+          "Hero",
+          "Eye",
+          "Body",
+          "CollisionShape3D"
+        ],
+        "scaffold_ops": [],
+        "parents": {
+          "Hero": "/root/Main",
+          "Eye": "/root/Main",
+          "Body": "/root/Main",
+          "CollisionShape3D": "/root/Main/Hero"
+        },
+        "bad_parents": {},
+        "coverage": "3/3"
+      },
+      "id": "devforge.compile",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Compiler operations + parent paths"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "no auto-injection observed (light may already exist)",
+      "thresholds": "injected nodes parented at /root/Main",
+      "data": {
+        "injected": {},
+        "bad_parents": {},
+        "parent_errors": []
+      },
+      "id": "devforge.completeness",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Completeness injector parents"
+    },
+    {
+      "verdict": "works",
+      "summary": "built all ['Body', 'Eye', 'Hero'], +4 nodes, 0 errors",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 5,
+        "operations_total": 5,
+        "error_count": 0,
+        "errors": [],
+        "nodes_added": [
+          "/Main/Body",
+          "/Main/Eye",
+          "/Main/Hero",
+          "/Main/Hero/CollisionShape3D"
+        ],
+        "requested_built": [
+          "Body",
+          "Eye",
+          "Hero"
+        ],
+        "coverage": "3/3",
+        "before_n": 3,
+        "after_n": 7
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    },
+    {
+      "verdict": "works",
+      "summary": "accepted the valid op, rejected the bad parent",
+      "thresholds": "good\u2192valid, bad\u2192error",
+      "data": {
+        "valid_count": 1,
+        "error_count": 1,
+        "errors": [
+          "Op 1 (add_node): parent '/root/Ghost' not found in scene"
+        ],
+        "caught_bad_parent": true
+      },
+      "id": "devforge.validate",
+      "ms": 18,
+      "layer": "devforge",
+      "title": "Validator accept/reject"
+    },
+    {
+      "verdict": "works",
+      "summary": "both see 7 nodes (root 'Main')",
+      "thresholds": "counts match",
+      "data": {
+        "devforge_nodes": 7,
+        "godot_nodes": 7,
+        "devforge_root": "Main"
+      },
+      "id": "devforge.roundtrip",
+      "ms": 140,
+      "layer": "devforge",
+      "title": "Scene view parity"
+    }
+  ],
+  "counts": {
+    "works": 5,
+    "degraded": 1,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "devforge": "degraded"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "ts": "2026-06-13 03:48:29",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "godot-ai (41) and DevForge (30) connected this boot",
+      "id": "odysseus.mcp",
+      "ms": 26,
+      "layer": "odysseus",
+      "title": "Both MCP servers connected THIS boot"
+    },
+    {
+      "status": "fail",
+      "detail": "temperature 1.0 > 0.35 \u2014 tool-call params get randomized. NOTE: an admin-UI persona save overwrites presets.json \u2014 restore from Obsidian Vault/odysseus-godot-persona.md",
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Persona invariants"
+    },
+    {
+      "status": "pass",
+      "detail": "apply_spec retrieved. MCP tools in top-k: ['mcp__devforge__apply_spec', 'mcp__godot-ai__material_manage', 'mcp__godot-ai__node_create', 'mcp__godot-ai__particle_manage', 'mcp__godot-ai__project_run', 'mcp__godot-ai__scene_manage', 'mcp__godot-ai__script_attach', 'mcp__godot-ai__script_create']",
+      "id": "odysseus.retrieval",
+      "ms": 1945,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "pass": 2,
+    "fail": 1,
+    "skip": 0,
+    "error": 0
+  }
+}

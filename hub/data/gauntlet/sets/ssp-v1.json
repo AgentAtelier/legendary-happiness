@@ -1,0 +1,48 @@
+{
+  "id": "ssp-v1",
+  "title": "SSP — Semantic Spatial Primitives",
+  "planner": "ssp",
+  "description": "Semantic room generation: archetype selection with sensible defaults. LLM picks a room type; engine fills in the right furniture.",
+  "prompts": [
+    {
+      "id": "SSP1_kitchen",
+      "axis": "ssp:kitchen",
+      "prompt": "Build a kitchen with a stove, a fridge, and a table",
+      "expect": {
+        "min_nodes": 5,
+        "min_spatial_assets": 3,
+        "no_overlap": true
+      }
+    },
+    {
+      "id": "SSP2_living",
+      "axis": "ssp:living",
+      "prompt": "Build a living room with a table and chairs",
+      "expect": {
+        "min_nodes": 5,
+        "min_spatial_assets": 3,
+        "no_overlap": true
+      }
+    },
+    {
+      "id": "SSP3_bedroom",
+      "axis": "ssp:bedroom",
+      "prompt": "Build a small bedroom with a table and a cabinet",
+      "expect": {
+        "min_nodes": 4,
+        "min_spatial_assets": 2,
+        "no_overlap": true
+      }
+    },
+    {
+      "id": "SSP4_dining",
+      "axis": "ssp:dining",
+      "prompt": "Build a dining room with a table and four chairs",
+      "expect": {
+        "min_nodes": 6,
+        "min_spatial_assets": 5,
+        "no_overlap": true
+      }
+    }
+  ]
+}

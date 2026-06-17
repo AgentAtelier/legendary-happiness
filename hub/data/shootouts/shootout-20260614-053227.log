@@ -1,0 +1,146 @@
+=== SHOOTOUT LOG 20260614-053227 ===
+
+[05:32:27] === FORGE MODEL SHOOTOUT ===
+[05:32:27] Scene: res://shootout.tscn
+[05:32:28] Models to test: 5
+[05:32:28]   • Qwen3 14B (qwen3-14b-q6-k)
+[05:32:28]   • Gemma 4 12B QAT (gemma-4-12b-it-qat-q4-k-xl)
+[05:32:28]   • Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-q4-k-xl)
+[05:32:28]   • Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[05:32:28]   • Cydonia Redux 22B (merged-22b-q4-k-m)
+[05:32:28] 
+── [1/5] Qwen3 14B (qwen3-14b-q6-k) ──
+[05:32:28] [shootout:model] 1/5 Qwen3 14B
+[05:32:28] START: Qwen3 14B (qwen3-14b-q6-k)
+[05:32:28]   swap: starting...
+[05:32:32]   swap: OK
+[05:32:32]   reset: pristine shootout scene
+[05:32:32]   scene_before: 3 nodes
+[05:32:32]   apply_spec: sending prompt (1672 chars)...
+[05:33:10]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[05:33:10]   apply_spec: reading artifact a4fd21104fe1
+[05:33:10]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[05:33:10]   apply_spec: done — applied=?, ops=22, errors=0
+[05:33:10]   scene_after: 15 nodes
+[05:33:10]   static: running 23 checks...
+[05:33:10]   static: 20p/3f/0e = 59/68
+[05:33:10]     [fail] player_script: Player has NO script
+[05:33:10]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[05:33:10]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[05:33:10]   runtime: running checks...
+[05:33:20]   runtime: 5p/2f/0e = 23/32
+[05:33:20]     [fail] collect_handler: no signal handler
+[05:33:20]     [fail] collect_qfree: queue_free NOT found
+[05:33:20]   reset: restoring pristine shootout scene
+[05:33:20]   DONE: [pass] score=82/100 (51826ms)
+[05:33:20] [shootout:scored] 1/5 Qwen3 14B = 82/100 (pass)
+[05:33:20] 
+── [2/5] Gemma 4 12B QAT (gemma-4-12b-it-qat-q4-k-xl) ──
+[05:33:20] [shootout:model] 2/5 Gemma 4 12B QAT
+[05:33:20] START: Gemma 4 12B QAT (gemma-4-12b-it-qat-q4-k-xl)
+[05:33:20]   swap: starting...
+[05:33:41]   swap: OK
+[05:33:41]   reset: pristine shootout scene
+[05:33:41]   scene_before: 3 nodes
+[05:33:41]   apply_spec: sending prompt (1672 chars)...
+[05:34:11]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[05:34:11]   apply_spec: reading artifact 008515b116fa
+[05:34:11]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[05:34:11]   apply_spec: done — applied=?, ops=19, errors=0
+[05:34:11]   scene_after: 15 nodes
+[05:34:11]   static: running 23 checks...
+[05:34:11]   static: 14p/9f/0e = 41/68
+[05:34:11]     [fail] coin_coin_green_exists: Coin_Green missing
+[05:34:11]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[05:34:11]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[05:34:11]     [fail] coin_coin_green_type: Coin_Green type = 
+[05:34:11]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[05:34:11]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[05:34:11]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[05:34:11]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[05:34:11]     [fail] no_pollution: Unexpected: ['/Main/Coin_Green(Area3D)', '/Main/Coin_Gold(Area3D)', '/Main/Coin_Purple(Area3D)']
+[05:34:11]   runtime: running checks...
+[05:34:20]   runtime: 4p/3f/0e = 18/32
+[05:34:20]     [fail] collect_handler: no signal handler
+[05:34:20]     [fail] collect_qfree: queue_free NOT found
+[05:34:20]     [fail] collect_score: no score tracking
+[05:34:20]   reset: restoring pristine shootout scene
+[05:34:21]   DONE: [fail] score=59/100 (60742ms)
+[05:34:21] [shootout:scored] 2/5 Gemma 4 12B QAT = 59/100 (fail)
+[05:34:21] 
+── [3/5] Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-q4-k-xl) ──
+[05:34:21] [shootout:model] 3/5 Gemma 4 26B MoE
+[05:34:21] START: Gemma 4 26B MoE (gemma-4-26b-a4b-it-qat-q4-k-xl)
+[05:34:21]   swap: starting...
+[05:34:21]   swap: FAILED — model never tested
+[05:34:21]   reset: restoring pristine shootout scene
+[05:34:21]   DONE: [untested] score=0/100 (734ms)
+[05:34:21] [shootout:scored] 3/5 Gemma 4 26B MoE = 0/100 (untested)
+[05:34:21] 
+── [4/5] Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k) ──
+[05:34:21] [shootout:model] 4/5 Gemma 4 12B Obliterated
+[05:34:21] START: Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[05:34:21]   swap: starting...
+[05:34:50]   swap: OK
+[05:34:50]   reset: pristine shootout scene
+[05:34:50]   scene_before: 15 nodes
+[05:34:50]   apply_spec: sending prompt (1672 chars)...
+[05:35:11]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[05:35:11]   apply_spec: reading artifact d6fdf508f553
+[05:35:11]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[05:35:11]   apply_spec: done — applied=?, ops=7, errors=0
+[05:35:11]   scene_after: 19 nodes
+[05:35:11]   static: running 23 checks...
+[05:35:11]   static: 14p/9f/0e = 41/68
+[05:35:11]     [fail] coin_coin_green_exists: Coin_Green missing
+[05:35:11]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[05:35:11]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[05:35:11]     [fail] coin_coin_green_type: Coin_Green type = 
+[05:35:11]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[05:35:11]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[05:35:11]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[05:35:11]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[05:35:11]     [fail] no_pollution: Unexpected: ['/Main/Coin_Green(Area3D)', '/Main/Coin_Gold(Area3D)', '/Main/Coin_Purple(Area3D)', '/Main/Player(MeshInstance3D)', '/Main/Collectibles(Node3D)']
+[05:35:11]   runtime: running checks...
+[05:35:20]   runtime: 4p/3f/0e = 18/32
+[05:35:20]     [fail] collect_handler: no signal handler
+[05:35:20]     [fail] collect_qfree: queue_free NOT found
+[05:35:20]     [fail] collect_score: no score tracking
+[05:35:20]   reset: restoring pristine shootout scene
+[05:35:20]   DONE: [fail] score=59/100 (59155ms)
+[05:35:20] [shootout:scored] 4/5 Gemma 4 12B Obliterated = 59/100 (fail)
+[05:35:20] 
+── [5/5] Cydonia Redux 22B (merged-22b-q4-k-m) ──
+[05:35:20] [shootout:model] 5/5 Cydonia Redux 22B
+[05:35:20] START: Cydonia Redux 22B (merged-22b-q4-k-m)
+[05:35:20]   swap: starting...
+[05:35:57]   swap: OK
+[05:35:57]   reset: pristine shootout scene
+[05:35:58]   scene_before: 19 nodes
+[05:35:58]   apply_spec: sending prompt (1672 chars)...
+[05:36:54]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[05:36:54]   apply_spec: reading artifact bc9d63dedc06
+[05:36:54]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[05:36:54]   apply_spec: done — applied=?, ops=7, errors=0
+[05:36:54]   scene_after: 19 nodes
+[05:36:54]   static: running 23 checks...
+[05:36:54]   static: 14p/9f/0e = 41/68
+[05:36:54]     [fail] coin_coin_green_exists: Coin_Green missing
+[05:36:54]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[05:36:54]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[05:36:54]     [fail] coin_coin_green_type: Coin_Green type = 
+[05:36:54]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[05:36:54]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[05:36:54]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[05:36:54]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[05:36:54]     [fail] no_pollution: Unexpected: ['/Main/Coin_Green(Area3D)', '/Main/Coin_Gold(Area3D)', '/Main/Coin_Purple(Area3D)', '/Main/Player(MeshInstance3D)', '/Main/Collectibles(Node3D)']
+[05:36:54]   runtime: running checks...
+[05:37:03]   runtime: 7p/0f/0e = 32/32
+[05:37:03]   reset: restoring pristine shootout scene
+[05:37:03]   DONE: [pass] score=73/100 (102878ms)
+[05:37:03] [shootout:scored] 5/5 Cydonia Redux 22B = 73/100 (pass)
+[05:37:03] restored editor scene → res://scenes/main.tscn
+[05:37:03] [shootout:done]
+[05:37:03] 
+→ saved shootout-20260614-053227.json
+[05:37:03] Total: 275s for 4 models

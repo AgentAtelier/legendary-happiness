@@ -1,0 +1,211 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 09:50:34",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "qwen3-6-27b",
+  "status": "complete",
+  "total": 4,
+  "done": 4,
+  "results": [
+    {
+      "built_nodes": 6,
+      "built_depth": 1,
+      "applied": 26,
+      "operations_total": 26,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6,
+        "mesh": 6,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 27036,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/counter_north_counter_right",
+        "/Main/fridge_north_counter_left",
+        "/Main/stove_north_counter_center",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "6/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "4/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "S1_kitchen",
+      "axis": "spatial:kitchen",
+      "prompt": "Build a medium kitchen with a stove, a fridge, and a counter along the north wall. Put a table in the center."
+    },
+    {
+      "built_nodes": 7,
+      "built_depth": 1,
+      "applied": 30,
+      "operations_total": 30,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 7,
+        "mesh": 7,
+        "color": 7
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 24843,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_chair_inner",
+        "/Main/chair_chair_outer",
+        "/Main/counter_cook_counter",
+        "/Main/stove_cook_appliance_left",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "7/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "5/5 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "S2_L_kitchen",
+      "axis": "spatial:L-shape",
+      "prompt": "Build an L-shaped kitchen. Put a stove and counter in the main cooking wing, and a table with two chairs in the dining wing."
+    },
+    {
+      "built_nodes": 6,
+      "built_depth": 1,
+      "applied": 26,
+      "operations_total": 26,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6,
+        "mesh": 6,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 24738,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/shelf_north_end_slot",
+        "/Main/shelf_north_mid_slot",
+        "/Main/shelf_north_start_slot",
+        "/Main/shelf_south_mid_slot"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "6/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "4/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "S3_corridor",
+      "axis": "spatial:corridor",
+      "prompt": "Build a long corridor, 10 metres. Place shelves along both walls."
+    },
+    {
+      "built_nodes": 6,
+      "built_depth": 1,
+      "applied": 26,
+      "operations_total": 26,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6,
+        "mesh": 6,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 31845,
+      "nodes_sample": [
+        "/Main/Ceiling",
+        "/Main/Floor",
+        "/Main/chair_chair_inner",
+        "/Main/chair_chair_outer",
+        "/Main/counter_cook_counter",
+        "/Main/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "6/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "4/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override."
+    }
+  ],
+  "summary": {
+    "full": 4,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

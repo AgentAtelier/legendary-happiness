@@ -1,0 +1,166 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-16 08:34:24",
+  "set": "building-v1",
+  "set_title": "BSP Multi-Room Buildings \u2014 Stage 3 Slice",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 3,
+  "done": 3,
+  "results": [
+    {
+      "built_nodes": 15,
+      "built_depth": 2,
+      "applied": 51,
+      "operations_total": 51,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 12,
+        "mesh": 12,
+        "color": 12
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 28425,
+      "nodes_sample": [
+        "/Main/BuildingFloor",
+        "/Main/Wall_1",
+        "/Main/Wall_2",
+        "/Main/Wall_3",
+        "/Main/Wall_4",
+        "/Main/bedroom",
+        "/Main/bedroom/table_center_table",
+        "/Main/kitchen",
+        "/Main/kitchen/cabinet_east_storage",
+        "/Main/kitchen/chair_chair_east",
+        "/Main/kitchen/chair_chair_west",
+        "/Main/kitchen/counter_north_counter_center",
+        "/Main/kitchen/table_center_table",
+        "/Main/living_room",
+        "/Main/living_room/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "15/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "7/3 placed MeshInstance3Ds"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B1_small_house",
+      "axis": "building:3-rooms",
+      "prompt": "Build a small house with a living room, a kitchen, and a bedroom. Put a table in the living room, a stove and fridge in the kitchen, and a table in the bedroom."
+    },
+    {
+      "built_nodes": 7,
+      "built_depth": 2,
+      "applied": 25,
+      "operations_total": 25,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 6,
+        "mesh": 6,
+        "color": 6
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 14320,
+      "nodes_sample": [
+        "/Main/BuildingFloor",
+        "/Main/studio",
+        "/Main/studio/chair_chair_east",
+        "/Main/studio/chair_chair_north",
+        "/Main/studio/chair_chair_south",
+        "/Main/studio/chair_chair_west",
+        "/Main/studio/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "7/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "5/1 placed MeshInstance3Ds"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B2_studio",
+      "axis": "building:single-room",
+      "prompt": "Build a tiny studio apartment \u2014 just one room. Put a bed and a small table in it."
+    },
+    {
+      "built_nodes": 15,
+      "built_depth": 2,
+      "applied": 48,
+      "operations_total": 48,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 11,
+        "mesh": 11,
+        "color": 11
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 20723,
+      "nodes_sample": [
+        "/Main/BuildingFloor",
+        "/Main/Wall_1",
+        "/Main/Wall_2",
+        "/Main/Wall_3",
+        "/Main/Wall_4",
+        "/Main/Wall_5",
+        "/Main/Wall_6",
+        "/Main/bedroom1",
+        "/Main/bedroom1/table_center_table",
+        "/Main/bedroom2",
+        "/Main/bedroom2/table_center_table",
+        "/Main/kitchen",
+        "/Main/kitchen/counter_north_counter_center",
+        "/Main/living_room",
+        "/Main/living_room/table_center_table"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "15/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": true,
+          "detail": "4/4 placed MeshInstance3Ds"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "B3_two_bedroom",
+      "axis": "building:4-rooms",
+      "prompt": "Build a house with a living room, a kitchen, and two bedrooms. Put a table in the living room, a stove and a counter in the kitchen, a bed in each bedroom."
+    }
+  ],
+  "summary": {
+    "full": 3,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

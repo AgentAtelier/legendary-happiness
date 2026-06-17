@@ -1,0 +1,15 @@
+=== SHOOTOUT LOG 20260613-165531 ===
+
+[16:55:31] === FORGE MODEL SHOOTOUT ===
+[16:55:31] Scene: res://shootout.tscn
+[16:55:32] Models to test: 1
+[16:55:32]   • Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[16:55:32] 
+── [1/1] Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k) ──
+[16:55:32] [shootout:model] 1/1 Gemma 4 12B Obliterated
+[16:55:32] START: Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[16:55:32]   swap: starting...
+[16:55:38]   swap: OK
+[16:55:38]   cleanup: before test
+[16:55:38]   scene_before: 3 nodes
+[16:55:38]   apply_spec: sending prompt (1672 chars)...

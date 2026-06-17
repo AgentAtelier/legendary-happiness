@@ -1,0 +1,23 @@
+{
+  "DevForge Core": {
+    "passed": 689,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "elapsed_ms": 9636
+  },
+  "Forge Hub": {
+    "passed": 151,
+    "failed": 0,
+    "skipped": 12,
+    "exit_code": 0,
+    "elapsed_ms": 3737
+  },
+  "Odysseus": {
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 127,
+    "elapsed_ms": 2
+  }
+}

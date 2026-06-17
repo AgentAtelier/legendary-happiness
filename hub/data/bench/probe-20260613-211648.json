@@ -1,0 +1,115 @@
+{
+  "ts": "2026-06-13 21:15:57",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "broken",
+      "summary": "planner produced an EMPTY delta (0 entities)",
+      "thresholds": "\u22653 entities w/ valid types",
+      "data": {
+        "entity_count": 0,
+        "names": [],
+        "types": [],
+        "systems": 0,
+        "parents": {}
+      },
+      "id": "devforge.plan",
+      "ms": 50975,
+      "layer": "devforge",
+      "title": "Planner architecture delta"
+    },
+    {
+      "verdict": "broken",
+      "summary": "compiler emitted ONLY scaffolding (camera/light) \u2014 none of ['Body', 'Eye', 'Hero'] requested",
+      "thresholds": "requested ops present, parented /root/Main",
+      "data": {
+        "op_count": 0,
+        "requested_ops": [],
+        "scaffold_ops": [],
+        "parents": {},
+        "bad_parents": {},
+        "coverage": "0/3"
+      },
+      "id": "devforge.compile",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Compiler operations + parent paths"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "no auto-injection observed (light may already exist)",
+      "thresholds": "injected nodes parented at /root/Main",
+      "data": {
+        "injected": {},
+        "bad_parents": {},
+        "parent_errors": []
+      },
+      "id": "devforge.completeness",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Completeness injector parents"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "applied 0 op(s) but NONE requested \u2014 only scaffolding (+0 nodes: [])",
+      "thresholds": "requested nodes built, 0 errors",
+      "data": {
+        "applied": 0,
+        "operations_total": 0,
+        "error_count": 0,
+        "errors": [],
+        "nodes_added": [],
+        "requested_built": [],
+        "coverage": "0/3",
+        "before_n": 3,
+        "after_n": 3
+      },
+      "id": "devforge.execute",
+      "ms": 0,
+      "layer": "devforge",
+      "title": "Full apply_spec execution"
+    },
+    {
+      "verdict": "works",
+      "summary": "accepted the valid op, rejected the bad parent",
+      "thresholds": "good\u2192valid, bad\u2192error",
+      "data": {
+        "valid_count": 1,
+        "error_count": 1,
+        "errors": [
+          "Op 1 (add_node): parent '/root/Ghost' not found in scene"
+        ],
+        "caught_bad_parent": true
+      },
+      "id": "devforge.validate",
+      "ms": 17,
+      "layer": "devforge",
+      "title": "Validator accept/reject"
+    },
+    {
+      "verdict": "works",
+      "summary": "both see 3 nodes (root 'Main')",
+      "thresholds": "counts match",
+      "data": {
+        "devforge_nodes": 3,
+        "godot_nodes": 3,
+        "devforge_root": "Main"
+      },
+      "id": "devforge.roundtrip",
+      "ms": 133,
+      "layer": "devforge",
+      "title": "Scene view parity"
+    }
+  ],
+  "counts": {
+    "works": 2,
+    "degraded": 2,
+    "broken": 2,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "devforge": "broken"
+  }
+}

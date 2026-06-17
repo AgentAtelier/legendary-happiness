@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devforge"
+version = "3.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "rich>=13.0",
+    "gitpython>=3.1",
+    "fastapi>=0.104",
+    "uvicorn>=0.24",
+    "requests>=2.31",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "httpx>=0.25", "ruff>=0.1"]
+claude = ["anthropic>=0.20.0"]
+knowledge = ["neo4j>=5.0"]
+mcp = ["mcp>=0.1", "sse-starlette>=1.0"]
+
+[project.scripts]
+devforge-server = "devforge.server.server:app"
+
+[tool.setuptools]
+packages = ["devforge"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    ".devforge",
+    "runs",
+    "events",
+    "planner_cache",
+    "llama.cpp",
+    "devforge/patch/grammars/tree-sitter-gdscript",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = '''
+/( 
+  llama\.cpp
+  | runs
+  | events
+  | planner_cache
+  | devforge/patch/grammars/tree-sitter-gdscript
+)/
+'''
+
+[tool.mypy]
+python_version = "3.12"
+files = ["devforge", "tests"]
+exclude = '''(?x)(
+    ^llama\.cpp/
+  | ^runs/
+  | ^events/
+  | ^planner_cache/
+  | ^devforge/patch/grammars/tree-sitter-gdscript/
+)'''
+ignore_missing_imports = true
+pretty = true
+show_error_codes = true
+warn_unused_ignores = true

@@ -1,0 +1,21 @@
+{
+  "ts": "2026-06-13 04:39:27",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "tests": [
+    {
+      "status": "pass",
+      "detail": "chat returned 785 chars of content (finish=stop)",
+      "id": "llama.chat_content",
+      "ms": 4547,
+      "layer": "llama",
+      "title": "Chat returns content, not a thinking essay"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "fail": 0,
+    "skip": 0,
+    "error": 0
+  }
+}

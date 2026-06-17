@@ -1,0 +1,10 @@
+{
+  "name": "Attack",
+  "operations": [
+    {
+      "type": "attach_script",
+      "node": "{entity}",
+      "script": "res://scripts/attack.gd"
+    }
+  ]
+}

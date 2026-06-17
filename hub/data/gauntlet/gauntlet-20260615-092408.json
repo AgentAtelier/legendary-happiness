@@ -1,0 +1,81 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-15 09:25:25",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "merged-22b-q4-k-m",
+  "status": "complete",
+  "total": 1,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 10,
+      "built_depth": 3,
+      "applied": 24,
+      "operations_total": 24,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 2,
+      "attached": 2,
+      "signals": 0,
+      "latency_ms": 76024,
+      "nodes_sample": [
+        "/Main/Pickups",
+        "/Main/Pickups/P1",
+        "/Main/Pickups/P1/P1Mesh",
+        "/Main/Pickups/P1/P1Shape",
+        "/Main/Pickups/P2",
+        "/Main/Pickups/P2/P2Mesh",
+        "/Main/Pickups/P2/P2Shape",
+        "/Main/Pickups/P3",
+        "/Main/Pickups/P3/P3Mesh",
+        "/Main/Pickups/P3/P3Shape"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "10/10"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "3/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G4_children",
+      "axis": "collider/mesh children (the regression case)",
+      "prompt": "Under /Main create a Node3D named Pickups. Under it create three Area3D nodes named P1, P2, P3. Each Area3D must have a CollisionShape3D child with a sphere shape AND a MeshInstance3D child with a sphere mesh, each colored differently."
+    }
+  ],
+  "summary": {
+    "full": 1,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}

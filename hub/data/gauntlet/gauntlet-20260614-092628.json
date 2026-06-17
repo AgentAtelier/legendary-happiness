@@ -1,0 +1,57 @@
+{
+  "ts": "2026-06-14 09:26:55",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "running",
+  "total": 2,
+  "done": 1,
+  "results": [
+    {
+      "built_nodes": 0,
+      "built_depth": 0,
+      "applied": 3,
+      "operations_total": 17,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "mesh": 1,
+        "color": 1,
+        "shape": 1
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 1,
+      "latency_ms": 26670,
+      "nodes_sample": [],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": false,
+          "detail": "0/2"
+        },
+        {
+          "label": "scripts",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "attached",
+          "ok": true,
+          "detail": "1/1"
+        },
+        {
+          "label": "signals",
+          "ok": true,
+          "detail": "1/1"
+        }
+      ],
+      "coverage": 75,
+      "verdict": "partial",
+      "id": "G5_scripts_signals",
+      "axis": "scripts + signal wiring",
+      "prompt": "Under /Main create a CharacterBody3D named Hero with a movement system that reads WASD input and moves it. Also create a Timer named SpawnTimer, and a spawner system; connect the SpawnTimer timeout signal to the spawner."
+    }
+  ]
+}

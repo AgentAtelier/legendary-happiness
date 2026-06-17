@@ -1,0 +1,316 @@
+{
+  "kind": "gauntlet",
+  "ts": "2026-06-15 23:24:19",
+  "set": "spatial-v1",
+  "set_title": "Spatial Layout \u2014 Greybox Slice",
+  "model": "qwen3-6-27b",
+  "status": "complete",
+  "total": 4,
+  "done": 4,
+  "results": [
+    {
+      "built_nodes": 13,
+      "built_depth": 3,
+      "applied": 30,
+      "operations_total": 30,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 5,
+        "mesh": 4,
+        "color": 4,
+        "shape": 4
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 66382,
+      "nodes_sample": [
+        "/Main/Kitchen",
+        "/Main/Kitchen/Counter",
+        "/Main/Kitchen/Counter/CounterMesh",
+        "/Main/Kitchen/Counter/CounterShape",
+        "/Main/Kitchen/Fridge",
+        "/Main/Kitchen/Fridge/FridgeMesh",
+        "/Main/Kitchen/Fridge/FridgeShape",
+        "/Main/Kitchen/Stove",
+        "/Main/Kitchen/Stove/StoveMesh",
+        "/Main/Kitchen/Stove/StoveShape",
+        "/Main/Kitchen/Table",
+        "/Main/Kitchen/Table/TableMesh",
+        "/Main/Kitchen/Table/TableShape"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "13/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/3 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S1_kitchen",
+      "axis": "spatial:kitchen",
+      "prompt": "Build a medium kitchen with a stove, a fridge, and a counter along the north wall. Put a table in the center.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 18,
+      "built_depth": 4,
+      "applied": 42,
+      "operations_total": 42,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 8,
+        "mesh": 5,
+        "color": 5,
+        "shape": 5
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 85854,
+      "nodes_sample": [
+        "/Main/LShapedKitchen",
+        "/Main/LShapedKitchen/CookingWing",
+        "/Main/LShapedKitchen/CookingWing/Counter",
+        "/Main/LShapedKitchen/CookingWing/Counter/CounterMesh",
+        "/Main/LShapedKitchen/CookingWing/Counter/CounterShape",
+        "/Main/LShapedKitchen/CookingWing/Stove",
+        "/Main/LShapedKitchen/CookingWing/Stove/StoveMesh",
+        "/Main/LShapedKitchen/CookingWing/Stove/StoveShape",
+        "/Main/LShapedKitchen/DiningWing",
+        "/Main/LShapedKitchen/DiningWing/Chair1",
+        "/Main/LShapedKitchen/DiningWing/Chair1/Chair1Mesh",
+        "/Main/LShapedKitchen/DiningWing/Chair1/Chair1Shape",
+        "/Main/LShapedKitchen/DiningWing/Chair2",
+        "/Main/LShapedKitchen/DiningWing/Chair2/Chair2Mesh",
+        "/Main/LShapedKitchen/DiningWing/Chair2/Chair2Shape",
+        "/Main/LShapedKitchen/DiningWing/Table",
+        "/Main/LShapedKitchen/DiningWing/Table/TableMesh",
+        "/Main/LShapedKitchen/DiningWing/Table/TableShape"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "18/5"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/5 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S2_L_kitchen",
+      "axis": "spatial:L-shape",
+      "prompt": "Build an L-shaped kitchen. Put a stove and counter in the main cooking wing, and a table with two chairs in the dining wing.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 28,
+      "built_depth": 3,
+      "applied": 66,
+      "operations_total": 66,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 10,
+        "mesh": 9,
+        "color": 9,
+        "shape": 9
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 113537,
+      "nodes_sample": [
+        "/Main/Corridor",
+        "/Main/Corridor/CorridorFloor",
+        "/Main/Corridor/CorridorFloor/CorridorFloorMesh",
+        "/Main/Corridor/CorridorFloor/CorridorFloorShape",
+        "/Main/Corridor/LeftWall",
+        "/Main/Corridor/LeftWall/LeftWallMesh",
+        "/Main/Corridor/LeftWall/LeftWallShape",
+        "/Main/Corridor/RightWall",
+        "/Main/Corridor/RightWall/RightWallMesh",
+        "/Main/Corridor/RightWall/RightWallShape",
+        "/Main/Corridor/ShelfLeft1",
+        "/Main/Corridor/ShelfLeft1/ShelfLeft1Mesh",
+        "/Main/Corridor/ShelfLeft1/ShelfLeft1Shape",
+        "/Main/Corridor/ShelfLeft2",
+        "/Main/Corridor/ShelfLeft2/ShelfLeft2Mesh",
+        "/Main/Corridor/ShelfLeft2/ShelfLeft2Shape",
+        "/Main/Corridor/ShelfLeft3",
+        "/Main/Corridor/ShelfLeft3/ShelfLeft3Mesh",
+        "/Main/Corridor/ShelfLeft3/ShelfLeft3Shape",
+        "/Main/Corridor/ShelfRight1"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "28/3"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S3_corridor",
+      "axis": "spatial:corridor",
+      "prompt": "Build a long corridor, 10 metres. Place shelves along both walls.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    },
+    {
+      "built_nodes": 7,
+      "built_depth": 3,
+      "applied": 17,
+      "operations_total": 17,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "mesh": 2,
+        "color": 2,
+        "shape": 2
+      },
+      "scripts": 1,
+      "attached": 1,
+      "signals": 0,
+      "latency_ms": 48622,
+      "nodes_sample": [
+        "/Main/Kitchen",
+        "/Main/Kitchen/Fridge",
+        "/Main/Kitchen/Fridge/FridgeMesh",
+        "/Main/Kitchen/Fridge/FridgeShape",
+        "/Main/Kitchen/Stove",
+        "/Main/Kitchen/Stove/StoveMesh",
+        "/Main/Kitchen/Stove/StoveShape"
+      ],
+      "truncated": false,
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "7/4"
+        },
+        {
+          "label": "spatial:assets",
+          "ok": false,
+          "detail": "0/2 placed MeshInstance3Ds"
+        },
+        {
+          "label": "spatial:overlap",
+          "ok": true,
+          "detail": "no AABB overlaps detected"
+        }
+      ],
+      "coverage": 67,
+      "verdict": "partial",
+      "id": "S4_adjacency",
+      "axis": "spatial:ARCS",
+      "prompt": "Build a kitchen and place the stove immediately to the right of the fridge using an ARCS override.",
+      "plugin_logs": [
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok",
+        "MCP | [recv] get_scene_tree({\"depth\":1.0})",
+        "MCP | [send] get_scene_tree -> ok"
+      ]
+    }
+  ],
+  "summary": {
+    "full": 0,
+    "partial": 4,
+    "broke": 0,
+    "avg_coverage": 67
+  }
+}

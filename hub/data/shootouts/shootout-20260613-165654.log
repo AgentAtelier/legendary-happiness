@@ -1,0 +1,57 @@
+=== SHOOTOUT LOG 20260613-165654 ===
+
+[16:56:54] === FORGE MODEL SHOOTOUT ===
+[16:56:54] Scene: res://shootout.tscn
+[16:56:55] Models to test: 1
+[16:56:55]   • Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[16:56:55] 
+── [1/1] Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k) ──
+[16:56:55] [shootout:model] 1/1 Gemma 4 12B Obliterated
+[16:56:55] START: Gemma 4 12B Obliterated (gemma-4-12b-obliterated-q6-k)
+[16:56:55]   swap: starting...
+[16:57:01]   swap: OK
+[16:57:01]   cleanup: before test
+[16:57:01]   scene_before: 3 nodes
+[16:57:01]   apply_spec: sending prompt (1672 chars)...
+[16:57:01]   apply_spec: raw response received, keys=['artifact_id', 'applied', 'operations_total', 'files', 'errors', 'error_count', 'scene_version', 'has_full_detail', 'hint']
+[16:57:01]   apply_spec: reading artifact 60b61e15be37
+[16:57:01]   apply_spec: artifact loaded, keys=['files', 'operations', 'errors', 'scene_version', 'arch_delta', 'execution']
+[16:57:01]   apply_spec: done — applied=?, ops=0, errors=1
+[16:57:02]   scene_after: 3 nodes
+[16:57:02]   static: running 23 checks...
+[16:57:02]   static: 2p/20f/1e = 6/68
+[16:57:02]     [fail] arena_exists: /Main/Arena missing
+[16:57:02]     [fail] player_type: Player type = 
+[16:57:02]     [fail] player_mesh: Player has NO mesh
+[16:57:02]     [fail] player_script: Player has NO script
+[16:57:02]     [fail] player_camera: PlayerCamera type = 
+[16:57:02]     [fail] coin_coin_red_exists: Coin_Red missing
+[16:57:02]     [fail] coin_coin_green_exists: Coin_Green missing
+[16:57:02]     [fail] coin_coin_blue_exists: Coin_Blue missing
+[16:57:02]     [fail] coin_coin_gold_exists: Coin_Gold missing
+[16:57:02]     [fail] coin_coin_purple_exists: Coin_Purple missing
+[16:57:02]     [fail] coin_coin_red_type: Coin_Red type = 
+[16:57:02]     [fail] coin_coin_green_type: Coin_Green type = 
+[16:57:02]     [fail] coin_coin_blue_type: Coin_Blue type = 
+[16:57:02]     [fail] coin_coin_gold_type: Coin_Gold type = 
+[16:57:02]     [fail] coin_coin_purple_type: Coin_Purple type = 
+[16:57:02]     [fail] coins_collision: Missing CollisionShape3D on >=1 coin
+[16:57:02]     [fail] coins_mesh: Missing MeshInstance3D on >=1 coin
+[16:57:02]     [fail] ui_canvas: UI type = 
+[16:57:02]     [fail] ui_label: ScoreLabel missing
+[16:57:02]     [error] score_text: Property fetch failed
+[16:57:02]     [fail] no_errors: 1 pipeline errors
+[16:57:02]   runtime: running checks...
+[16:57:04]   runtime: 0p/2f/4e = 0/32
+[16:57:04]     [fail] game_fps: FPS = 0 (dead?)
+[16:57:04]     [error] movement_process: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[16:57:04]     [error] movement_input: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[16:57:04]     [error] collect_handler: find_symbols failed: unhandled errors in a TaskGroup (1 sub-exception)
+[16:57:04]     [error] collect_qfree: read failed: unhandled errors in a TaskGroup (1 sub-exception)
+[16:57:04]     [fail] collect_score: No score tracking found
+[16:57:04]   cleanup: after test
+[16:57:04]   DONE: [error] score=6/100 (8712ms)
+[16:57:04] [shootout:done]
+[16:57:04] 
+→ saved shootout-20260613-165654.json
+[16:57:04] Total: 9s for 1 models

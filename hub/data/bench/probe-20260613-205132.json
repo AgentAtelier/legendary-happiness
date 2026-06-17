@@ -1,0 +1,108 @@
+{
+  "ts": "2026-06-13 20:51:27",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "create 28 + delete 30 ms round-trip",
+      "thresholds": "verified \u00b7 <1.5s works \u00b7 <5s degraded",
+      "data": {
+        "create_ms": 28,
+        "delete_ms": 30,
+        "verified": true
+      },
+      "id": "godotai.latency",
+      "ms": 424,
+      "layer": "godot-ai",
+      "title": "Write round-trip latency"
+    },
+    {
+      "verdict": "works",
+      "summary": "3 nodes, root 'Main'",
+      "thresholds": "\u22651 node, named root",
+      "data": {
+        "node_count": 3,
+        "root": "Main",
+        "has_more": false,
+        "sample": [
+          "/Main",
+          "/Main/MainCamera",
+          "/Main/DirectionalLight"
+        ]
+      },
+      "id": "godotai.fidelity",
+      "ms": 115,
+      "layer": "godot-ai",
+      "title": "Scene tree fidelity"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "launched but FPS reads 0 (headless or not ticking)",
+      "thresholds": "FPS>0, no errors",
+      "data": {
+        "launched": true,
+        "fps": 0
+      },
+      "id": "runtime.launch",
+      "ms": 2747,
+      "layer": "runtime",
+      "title": "Game actually runs"
+    },
+    {
+      "verdict": "degraded",
+      "summary": "'MCP' missing from inject_suffix (tool retrieval won't run); /no_think missing",
+      "thresholds": "enabled, ~3.9k prompt, 'MCP'+/no_think",
+      "data": {
+        "enabled": true,
+        "system_prompt_chars": 3880,
+        "temperature": 0.2,
+        "has_mcp": false,
+        "has_nothink": false,
+        "character_name": "Godot Developer"
+      },
+      "id": "odysseus.persona",
+      "ms": 0,
+      "layer": "odysseus",
+      "title": "Live persona is the real prompt"
+    },
+    {
+      "verdict": "broken",
+      "summary": "no MCP tools retrieved \u2014 model will see only generic tools",
+      "thresholds": "apply_spec in top-k",
+      "data": {
+        "retrieved": [
+          "archive_email",
+          "ask_teacher",
+          "ask_user",
+          "create_document",
+          "create_session",
+          "generate_image",
+          "manage_memory",
+          "manage_tasks",
+          "pipeline",
+          "trigger_research",
+          "update_plan"
+        ],
+        "mcp_tools": [],
+        "apply_spec_present": false
+      },
+      "id": "odysseus.retrieval",
+      "ms": 2306,
+      "layer": "odysseus",
+      "title": "Tool retrieval surfaces apply_spec"
+    }
+  ],
+  "counts": {
+    "works": 2,
+    "degraded": 2,
+    "broken": 1,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "godot-ai": "works",
+    "runtime": "degraded",
+    "odysseus": "broken"
+  }
+}

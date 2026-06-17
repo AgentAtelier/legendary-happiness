@@ -1,0 +1,46 @@
+{
+  "ts": "2026-06-14 05:59:15",
+  "model": "merged-22b-q4-k-m",
+  "template": "chatml",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "25.6 tok/s, TTFT 139 ms",
+      "thresholds": "\u226515 works \u00b7 5\u201315 degraded \u00b7 <5 broken",
+      "data": {
+        "tok_per_sec": 25.6,
+        "gen_tok": 168,
+        "prompt_tok": 30,
+        "ttft_ms": 139,
+        "gen_ms": 6571
+      },
+      "id": "llama.throughput",
+      "ms": 6907,
+      "layer": "llama",
+      "title": "Generation throughput"
+    },
+    {
+      "verdict": "works",
+      "summary": "grammar enforced exactly \u2192 'ANVIL'",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "id": "llama.grammar",
+      "ms": 299,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    }
+  ],
+  "counts": {
+    "works": 2,
+    "degraded": 0,
+    "broken": 0,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "works"
+  }
+}

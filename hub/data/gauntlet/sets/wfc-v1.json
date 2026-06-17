@@ -1,0 +1,55 @@
+{
+  "id": "wfc-v1",
+  "title": "Wave Function Collapse — Dungeon Slice",
+  "planner": "wfc",
+  "description": "WFC dungeon/cave generation: LLM picks grid size + tile size; deterministic WFC engine collapses tilemap with adjacency constraints. Covers small dungeon, large dungeon, caves, and corridors.",
+  "prompts": [
+    {
+      "id": "W1_small_dungeon",
+      "axis": "wfc:small",
+      "prompt": "Generate a small 8x8 dungeon with rooms and connecting corridors. Use tile size 2.0m.",
+      "expect": {
+        "min_nodes": 20,
+        "min_wfc_tiles": 20,
+        "wfc_in_bounds": true,
+        "wfc_has_walls": true,
+        "wfc_has_floor": true
+      }
+    },
+    {
+      "id": "W2_large_dungeon",
+      "axis": "wfc:large",
+      "prompt": "Build a large 12x12 dungeon with multiple rooms. Tile size 2.0m.",
+      "expect": {
+        "min_nodes": 40,
+        "min_wfc_tiles": 40,
+        "wfc_in_bounds": true,
+        "wfc_has_walls": true,
+        "wfc_has_floor": true
+      }
+    },
+    {
+      "id": "W3_caves",
+      "axis": "wfc:caves",
+      "prompt": "Create a cave system. 8x8 grid with 2.5m tile size for larger chambers.",
+      "expect": {
+        "min_nodes": 15,
+        "min_wfc_tiles": 15,
+        "wfc_in_bounds": true,
+        "wfc_has_floor": true
+      }
+    },
+    {
+      "id": "W4_corridors",
+      "axis": "wfc:corridors",
+      "prompt": "Generate a tight corridor maze. 12x12 dungeon with 1.5m tile size.",
+      "expect": {
+        "min_nodes": 30,
+        "min_wfc_tiles": 30,
+        "wfc_in_bounds": true,
+        "wfc_has_walls": true,
+        "wfc_has_floor": true
+      }
+    }
+  ]
+}

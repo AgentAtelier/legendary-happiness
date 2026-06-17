@@ -1,0 +1,146 @@
+# devforge_arch_planner.gbnf
+# GBNF grammar for DevForge architecture planner JSON output.
+# Constrains the LLM to produce valid architecture delta objects.
+# Phase 10: Replaces test_grammar.gbnf with real planner constraint.
+#
+# NOTE: This is the authoritative grammar for the PipelineEngine path.
+# The agent path uses planner_grammar.gbnf.
+# Source of truth: godot_node_types.py → arch_planner_generated.gbnf.
+# This template is the human-readable copy; the generated file is
+# what llama.cpp actually loads.  Both must list the same set of types.
+# Keep the godot-type enum in sync with planner_grammar.gbnf AND
+# ops_planner.gbnf.  Update all three together when adding types.
+
+root ::= "{" ws "\"systems\"" ws ":" ws "[" ws system-list ws "]" ws "," ws "\"entities\"" ws ":" ws "[" ws entity-list ws "]" ws "," ws "\"connections\"" ws ":" ws "[" ws connection-list ws "]" ws "}"
+
+# At least one system OR one entity must be present.
+# system-list allows empty; entity-list allows empty.
+# The LLM must fill at least one of them (enforced by prompt rules, not grammar).
+# Empty deltas are caught by the deterministic pre-router before reaching the LLM.
+
+system-list ::= ""
+              | system (ws "," ws system)*
+
+entity-list ::= ""
+              | entity (ws "," ws entity)*
+
+connection-list ::= ""
+                  | connection (ws "," ws connection)*
+
+system ::= "{" ws "\"name\"" ws ":" ws string ws "," ws "\"description\"" ws ":" ws string ws "}"
+
+entity ::= "{" ws "\"name\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws godot-type ws "}"
+         | "{" ws "\"name\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws godot-type ws "," ws "\"parent\"" ws ":" ws string ws "}"
+         | "{" ws "\"name\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws godot-type ws "," ws "\"props\"" ws ":" ws props-object ws "}"
+         | "{" ws "\"name\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws godot-type ws "," ws "\"parent\"" ws ":" ws string ws "," ws "\"props\"" ws ":" ws props-object ws "}"
+
+connection ::= "{" ws "\"from\"" ws ":" ws string ws "," ws "\"to\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws connection-type ws "}"
+             | "{" ws "\"from\"" ws ":" ws string ws "," ws "\"to\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws connection-type ws "," ws "\"signal\"" ws ":" ws string ws "}"
+             | "{" ws "\"from\"" ws ":" ws string ws "," ws "\"to\"" ws ":" ws string ws "," ws "\"type\"" ws ":" ws connection-type ws "," ws "\"signal\"" ws ":" ws string ws "," ws "\"method\"" ws ":" ws string ws "}"
+
+godot-type ::= "\"AnimationPlayer\""
+             | "\"Area2D\""
+             | "\"Area3D\""
+             | "\"AudioStreamPlayer\""
+             | "\"AudioStreamPlayer2D\""
+             | "\"AudioStreamPlayer3D\""
+             | "\"Button\""
+             | "\"Camera2D\""
+             | "\"Camera3D\""
+             | "\"CanvasLayer\""
+             | "\"CharacterBody2D\""
+             | "\"CharacterBody3D\""
+             | "\"CollisionShape2D\""
+             | "\"CollisionShape3D\""
+             | "\"ColorRect\""
+             | "\"Control\""
+             | "\"CSGBox3D\""
+             | "\"CSGSphere3D\""
+             | "\"DirectionalLight3D\""
+             | "\"GPUParticles2D\""
+             | "\"GPUParticles3D\""
+             | "\"GridContainer\""
+             | "\"HBoxContainer\""
+             | "\"Label\""
+             | "\"Label3D\""
+             | "\"LineEdit\""
+             | "\"Marker3D\""
+             | "\"MeshInstance3D\""
+             | "\"NavigationAgent3D\""
+             | "\"NavigationRegion3D\""
+             | "\"Node\""
+             | "\"Node2D\""
+             | "\"Node3D\""
+             | "\"OmniLight3D\""
+             | "\"Panel\""
+             | "\"Path3D\""
+             | "\"PathFollow3D\""
+             | "\"ProgressBar\""
+             | "\"RayCast2D\""
+             | "\"RayCast3D\""
+             | "\"RigidBody2D\""
+             | "\"RigidBody3D\""
+             | "\"SpotLight3D\""
+             | "\"SpringArm3D\""
+             | "\"Sprite2D\""
+             | "\"Sprite3D\""
+             | "\"StaticBody2D\""
+             | "\"StaticBody3D\""
+             | "\"SubViewport\""
+             | "\"TextEdit\""
+             | "\"TextureRect\""
+             | "\"Timer\""
+             | "\"VBoxContainer\""
+             | "\"WorldEnvironment\""
+
+connection-type ::= "\"signal\""
+                  | "\"depends_on\""
+                  | "\"controls\""
+                  | "\"uses\""
+
+# ---------------------------
+# JSON string (allows any character via escapes — needed for GDScript content
+# in descriptions and entity names with special characters)
+# ---------------------------
+
+string ::= "\"" char* "\""
+
+char ::= unescaped
+       | "\\" escape
+
+unescaped ::= [^"\\\x00-\x1F]
+
+escape ::= ["\\/bfnrt]
+         | "u" hex hex hex hex
+
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*
+
+# ── Phase 4: per-entity properties (bounded vocabulary) ─────────
+
+props-object ::= "{" ws "}"
+               | "{" ws props-list ws "}"
+
+props-list ::= prop-pair (ws "," ws prop-pair)*
+
+prop-pair ::= "\"mesh\"" ws ":" ws mesh-value
+            | "\"shape\"" ws ":" ws shape-value
+            | "\"color\"" ws ":" ws vec3
+            | "\"position\"" ws ":" ws vec3
+            | "\"text\"" ws ":" ws string
+
+mesh-value ::= "\"box\""
+             | "\"sphere\""
+             | "\"capsule\""
+             | "\"plane\""
+             | "\"cylinder\""
+
+shape-value ::= "\"box\""
+              | "\"sphere\""
+              | "\"capsule\""
+              | "\"cylinder\""
+
+vec3 ::= "[" ws number ws "," ws number ws "," ws number ws "]"
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?

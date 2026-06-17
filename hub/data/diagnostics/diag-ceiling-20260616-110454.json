@@ -1,0 +1,20 @@
+{
+  "kind": "move1-diagnostics",
+  "test": "model_ceiling",
+  "ts": "2026-06-16 11:04:54",
+  "model": "qwen3-6-27b",
+  "prompt": "a wizard's tower where the wizard grew afraid of heights \u2014 upper floors sealed and dusty, living area migrated down to the ground floor",
+  "planner": "room",
+  "skip_cache": true,
+  "node_count": 3,
+  "error_count": 0,
+  "node_names": [
+    "Ceiling",
+    "Floor",
+    "cabinet_north_counter_right"
+  ],
+  "errors": [],
+  "latency_ms": 7986,
+  "crashed": false,
+  "hypothesis": "near-identical on 4B vs 27B (interface is the ceiling)"
+}

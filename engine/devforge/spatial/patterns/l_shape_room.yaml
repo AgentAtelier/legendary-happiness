@@ -1,0 +1,89 @@
+# L-Shape Room — two rectangular wings meeting at a corner.
+# The main wing runs along X (width_main) and the return wing along Z (depth_return).
+# Dimensions: total bounding box is width_main × depth_return;
+# the L-cut removes a volume from one corner.
+
+name: "L-Shape Room"
+description: "An L-shaped room formed by two rectangular wings meeting at a corner"
+parameters:
+  width_main:    { min: 4, max: 10, default: 6 }
+  height:        { min: 2.5, max: 4, default: 3 }
+  depth_main:    { min: 2, max: 6, default: 3 }
+  width_return:  { min: 2, max: 6, default: 3 }
+  depth_return:  { min: 4, max: 10, default: 6 }
+
+# The L-shape fills the full width_main × depth_return rectangle, then carves out
+# a width_main - width_return × depth_return - depth_main corner.
+# Effective floor plan (top-down):
+#   ┌──────────────┐
+#   │  main wing   │ depth_main
+#   │              ├──────┐
+#   │              │return │ depth_return
+#   └──────────────┘──────┘
+#   ← width_main → ←w_ret→
+
+anchors:
+  # Room-level anchors (relative to total bounding box)
+  center:           { position: ["$width_main/2", 0, "$depth_return/2"] }
+  # Inner corner where the two wings meet
+  inner_corner:     { position: ["$width_main - $width_return", 0, "$depth_main"] }
+  # Wall anchors
+  north_wall:       { position: ["$width_main/2", "$height/2", 0] }
+  east_wall_main:   { position: ["$width_main", "$height/2", "$depth_main/2"] }
+  east_wall_return: { position: ["$width_main", "$height/2", "$depth_return/2 + $depth_main/2"] }
+  south_wall:       { position: ["$width_main/2", "$height/2", "$depth_return"] }
+  west_wall:        { position: [0, "$height/2", "$depth_return/2"] }
+  # Slot anchors
+  cook_zone:        { position: ["$width_main/2", 0, "$depth_main/2"] }
+  table_zone:       { position: ["$width_return/2 + $width_main - $width_return", 0, "$depth_return/2 + $depth_main/2"] }
+  corner_nook:      { position: ["$width_main - $width_return - 0.5", 0, "$depth_main + 0.5"] }
+
+shell:
+  - { name: "Floor", type: "MeshInstance3D", mesh: "plane", color: [0.35, 0.3, 0.25], position: ["$width_main/2", -0.05, "$depth_return/2"], scale: ["$width_main/10", 1, "$depth_return/10"] }
+  - { name: "Ceiling", type: "MeshInstance3D", mesh: "plane", color: [0.7, 0.7, 0.75], position: ["$width_main/2", "$height", "$depth_return/2"], scale: ["$width_main/10", 1, "$depth_return/10"] }
+
+slots:
+  # Main wing — cooking/kitchen work zone along north wall
+  cook_counter:
+    anchor: cook_zone
+    offset: [0, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 1.5, depth: 0.8 }
+
+  cook_appliance_left:
+    anchor: cook_zone
+    offset: [-1.8, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 1.0, depth: 0.8 }
+
+  cook_appliance_right:
+    anchor: cook_zone
+    offset: [1.8, 0, 0]
+    facing: [0, 0, 1]
+    max_footprint: { width: 1.0, depth: 0.8 }
+
+  # Return wing — dining area
+  center_table:
+    anchor: table_zone
+    offset: [0, 0, 0]
+    facing: [0, 0, 0]
+    max_footprint: { width: 2.0, depth: 2.0 }
+
+  chair_inner:
+    anchor: { chain: ["center_table", "west", "1.5"] }
+    offset: [0, 0, 0]
+    facing: [1, 0, 0]
+    max_footprint: { width: 0.6, depth: 0.6 }
+
+  chair_outer:
+    anchor: { chain: ["center_table", "east", "1.5"] }
+    offset: [0, 0, 0]
+    facing: [-1, 0, 0]
+    max_footprint: { width: 0.6, depth: 0.6 }
+
+  # Corner nook — storage/shelf
+  corner_storage:
+    anchor: corner_nook
+    offset: [0, 0, 0]
+    facing: [-1, 0, 0]
+    max_footprint: { width: 1.2, depth: 0.5 }

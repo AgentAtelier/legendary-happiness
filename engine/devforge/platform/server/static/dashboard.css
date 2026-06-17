@@ -1,0 +1,92 @@
+body {
+    margin: 0;
+    font-family: monospace;
+    background: #0b1110;
+    color: #c8facc;
+}
+
+header {
+    padding: 14px 20px;
+    font-size: 20px;
+    border-bottom: 1px solid #1f3a2d;
+    background: #08110e;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto auto 1fr;
+    gap: 14px;
+    padding: 14px;
+}
+
+.panel {
+    border: 1px solid #1f3a2d;
+    background: #0f1c18;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.panel h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #8ff0a4;
+}
+
+button {
+    background: #163d2e;
+    color: #bfffd1;
+    border: 1px solid #1f6a4a;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1e523f;
+}
+
+textarea {
+    width: 100%;
+    height: 120px;
+    background: #08110e;
+    color: #c8facc;
+    border: 1px solid #1f3a2d;
+    padding: 8px;
+    resize: vertical;
+}
+
+pre {
+    background: #08110e;
+    border: 1px solid #1f3a2d;
+    padding: 10px;
+    overflow-y: auto;
+
+    /* CRITICAL FIX FOR READABILITY */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: hidden;
+}
+
+.trace_list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.trace_item {
+    padding: 6px;
+    border-bottom: 1px solid #1f3a2d;
+    cursor: pointer;
+}
+
+.trace_item:hover {
+    background: #17332a;
+}
+
+.status_ok {
+    color: #7df79f;
+}
+
+.status_error {
+    color: #ff7d7d;
+}

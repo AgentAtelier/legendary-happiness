@@ -1,0 +1,90 @@
+{
+  "ts": "2026-06-13 20:46:39",
+  "model": "gemma-4-12b-obliterated-q6-k",
+  "template": "gemma",
+  "kind": "probe",
+  "probes": [
+    {
+      "verdict": "works",
+      "summary": "31.5 tok/s, TTFT 108 ms",
+      "thresholds": "\u226515 works \u00b7 5\u201315 degraded \u00b7 <5 broken",
+      "data": {
+        "tok_per_sec": 31.5,
+        "gen_tok": 120,
+        "prompt_tok": 33,
+        "ttft_ms": 108,
+        "gen_ms": 3805
+      },
+      "id": "llama.throughput",
+      "ms": 3949,
+      "layer": "llama",
+      "title": "Generation throughput"
+    },
+    {
+      "verdict": "works",
+      "summary": "ctx 32768 (q4_0 KV)",
+      "thresholds": "loaded==configured",
+      "data": {
+        "n_ctx_loaded": 32768,
+        "configured_ctx": 32768,
+        "kv_cache": "q4_0",
+        "model_alias": "gemma-4-12b-obliterated-q6-k"
+      },
+      "id": "llama.context",
+      "ms": 5,
+      "layer": "llama",
+      "title": "Context window actually loaded"
+    },
+    {
+      "verdict": "works",
+      "summary": "grammar enforced exactly \u2192 'ANVIL'",
+      "thresholds": "output \u2208 {FORGE,ANVIL}",
+      "data": {
+        "raw_output": "ANVIL",
+        "honored": true
+      },
+      "id": "llama.grammar",
+      "ms": 300,
+      "layer": "llama",
+      "title": "Grammar enforcement"
+    },
+    {
+      "verdict": "broken",
+      "summary": "empty answer, 928 chars of hidden reasoning (thinking trap)",
+      "thresholds": "content present, reasoning bounded",
+      "data": {
+        "content_chars": 0,
+        "reasoning_chars": 928,
+        "finish_reason": "length",
+        "content_sample": ""
+      },
+      "id": "llama.thinking",
+      "ms": 9740,
+      "layer": "llama",
+      "title": "Answer vs hidden reasoning"
+    },
+    {
+      "verdict": "works",
+      "summary": "native tool call \u2192 scene_get_hierarchy",
+      "thresholds": "structured tool_call",
+      "data": {
+        "emitted_tool_call": true,
+        "tool_name": "scene_get_hierarchy",
+        "finish_reason": "tool_calls"
+      },
+      "id": "llama.tools",
+      "ms": 3643,
+      "layer": "llama",
+      "title": "Native tool calling"
+    }
+  ],
+  "counts": {
+    "works": 4,
+    "degraded": 0,
+    "broken": 1,
+    "skip": 0
+  },
+  "layer_rollup": {
+    "llama": "broken"
+  }
+}

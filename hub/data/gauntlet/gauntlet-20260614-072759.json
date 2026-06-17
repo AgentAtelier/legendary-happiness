@@ -1,0 +1,130 @@
+{
+  "ts": "2026-06-14 07:28:52",
+  "set": "capability-v1",
+  "set_title": "Capability Gauntlet v1",
+  "model": "qwen3-14b-q6-k",
+  "status": "complete",
+  "total": 2,
+  "done": 2,
+  "results": [
+    {
+      "built_nodes": 5,
+      "built_depth": 1,
+      "applied": 20,
+      "operations_total": 20,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "mesh": 5,
+        "color": 5,
+        "position": 5
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 23027,
+      "nodes_sample": [
+        "/Main/BoxNode",
+        "/Main/CapsuleNode",
+        "/Main/CylinderNode",
+        "/Main/PlaneNode",
+        "/Main/SphereNode"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "5/5"
+        },
+        {
+          "label": "prop:position",
+          "ok": true,
+          "detail": "5/5"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G3_props",
+      "axis": "prop saturation (every mesh + color + position)",
+      "prompt": "Under /Main create five MeshInstance3D nodes: BoxNode (box mesh, red, position -4 0 0), SphereNode (sphere mesh, green, position -2 0 0), CapsuleNode (capsule mesh, blue, position 0 0 0), CylinderNode (cylinder mesh, yellow, position 2 0 0), and PlaneNode (plane mesh, white, position 4 0 0)."
+    },
+    {
+      "built_nodes": 10,
+      "built_depth": 3,
+      "applied": 22,
+      "operations_total": 22,
+      "error_count": 0,
+      "errors": [],
+      "props": {
+        "position": 3,
+        "shape": 3,
+        "mesh": 3,
+        "color": 3
+      },
+      "scripts": 0,
+      "attached": 0,
+      "signals": 0,
+      "latency_ms": 28626,
+      "nodes_sample": [
+        "/Main/Pickups",
+        "/Main/Pickups/P1",
+        "/Main/Pickups/P1/P1Mesh",
+        "/Main/Pickups/P1/P1Shape",
+        "/Main/Pickups/P2",
+        "/Main/Pickups/P2/P2Mesh",
+        "/Main/Pickups/P2/P2Shape",
+        "/Main/Pickups/P3",
+        "/Main/Pickups/P3/P3Mesh",
+        "/Main/Pickups/P3/P3Shape"
+      ],
+      "checks": [
+        {
+          "label": "nodes",
+          "ok": true,
+          "detail": "10/10"
+        },
+        {
+          "label": "depth",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:shape",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:mesh",
+          "ok": true,
+          "detail": "3/3"
+        },
+        {
+          "label": "prop:color",
+          "ok": true,
+          "detail": "3/3"
+        }
+      ],
+      "coverage": 100,
+      "verdict": "full",
+      "id": "G4_children",
+      "axis": "collider/mesh children (the regression case)",
+      "prompt": "Under /Main create a Node3D named Pickups. Under it create three Area3D nodes named P1, P2, P3. Each Area3D must have a CollisionShape3D child with a sphere shape AND a MeshInstance3D child with a sphere mesh, each colored differently."
+    }
+  ],
+  "summary": {
+    "full": 2,
+    "partial": 0,
+    "broke": 0,
+    "avg_coverage": 100
+  }
+}
