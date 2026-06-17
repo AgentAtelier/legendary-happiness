@@ -434,6 +434,7 @@ def _apply_spec_impl(
                 "scene_version": result.scene_version,
                 "arch_delta": result.arch_delta,
                 "execution": exec_result.to_dict() if exec_result else None,
+                "quality_warnings": result.quality_warnings,
             }
             artifact_id = _artifact_store.store(full_payload)
             return _artifact_store.build_summary(artifact_id, full_payload)

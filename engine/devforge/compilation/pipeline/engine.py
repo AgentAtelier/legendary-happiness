@@ -39,6 +39,7 @@ from devforge.compilation.pipeline.repair_engine import RepairEngine
 # about to emit verbatim.
 from devforge.compilation.pipeline.script_extractor import extract as extract_scripts
 from devforge.compilation.pipeline.validator import OperationValidator
+from devforge.governance.quality_gate import assess_quality
 from devforge.infrastructure.llm.llama_client import BudgetExceededError
 from devforge.infrastructure.llm.router import LLMRouter
 from devforge.infrastructure.logger import logger
@@ -149,6 +150,9 @@ class PipelineResult:
     token_used: int = 0  # tokens consumed (from LLM gateway, 0 if unavailable)
     # Workstream A2: planner instrumentation
     truncated: bool = False  # planner output hit n_predict limit
+
+    # Slice B: deterministic quality/collapse warnings (advisory, never blocks)
+    quality_warnings: List[str] = field(default_factory=list)
 
 
 class PipelineEngine:
@@ -535,6 +539,14 @@ class PipelineEngine:
                 repair_count = len(operations) - op_count_before_repair
             stages["repair"] = (time.perf_counter() - t0) * 1000
 
+            # Slice B: deterministic quality gate (advisory — signals, never blocks).
+            quality_warnings = assess_quality(operations, arch_delta, planner_prompt)
+            if quality_warnings:
+                logger.warn(
+                    "pipeline.engine",
+                    f"quality gate: {'; '.join(quality_warnings)}",
+                )
+
             # Phase 9: Run governance gates on generated files
             t0 = time.perf_counter()
             gate_results = self._run_governance_gates(
@@ -586,6 +598,7 @@ class PipelineEngine:
                 scene_tree=scene,
                 scene_version=scene_version,
                 gate_results=gate_results,
+                quality_warnings=quality_warnings,
                 risk_score=risk_score,
                 risk_tier=risk_tier,
                 stage_latencies=stages,
