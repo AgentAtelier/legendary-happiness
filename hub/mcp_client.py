@@ -88,3 +88,82 @@ async def godot_ai_call(tool: str, args: dict | None = None) -> Any:
                 return await s.list_tools()
             res = await s.call_tool(tool, args or {})
             return _json.loads(res.content[0].text)
+
+
+def _extract_image_b64(content) -> str | None:
+    """Pull the base64 PNG out of an MCP tool result's content blocks.
+
+    godot-ai returns the image as a SEPARATE block carrying ``.data`` — not in the
+    text block — so the usual ``content[0].text`` parse misses it. Return the first
+    block that carries image data, else None.
+    """
+    for block in content or []:
+        data = getattr(block, "data", None)
+        if data:
+            return data
+    return None
+
+
+async def capture_screenshot(
+    *,
+    view_target: str | None = None,
+    elevation: float = 25,
+    azimuth: float = 35,
+    fov: float = 50,
+    max_resolution: int = 1100,
+) -> dict:
+    """Capture a FRAMED screenshot of the editor viewport, with the image.
+
+    A bare editor_screenshot points wherever the user left the editor camera —
+    usually empty. This frames the camera on the scene root so the built content
+    is visible. Returns {"image": <b64 png>, "format", "width", "height",
+    "view_target"} or {"error": ...}.
+    """
+    async with streamablehttp_client(GODOT_AI_URL) as (r, w, _):
+        async with ClientSession(r, w) as s:
+            await s.initialize()
+            target = view_target
+            if target is None:
+                hier = await s.call_tool("scene_get_hierarchy", {"depth": 2})
+                try:
+                    data = _json.loads(hier.content[0].text)
+                except Exception:
+                    data = {}
+                roots = [
+                    n.get("path")
+                    for n in data.get("nodes", [])
+                    if isinstance(n, dict) and n.get("path", "").count("/") == 1
+                ]
+                target = roots[0] if roots else "/Main"
+            res = await s.call_tool(
+                "editor_screenshot",
+                {
+                    "source": "viewport",
+                    "include_image": True,
+                    "coverage": True,
+                    "view_target": target,
+                    "elevation": elevation,
+                    "azimuth": azimuth,
+                    "fov": fov,
+                    "max_resolution": max_resolution,
+                },
+            )
+            img = _extract_image_b64(res.content)
+            if not img:
+                return {"error": "godot-ai returned no image data"}
+            meta = {}
+            for block in res.content:
+                text = getattr(block, "text", None)
+                if text:
+                    try:
+                        meta = _json.loads(text)
+                        break
+                    except Exception:
+                        pass
+            return {
+                "image": img,
+                "format": meta.get("format", "png"),
+                "width": meta.get("width"),
+                "height": meta.get("height"),
+                "view_target": target,
+            }
