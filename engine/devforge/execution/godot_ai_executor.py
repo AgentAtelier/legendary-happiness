@@ -301,45 +301,61 @@ class GodotAIMCPExecutor(Executor):
         RETRY_DELAY_BASE = 0.5  # seconds
 
         if operations:
-            for batch_attempt in range(MAX_BATCH_RETRIES + 1):
-                try:
-                    commands = translate_ops_to_commands(operations)
-                    batch_result = await self._call_tool_safe(
-                        session,
-                        name=self.TOOL_BATCH_EXECUTE,
-                        arguments={"commands": commands},
-                    )
+            # godot-ai's batch_execute has a ~30s ceiling and fails SILENTLY past
+            # it: it returns an empty result (no exception) so the old single-batch
+            # path took the success branch with results=[] -> 0 applied, 0 errors.
+            # Large worlds (1000s of ops) must be chunked so each batch finishes
+            # well under that ceiling. Chunks are sequential slices, so op order
+            # (parents before children) is preserved.
+            CHUNK_SIZE = 150
+            for chunk_start in range(0, len(operations), CHUNK_SIZE):
+                chunk = operations[chunk_start : chunk_start + CHUNK_SIZE]
+                for batch_attempt in range(MAX_BATCH_RETRIES + 1):
+                    try:
+                        commands = translate_ops_to_commands(chunk)
+                        batch_result = await self._call_tool_safe(
+                            session,
+                            name=self.TOOL_BATCH_EXECUTE,
+                            arguments={"commands": commands},
+                        )
 
-                    parsed = parse_tool_result(batch_result)
-                    if isinstance(parsed, list):
-                        results = parsed
-                    elif isinstance(parsed, dict):
-                        results = parsed.get("results", [])
-                    results = [normalize_op_result(r) for r in results]
-                    break  # success
-                except (ConnectionError, TimeoutError, OSError) as exc:
-                    if batch_attempt < MAX_BATCH_RETRIES:
-                        delay = RETRY_DELAY_BASE * (2**batch_attempt)
+                        parsed = parse_tool_result(batch_result)
+                        if isinstance(parsed, list):
+                            chunk_results = parsed
+                        elif isinstance(parsed, dict):
+                            chunk_results = parsed.get("results", [])
+                        else:
+                            chunk_results = []
+                        if not chunk_results:
+                            logger.warn(
+                                "executor.mcp",
+                                f"batch_execute returned 0 results for a {len(chunk)}-op "
+                                f"chunk (possible godot-ai timeout) — ops may not have applied",
+                            )
+                        results.extend(normalize_op_result(r) for r in chunk_results)
+                        break  # chunk success
+                    except (ConnectionError, TimeoutError, OSError) as exc:
+                        if batch_attempt < MAX_BATCH_RETRIES:
+                            delay = RETRY_DELAY_BASE * (2**batch_attempt)
+                            logger.warn(
+                                "executor.mcp",
+                                f"batch_execute transient failure (attempt "
+                                f"{batch_attempt + 1}/{MAX_BATCH_RETRIES + 1}): "
+                                f"{type(exc).__name__}: {exc} — retrying in {delay}s",
+                            )
+                            await asyncio.sleep(delay)
+                            await self._close_session()
+                            session = await self._ensure_session()
+                        else:
+                            errors.append(f"batch_execute chunk failed after {MAX_BATCH_RETRIES + 1} attempts: {exc}")
+                    except Exception as exc:
                         logger.warn(
                             "executor.mcp",
-                            f"batch_execute transient failure (attempt "
-                            f"{batch_attempt + 1}/{MAX_BATCH_RETRIES + 1}): "
-                            f"{type(exc).__name__}: {exc} — retrying in {delay}s",
+                            f"batch_execute failed ({type(exc).__name__}: {exc}) — "
+                            f"falling back to per-op execution for {len(chunk)} operations",
                         )
-                        await asyncio.sleep(delay)
-                        await self._close_session()
-                        session = await self._ensure_session()
-                    else:
-                        errors.append(f"batch_execute failed after {MAX_BATCH_RETRIES + 1} attempts: {exc}")
-                except Exception as exc:
-                    logger.warn(
-                        "executor.mcp",
-                        f"batch_execute failed ({type(exc).__name__}: {exc}) — "
-                        f"falling back to per-op execution for "
-                        f"{len(operations)} operations",
-                    )
-                    results = await self._execute_ops_individually(session, operations)
-                    break
+                        results.extend(await self._execute_ops_individually(session, chunk))
+                        break
 
         # 3. Fetch logs for error parsing
         raw_logs: str | None = None
