@@ -19,12 +19,39 @@ CATALOG: list[type[Test]] = []
 DEFAULT_SUITES: dict[str, list[str]] = {
     "everything": [],  # populated from all registered tests
     "fast": [],  # tests that run in < 5s (declared in test metadata)
-    "llama-layer": [],
-    "devforge-layer": [],
-    "godotai-layer": [],
-    "runtime-layer": [],
-    "odysseus-layer": [],
-    "chain-health": [],
+    "llama-layer": [
+        "probe.llama.throughput",
+        "probe.llama.context",
+        "probe.llama.grammar",
+        "probe.llama.thinking",
+        "probe.llama.tools",
+    ],
+    "devforge-layer": [
+        "probe.devforge.plan",
+        "probe.devforge.compile",
+        "probe.devforge.execute",
+        "probe.devforge.completeness",
+        "probe.devforge.validate",
+        "probe.devforge.roundtrip",
+    ],
+    "godotai-layer": [
+        "probe.godotai.latency",
+        "probe.godotai.fidelity",
+    ],
+    "runtime-layer": [
+        "probe.runtime.launch",
+    ],
+    "odysseus-layer": [
+        "probe.odysseus.persona",
+        "probe.odysseus.retrieval",
+    ],
+    "chain-health": [
+        "probe.devforge.plan",
+        "probe.devforge.compile",
+        "probe.devforge.execute",
+        "probe.devforge.completeness",
+        "probe.devforge.validate",
+    ],
 }
 
 

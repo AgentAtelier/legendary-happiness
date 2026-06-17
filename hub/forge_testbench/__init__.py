@@ -34,4 +34,4 @@ from .test import Test
 
 # Import test modules to trigger @register decorators.
 # Each category gets its own module; add new ones here as they migrate.
-from .tests import probes  # noqa: F401 — triggers registration
+from .tests import probes, scenarios  # noqa: F401 — triggers registration

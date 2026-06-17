@@ -369,9 +369,26 @@ class ProbeLlamaTools(Test):
 # Layer 2: DevForge probes
 # ═══════════════════════════════════════════════════════════════════
 
+# Pipeline cache — one real apply_spec feeds all Layer-2 probes (matching
+# bench.py's single-LLM-call approach). Clear before each testbench session.
+_PIPELINE_CACHE: dict = {"data": None}
+
+
+def reset_pipeline_cache() -> None:
+    """Clear the pipeline cache so the next DevForge probe run gets a fresh
+    apply_spec call. Called by the runner at the start of each run().
+    """
+    _PIPELINE_CACHE["data"] = None
+
 
 async def _capture_pipeline(ctx: Context) -> dict:
-    """Run the fixed DevForge prompt and capture all stages."""
+    """Run the fixed DevForge prompt and capture all stages.
+
+    Uses a module-level cache so the plan/compile/execute/completeness probes
+    all read from ONE pipeline run — matching bench.py's proven approach.
+    """
+    if _PIPELINE_CACHE["data"] is not None:
+        return _PIPELINE_CACHE["data"]
     t0 = time.time()
     before = set()
     try:
@@ -398,13 +415,15 @@ async def _capture_pipeline(ctx: Context) -> dict:
     except Exception:
         pass
 
-    return {
+    data = {
         "raw": raw,
         "artifact": artifact,
         "before": sorted(before),
         "after": sorted(after),
         "apply_ms": apply_ms,
     }
+    _PIPELINE_CACHE["data"] = data
+    return data
 
 
 @register

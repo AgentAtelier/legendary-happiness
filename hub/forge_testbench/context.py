@@ -44,7 +44,7 @@ class Context:
         self,
         prompt: str,
         *,
-        planner: str = "room",
+        planner: str = "",
         temperature: float = 0.2,
         timeout_s: int = 300,
     ) -> dict:

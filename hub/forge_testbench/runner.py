@@ -234,6 +234,9 @@ class Runner:
             Artifact with all results.
         """
         from .catalog import CATALOG
+        from .tests.probes import reset_pipeline_cache
+
+        reset_pipeline_cache()
 
         # Resolve test classes
         by_id: dict[str, type] = {t.id: t for t in CATALOG}
