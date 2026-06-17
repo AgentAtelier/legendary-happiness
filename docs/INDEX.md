@@ -15,6 +15,8 @@ for context, not for execution. When a doc is superseded, move it to `archive/`.
 - [current/CONVENTIONS.md](current/CONVENTIONS.md) — the few coding rules (read at session start)
 - [current/GOD-FILE-SPLIT-PLAN.md](current/GOD-FILE-SPLIT-PLAN.md) — handoff plan to split the god files + quick-win bug fixes
 - [current/LAYER3-IMPLEMENTATION-PROMPT.md](current/LAYER3-IMPLEMENTATION-PROMPT.md) — the prompt handing the Layer-3 work to a code-writing CLI AI
+- [current/IMPL-GUIDE-1-testbench-migration.md](current/IMPL-GUIDE-1-testbench-migration.md) — CLI-AI guide: finish the testbench migration (parity-gated)
+- [current/IMPL-GUIDE-2-world-state-experiment.md](current/IMPL-GUIDE-2-world-state-experiment.md) — CLI-AI guide: the world-state slice + 4B-vs-27B richness test (design-first)
 - [current/ROADMAP.md](current/ROADMAP.md) — what's next
 - [current/FORGE-BACKLOG.md](current/FORGE-BACKLOG.md) — backlog
 - [current/LAYER1-SURVEY-PROMPTS.md](current/LAYER1-SURVEY-PROMPTS.md) — the workspace-cleanup survey prompts (active)
