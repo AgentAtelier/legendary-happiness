@@ -433,7 +433,7 @@ function handleShootoutMarker(txt) {
   }
 }
 
-function setBusy(b) { running = b; document.querySelectorAll('#actions button, #modelBtn, .swapBtn, #benchAll, #benchFast, #benchBundle, #benchShootoutRun, #benchShootoutRunOne, #scoreAll, #scoreFast, #scoreTool, #scoreBoth, #cmpBtn, #configSave, #configRestore, #configLoad, #shootoutRun, #shootoutRunOne, #shootoutCheck, #probeAll, #probeLlama, #probeDevforge, #probeFast, #probeQuick, #modeBuild, #modeWrite, #warmupBtn, button.danger').forEach(bt => bt.disabled = b);
+function setBusy(b) { running = b; document.querySelectorAll('#actions button, #modelBtn, .swapBtn, #configSave, #configRestore, #configLoad, #modeBuild, #modeWrite, #warmupBtn, button.danger').forEach(bt => bt.disabled = b);
   if (b) { $('busybanner').style.display = ''; $('busyLabel').textContent = 'Running...'; $('busyTimer').textContent = ''; }
   else { $('busybanner').style.display = 'none'; }
 }
@@ -547,15 +547,7 @@ async function refresh() {
     }
     setBusy(d.busy);
 
-    // Bench history summary
-    try {
-      const bh = await (await api('/api/bench/history')).json();
-      if (bh.runs && bh.runs.length) {
-        const r = bh.runs[0];
-        const pct = r.counts ? Math.round(r.counts.pass / (r.counts.pass + r.counts.fail + r.counts.error + r.counts.skip) * 100) : 0;
-        $('benchHist').textContent = `${r.ts} ${safe(r.model)} ${pct}%`;
-      }
-    } catch (e) {}
+
   } catch (e) {
     $('chips').innerHTML = `<span style="color:var(--err);">hub unreachable</span>`;
   }
@@ -636,71 +628,16 @@ document.getElementById('nav').addEventListener('click', e => {
 });
 
 // ── Capability Gauntlet ───────────────────────────────────────────
-const GV = {full:{c:'var(--ok)',l:'FULL'}, partial:{c:'var(--warn)',l:'PARTIAL'}, broke:{c:'var(--err)',l:'BROKE'}};
 async function loadGauntletSets() {
   try {
-    const d = await (await api('/api/gauntlet/sets')).json();
-    const sel = $('gauntletSet');
-    sel.innerHTML = (d.sets||[]).map(s => `<option value="${safe(s.id)}">${safe(s.title)} (${s.count})</option>`).join('');
-    await loadLatestGauntlet();
+    const d = await (await api('/api/testbench/catalog')).json();
+    const suites = d.suites || {};
+    // Filter to spatial/building/capability-type suites for the set picker
+    const gauntletSuites = ['capability-v1','spatial-v1','building-v1','garden-v1','ssp-v1','wfc-v1','voronoi-v1','stress-v1'];
+    _gsets = gauntletSuites.filter(id => suites[id]).map(id => ({id, title: id, count: (suites[id]||[]).length, description: GSET_INFO[id] || ''}));
+    if(!_gsets.length) _gsets.push({id:'capability-v1', title:'capability-v1', count:0, description:GSET_INFO['capability-v1']||''});
   } catch(e) {}
 }
-async function runGauntlet() {
-  const set = $('gauntletSet').value;
-  if (!set) return;
-  $('termGauntlet').innerHTML=''; $('gauntletSummary').textContent='⏳ running…'; setBusy(true);
-  try {
-    const r = await api('/api/gauntlet/run', {method:'POST', body: JSON.stringify({set})});
-    const jd = await r.json();
-    if (jd.detail) { $('termGauntlet').textContent = jd.detail; setBusy(false); return; }
-    const termEl = document.createElement('div');
-    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
-    $('termGauntlet').appendChild(termEl);
-    await streamJob(jd.job, termEl, () => { loadLatestGauntlet(); loadGauntletHistory(); });
-  } catch(e) { $('termGauntlet').textContent = 'error: '+e.message; setBusy(false); }
-}
-async function loadLatestGauntlet() {
-  try {
-    const h = await (await api('/api/gauntlet/history')).json();
-    if (!h.runs || !h.runs.length) { $('gauntletResults').innerHTML=''; return; }
-    const ts = h.runs[0].file.replace('gauntlet-','').replace('.json','');
-    renderGauntlet(await (await api('/api/gauntlet/'+ts)).json());
-  } catch(e) {}
-}
-function renderGauntlet(run) {
-  const s = run.summary || {};
-  $('gauntletSummary').innerHTML = `<span style="color:var(--ok)">${s.full||0} full</span> · <span style="color:var(--warn)">${s.partial||0} partial</span> · <span style="color:var(--err)">${s.broke||0} broke</span> · avg <b>${s.avg_coverage||0}%</b> <span style="color:var(--dim)">· ${safe(run.model)} · ${safe(run.ts)}</span>`;
-  $('gauntletResults').innerHTML = (run.results||[]).map(r => {
-    const v = GV[r.verdict] || GV.broke;
-    const checks = (r.checks||[]).map(c => `<span style="color:${c.ok?'var(--ok)':'var(--err)'};margin-right:8px;">${c.ok?'✓':'✗'} ${safe(c.label)} ${safe(c.detail)}</span>`).join('');
-    const props = Object.entries(r.props||{}).map(([k,v2])=>`${k}:${v2}`).join(' ');
-    return `<details style="border:1px solid var(--border);border-radius:3px;margin-bottom:4px;background:#050805;">
-      <summary style="cursor:pointer;padding:5px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;list-style:none;">
-        <span style="flex:none;background:${v.c}22;color:${v.c};border:1px solid ${v.c};border-radius:3px;padding:0 6px;font-size:10px;font-weight:bold;min-width:64px;text-align:center;">${v.l}</span>
-        <span style="flex:none;font-weight:bold;color:${v.c};width:46px;">${r.coverage}%</span>
-        <span style="flex:none;color:var(--fg);font-size:11px;width:130px;">${safe(r.id)}</span>
-        <span style="flex:1;min-width:0;color:var(--dim);font-size:11px;overflow-wrap:anywhere;">${safe(r.axis)}</span>
-        <span style="flex:none;color:var(--dim);font-size:10px;">${Math.round((r.latency_ms||0)/1000)}s</span>
-      </summary>
-      <div style="padding:5px 8px 8px;border-top:1px solid var(--border);font-size:11px;">
-        <div style="margin:3px 0;">${checks||'<span style="color:var(--dim)">no checks</span>'}</div>
-        <div style="color:var(--dim);font-size:10px;margin:3px 0;">built ${r.built_nodes} nodes · depth ${r.built_depth} · props {${safe(props)}} · scripts ${r.scripts} · attached ${r.attached} · signals ${r.signals} · errors ${r.error_count}</div>
-        <div style="color:var(--blue);font-size:10px;white-space:pre-wrap;">${safe(r.prompt||'')}</div>
-        ${(r.errors&&r.errors.length)?`<div style="color:var(--err);font-size:10px;margin-top:3px;">${safe(JSON.stringify(r.errors))}</div>`:''}
-      </div>
-    </details>`;
-  }).join('');
-}
-async function loadGauntletHistory() {
-  try {
-    const h = await (await api('/api/gauntlet/history')).json();
-    $('gauntletHistory').innerHTML = (h.runs||[]).slice(0,12).map(r => {
-      const s = r.summary||{};
-      return `<div>${safe(r.ts)} · ${safe(r.set)} · ${safe(r.model)} · avg ${s.avg_coverage||0}% (${s.full||0}f/${s.partial||0}p/${s.broke||0}b)</div>`;
-    }).join('') || '(none yet)';
-  } catch(e) {}
-}
-document.addEventListener('click', e => { if (e.target && e.target.id === 'gauntletRun') runGauntlet(); });
 
 // ── Models Tab ──────────────────────────────────────────────────
 async function loadModels() {
@@ -787,289 +724,6 @@ async function loadActivity() {
 
 // ── Doc Tab ─────────────────────────────────────────────────────
 async function loadDoc() { try { $('docpane').textContent = await (await api('/api/doc')).text(); } catch(e) { $('docpane').textContent = 'Could not load doc: ' + e.message; } }
-
-// ── Bench Tab ───────────────────────────────────────────────────
-let benchTests = [];
-async function loadBenchTests() {
-  try {
-    const d = await (await api('/api/bench/tests')).json();
-    benchTests = d.tests;
-    const sel = $('bundleSelect');
-    sel.innerHTML = '<option value="">— bundle —</option>' + Object.keys(d.bundles).map(b => `<option value="${b}">${b}</option>`).join('');
-    rendBench(benchTests);
-    // Load shootout history into bench tab
-    loadBenchShootout();
-  } catch (e) {}
-}
-function rendBench(tests) {
-  $('benchTable').querySelector('tbody').innerHTML = tests.map(t =>
-    `<tr><td title="${safe(t.id)}">${safe(t.id)}</td><td>${safe(t.layer)}</td><td title="${safe(t.title)}">${safe(t.title)}</td><td><span id="b-${safe(t.id)}">—</span></td><td id="bd-${safe(t.id)}" title=""></td></tr>`
-  ).join('');
-}
-async function runBench(ids) {
-  $('termBench').innerHTML = ''; setBusy(true);
-  try {
-    const r = await api('/api/bench/run', {method:'POST', body: JSON.stringify({ids})});
-    const jd = await r.json();
-    const termEl = document.createElement('div');
-    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
-    $('termBench').appendChild(termEl);
-    await streamJob(jd.job, termEl, () => { loadBenchTests(); });
-  } catch(e) { $('termBench').textContent = 'error: ' + e.message; setBusy(false); }
-}
-var _b=$('benchAll'); if(_b) _b.addEventListener('click', () => runBench(benchTests.map(t => t.id)));
-var _b=$('benchFast'); if(_b) _b.addEventListener('click', () => runBench(benchTests.filter(t => t.speed === 'fast').map(t => t.id)));
-var _b=$('benchBundle'); if(_b) _b.addEventListener('click', async () => {
-  const name = $('bundleSelect').value;
-  if (!name) return;
-  const d = await (await api('/api/bench/tests')).json();
-  const ids = d.bundles[name];
-  if (ids) runBench(ids);
-});
-
-// ── Deep Probe (chain probes with data + 3-tier verdicts) ─────────
-let probeList = [];
-const VERDICT = {
-  works:    { color: 'var(--ok)',  chip: '#0c2a12', label: 'WORKS' },
-  degraded: { color: 'var(--warn)', chip: '#2a2400', label: 'DEGRADED' },
-  broken:   { color: 'var(--err)', chip: '#2a0a0a', label: 'BROKEN' },
-  skip:     { color: 'var(--dim)', chip: '#0f1f0f', label: 'skip' },
-};
-async function loadProbes() {
-  try {
-    const d = await (await api('/api/bench/probes')).json();
-    probeList = d.probes || [];
-    await loadLatestProbe();
-  } catch (e) {}
-}
-async function runProbe(ids) {
-  if (!ids.length) return;
-  $('termProbe').innerHTML = ''; $('probeRollup').textContent = '⏳ running…'; setBusy(true);
-  try {
-    const r = await api('/api/bench/probe', {method:'POST', body: JSON.stringify({ids})});
-    const jd = await r.json();
-    const termEl = document.createElement('div');
-    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
-    $('termProbe').appendChild(termEl);
-    await streamJob(jd.job, termEl, () => { loadLatestProbe(); });
-  } catch(e) { $('termProbe').textContent = 'error: ' + e.message; setBusy(false); }
-}
-async function loadLatestProbe() {
-  try {
-    const h = await (await api('/api/bench/probe/history')).json();
-    if (!h.runs || !h.runs.length) { $('probeResults').innerHTML = ''; return; }
-    const ts = h.runs[0].file.replace('probe-','').replace('.json','');
-    const run = await (await api('/api/bench/probe/' + ts)).json();
-    renderProbes(run);
-  } catch (e) {}
-}
-function renderProbes(run) {
-  const roll = run.layer_rollup || {};
-  $('probeRollup').innerHTML = Object.entries(roll).map(([lyr, v]) =>
-    `<span style="color:${(VERDICT[v]||VERDICT.skip).color};margin-right:8px;">${safe(lyr)}: ${(VERDICT[v]||VERDICT.skip).label}</span>`
-  ).join('') + `<span style="color:var(--dim);">· ${safe(run.ts)} · ${safe(run.model)}</span>`;
-  const order = probeList.map(p => p.id);
-  const probes = (run.probes || []).slice().sort((a,b) => order.indexOf(a.id) - order.indexOf(b.id));
-  let lastLayer = '';
-  $('probeResults').innerHTML = probes.map(p => {
-    const vd = VERDICT[p.verdict] || VERDICT.skip;
-    const hdr = p.layer !== lastLayer ? (lastLayer = p.layer,
-      `<div style="font-size:10px;color:var(--dim);margin:8px 0 2px;text-transform:uppercase;letter-spacing:1px;">${safe(p.layer)}</div>`) : '';
-    const dataJson = JSON.stringify(p.data || {}, null, 2);
-    return hdr + `
-      <details class="probe-card" style="border:1px solid var(--border);border-radius:3px;margin-bottom:4px;background:#050805;">
-        <summary style="cursor:pointer;padding:5px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="flex:none;background:${vd.chip};color:${vd.color};border:1px solid ${vd.color};border-radius:3px;padding:0 6px;font-size:10px;font-weight:bold;min-width:74px;text-align:center;">${vd.label}</span>
-          <span style="flex:none;color:var(--fg);font-size:11px;width:150px;">${safe(p.id)}</span>
-          <span style="flex:1;min-width:0;color:var(--dim);font-size:11px;overflow-wrap:anywhere;">${safe(p.summary||'')}</span>
-          <span style="flex:none;color:var(--dim);font-size:10px;">${p.ms} ms</span>
-        </summary>
-        <div style="padding:4px 8px 8px;border-top:1px solid var(--border);">
-          <div style="font-size:10px;color:var(--dim);margin:4px 0;">rule: ${safe(p.thresholds||'—')}</div>
-          <pre style="font-size:10px;white-space:pre-wrap;color:var(--blue);margin:0;max-height:30vh;overflow:auto;">${safe(dataJson)}</pre>
-        </div>
-      </details>`;
-  }).join('');
-}
-var _b=$('probeAll'); if(_b) _b.addEventListener('click', () => runProbe(probeList.map(p => p.id)));
-var _b=$('probeLlama'); if(_b) _b.addEventListener('click', () => runProbe(probeList.filter(p => p.layer==='llama').map(p => p.id)));
-var _b=$('probeDevforge'); if(_b) _b.addEventListener('click', () => runProbe(probeList.filter(p => p.layer==='devforge').map(p => p.id)));
-var _b=$('probeFast'); if(_b) _b.addEventListener('click', () => runProbe(probeList.filter(p => p.speed==='fast').map(p => p.id)));
-var _b=$('probeQuick'); if(_b) _b.addEventListener('click', async () => {
-  // Phase 2b: run fast probes for a quick (<10s) health check
-  try {
-    const d = await (await api('/api/bench/probes')).json();
-    const fastIds = (d.probes || []).filter(p => p.speed === 'fast').map(p => p.id);
-    runProbe(fastIds);
-  } catch(e) { $('termProbe').textContent = 'error: ' + e.message; }
-});
-
-// ── Bench Shootout integration ────────────────────────────────────
-async function loadBenchShootout() {
-  try {
-    const r = await api('/api/shootout/history');
-    const d = await r.json();
-    const shootouts = d.shootouts || [];
-    if (!shootouts.length) {
-      $('benchShootout').style.display = 'none';
-      return;
-    }
-    $('benchShootout').style.display = '';
-    const latest = shootouts[0];
-    const top = latest.rankings?.[0];
-    const logTs = latest.log_ts || '';
-    $('benchShootoutSummary').innerHTML =
-      `<b>${latest.ts || '?'}</b> — ${latest.models_tested || 0} models tested` +
-      (top ? ` · 🥇 <b>${safe(top.model)}</b> — ${safe(top.score)}/100` : '') +
-      ` · <a href="#" onclick="document.querySelector('[data-tab=shootout]').click();return false;" style="color:var(--accent);font-size:10px;">full detail →</a>` +
-      (logTs ? ` · <a href="#" onclick="toggleBenchShootoutLog('${logTs}');return false;" style="color:var(--blue);font-size:10px;">📄 log</a>` : '') +
-      (logTs ? `<pre id="benchShootoutLogView" style="display:none;margin-top:6px;max-height:20vh;overflow-y:auto;background:#050805;padding:6px;border-radius:3px;font-size:9px;white-space:pre-wrap;"></pre>` : '');
-
-    // Shared renderer for bar chart + medal table
-    const c = renderShootoutCompact(latest, 'compact');
-    $('benchShootoutBody').innerHTML = c.bars + c.table;
-  } catch(e) {
-    $('benchShootout').style.display = 'none';
-  }
-}
-
-var _b=$('benchShootoutRun'); if(_b) _b.addEventListener('click', () => runShootout(null));
-var _b=$('benchShootoutRunOne'); if(_b) _b.addEventListener('click', async () => {
-  try {
-    const s = await api('/api/status');
-    const d = await s.json();
-    const alias = safe(d.alias, '');
-    if (alias) runShootout(alias);
-    else alert('Could not detect current model alias.');
-  } catch(e) { alert('Could not fetch current model: ' + e.message); }
-});
-
-async function toggleBenchShootoutLog(logTs) {
-  const el = $('benchShootoutLogView');
-  if (!el) return;
-  if (el.style.display !== 'none') {
-    el.style.display = 'none';
-    return;
-  }
-  if (!el.textContent) {
-    try {
-      const r = await fetch(`/api/shootout/${logTs}/log`);
-      el.textContent = r.ok ? await r.text() : 'Log not available (404)';
-    } catch(e) {
-      el.textContent = 'Failed to load log: ' + e.message;
-    }
-  }
-  el.style.display = '';
-}
-
-// ══════════════════════════════════════════════════════════════════
-// Stream A: Scenario Suite + Scorecards
-// ══════════════════════════════════════════════════════════════════
-
-let scoreScenarios = [];
-let scoreProbes = [];
-
-async function loadScoreHistory() {
-  try {
-    // Load scenario list
-    const d = await (await api('/api/scenarios')).json();
-    scoreScenarios = d.scenarios || [];
-    scoreProbes = d.tool_call_probes || [];
-    // Load scorecard history
-    const sc = await (await api('/api/scorecards')).json();
-    const cards = sc.scorecards || [];
-    if (cards.length) {
-      const last = cards[0];
-      $('scoreHistory').innerHTML = `<b>Previous scores:</b> ${cards.slice(0,5).map(c =>
-        `<span style="margin-right:12px;">${safe(c.model)} (${safe(c.summary?.pass_rate)} pass ${safe(c.ts)})</span>`
-      ).join('')}`;
-    }
-    // Render scenario table
-    rendScoreTable(scoreScenarios);
-  } catch(e) { $('scoreHistory').textContent = 'error: ' + e.message; }
-}
-
-function rendScoreTable(scenarios) {
-  $('scoreTable').querySelector('tbody').innerHTML = scenarios.map(s =>
-    `<tr><td>${safe(s.id)}</td><td>${safe(s.category)}</td><td id="ss-${safe(s.id)}">—</td><td id="st-${safe(s.id)}">—</td><td id="sd-${safe(s.id)}">—</td></tr>`
-  ).join('');
-  // Re-render comparison if there is one
-}
-
-async function runScore(ids, runTools, title) {
-  $('termScore').innerHTML = ''; setBusy(true);
-  try {
-    const r = await api('/api/scenarios/run', {method:'POST', body: JSON.stringify({ids, run_tools: runTools})});
-    const jd = await r.json();
-    const termEl = document.createElement('div');
-    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;max-height:25vh;overflow-y:auto;';
-    $('termScore').innerHTML = '';
-    $('termScore').appendChild(termEl);
-    await streamJob(jd.job, termEl, () => {
-      loadScoreHistory();
-      showLatestScorecard();
-    });
-  } catch(e) { $('termScore').textContent = 'error: ' + e.message; setBusy(false); }
-}
-
-async function showLatestScorecard() {
-  try {
-    const sc = await (await api('/api/scorecards')).json();
-    const cards = sc.scorecards || [];
-    if (!cards.length) return;
-    // Fetch full latest card
-    const env = await (await api('/api/status')).json();
-    const alias = safe(env.alias, '?');
-    // Show latest summary
-    const last = cards[0];
-    $('scoreSummary').innerHTML = `
-      <div class="card"><h3>${safe(last.model)}</h3>
-        <div class="big s-pass">${safe(last.summary?.pass_rate)}</div>
-        <div>pass ${safe(last.summary?.pass)} / fail ${safe(last.summary?.fail)} / error ${safe(last.summary?.error)}</div>
-        <div style="font-size:10px;color:var(--dim);">${safe(last.summary?.total_ms)}ms total</div>
-        ${last.summary?.tool_pass !== undefined ? `<div style="margin-top:4px;font-size:10px;">🛠 tools: ${last.summary.tool_pass}/${last.summary.tool_total} pass</div>` : ''}
-      </div>`;
-  } catch(e) {}
-}
-
-var _b=$('scoreAll'); if(_b) _b.addEventListener('click', () => runScore(scoreScenarios.map(s => s.id), false, 'Full scenario suite'));
-var _b=$('scoreFast'); if(_b) _b.addEventListener('click', () => runScore(scoreScenarios.filter(s => s.category === 'geometry').map(s => s.id), false, 'Geometry scenarios'));
-var _b=$('scoreTool'); if(_b) _b.addEventListener('click', () => runScore([], true, 'Tool-call probes'));
-var _b=$('scoreBoth'); if(_b) _b.addEventListener('click', () => runScore(scoreScenarios.map(s => s.id), true, 'Full score (scenarios + tools)'));
-
-var _b=$('cmpBtn'); if(_b) _b.addEventListener('click', async () => {
-  const a = $('cmpA').value.trim();
-  const b = $('cmpB').value.trim();
-  if (!a || !b) return;
-  try {
-    const r = await api(`/api/scorecards/compare?model_a=${encodeURIComponent(a)}&model_b=${encodeURIComponent(b)}`);
-    const d = await r.json();
-    if (d.error) { $('scoreHistory').textContent = d.error; return; }
-    // Render comparison
-    $('scoreSummary').innerHTML = `
-      <div class="card"><h3>${safe(d.model_a)}</h3>
-        <div class="big s-pass">${safe(d.summary_a?.pass_rate)}</div>
-        <div>${safe(d.summary_a?.pass)}/${safe(d.summary_a?.total)} pass</div>
-      </div>
-      <div class="card"><h3>${safe(d.model_b)}</h3>
-        <div class="big s-pass">${safe(d.summary_b?.pass_rate)}</div>
-        <div>${safe(d.summary_b?.pass)}/${safe(d.summary_b?.total)} pass</div>
-      </div>`;
-    $('scoreTable').querySelector('tbody').innerHTML = (d.rows || []).map(row => {
-      const aSt = row.model_a ? row.model_a.status : 'no data';
-      const bSt = row.model_b ? row.model_b.status : 'no data';
-      const aCls = aSt === 'pass' ? 'sc-pass' : (aSt === 'fail' ? 'sc-fail' : (aSt === 'error' ? 'sc-error' : 'sc-nodata'));
-      const bCls = bSt === 'pass' ? 'sc-pass' : (bSt === 'fail' ? 'sc-fail' : (bSt === 'error' ? 'sc-error' : 'sc-nodata'));
-      return `<tr>
-        <td>${safe(row.scenario_id)}</td>
-        <td>${safe(row.category)}</td>
-        <td><span class="${aCls}">${aSt}</span> <span class="comp-col">|</span> <span class="${bCls}">${bSt}</span></td>
-        <td><span class="comp-col">${row.model_a ? row.model_a.ms + 'ms' : '—'} | ${row.model_b ? row.model_b.ms + 'ms' : '—'}</span></td>
-        <td>${safe(row.description)}</td>
-      </tr>`;
-    }).join('');
-  } catch(e) { $('scoreHistory').textContent = 'compare error: ' + e.message; }
-});
 
 // ══════════════════════════════════════════════════════════════════
 // Chain Health Sidebar
@@ -1176,301 +830,6 @@ function toggleHealth() {
   btn.textContent = collapsed ? '▶' : '◀';
 }
 
-// ══════════════════════════════════════════════════════════════════
-// Pipeline Shootout (all models, comprehensive test)
-// ══════════════════════════════════════════════════════════════════
-
-let shootoutScorecard = null;
-let shootoutHistoryData = [];
-let shootoutHistorySort = {field:'ts', asc:false};
-
-async function loadShootoutHistory() {
-  try {
-    const r = await api('/api/shootout/history');
-    const d = await r.json();
-    shootoutHistoryData = d.shootouts || [];
-    renderShootoutHistory();
-  } catch(e) {}
-}
-
-function sortShootoutHistory(field) {
-  if (shootoutHistorySort.field === field) shootoutHistorySort.asc = !shootoutHistorySort.asc;
-  else { shootoutHistorySort.field = field; shootoutHistorySort.asc = false; }
-  renderShootoutHistory();
-}
-
-function renderShootoutHistory() {
-  let data = [...shootoutHistoryData];
-  const sf = shootoutHistorySort.field;
-  const sa = shootoutHistorySort.asc ? 1 : -1;
-  data.sort((a,b) => {
-    if (sf === 'ts') return sa * (a.ts || '').localeCompare(b.ts || '');
-    if (sf === 'winner') return sa * ((a.rankings?.[0]?.model || '').localeCompare(b.rankings?.[0]?.model || ''));
-    if (sf === 'models') return sa * ((a.models_tested || 0) - (b.models_tested || 0));
-    if (sf === 'score') return sa * ((a.rankings?.[0]?.score || 0) - (b.rankings?.[0]?.score || 0));
-    return 0;
-  });
-  $('shootoutHistoryBody').innerHTML = data.map(c => {
-    const top = c.rankings?.[0];
-    const topCls = top?.score >= 60 ? 's-pass' : 's-fail';
-    const tsShort = (c.ts || '').slice(0, 16);
-    return `<tr>
-      <td style="cursor:pointer;" onclick="loadShootoutDetail('${safe(c.file).replace('shootout-','').replace('.json','')}')">${tsShort}</td>
-      <td class="${topCls}">${top ? `🥇 ${safe(top.model)}` : '—'}</td>
-      <td>${safe(c.models_tested)}</td>
-      <td class="${topCls}">${top ? safe(top.score) + '/100' : '—'}</td>
-      <td>
-        <button style="font-size:10px;padding:1px 5px;" onclick="loadShootoutDetail('${safe(c.file).replace('shootout-','').replace('.json','')}')">View</button>
-      </td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="5" style="color:var(--dim);">No past shootouts. Run one first!</td></tr>';
-}
-
-async function deleteShootout(file) {
-  if (!confirm('Delete this shootout scorecard?')) return;
-  try {
-    const d = await api('/api/shootout/' + file.replace('shootout-','').replace('.json',''));
-    // We can't delete via API yet — clear the file manually via config
-    alert('Deletion not yet wired. Scorecard: ' + file);
-  } catch(e) {}
-}
-
-async function loadShootoutDetail(ts) {
-  try {
-    const r = await api('/api/shootout/' + ts);
-    shootoutScorecard = await r.json();
-    renderShootoutResults(shootoutScorecard);
-  } catch(e) { $('shootoutResults').innerHTML = 'error: ' + e.message; }
-}
-
-// ── Shared shootout rendering (used by bench tab + shootout tab) ─
-// Returns {bars, table} HTML strings built from a scorecard object.
-// mode: 'full' (shootout tab — legend, larger bars, alias row, Time col)
-//       'compact' (bench tab — no legend, smaller, no Time col)
-function renderShootoutCompact(d, mode) {
-  const rankings = d.rankings || [];
-  const results = d.results || [];
-  const maxStatic = 68, maxRuntime = 32;
-  const medals = ['🥇','🥈','🥉','4','5'];
-  const isFull = mode === 'full';
-  const fontSize = isFull ? '11px' : '10px';
-
-  // Bar chart
-  let bars = '';
-  if (isFull) {
-    bars += '<div style="display:flex;gap:6px;margin-bottom:4px;"><span style="color:var(--accent);">■ Static</span> <span style="color:var(--blue);">■ Runtime</span></div>';
-  }
-  for (const r of rankings) {
-    const row = results.find(x => x.model_alias === r.alias) || {};
-    const stPct = Math.round((row.static_score || 0) / maxStatic * 100);
-    const rtPct = Math.round((row.runtime_score || 0) / maxRuntime * 100);
-    const scoreText = isFull ? `${r.score}/100` : r.score;
-    if (isFull) {
-      // Two-row layout for shootout tab: model+score on top, label+bar below
-      bars += `<div style="margin:3px 0;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:1px;">
-          <span style="width:130px;text-align:right;font-size:10px;">${safe(r.model)}</span>
-          <span style="font-weight:bold;font-size:12px;">${scoreText}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:0;">
-          <span style="width:130px;text-align:right;font-size:9px;color:var(--dim);">${safe(row.static_score)}/${maxStatic} + ${safe(row.runtime_score)}/${maxRuntime}</span>
-          <div style="width:200px;height:12px;background:#0a120a;border-radius:2px;overflow:hidden;display:flex;">
-            <div style="width:${stPct}%;height:100%;background:var(--accent);opacity:0.8;"></div>
-            <div style="width:${rtPct}%;height:100%;background:var(--blue);opacity:0.8;"></div>
-            <div style="flex:1;height:100%;background:transparent;"></div>
-          </div>
-        </div>
-      </div>`;
-    } else {
-      // Single-row layout for bench tab
-      bars += `<div style="display:flex;align-items:center;gap:4px;margin:2px 0;">
-        <span style="width:120px;text-align:right;font-size:10px;">${safe(r.model)}</span>
-        <span style="font-weight:bold;font-size:11px;width:35px;">${scoreText}</span>
-        <div style="width:160px;height:10px;background:#0a120a;border-radius:2px;overflow:hidden;display:flex;">
-          <div style="width:${stPct}%;height:100%;background:var(--accent);opacity:0.8;" title="Static: ${safe(row.static_score)}/${maxStatic}"></div>
-          <div style="width:${rtPct}%;height:100%;background:var(--blue);opacity:0.8;" title="Runtime: ${safe(row.runtime_score)}/${maxRuntime}"></div>
-          <div style="flex:1;height:100%;background:transparent;"></div>
-        </div>
-        <span style="font-size:9px;color:var(--dim);">${safe(row.static_score)}+${safe(row.runtime_score)}</span>
-      </div>`;
-    }
-  }
-
-  // Medal table
-  const timeHeader = isFull ? '<th>Time</th>' : '';
-  let table = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:${fontSize};">`;
-  table += `<thead><tr><th>#</th><th>Model</th><th>Score</th><th>Static</th><th>Runtime</th><th>Status</th>${timeHeader}</tr></thead><tbody>`;
-  for (let i = 0; i < rankings.length; i++) {
-    const r = rankings[i];
-    const row = results.find(x => x.model_alias === r.alias) || {};
-    const cls = r.score >= 60 ? 's-pass' : (r.score >= 30 ? 's-fail' : 's-err');
-    const aliasRow = isFull ? `<br><span style="font-size:9px;color:var(--dim);">${safe(r.alias)}</span>` : '';
-    const scoreSz = isFull ? 'font-size:16px;' : '';
-    const timeCell = isFull ? `<td style="font-size:9px;color:var(--dim);">${safe(row.ms_total)}ms</td>` : '';
-    table += `<tr>
-      <td style="font-size:${isFull ? 14 : 12}px;">${medals[i] || (i+1)}</td>
-      <td><b>${safe(r.model)}</b>${aliasRow}</td>
-      <td class="${cls}" style="font-weight:bold;${scoreSz}">${r.score}/100</td>
-      <td>${safe(row.static_score)}</td>
-      <td>${safe(row.runtime_score)}</td>
-      <td><span class="${cls}">${safe(r.status)}</span></td>
-      ${timeCell}
-    </tr>`;
-  }
-  table += '</tbody></table>';
-  // Untested models (swap/VRAM failure) — shown separately, NOT as 0-score.
-  const untested = d.untested || [];
-  if (untested.length) {
-    table += `<div style="font-size:${fontSize};color:var(--warn);margin-top:2px;">⚠ not tested (swap failed): ${untested.map(safe).join(', ')}</div>`;
-  }
-
-  return {bars, table};
-}
-
-function renderShootoutResults(d) {
-  let html = '<h3 style="margin-bottom:4px;">🏆 Rankings</h3>';
-
-  // Bar chart + medal table from shared renderer
-  const c = renderShootoutCompact(d, 'full');
-  html += '<div style="margin:8px 0 12px;font-size:10px;">' + c.bars + '</div>';
-  html += c.table;
-
-  // Per-model assertion detail
-  html += '<h3 style="margin-bottom:4px;">📋 Assertion Details</h3>';
-  for (const row of results) {
-    const cls = row.status === 'pass' ? 's-pass' : (row.status === 'fail' ? 's-fail' : 's-err');
-    html += `<div style="margin-bottom:6px;border:1px solid var(--border);border-radius:3px;padding:6px 8px;background:#050805;">`;
-    html += `<b class="${cls}">${safe(row.model_label)}</b> — ${row.total_score}/100 `;
-    html += `<span style="color:var(--dim);font-size:9px;">(${safe(row.static_score)}s + ${safe(row.runtime_score)}r)</span>`;
-    if (row.errors && row.errors.length) {
-      html += `<div style="color:var(--err);font-size:9px;margin-top:2px;">⚠ ${row.errors.map(e => safe(e)).join('; ')}</div>`;
-    }
-    // Static assertions
-    const sa = row.static_assertions || [];
-    if (sa.length) {
-      html += '<div style="margin-top:3px;font-size:9px;line-height:1.6;"><b>Static:</b> ';
-      html += sa.map(a => {
-        const acls = a.status === 'pass' ? 's-pass' : (a.status === 'fail' ? 's-fail' : 's-err');
-        return `<span class="${acls}" title="${safe(a.message)}">${a.status === 'pass' ? '✓' : '✗'}${safe(a.assertion)}</span>`;
-      }).join('  ');
-      html += '</div>';
-    }
-    // Runtime assertions
-    const ra = row.runtime_assertions || [];
-    if (ra.length) {
-      html += '<div style="font-size:9px;line-height:1.6;"><b>Runtime:</b> ';
-      html += ra.map(a => {
-        const acls = a.status === 'pass' ? 's-pass' : (a.status === 'fail' ? 's-fail' : 's-err');
-        return `<span class="${acls}" title="${safe(a.message)}">${a.status === 'pass' ? '✓' : '✗'}${safe(a.assertion)}</span>`;
-      }).join('  ');
-      html += '</div>';
-    }
-    html += '</div>';
-  }
-
-  // Log viewer link — use the log_ts field from the scorecard
-  const logTs = d.log_ts || '';
-  const logUrl = logTs ? `/api/shootout/${logTs}/log` : '';
-  html += `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
-    <a href="#" onclick="toggleShootoutLog('${logUrl}');return false;" style="color:var(--accent);font-size:11px;">📄 View detailed log</a>
-    <pre id="shootoutLogView" style="display:none;margin-top:8px;max-height:40vh;overflow-y:auto;background:#050805;padding:8px;border-radius:3px;font-size:10px;white-space:pre-wrap;"></pre>
-  </div>`;
-
-  $('shootoutResults').innerHTML = html;
-}
-
-async function toggleShootoutLog(url) {
-  const el = $('shootoutLogView');
-  if (el.style.display !== 'none') {
-    el.style.display = 'none';
-    return;
-  }
-  if (!el.textContent) {
-    try {
-      const r = await fetch(url);
-      el.textContent = r.ok ? await r.text() : 'Log not available (404)';
-    } catch(e) {
-      el.textContent = 'Failed to load log: ' + e.message;
-    }
-  }
-  el.style.display = '';
-}
-
-async function shootoutPreflight() {
-  $('termShootout').innerHTML = 'Running pre-flight checks...\\n';
-  try {
-    const r = await api('/api/shootout/preflight');
-    const d = await r.json();
-    let out = '=== PRE-FLIGHT CHECK ===\\n\\n';
-    for (const [k,v] of Object.entries(d.checks || {})) {
-      const icon = v === 'ok' ? '✅' : (v === 'warn' ? '⚠️' : '❌');
-      out += `${icon} ${k}: ${v}\\n`;
-    }
-    if (d.issues && d.issues.length) {
-      out += '\\n❌ Issues found:\\n';
-      d.issues.forEach(i => out += `  • ${i}\\n`);
-    }
-    out += `\\nOverall: ${d.ok ? '✅ READY' : '❌ NOT READY'}`;
-    $('termShootout').textContent = out;
-  } catch(e) { $('termShootout').textContent = 'Pre-flight error: ' + e.message; }
-}
-
-async function runShootout(modelFilter) {
-  const label = modelFilter || 'all models';
-  if (!confirm(`Run shootout against ${label}? This will swap models and may take several minutes. Godot must be open with shootout.tscn.`)) return;
-
-  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
-  document.querySelector('[data-tab="shootout"]').classList.add('active');
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  $('tab-shootout').classList.add('active');
-
-  $('termShootout').innerHTML = '';
-  $('shootoutResults').innerHTML = '';
-  $('shootoutPhase').textContent = '';
-  $('shootoutBar').style.width = '0%';
-  setBusy(true);
-
-  try {
-    const body = modelFilter ? JSON.stringify({model: modelFilter}) : '{}';
-    const r = await api('/api/shootout', {method:'POST', body});
-    const jd = await r.json();
-    const termEl = document.createElement('div');
-    termEl.style.cssText = 'white-space:pre-wrap;font-family:inherit;font-size:11.5px;';
-    $('termShootout').appendChild(termEl);
-    await streamJob(jd.job, termEl, () => {
-      $('shootoutBar').style.width = '100%';
-      $('shootoutPhase').textContent = 'Shootout complete!';
-      loadShootoutHistory();
-      setTimeout(async () => {
-        try {
-          const hr = await api('/api/shootout/history');
-          const hd = await hr.json();
-          const latest = hd.shootouts?.[0];
-          if (latest) {
-            const ts = latest.file.replace('shootout-','').replace('.json','');
-            loadShootoutDetail(ts);
-          }
-        } catch(e) {}
-      }, 500);
-    });
-  } catch(e) {
-    $('termShootout').textContent = 'shootout error: ' + e.message;
-    setBusy(false);
-  }
-}
-
-var _b=$('shootoutRun'); if(_b) _b.addEventListener('click', () => runShootout(null));
-var _b=$('shootoutRunOne'); if(_b) _b.addEventListener('click', async () => {
-  try {
-    const s = await api('/api/status');
-    const d = await s.json();
-    const alias = safe(d.alias, '');
-    if (alias) runShootout(alias);
-    else alert('Could not detect current model alias.');
-  } catch(e) { alert('Could not fetch current model: ' + e.message); }
-});
-var _b=$('shootoutCheck'); if(_b) _b.addEventListener('click', shootoutPreflight);
-
 // ── Init ────────────────────────────────────────────────────────
 versionCheck();
 refresh();
@@ -1481,7 +840,7 @@ setInterval(healthCheck, 30000);
 
 <!-- ── Unified Testing tab (faceted runner + unified scorecard) ───── -->
 <script>
-const TESTING = {target:'current', suite:'gauntlet', depth:'full', gset:'', running:false, t0:0, repeat:1, models:[]};
+const TESTING = {target:'current', suite:'chain-health', depth:'full', gset:'', running:false, t0:0, repeat:1, models:[]};
 
 // JS mirror of forge_score.score_to_verdict (canonical, unit-tested in forge_score.py)
 function scoreToVerdict(s, passAt=90, partialAt=60){ return s>=passAt?'pass':(s>=partialAt?'partial':'fail'); }
@@ -1512,107 +871,66 @@ function toast(msg, kind){
 }
 
 // Per-suite adapters: how to RUN and how to fetch+map the RESULT into a scorecard.
+// Guide 1 Category F — all suites now run through /api/testbench/run.
 const SUITES = {
-  health: {
+  'chain-health': {
     targets:['current'],
-    run: async (depth) => {
-      const d = await (await api('/api/bench/tests')).json();
-      let tests = d.tests||[];
-      let ids = (depth==='fast' ? tests.filter(t=>t.speed==='fast') : tests).map(t=>t.id);
-      if (!ids.length) ids = tests.map(t=>t.id);
-      return {url:'/api/bench/run', body:{ids}};
-    },
+    run: async (depth) => ({url:'/api/testbench/run', body:{suite:'chain-health', repeat:TESTING.repeat}}),
     result: async () => {
-      const d = await (await api('/api/bench/history')).json();
-      const r = (d.runs||[])[0]; if(!r) return null;
-      const c = r.counts||{}; const total=(c.pass||0)+(c.fail||0)+(c.error||0);
-      const score = total ? Math.round(100*(c.pass||0)/total) : 0;
-      const metrics=[{label:'pass', value:`${c.pass||0}/${total}`, good:(c.fail||0)+(c.error||0)===0}];
-      // A5: surface failed test IDs as execution errors
-      const execErrs = (r.failed||[]).slice(0,6).map(f=>`${f}: fail`);
-      (r.failed||[]).slice(0,6).forEach(f=>metrics.push({label:f, value:'fail', good:false}));
-      return {suite:'health', target:'current', label:safe(r.model,'health'), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs};
+      const d = await (await api('/api/testbench/history?limit=1')).json();
+      const a = (d.artifacts||[])[0]; if(!a) return null;
+      const c = a.counts||{}; const total=(c.ok||0)+(c.partial||0)+(c.broke||0)+(c.error||0);
+      const score = total ? Math.round(100*(c.ok||0)/total) : 0;
+      return {suite:'chain-health', target:'current', label:safe(a.models?.join(', '),'chain-health'), score, verdict:scoreToVerdict(score), metrics:[{label:'ok', value:`${c.ok||0}/${total}`, good:(c.broke||0)+(c.error||0)===0}]};
     }
   },
-  scenarios: {
+  'scenarios-v1': {
     targets:['current','compare'],
-    run: async (depth) => {
-      const d = await (await api('/api/scenarios')).json();
-      const ids=(d.scenarios||[]).map(s=>s.id);
-      return {url:'/api/scenarios/run', body:{ids, run_tools: depth==='full'}};
-    },
+    run: async (depth) => ({url:'/api/testbench/run', body:{suite:'scenarios-v1', repeat:TESTING.repeat}}),
     result: async () => {
-      const d = await (await api('/api/scorecards')).json();
-      const r = (d.scorecards||[])[0]; if(!r) return null;
-      const sm=r.summary||{}; const score=Math.round((sm.pass_rate||0)*100);
-      const metrics=[{label:'pass', value:`${sm.pass||0}/${sm.total||0}`, good:(sm.fail||0)+(sm.error||0)===0}];
-      // A5: extract per-scenario assertion failures as execution errors
-      const execErrs = [];
-      if(r.scenarios) r.scenarios.forEach(s=>{
-        (s.assertions||[]).filter(a=>a.status==='fail'||a.status==='error').forEach(a=>{
-          execErrs.push(`${s.scenario_id}: ${(a.message||a.assertion||'').slice(0,100)}`);
-        });
-      });
-      return {suite:'scenarios', target:'current', label:safe(r.model,'scenarios'), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs.slice(0,12)};
+      const d = await (await api('/api/testbench/history?limit=1')).json();
+      const a = (d.artifacts||[])[0]; if(!a) return null;
+      const c = a.counts||{}; const total=(c.ok||0)+(c.partial||0)+(c.broke||0)+(c.error||0);
+      const score = total ? Math.round(100*(c.ok||0)/total) : 0;
+      return {suite:'scenarios-v1', target:'current', label:safe(a.models?.join(', '),'scenarios'), score, verdict:scoreToVerdict(score), metrics:[{label:'ok', value:`${c.ok||0}/${total}`, good:(c.broke||0)+(c.error||0)===0}]};
     }
   },
-  gauntlet: {
-    targets:['current','compare'], needsSet:true,
-    run: async (depth) => ({url:'/api/gauntlet/run', body:{set:TESTING.gset, runs:TESTING.repeat}}),
+  'capability-v1': {
+    targets:['current'], needsSet:true,
+    run: async (depth) => ({url:'/api/testbench/run', body:{suite:TESTING.gset||'capability-v1', repeat:TESTING.repeat}}),
     result: async () => {
-      const d = await (await api('/api/gauntlet/history')).json();
-      const rh=(d.runs||[])[0]; if(!rh) return null;
-      const sm=rh.summary||{}; let score=Math.round(sm.avg_coverage||0);
-      const metrics=[{label:'full', value:sm.full||0, good:true},
-                     {label:'partial', value:sm.partial||0, good:(sm.partial||0)===0},
-                     {label:'broke', value:sm.broke||0, good:(sm.broke||0)===0}];
-      // A5: fetch full run detail for per-result errors + latency; when the run
-      // was repeated (runs>1) surface the mean score + the spread (σ).
-      const execErrs = [], latencies = {}, per_prompt = {};
-      let nRuns=1; const sigmas=[], means=[];
-      try {
-        const ts = rh.file.replace('gauntlet-','').replace('.json','');
-        const rd = await (await api('/api/gauntlet/'+ts)).json();
-        (rd.results||[]).forEach(r=>{
-          if(r.latency_ms) latencies[r.id] = r.latency_ms;
-          per_prompt[r.id] = (typeof r.mean_coverage==='number') ? r.mean_coverage : (r.coverage||0);
-          if(Array.isArray(r.runs) && r.runs.length>nRuns) nRuns=r.runs.length;
-          if(typeof r.stddev_coverage==='number') sigmas.push(r.stddev_coverage);
-          if(typeof r.mean_coverage==='number') means.push(r.mean_coverage);
-          (r.errors||[]).forEach(e=>execErrs.push(`${r.id}: ${typeof e==='string'?e.slice(0,100):JSON.stringify(e)}`));
-        });
-      } catch(e) {}
-      if(nRuns>1 && means.length){
-        score = Math.round(means.reduce((a,b)=>a+b,0)/means.length);
-        const avgSig = sigmas.reduce((a,b)=>a+b,0)/(sigmas.length||1);
-        metrics.unshift({label:`×${nRuns} runs · σ`, value:`±${avgSig.toFixed(1)}`, good: avgSig<10});
-      }
-      return {suite:'gauntlet', target:'current', label:safe(rh.set,'gauntlet')+(nRuns>1?` ×${nRuns}`:''), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs.slice(0,12), stage_latencies: latencies, per_prompt};
+      const d = await (await api('/api/testbench/history?limit=1')).json();
+      const a = (d.artifacts||[])[0]; if(!a) return null;
+      const c = a.counts||{}; const total=(c.ok||0)+(c.partial||0)+(c.broke||0)+(c.error||0);
+      const score = total ? Math.round(100*(c.ok||0)/total) : 0;
+      return {suite:(TESTING.gset||'capability-v1'), target:'current', label:safe(a.models?.join(', '),'capability'), score, verdict:scoreToVerdict(score), metrics:[{label:'ok', value:`${c.ok||0}`, good:true},{label:'err', value:`${c.error||0}`, good:(c.error||0)===0}]};
     }
   },
-  tools: {
+  'diagnostics-v1': {
     targets:['current'],
-    run: async (depth) => ({url:'/api/tools/run', body:{}}),
+    run: async (depth) => ({url:'/api/testbench/run', body:{suite:'diagnostics-v1', repeat:TESTING.repeat}}),
     result: async () => {
-      const d = await (await api('/api/tools/history')).json();
-      if(!d.summary || !d.summary.total) return null;
-      const sm=d.summary; const score=Math.round((sm.pass_rate||0)*100);
-      const metrics=[{label:'pass', value:`${sm.pass||0}/${sm.total||0}`, good:(sm.fail||0)+(sm.error||0)===0}];
-      const execErrs = (d.probes||[]).filter(p=>p.status!=='pass').map(p=>`${p.probe_id}: ${p.detail||''}`);
-      return {suite:'tools', target:'current', label:safe(d.model,'tools'), score, verdict:scoreToVerdict(score), metrics, execution_errors: execErrs.slice(0,10)};
+      const d = await (await api('/api/testbench/history?limit=1')).json();
+      const a = (d.artifacts||[])[0]; if(!a) return null;
+      const c = a.counts||{}; const total=(c.ok||0)+(c.partial||0)+(c.broke||0)+(c.error||0);
+      const score = total ? Math.round(100*(c.ok||0)/total) : 0;
+      return {suite:'diagnostics-v1', target:'current', label:safe(a.models?.join(', '),'diagnostics'), score, verdict:scoreToVerdict(score), metrics:[{label:'ok', value:`${c.ok||0}/${total}`, good:(c.broke||0)+(c.error||0)===0}]};
     }
-  }
+  },
 };
-// compare target → shootout (best-effort mapping; shootout file shape is defensive)
+// compare target → testbench (runs suites on two models sequentially)
 async function compareRun(){
   const a=document.querySelector('#cmpA')?.value?.trim();
   const b=document.querySelector('#cmpB')?.value?.trim();
   if(!a||!b) throw new Error('enter two model names to compare');
-  return {url:`/api/scorecards/compare?model_a=${encodeURIComponent(a)}&model_b=${encodeURIComponent(b)}`, body:null, method:'GET'};
+  return {url:'/api/testbench/run', body:{suite:TESTING.suite, models:[a,b], repeat:TESTING.repeat}, method:'POST'};
 }
 async function compareResult(){
-  // Result is fetched inline in runTesting — compareRun returns the url directly
-  return null;
+  const d = await (await api('/api/testbench/history?limit=1')).json();
+  const art = (d.artifacts||[])[0]; if(!art) return null;
+  const c = art.counts||{}; const total=(c.ok||0)+(c.partial||0)+(c.broke||0)+(c.error||0);
+  const score = total ? Math.round(100*(c.ok||0)/total) : 0;
+  return {suite:TESTING.suite, target:'compare', label:safe(art.models?.join(' vs '),'compare'), score, verdict:scoreToVerdict(score), metrics:[{label:'ok', value:`${c.ok||0}/${total}`, good:(c.broke||0)+(c.error||0)===0}]};
 }
 
 // ── Rail (user-friendly: a plain-language explainer under every option) ──
@@ -1620,10 +938,10 @@ let _gsets=[], _models=[], _testingInit=false;
 
 // What each test actually checks, in everyday language.
 const SUITE_INFO = {
-  health:    {label:'Health',     desc:'Is the whole AI→Godot chain alive? Pings each layer (the model, DevForge, the Godot plugin) and reports what is up or down. Start here if something feels broken.', when:'~10–60s'},
-  scenarios: {label:'Scenarios',  desc:'Can the AI do basic, exact editor actions — create a cube or a light, delete or rename a node? Small, predictable checks of the building blocks.', when:'~3–6 min'},
-  gauntlet:  {label:'Capability', desc:'Can the AI build a whole scene from a plain-English prompt? Pick a test set below — each one targets a different skill (general scenes, room layouts, buildings, dungeons, towns…).', when:'~1 min per prompt'},
-  tools:     {label:'Tool calls', desc:'When asked to do something, does the AI call the correct Godot tool with the right arguments? Checks tool-use accuracy.', when:'~1–2 min'},
+  'chain-health':    {label:'Health',     desc:'Is the whole AI→Godot chain alive? Pings each layer (the model, DevForge, the Godot plugin) and reports what is up or down. Start here if something feels broken.', when:'~10–60s'},
+  'scenarios-v1': {label:'Scenarios',  desc:'Can the AI do basic, exact editor actions — create a cube or a light, delete or rename a node? Small, predictable checks of the building blocks.', when:'~3–6 min'},
+  'capability-v1':  {label:'Capability', desc:'Can the AI build a whole scene from a plain-English prompt? Pick a test set below — each one targets a different skill (general scenes, room layouts, buildings, dungeons, towns…).', when:'~1 min per prompt'},
+  'diagnostics-v1':     {label:'Variety', desc:'Does the model produce diverse results when asked the same prompt multiple times? Measures Jaccard distance across repeated runs.', when:'~5–10 min'},
 };
 // Plain-language description per gauntlet test set (fallback if the set has none).
 const GSET_INFO = {
@@ -1667,7 +985,7 @@ function renderRail(){
     <div class="dim" style="font-size:10px;margin-bottom:11px;line-height:1.45;">Pick what to test, then press <b>Run</b>. A scorecard appears on the right. Every option has a one-line explainer.</div>
 
     <div class="flabel">1 · What to test</div>
-    <div id="facet-suite" class="frow">${['health','scenarios','gauntlet','tools'].map(s=>pill('suite',s,SUITE_INFO[s].label)).join('')}</div>
+    <div id="facet-suite" class="frow">${['chain-health','scenarios-v1','capability-v1','diagnostics-v1'].map(s=>pill('suite',s,SUITE_INFO[s].label)).join('')}</div>
     ${_help('<b>'+info.label+'</b> — '+info.desc+' <span style="opacity:.65;">('+(info.when||'')+')</span>')}
 
     ${setSel}

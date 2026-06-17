@@ -1407,5 +1407,137 @@ async def api_persona_restore(request: Request):
     return {"job": job_id}
 
 
+# ── Testbench API (Guide 1 Category F — UI repoint) ──────────────
+
+
+@app.get("/api/testbench/catalog")
+async def testbench_catalog():
+    """Return test catalog entries and suites for the Testing tab UI."""
+    try:
+        from forge_testbench import catalog_entries, get_suites
+
+        return {
+            "tests": catalog_entries(),
+            "suites": get_suites(),
+        }
+    except ImportError as e:
+        return {"tests": [], "suites": {}, "error": f"forge_testbench not available: {e}"}
+
+
+@app.post("/api/testbench/run")
+async def testbench_run(request: Request):
+    """Run tests via the forge_testbench runner. Returns SSE streaming job_id.
+
+    Body: {suite?, test_ids?, models?, repeat?}
+    - suite: Named suite from catalog (e.g. "chain-health", "scenarios-v1")
+    - test_ids: Explicit test id list (overrides suite)
+    - models: Model aliases to sweep (default: current model)
+    - repeat: Per-test repeat count (1-20, default 1)
+
+    Requires the Godot editor and full stack to be running.
+    """
+    body = await request.json()
+    suite = (body.get("suite") or "").strip()
+    test_ids = [i for i in (body.get("test_ids") or []) if isinstance(i, str)]
+    models_in = [m for m in (body.get("models") or []) if isinstance(m, str)]
+    try:
+        repeat = max(1, min(int(body.get("repeat", 1)), 20))
+    except (TypeError, ValueError):
+        repeat = 1
+
+    # Resolve test ids from suite if not explicitly given
+    if not test_ids and suite:
+        try:
+            from forge_testbench import get_suites
+
+            suites = get_suites()
+            test_ids = suites.get(suite, [])
+        except ImportError:
+            raise HTTPException(500, "forge_testbench not available")
+
+    if not test_ids:
+        raise HTTPException(400, "no tests to run — provide suite or test_ids")
+
+    # Default to current model if none specified
+    if not models_in:
+        env = read_env(ENVFILE)
+        models_in = [env.get("MODEL_ALIAS", "?")]
+
+    if _job_lock.locked():
+        raise HTTPException(409, "another command is still running")
+    await _job_lock.acquire()
+
+    label = f"testbench: {suite or 'custom'} ({len(test_ids)} tests)"
+    job_id = uuid.uuid4().hex[:12]
+    job = {
+        "lines": [f"testbench — {label} — starting..."],
+        "done": False,
+        "exit": None,
+        "t": time.time(),
+        "label": label,
+    }
+    _jobs[job_id] = job
+
+    async def _runner():
+        try:
+            from forge_testbench.runner import Runner
+
+            def emit(line: str) -> None:
+                job["lines"].append(line)
+
+            r = Runner(emit=emit)
+            artifact = await r.run(test_ids, models_in, repeat=repeat, suite=suite or "custom")
+            summary_data = artifact.model_summary()
+            total_ok = sum(s["counts"]["ok"] for s in summary_data.values())
+            total_err = sum(s["counts"]["error"] for s in summary_data.values())
+            job["exit"] = 0 if total_err == 0 else 1
+            job["testbench_artifact"] = {"file": str(artifact.out_dir / "artifact.json") if artifact.out_dir else ""}
+            emit(f"\nDone — {total_ok} ok, {total_err} errors")
+        except ImportError as e:
+            job["lines"].append(f"[testbench] forge_testbench not importable: {e}")
+            job["exit"] = 1
+        except Exception as e:
+            job["lines"].append(f"[testbench] crashed: {type(e).__name__}: {e}")
+            job["exit"] = 1
+        finally:
+            job["done"] = True
+            _job_lock.release()
+
+    asyncio.get_running_loop().create_task(_runner())
+    return {"job": job_id}
+
+
+@app.get("/api/testbench/history")
+async def testbench_history(limit: int = 20):
+    """Return recent testbench artifact summaries."""
+    import json as _json
+
+    limit = max(1, min(limit, 100))
+    artifacts_dir = HOME / "dev" / "games" / "Forge" / "hub" / "data" / "testbench" / "artifacts"
+    if not artifacts_dir.exists():
+        return {"artifacts": []}
+
+    items = []
+    for d in sorted(artifacts_dir.iterdir(), reverse=True):
+        if len(items) >= limit:
+            break
+        if d.is_dir():
+            af = d / "artifact.json"
+            if af.exists():
+                try:
+                    data = _json.loads(af.read_text())
+                    items.append(
+                        {
+                            "dir": d.name,
+                            "suite": data.get("suite", "?"),
+                            "models": data.get("models", []),
+                            "counts": data.get("counts", {}),
+                        }
+                    )
+                except Exception:
+                    pass
+    return {"artifacts": items}
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host=HOST, port=PORT, access_log=False, log_level="warning")
