@@ -7,6 +7,6 @@ Usage:
     from devforge.platform.monitor import monitor
 """
 
-from .monitor import Monitor, EventType, Severity, Trace  # noqa: F401
+from .monitor import EventType, Monitor, Severity, Trace  # noqa: F401
 
 monitor = Monitor()
