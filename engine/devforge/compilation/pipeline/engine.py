@@ -881,11 +881,11 @@ class PipelineEngine:
 
         stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
 
-        # Log planned intent count for A/B measurement of conditioning impact.
-        # Grep-able: "World plan parsed: N intent(s)".
+        # Telemetry: planned entity count (visibility + conditioning A/B).
+        # Grep-able: "Arch plan parsed: N entities".
         logger.info(
             "pipeline.engine",
-            f"World plan parsed: {len(arch_delta.get('entities', []))} intent(s)",
+            f"Arch plan parsed: {len(arch_delta.get('entities', []))} entities",
         )
 
         # Deterministic dedup — check the LIVE scene tree (source of truth).
