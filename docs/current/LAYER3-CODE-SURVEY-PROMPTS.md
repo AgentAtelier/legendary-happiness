@@ -33,7 +33,7 @@ READ-ONLY CODE REVIEW — ONE PERMITTED WRITE.
 You are reviewing a code repository. This task is READ-ONLY. The ONLY change you
 may make anywhere is writing your report to ONE file:
 
-    OUTPUT FILE:  docs/reviews/layer3/response-codex.md
+    OUTPUT FILE:  docs/reviews/layer3/response-czdex.md
 
 Create that exact file and write your report into it. Hard rules:
 - Do NOT edit, create, move, rename, or delete ANY file except the OUTPUT FILE.
