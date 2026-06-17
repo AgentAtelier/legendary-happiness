@@ -13,11 +13,12 @@ Usage as CLI:
     python -m devforge.governance.contracts.parser contracts/architectural_contracts.yaml --summary
 """
 
-import yaml
-import json
 import argparse
-from typing import Any, Dict, List, Optional
+import json
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import yaml
 
 from devforge.infrastructure.logger import logger
 

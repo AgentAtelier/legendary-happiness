@@ -131,7 +131,7 @@ class TestScaffolder:
         ]
 
         if script_path:
-            lines.append(f'const TestScript = preload("res://{script_path.lstrip("res://")}")')
+            lines.append(f'const TestScript = preload("res://{script_path.removeprefix("res://")}")')
             lines.append("")
 
         for f in funcs:

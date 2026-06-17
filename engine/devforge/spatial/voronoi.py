@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 from devforge.compilation.ir.plan import (
-    DevForgePlan,
     CreateEntityStep,
+    DevForgePlan,
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger

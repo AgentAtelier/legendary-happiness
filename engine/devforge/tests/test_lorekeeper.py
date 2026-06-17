@@ -53,7 +53,7 @@ def test_schema_with_ref_field() -> None:
 
 def test_validate_missing_required() -> None:
     """Missing required field is reported."""
-    from devforge.lore.schema import validate_data_entry, SchemaDefinition, SchemaField
+    from devforge.lore.schema import SchemaDefinition, SchemaField, validate_data_entry
 
     s = SchemaDefinition(
         "item",
@@ -70,7 +70,7 @@ def test_validate_missing_required() -> None:
 
 def test_validate_valid_entry() -> None:
     """Valid entry produces no errors."""
-    from devforge.lore.schema import validate_data_entry, SchemaDefinition, SchemaField
+    from devforge.lore.schema import SchemaDefinition, SchemaField, validate_data_entry
 
     s = SchemaDefinition(
         "item",
@@ -86,7 +86,7 @@ def test_validate_valid_entry() -> None:
 
 def test_validate_wrong_type() -> None:
     """Wrong field type is reported."""
-    from devforge.lore.schema import validate_data_entry, SchemaDefinition, SchemaField
+    from devforge.lore.schema import SchemaDefinition, SchemaField, validate_data_entry
 
     s = SchemaDefinition(
         "item",
@@ -105,8 +105,8 @@ def test_validate_wrong_type() -> None:
 
 def test_integrity_valid_refs() -> None:
     """Valid foreign-key references produce no errors."""
-    from devforge.lore.schema import SchemaDefinition, SchemaField
     from devforge.lore.lorekeeper import validate_integrity as vi
+    from devforge.lore.schema import SchemaDefinition, SchemaField
 
     item_schema = SchemaDefinition(
         "item",
@@ -136,8 +136,8 @@ def test_integrity_valid_refs() -> None:
 
 def test_integrity_broken_ref() -> None:
     """Broken foreign-key reference is reported."""
-    from devforge.lore.schema import SchemaDefinition, SchemaField
     from devforge.lore.lorekeeper import validate_integrity
+    from devforge.lore.schema import SchemaDefinition, SchemaField
 
     item_schema = SchemaDefinition(
         "item",

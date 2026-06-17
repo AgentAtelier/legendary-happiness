@@ -38,13 +38,13 @@ class ExecutionPlanner:
             target = None
 
             if hasattr(step, "node"):
-                target = getattr(step, "node")
+                target = step.node
 
             elif hasattr(step, "name"):
-                target = getattr(step, "name")
+                target = step.name
 
             elif hasattr(step, "path"):
-                target = getattr(step, "path")
+                target = step.path
 
             if target is None:
                 return 9999

@@ -12,12 +12,11 @@ Usage:
     report = generate_report(gate1_result, gate2_result, gate3_result, risk_result, changed_files)
 """
 
-import json
 import datetime
 import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import List, Optional
-
 
 # --------------------------------------------------------------------------
 # Question templates by risk tier

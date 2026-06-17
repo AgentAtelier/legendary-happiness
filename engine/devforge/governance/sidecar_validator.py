@@ -11,8 +11,8 @@ Usage:
     python -m devforge.governance.sidecar_validator template --type diffusion
 """
 
-import json
 import argparse
+import json
 import os
 from pathlib import Path
 from typing import List, Tuple
@@ -45,7 +45,7 @@ def validate_sidecar(sidecar_path: str, schema_path: str) -> Tuple[bool, str]:
 
     # Try jsonschema if available, fall back to basic checks
     try:
-        from jsonschema import validate, ValidationError
+        from jsonschema import ValidationError, validate
 
         try:
             validate(instance=data, schema=schema)

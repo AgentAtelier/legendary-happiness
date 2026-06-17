@@ -1,5 +1,5 @@
-from .system_graph import SystemGraph
 from .graph_updater import GraphUpdater
+from .system_graph import SystemGraph
 
 __all__ = [
     "SystemGraph",

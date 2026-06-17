@@ -6,10 +6,9 @@ autosave=True) was running every model against the real main.tscn (capping
 runtime at 0/32 and persisting junk into the user's RPG on disk).
 """
 
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 import pytest
-
 import shootout
 
 
@@ -70,7 +69,6 @@ async def test_with_heartbeat_ticks_and_returns_value():
 @pytest.mark.asyncio
 async def test_with_heartbeat_no_ticks_for_fast_coro():
     """A coro that finishes before the first interval emits no noise."""
-    import asyncio
 
     async def fast():
         return 42

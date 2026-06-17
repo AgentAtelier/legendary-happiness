@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Dict
+from typing import Dict, List
 
 from devforge.knowledge.system_graph.diff_engine import GraphDiff
 

@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
+from devforge.execution.interface import Executor
 from devforge.forge.template_ir import (
     Template,
     resolve_slot_values,
@@ -19,8 +20,6 @@ from devforge.forge.template_ir import (
     template_from_dict,
 )
 from devforge.infrastructure.logger import logger
-from devforge.execution.interface import Executor
-
 
 # Default template directory (relative to project root)
 DEFAULT_TEMPLATE_DIR = "devforge/forge/templates"

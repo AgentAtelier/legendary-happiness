@@ -15,12 +15,12 @@ See SPATIAL-STAGE-3-5-PLAN.md §5 for the full design.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Set, Tuple
 
 from devforge.compilation.ir.plan import (
-    DevForgePlan,
     CreateEntityStep,
+    DevForgePlan,
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger

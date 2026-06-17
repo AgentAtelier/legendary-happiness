@@ -74,7 +74,7 @@ def test_template_from_dict_with_slots() -> None:
 
 def test_resolve_defaults_when_none_provided() -> None:
     """All slots use defaults when no values provided."""
-    from devforge.forge.template_ir import resolve_slot_values, TemplateSlot
+    from devforge.forge.template_ir import TemplateSlot, resolve_slot_values
 
     slots = [
         TemplateSlot("speed", "float", 5.0, "Walk speed"),
@@ -86,7 +86,7 @@ def test_resolve_defaults_when_none_provided() -> None:
 
 def test_resolve_overrides_defaults() -> None:
     """Provided values override defaults."""
-    from devforge.forge.template_ir import resolve_slot_values, TemplateSlot
+    from devforge.forge.template_ir import TemplateSlot, resolve_slot_values
 
     slots = [TemplateSlot("speed", "float", 5.0, "Walk speed")]
     resolved = resolve_slot_values(slots, {"speed": 8.0})
@@ -95,7 +95,7 @@ def test_resolve_overrides_defaults() -> None:
 
 def test_resolve_rejects_unknown_slot() -> None:
     """Unknown slot name raises ValueError."""
-    from devforge.forge.template_ir import resolve_slot_values, TemplateSlot
+    from devforge.forge.template_ir import TemplateSlot, resolve_slot_values
 
     slots = [TemplateSlot("speed", "float", 5.0, "Speed")]
     try:
@@ -107,7 +107,7 @@ def test_resolve_rejects_unknown_slot() -> None:
 
 def test_resolve_rejects_wrong_type() -> None:
     """Wrong slot value type raises ValueError."""
-    from devforge.forge.template_ir import resolve_slot_values, TemplateSlot
+    from devforge.forge.template_ir import TemplateSlot, resolve_slot_values
 
     slots = [TemplateSlot("speed", "float", 5.0, "Speed")]
     try:
@@ -188,8 +188,8 @@ def test_load_template_returns_none_for_missing() -> None:
 
 def test_preview_template_shows_operations() -> None:
     """preview_template resolves slots and shows ops."""
-    from devforge.forge.template_ir import template_from_dict
     from devforge.forge.template_engine import preview_template
+    from devforge.forge.template_ir import template_from_dict
 
     t = template_from_dict(
         _make_template_json(

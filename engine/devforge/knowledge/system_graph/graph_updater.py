@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from devforge.knowledge.system_graph.system_graph import SystemGraph, NodeType, EdgeType
 from devforge.infrastructure.logger import logger
+from devforge.knowledge.system_graph.system_graph import EdgeType, NodeType, SystemGraph
 
 
 class GraphUpdater:

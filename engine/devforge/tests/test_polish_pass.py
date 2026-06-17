@@ -159,7 +159,7 @@ def test_p5_label_large_font_no_flag() -> None:
 
 def test_fix_camera_smoothing() -> None:
     """P1 fix sets position_smoothing/enabled."""
-    from devforge.polish.polish_pass import PolishPass, PolishFinding
+    from devforge.polish.polish_pass import PolishFinding, PolishPass
 
     pp = PolishPass()
     finding = PolishFinding(
@@ -177,7 +177,7 @@ def test_fix_camera_smoothing() -> None:
 
 def test_fix_light_energy() -> None:
     """P3 fix sets light_energy to 1.0."""
-    from devforge.polish.polish_pass import PolishPass, PolishFinding
+    from devforge.polish.polish_pass import PolishFinding, PolishPass
 
     pp = PolishPass()
     finding = PolishFinding(
@@ -194,7 +194,7 @@ def test_fix_light_energy() -> None:
 
 def test_no_fix_for_info() -> None:
     """INFO findings have no fix."""
-    from devforge.polish.polish_pass import PolishPass, PolishFinding
+    from devforge.polish.polish_pass import PolishFinding, PolishPass
 
     pp = PolishPass()
     finding = PolishFinding(

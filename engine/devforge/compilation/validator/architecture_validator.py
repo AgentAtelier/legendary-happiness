@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import List
 
 from devforge.knowledge.system_graph.system_graph import (
-    SystemGraph,
-    NodeType,
     EdgeType,
+    NodeType,
+    SystemGraph,
 )
 
 

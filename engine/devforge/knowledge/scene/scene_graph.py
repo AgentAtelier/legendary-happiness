@@ -7,7 +7,7 @@ the validator and completeness checker need.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 # REVIEW (Issue 2): VALID_GODOT_TYPES now lives in godot_node_types as the
 # single source of truth (also used to generate arch_planner.gbnf's

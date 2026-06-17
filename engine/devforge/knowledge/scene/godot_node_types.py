@@ -25,7 +25,6 @@ import os
 import re
 from typing import Iterable
 
-
 # ── Authoritative list ───────────────────────────────────────────
 # Every Godot node type the LLM is allowed to emit in an entity.
 # Add new types here, then re-run the grammar generator. Do not edit

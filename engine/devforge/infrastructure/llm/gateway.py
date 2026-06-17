@@ -38,8 +38,8 @@ from dataclasses import dataclass
 from typing import AsyncIterator
 
 import httpx
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 
 # ── Config ──────────────────────────────────────────────────────
 

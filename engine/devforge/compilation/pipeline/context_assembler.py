@@ -14,9 +14,9 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from devforge.knowledge.system_graph.system_graph import SystemGraph
 from devforge.infrastructure.logger import logger
 from devforge.infrastructure.runtime_config import get_config
+from devforge.knowledge.system_graph.system_graph import SystemGraph
 
 
 def _get_token_counter():

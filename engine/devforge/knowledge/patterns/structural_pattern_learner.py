@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from devforge.knowledge.system_graph.system_graph import (
-    SystemGraph,
-    NodeType,
     EdgeType,
+    NodeType,
+    SystemGraph,
 )
 
 

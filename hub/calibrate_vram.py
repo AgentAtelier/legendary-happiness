@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -35,18 +34,15 @@ from typing import Optional
 HUB_DIR = Path(__file__).parent
 sys.path.insert(0, str(HUB_DIR))
 
-from forge_env import read_env, write_env, ENVFILE  # noqa: E402
+from forge_env import ENVFILE, read_env, write_env  # noqa: E402
 from forge_models import (  # noqa: E402
-    scan,
-    detect,
-    fit,
-    vram_total,
+    FIT_SAFETY_MARGIN,
     GIB,
+    KV_BYTES_PER_EL,
     OVERHEAD,
     RESERVE,
-    FIT_SAFETY_MARGIN,
-    KV_BYTES_PER_EL,
-    CTX_CANDIDATES,
+    scan,
+    vram_total,
 )
 
 LLAMA_SERVICE = "forge-llama.service"
@@ -268,7 +264,7 @@ async def main() -> None:
     print("=" * 70)
     print("VRAM Estimator Calibration — Stream C")
     print(f"  GPU: {read_vram_total() / GIB:.1f} GiB VRAM")
-    print(f"  Models: ~/models/*.gguf")
+    print("  Models: ~/models/*.gguf")
     print(f"  Ctx sizes: {ctx_sizes}")
     print(f"  Steady-state wait: {args.wait}s per measurement")
     print("=" * 70)
@@ -429,13 +425,13 @@ def _print_results(results: list[dict], baseline_vram: int) -> None:
         if gemma_deltas and other_deltas:
             avg_g = sum(gemma_deltas) / len(gemma_deltas)
             avg_o = sum(other_deltas) / len(other_deltas)
-            print(f"\n  Gemma SWA fudge check:")
+            print("\n  Gemma SWA fudge check:")
             print(f"    Gemma avg delta:  {avg_g:+.1f} GiB")
             print(f"    Non-Gemma avg delta: {avg_o:+.1f} GiB")
             if avg_g < avg_o - 0.5:
-                print(f"    ⚠  Gemma fudge may be too small — SWA *0.45 under-compensates")
+                print("    ⚠  Gemma fudge may be too small — SWA *0.45 under-compensates")
             elif avg_g > avg_o + 0.5:
-                print(f"    Gemma fudge may be too large — wasting VRAM on Gemma models")
+                print("    Gemma fudge may be too large — wasting VRAM on Gemma models")
 
     # Save results
     out_path = HUB_DIR / "data" / "scorecards" / "vram_calibration.json"

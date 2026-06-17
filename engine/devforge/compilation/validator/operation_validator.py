@@ -2,7 +2,6 @@ from typing import Dict, List
 
 from devforge.knowledge.scene.scene_graph import SceneGraph
 
-
 SUPPORTED_OPERATIONS = {
     "add_node",
     "remove_node",

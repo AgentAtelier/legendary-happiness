@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import contextvars
-import json
 import time
 import warnings
-import requests
 from pathlib import Path
 from typing import Optional
 
-from devforge.infrastructure.logger import logger
+import requests
 
+from devforge.infrastructure.logger import logger
 
 # ── Prompt template registry ──────────────────────────────────────
 # Exact wire formats — do not improvise the control tokens.
@@ -123,6 +122,7 @@ def apply_server_limits(config, client: "LlamaClient") -> None:
     # Only auto-set if the user hasn't explicitly configured one
     # via DEVFORGE_PROMPT_TEMPLATE in the environment.
     import os as _os
+
     from devforge.infrastructure.runtime_config import detect_prompt_template
 
     user_set_template = _os.getenv("DEVFORGE_PROMPT_TEMPLATE")

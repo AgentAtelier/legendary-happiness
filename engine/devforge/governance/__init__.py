@@ -16,29 +16,29 @@ Components:
     schemas/            — JSON schemas and architectural contracts YAML
 """
 
-from devforge.governance.gate1 import run_gate1, Gate1Result, Violation, SignatureChange
-from devforge.governance.analyzer import analyze_file, analyze_directory, GDFileAnalysis
+from devforge.governance.analyzer import GDFileAnalysis, analyze_directory, analyze_file
+from devforge.governance.change_report import ChangeReport, generate_report
 from devforge.governance.contracts.parser import ContractsParser
+from devforge.governance.decision_log import append_entry, compute_stats, generate_run_id, list_entries
+from devforge.governance.gate1 import Gate1Result, SignatureChange, Violation, run_gate1
+from devforge.governance.metrics_append import append_row, print_summary, validate_row
+from devforge.governance.risk_scoring import (
+    SUBSYSTEM_WEIGHTS,
+    Depth,
+    RiskResult,
+    RiskTier,
+    compute_risk,
+)
 from devforge.governance.scope_lock import (
     ScopeLock,
     ScopeValidation,
     create_scope_lock,
     validate_against_lock,
 )
-from devforge.governance.risk_scoring import (
-    compute_risk,
-    RiskResult,
-    RiskTier,
-    Depth,
-    SUBSYSTEM_WEIGHTS,
-)
-from devforge.governance.change_report import ChangeReport, generate_report
-from devforge.governance.decision_log import append_entry, generate_run_id, list_entries, compute_stats
-from devforge.governance.metrics_append import append_row, validate_row, print_summary
 from devforge.governance.sidecar_validator import (
-    validate_sidecar,
-    scan_directory,
     generate_template,
+    scan_directory,
+    validate_sidecar,
 )
 
 __all__ = [

@@ -627,8 +627,10 @@ def analyze_file(file_path: str) -> GDFileAnalysis:
     return result
 
 
-def analyze_directory(dir_path: str, extensions: Set[str] = {".gd"}) -> List[GDFileAnalysis]:
+def analyze_directory(dir_path: str, extensions: Set[str] | None = None) -> List[GDFileAnalysis]:
     """Analyze all GDScript files in a directory recursively."""
+    if extensions is None:
+        extensions = {".gd"}
     results = []
     root = Path(dir_path)
     if not root.exists():

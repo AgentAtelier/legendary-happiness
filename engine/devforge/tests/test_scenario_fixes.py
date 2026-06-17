@@ -6,9 +6,6 @@ Bug 2: Deterministic delete/rename intent pre-pass injects _remove/_rename.
 
 from __future__ import annotations
 
-import pytest
-
-
 # ── Test scenes ─────────────────────────────────────────────────
 
 SCENE_WITH_LIGHT = {

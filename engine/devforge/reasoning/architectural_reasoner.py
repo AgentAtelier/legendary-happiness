@@ -1,5 +1,6 @@
-from .gameplay_rules import RULES
 from devforge.world_model.component import Component
+
+from .gameplay_rules import RULES
 
 
 class ArchitecturalReasoner:

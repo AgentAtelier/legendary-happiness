@@ -23,12 +23,11 @@ from __future__ import annotations
 import json
 import re
 import struct
-import sys
 import time
 from pathlib import Path
 from typing import Any
 
-from forge_env import read_env, write_env, plan_env
+from forge_env import plan_env, read_env, write_env
 
 HOME = Path.home()
 MODELS_DIR = HOME / "models"

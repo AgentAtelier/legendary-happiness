@@ -23,14 +23,14 @@ Usage:
           )
 """
 
-from .metric import Metric
-from .result import Result, ScoredResult
-from .test import Test
-from .context import Context
-from .catalog import CATALOG, register, get_suites, catalog_entries
 from .artifact import Artifact
-from .runner import Runner, run
+from .catalog import CATALOG, catalog_entries, get_suites, register
+from .context import Context
+from .metric import Metric
 from .reporting import matrix, scorecards, summary
+from .result import Result, ScoredResult
+from .runner import Runner, run
+from .test import Test
 
 # Import test modules to trigger @register decorators.
 # Each category gets its own module; add new ones here as they migrate.

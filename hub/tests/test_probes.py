@@ -4,9 +4,8 @@ integrity, and the runner's roll-up/persistence. No live stack needed.
 
 import json
 
-import pytest
-
 import bench
+import pytest
 
 
 def test_probe_shape():

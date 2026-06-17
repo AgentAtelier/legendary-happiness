@@ -6,8 +6,8 @@ budget reset after expiry, concurrent access (single-threaded asyncio).
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 import time
 
 # Ensure the package is importable
@@ -26,12 +26,13 @@ def test_default_bucket_exists() -> None:
 
 def test_budget_exceed_raises_429() -> None:
     """Requests exceeding the budget limit get a 429."""
+    from fastapi import HTTPException
+
     from devforge.infrastructure.llm.gateway import (
+        BUDGET_LIMIT_TOKENS,
         _check_budget,
         _record_usage,
-        BUDGET_LIMIT_TOKENS,
     )
-    from fastapi import HTTPException
 
     # Use a unique key so we don't collide with other tests
     test_key = f"__test_exceed_{time.monotonic()}"
@@ -100,10 +101,10 @@ def test_strict_mode_env_var_configurable() -> None:
 def test_expired_entry_purged_on_lookup() -> None:
     """Entries past TURN_EXPIRY_SECONDS are purged and get a fresh budget."""
     from devforge.infrastructure.llm.gateway import (
+        TURN_EXPIRY_SECONDS,
         _check_budget,
         _record_usage,
         _turn_budgets,  # noqa: F401
-        TURN_EXPIRY_SECONDS,
     )
 
     test_key = f"__test_expired_{time.monotonic()}"

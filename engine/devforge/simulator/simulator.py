@@ -17,7 +17,6 @@ from typing import Any, Callable
 
 from devforge.infrastructure.logger import logger
 
-
 # ── Combat data model ────────────────────────────────────────────
 
 

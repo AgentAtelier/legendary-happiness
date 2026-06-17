@@ -14,11 +14,11 @@ See SPATIAL-STAGE-3-5-PLAN.md §2 for the full design.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from devforge.compilation.ir.plan import (
-    DevForgePlan,
     CreateEntityStep,
+    DevForgePlan,
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger

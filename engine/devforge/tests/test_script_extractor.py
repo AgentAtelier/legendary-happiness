@@ -6,8 +6,8 @@ fallback, explicit header paths, class-name extraction.
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -43,7 +43,6 @@ def test_allows_relative_scripts_path() -> None:
 def test_fallback_uses_content_hash() -> None:
     """The fallback filename uses a content-based hash, not Python's salted hash."""
     from devforge.compilation.pipeline.script_extractor import (
-        _sanitize_path,
         extract,
     )
 

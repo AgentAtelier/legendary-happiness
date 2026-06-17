@@ -14,11 +14,11 @@ import math
 import random
 import zlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from devforge.compilation.ir.plan import (
-    DevForgePlan,
     CreateEntityStep,
+    DevForgePlan,
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger

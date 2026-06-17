@@ -19,49 +19,47 @@ Registered in Odysseus via its admin Settings UI (not a static JSON file).
 
 from __future__ import annotations
 
+# ── MCP Server ──────────────────────────────────────────────────
+import os as _os
 import threading
 import uuid
 from typing import Any, Dict, List
 
 from mcp.server.fastmcp import FastMCP
 
+from devforge.auditing.scene_doctor import SceneDoctor
+from devforge.companion.companion import DesignCompanion
+from devforge.compilation.pipeline.engine import PipelineEngine
+from devforge.dialogue.dialogue import validate_dialogue_file
+from devforge.execution import DevForgePluginExecutor, Executor, GodotAIMCPExecutor
+from devforge.forge.template_engine import instantiate_template, list_templates, load_template, preview_template
+from devforge.harness.scaffolder import scaffold_file
+from devforge.infrastructure.llm.router import LLMRouter
 from devforge.infrastructure.logger import logger
 from devforge.infrastructure.runtime_config import get_config
-from devforge.infrastructure.llm.router import LLMRouter
-from devforge.knowledge.system_graph.system_graph import SystemGraph
-from devforge.knowledge.scene.scene_store import SceneStore
-from devforge.knowledge.artifact_store import ArtifactStore
-from devforge.compilation.pipeline.engine import PipelineEngine
-from devforge.execution import Executor, DevForgePluginExecutor, GodotAIMCPExecutor
-from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
-from devforge.auditing.scene_doctor import SceneDoctor
-from devforge.operations.batch_filter import parse_query, match_nodes, build_batch_ops
-from devforge.triage.triage import triage_text
-from devforge.forge.template_engine import list_templates, load_template, preview_template, instantiate_template
 from devforge.journal.journal import Journal
+from devforge.knowledge.artifact_store import ArtifactStore
+from devforge.knowledge.scene.scene_store import SceneStore
+from devforge.knowledge.system_graph.system_graph import SystemGraph
+from devforge.lint.linter import lint_file as run_lint_file
 from devforge.lore.lorekeeper import (
     list_schemas as lore_list_schemas,
-    load_schema,
     load_data_file,
+    load_schema,
     validate_data,
     validate_integrity,
 )
-from devforge.quests.validator import validate_quest_file
-from devforge.sentinel.sentinel import PerformanceSentinel
-from devforge.lint.linter import lint_file as run_lint_file
-from devforge.polish.polish_pass import run_polish_pass
-from devforge.navigator.navigator import search_project
-from devforge.harness.scaffolder import scaffold_file
-from devforge.simulator.simulator import evaluate_encounter
 from devforge.mapper.signal_mapper import SignalMapper
-from devforge.runner.smoke_runner import SmokeRunner, build_poi
-from devforge.companion.companion import DesignCompanion
-from devforge.dialogue.dialogue import validate_dialogue_file
+from devforge.navigator.navigator import search_project
+from devforge.operations.batch_filter import build_batch_ops, match_nodes, parse_query
+from devforge.polish.polish_pass import run_polish_pass
+from devforge.quests.validator import validate_quest_file
+from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
 from devforge.refactorer.refactorer import SceneRefactorer, list_extractable
-
-
-# ── MCP Server ──────────────────────────────────────────────────
-import os as _os
+from devforge.runner.smoke_runner import SmokeRunner, build_poi
+from devforge.sentinel.sentinel import PerformanceSentinel
+from devforge.simulator.simulator import evaluate_encounter
+from devforge.triage.triage import triage_text
 
 mcp = FastMCP(
     "DevForge",

@@ -10,9 +10,9 @@ Usage:
     python -m devforge.governance.metrics_append --summary --file metrics.csv
 """
 
+import argparse
 import csv
 import json
-import argparse
 import re
 from pathlib import Path
 from typing import Any, Dict, List

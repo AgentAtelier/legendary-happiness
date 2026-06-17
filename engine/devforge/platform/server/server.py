@@ -26,21 +26,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from devforge.infrastructure.logger import logger
-from devforge.infrastructure.runtime_config import get_config, RuntimeConfig, set_config
-from devforge.infrastructure.llm.router import LLMRouter
-
-from devforge.knowledge.system_graph.system_graph import SystemGraph
-from devforge.knowledge.system_graph.graph_updater import GraphUpdater
-
 from devforge.compilation.pipeline.engine import PipelineEngine
-
-from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
-
-from devforge.execution import Executor, ExecutionResult, DevForgePluginExecutor, GodotAIMCPExecutor
-
+from devforge.execution import DevForgePluginExecutor, ExecutionResult, Executor, GodotAIMCPExecutor
+from devforge.infrastructure.llm.router import LLMRouter
+from devforge.infrastructure.logger import logger
+from devforge.infrastructure.runtime_config import RuntimeConfig, get_config, set_config
+from devforge.knowledge.system_graph.graph_updater import GraphUpdater
+from devforge.knowledge.system_graph.system_graph import SystemGraph
 from devforge.platform.monitor.monitor import monitor
-
+from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # App Setup

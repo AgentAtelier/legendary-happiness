@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from typing import Callable
 
-from devforge.knowledge.scene.scene_graph import SceneGraph
 from devforge.auditing.rules import ALL_RULES, Violation
 from devforge.infrastructure.logger import logger
+from devforge.knowledge.scene.scene_graph import SceneGraph
 
 
 class SceneDoctor:

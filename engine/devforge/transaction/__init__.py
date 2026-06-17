@@ -6,8 +6,8 @@ Provides:
   - GitOps: git commit/revert per successful change using GitPython.
 """
 
-from devforge.transaction.transaction import ExecutionTransaction
 from devforge.transaction.git_ops import GitOps
+from devforge.transaction.transaction import ExecutionTransaction
 
 __all__ = [
     "ExecutionTransaction",

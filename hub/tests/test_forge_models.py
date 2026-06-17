@@ -1,24 +1,19 @@
 """Tests for forge_models — GGUF fit math, aliases, templates, overrides, plan_apply."""
 
-import json
 import struct
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from forge_models import (
-    fit,
-    detect,
-    plan_apply,
-    ModelError,
+    FIT_SAFETY_MARGIN,
     GIB,
     OVERHEAD,
     RESERVE,
-    FIT_SAFETY_MARGIN,
-    KV_BYTES_PER_EL,
-    CTX_CANDIDATES,
+    detect,
+    fit,
+    plan_apply,
 )
-
 
 # ── Synthetic GGUF header builder ────────────────────────────────
 

@@ -7,10 +7,9 @@ from __future__ import annotations
 
 import pytest
 
-from devforge.spatial.ssp import SSPEngine, ROOM_ARCHETYPES
-from devforge.spatial.lexicon import AssetLexicon
 from devforge.spatial.compiler import SpatialCompiler
-
+from devforge.spatial.lexicon import AssetLexicon
+from devforge.spatial.ssp import ROOM_ARCHETYPES, SSPEngine
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -793,7 +792,7 @@ class TestCompileRoomIntent:
 
 class TestSSPImports:
     def test_imports_available(self):
-        from devforge.spatial.ssp import SSPEngine, ROOM_ARCHETYPES
+        from devforge.spatial.ssp import ROOM_ARCHETYPES, SSPEngine
 
         assert SSPEngine is not None
         assert ROOM_ARCHETYPES is not None

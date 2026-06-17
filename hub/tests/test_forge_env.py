@@ -1,10 +1,9 @@
 """Tests for forge_env — the shared stack.env parser/serializer."""
 
-import textwrap
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-from forge_env import read_env, write_env, plan_env, validate_env, _unquote, _quote_style
+from forge_env import _quote_style, _unquote, plan_env, read_env, validate_env, write_env
 
 
 class TestUnquote:

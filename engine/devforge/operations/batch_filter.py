@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 from devforge.knowledge.scene.scene_graph import SceneGraph
-from typing import Any
 
 
 @dataclass

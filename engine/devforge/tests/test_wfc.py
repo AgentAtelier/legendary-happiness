@@ -11,11 +11,11 @@ from __future__ import annotations
 import pytest
 
 from devforge.spatial.wfc import (
-    WFCEngine,
-    DungeonSpec,
-    _ALL_TILES,
     _ADJACENCY,
+    _ALL_TILES,
     _TILE_DEFS,
+    DungeonSpec,
+    WFCEngine,
 )
 
 

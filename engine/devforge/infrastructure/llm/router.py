@@ -10,13 +10,12 @@ import inspect
 import time
 from typing import Optional
 
-from devforge.infrastructure.logger import logger
-
 # Per-turn token budget tracking (Phase 2).
 # The ContextVar lives in llama_client.py (where the header is built)
 # so concurrent apply_spec calls read their own turn_id at request
 # time without copying through shared mutable state.
 from devforge.infrastructure.llm.llama_client import _turn_id_ctx
+from devforge.infrastructure.logger import logger
 
 
 class LLMRouter:

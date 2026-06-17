@@ -11,7 +11,6 @@ from typing import Callable
 
 from devforge.knowledge.scene.scene_graph import SceneGraph, SceneNode
 
-
 # ── Godot type constants ────────────────────────────────────────
 
 # Mirrors Godot's CollisionObject3D subclass hierarchy (engine v4.x).

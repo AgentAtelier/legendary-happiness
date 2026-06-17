@@ -1,13 +1,36 @@
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+# Skip code that is dying (legacy runners, per ADR-005), throwaway, or archived.
+extend-exclude = [
+    "hub/bench.py",
+    "hub/shootout.py",
+    "hub/scenarios.py",
+    "hub/gauntlet.py",
+    "hub/multi_model_bench.py",
+    "hub/comprehensive_bench.py",
+    "hub/harness.py",
+    "hub/static",
+    "engine/experiments",
+    "engine/docs",
+    "engine/integration_tests",
+]
 
 [tool.ruff.lint]
 select = ["F", "I", "B"]
 ignore = [
     "B904",   # raise without from inside except - noisy in CLI wrappers
     "B028",   # No explicit stacklevel keyword in warn - tolerable
+    "B007",   # unused loop control variable - noisy, harmless
+    "B011",   # assert False - a legitimate "can't happen" marker here
+    "B023",   # function uses loop variable - reviewed, intentional in this code
+    "B905",   # zip without explicit strict= - not targeting 3.10-incompat
+    "F841",   # unused local variable - very noisy on AI-written code, low value
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]          # re-exports are the public API, not dead imports
+"**/tests/**" = ["F821", "F811"]  # test fixtures/dynamic names; tests verified by running
 
 [tool.ruff.format]
 quote-style = "double"

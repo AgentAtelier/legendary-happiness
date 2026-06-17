@@ -141,6 +141,7 @@ def test_persist_and_reload() -> None:
 def test_thread_safety() -> None:
     """Concurrent appends don't corrupt the journal."""
     import threading
+
     from devforge.journal.journal import Journal
 
     j = Journal(path=os.path.join(tempfile.mkdtemp(), "test.jsonl"))

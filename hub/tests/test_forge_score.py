@@ -1,6 +1,6 @@
 """Unit tests for forge_score — unified scoring, verdict bands, ETA."""
 
-from forge_score import score_to_verdict, normalize_result, eta_from_durations
+from forge_score import eta_from_durations, normalize_result, score_to_verdict
 
 
 class TestVerdict:

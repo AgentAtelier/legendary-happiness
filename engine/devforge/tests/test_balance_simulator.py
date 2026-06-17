@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 def test_player_wins_easy_encounter() -> None:
     """Player with strong stats wins a 1v1 against a weak goblin."""
-    from devforge.simulator.simulator import simulate_combat, Combatant
+    from devforge.simulator.simulator import Combatant, simulate_combat
 
     player = Combatant(id="hero", name="Hero", hp=100, attack=20, defense=10, speed=15)
     goblin = Combatant(id="goblin", name="Goblin", hp=20, attack=5, defense=2, speed=8)
@@ -30,7 +30,7 @@ def test_player_wins_easy_encounter() -> None:
 
 def test_player_loses_to_strong_enemy() -> None:
     """Player loses against a much stronger enemy."""
-    from devforge.simulator.simulator import simulate_combat, Combatant
+    from devforge.simulator.simulator import Combatant, simulate_combat
 
     player = Combatant(id="hero", name="Hero", hp=20, attack=5, defense=2, speed=8)
     dragon = Combatant(id="dragon", name="Dragon", hp=200, attack=40, defense=15, speed=20)
@@ -42,7 +42,7 @@ def test_player_loses_to_strong_enemy() -> None:
 
 def test_deterministic_with_seed() -> None:
     """Same seed produces identical results."""
-    from devforge.simulator.simulator import simulate_combat, Combatant
+    from devforge.simulator.simulator import Combatant, simulate_combat
 
     player = Combatant(id="hero", name="Hero", hp=100, attack=15, defense=8, speed=10)
     enemy = Combatant(id="ogre", name="Ogre", hp=60, attack=12, defense=5, speed=10)
@@ -58,7 +58,7 @@ def test_deterministic_with_seed() -> None:
 
 def test_combat_seed_none_stochastic() -> None:
     """Without seed, two runs should differ (stochastic combat)."""
-    from devforge.simulator.simulator import simulate_combat, Combatant
+    from devforge.simulator.simulator import Combatant, simulate_combat
 
     player = Combatant(id="hero", name="Hero", hp=1000, attack=15, defense=8, speed=10)
     enemy = Combatant(id="ogre", name="Ogre", hp=1000, attack=12, defense=5, speed=10)
@@ -72,7 +72,7 @@ def test_combat_seed_none_stochastic() -> None:
 
 def test_win_probability_converges() -> None:
     """Monte Carlo with many sims should converge to ~0.5 for evenly matched."""
-    from devforge.simulator.simulator import monte_carlo_encounter, Combatant
+    from devforge.simulator.simulator import Combatant, monte_carlo_encounter
 
     # Evenly matched: identical stats
     player = Combatant(id="hero", name="Hero", hp=50, attack=10, defense=5, speed=10)
@@ -94,7 +94,7 @@ def test_win_probability_converges() -> None:
 
 def test_varied_damage_rolls() -> None:
     """Combat log entries have varied damage due to variance."""
-    from devforge.simulator.simulator import simulate_combat, Combatant
+    from devforge.simulator.simulator import Combatant, simulate_combat
 
     player = Combatant(id="hero", name="Hero", hp=500, attack=15, defense=10, speed=20)
     enemy = Combatant(id="tank", name="Tank", hp=200, attack=5, defense=20, speed=5)
@@ -179,7 +179,7 @@ def test_evaluate_encounter_missing_enemy_warns() -> None:
 
 def test_monte_carlo_gauntlet_player_dies() -> None:
     """In a gauntlet of tough enemies, player win rate drops across encounters."""
-    from devforge.simulator.simulator import monte_carlo_gauntlet, Combatant
+    from devforge.simulator.simulator import Combatant, monte_carlo_gauntlet
 
     player = Combatant(id="hero", name="Hero", hp=50, attack=10, defense=5, speed=10)
     encounters = [

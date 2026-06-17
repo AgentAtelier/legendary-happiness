@@ -23,9 +23,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List
 
-from devforge.validation.rules.base import Rule, Violation
-from devforge.validation.rules import ALL_RULES
 from devforge.infrastructure.logger import logger
+from devforge.validation.rules import ALL_RULES
+from devforge.validation.rules.base import Rule, Violation
 
 
 @dataclass

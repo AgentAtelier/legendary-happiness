@@ -24,7 +24,7 @@ sys.path.insert(0, project_root)
 os.environ["DEVFORGE_LLM_BACKEND"] = "mock"
 os.environ["DEVFORGE_GAME_ROOT"] = project_root
 
-from devforge.infrastructure.runtime_config import set_config, RuntimeConfig
+from devforge.infrastructure.runtime_config import RuntimeConfig, set_config
 
 config = RuntimeConfig(
     llm_backend="mock",
@@ -33,11 +33,11 @@ config = RuntimeConfig(
 )
 set_config(config)
 
+from devforge.compilation.pipeline.engine import PipelineEngine
 from devforge.infrastructure.llm.router import LLMRouter
 from devforge.knowledge.system_graph.system_graph import SystemGraph
-from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
-from devforge.compilation.pipeline.engine import PipelineEngine
 from devforge.platform.monitor.monitor import Monitor
+from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
 
 # ── 2. Create engine with cache ──
 llm = LLMRouter()

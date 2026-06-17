@@ -6,16 +6,16 @@ Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_scatter.p
 from __future__ import annotations
 
 import math
+
 import pytest
 
-from devforge.spatial.scatter import (
-    ScatterEngine,
-    KeepOutZone,
-    SpeciesSpec,
-    ScatterRegion,
-)
 from devforge.spatial.lexicon import AssetLexicon
-
+from devforge.spatial.scatter import (
+    KeepOutZone,
+    ScatterEngine,
+    ScatterRegion,
+    SpeciesSpec,
+)
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -583,10 +583,10 @@ class TestDataClasses:
 class TestScatterImports:
     def test_imports_available(self):
         from devforge.spatial.scatter import (
-            ScatterEngine,
             KeepOutZone,
-            SpeciesSpec,
+            ScatterEngine,
             ScatterRegion,
+            SpeciesSpec,
         )
 
         assert ScatterEngine is not None

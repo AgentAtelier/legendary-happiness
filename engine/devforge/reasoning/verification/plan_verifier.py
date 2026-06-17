@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from devforge.compilation.ir.plan import DevForgePlan
 from devforge.compilation.ir.steps.scene_steps import (
+    AttachScriptStep,
     CreateEntityStep,
     CreateScriptStep,
-    AttachScriptStep,
 )
 
 

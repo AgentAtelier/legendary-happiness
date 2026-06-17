@@ -8,7 +8,7 @@ This makes tests unit-testable in isolation.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any, Awaitable, Callable
 
 
 @dataclass

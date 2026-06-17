@@ -1,5 +1,5 @@
-from devforge.reasoning.agents.agent import Agent
 from devforge.compilation.pipeline.operation_generator import OperationGenerator
+from devforge.reasoning.agents.agent import Agent
 
 
 class BuilderAgent(Agent):

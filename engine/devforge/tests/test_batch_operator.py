@@ -6,8 +6,8 @@ matching logic (type, name, subtree), zero-match, operation shaping, ordering.
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 

@@ -9,14 +9,13 @@ import json
 import os
 from pathlib import Path
 
+from devforge.infrastructure.logger import logger
 from devforge.lore.schema import (
     SchemaDefinition,
     schema_from_dict,
     validate_data_entry,
     validate_referential_integrity,
 )
-from devforge.infrastructure.logger import logger
-
 
 # Default directories (relative to project root)
 DEFAULT_SCHEMA_DIR = ".devforge/lore/schemas"

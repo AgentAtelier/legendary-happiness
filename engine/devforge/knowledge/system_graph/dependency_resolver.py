@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import List, Set
 
 from devforge.knowledge.system_graph.system_graph import (
-    SystemGraph,
     EdgeType,
+    SystemGraph,
 )
 
 

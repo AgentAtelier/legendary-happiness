@@ -1,10 +1,10 @@
 """Dialogue Engine — schema-constrained dialogue trees fed by Lorekeeper."""
 
 from devforge.dialogue.dialogue import (
-    DialogueNode,
     DialogueChoice,
-    DialogueTree,
     DialogueIssue,
+    DialogueNode,
+    DialogueTree,
     DialogueValidator,
     load_dialogue_file,
     validate_dialogue_file,

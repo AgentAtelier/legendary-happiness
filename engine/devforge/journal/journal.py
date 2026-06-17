@@ -19,7 +19,6 @@ from typing import Any
 
 from devforge.infrastructure.logger import logger
 
-
 DEFAULT_JOURNAL_PATH = ".devforge/journal/journal.jsonl"
 DEFAULT_MAX_ENTRIES = 500
 

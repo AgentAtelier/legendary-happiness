@@ -58,7 +58,7 @@ def _mock_callbacks():
 
 def test_smoke_runner_visits_all_pois() -> None:
     """SmokeRunner visits all POIs in order."""
-    from devforge.runner.smoke_runner import SmokeRunner, POIStop
+    from devforge.runner.smoke_runner import POIStop, SmokeRunner
 
     cb, ss = _mock_callbacks()
     runner = SmokeRunner(
@@ -90,7 +90,7 @@ def test_smoke_runner_visits_all_pois() -> None:
 
 def test_smoke_runner_handles_launch_failure() -> None:
     """When project fails to launch, report includes error and no stops."""
-    from devforge.runner.smoke_runner import SmokeRunner, POIStop
+    from devforge.runner.smoke_runner import POIStop, SmokeRunner
 
     runner = SmokeRunner(
         run_project_fn=lambda: None,  # launch fails
@@ -110,7 +110,7 @@ def test_smoke_runner_handles_launch_failure() -> None:
 
 def test_stop_result_records_error() -> None:
     """StopResult records errors when teleport fails."""
-    from devforge.runner.smoke_runner import SmokeRunner, POIStop
+    from devforge.runner.smoke_runner import POIStop, SmokeRunner
 
     runner = SmokeRunner(
         run_project_fn=lambda: {"ok": True},
@@ -198,7 +198,7 @@ def test_run_smoke_test_convenience() -> None:
 
 def test_smoke_runner_error_log_count() -> None:
     """Error log counting detects 'error' keywords in log lines."""
-    from devforge.runner.smoke_runner import SmokeRunner, POIStop
+    from devforge.runner.smoke_runner import POIStop, SmokeRunner
 
     runner = SmokeRunner(
         run_project_fn=lambda: {"ok": True},

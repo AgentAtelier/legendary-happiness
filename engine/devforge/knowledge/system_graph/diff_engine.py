@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import List
 
 from devforge.knowledge.system_graph.system_graph import (
-    SystemGraph,
     GraphEdge,
+    SystemGraph,
 )
 
 

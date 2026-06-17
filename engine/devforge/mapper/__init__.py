@@ -1,11 +1,11 @@
 """Signal/Dependency Mapper — scan GDScript files for signal declarations, connections, and emissions."""
 
 from devforge.mapper.signal_mapper import (
-    SignalDecl,
+    DependencyGraph,
     SignalConnection,
+    SignalDecl,
     SignalEmit,
     SignalMapper,
-    DependencyGraph,
     map_signals,
     map_signals_from_search,
 )

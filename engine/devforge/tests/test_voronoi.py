@@ -15,11 +15,11 @@ import random
 import pytest
 
 from devforge.spatial.voronoi import (
-    VoronoiEngine,
-    TownSpec,
-    _DISTRICT_COLORS,
     _BUILDING_DIMS,
     _BUILDINGS_PER_DISTRICT,
+    _DISTRICT_COLORS,
+    TownSpec,
+    VoronoiEngine,
 )
 
 

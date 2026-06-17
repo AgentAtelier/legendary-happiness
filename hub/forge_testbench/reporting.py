@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import Any
 
 from .artifact import Artifact
-from .result import Result
 from .metric import Metric
 
 

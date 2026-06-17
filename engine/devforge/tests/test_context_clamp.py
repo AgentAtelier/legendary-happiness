@@ -7,8 +7,8 @@ the window (Round 8 — RX 6800 / ctx-size 12288 tuning).
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 

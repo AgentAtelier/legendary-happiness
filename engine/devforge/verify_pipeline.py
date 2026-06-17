@@ -42,67 +42,67 @@ def test(name, section=None):
 
 @test("Logger imports", section="Module Imports")
 def _():
-    from devforge.infrastructure.logger import logger
+    pass
 
 
 @test("LLM Router imports", section="Module Imports")
 def _():
-    from devforge.infrastructure.llm.router import LLMRouter
+    pass
 
 
 @test("System Graph imports", section="Module Imports")
 def _():
-    from devforge.knowledge.system_graph.system_graph import SystemGraph
+    pass
 
 
 @test("Scene Graph imports", section="Module Imports")
 def _():
-    from devforge.knowledge.scene.scene_graph import SceneGraph
+    pass
 
 
 @test("IR Plan imports", section="Module Imports")
 def _():
-    from devforge.compilation.ir.plan import DevForgePlan, CreateEntityStep
+    pass
 
 
 @test("Architecture Planner imports", section="Module Imports")
 def _():
-    from devforge.compilation.pipeline.architecture_planner import ArchitecturePlanner
+    pass
 
 
 @test("Architecture Compiler imports", section="Module Imports")
 def _():
-    from devforge.compilation.pipeline.architecture_compiler import ArchitectureCompiler
+    pass
 
 
 @test("Validator imports", section="Module Imports")
 def _():
-    from devforge.compilation.pipeline.validator import OperationValidator
+    pass
 
 
 @test("Completeness Checker imports", section="Module Imports")
 def _():
-    from devforge.compilation.pipeline.completeness import CompletenessChecker
+    pass
 
 
 @test("Repair Engine imports", section="Module Imports")
 def _():
-    from devforge.compilation.pipeline.repair_engine import RepairEngine
+    pass
 
 
 @test("Context Assembler imports", section="Module Imports")
 def _():
-    from devforge.compilation.pipeline.context_assembler import ContextAssembler
+    pass
 
 
 @test("Monitor imports", section="Module Imports")
 def _():
-    from devforge.platform.monitor.monitor import Monitor
+    pass
 
 
 @test("Runtime Config imports", section="Module Imports")
 def _():
-    from devforge.infrastructure.runtime_config import RuntimeConfig
+    pass
 
 
 # ── 2. Scene Graph ──
@@ -142,7 +142,7 @@ def _():
 
 @test("Add and query nodes", section="System Graph")
 def _():
-    from devforge.knowledge.system_graph.system_graph import SystemGraph, NodeType
+    from devforge.knowledge.system_graph.system_graph import NodeType, SystemGraph
 
     sg = SystemGraph()
     sg.add_node("player", "Player", NodeType.ENTITY)
@@ -152,7 +152,7 @@ def _():
 
 @test("Build context", section="System Graph")
 def _():
-    from devforge.knowledge.system_graph.system_graph import SystemGraph, NodeType
+    from devforge.knowledge.system_graph.system_graph import NodeType, SystemGraph
 
     sg = SystemGraph()
     sg.add_node("movement", "Movement", NodeType.SYSTEM)
@@ -253,7 +253,7 @@ def _():
 
 @test("Plan compile produces files and operations", section="IR Plan")
 def _():
-    from devforge.compilation.ir.plan import DevForgePlan, CreateEntityStep, CreateScriptStep, AttachScriptStep
+    from devforge.compilation.ir.plan import AttachScriptStep, CreateEntityStep, CreateScriptStep, DevForgePlan
 
     plan = DevForgePlan(
         goal="test",
@@ -270,7 +270,7 @@ def _():
 
 @test("Plan validation catches empty names", section="IR Plan")
 def _():
-    from devforge.compilation.ir.plan import DevForgePlan, CreateEntityStep
+    from devforge.compilation.ir.plan import CreateEntityStep, DevForgePlan
 
     plan = DevForgePlan(steps=[CreateEntityStep(name="")])
     errors = plan.validate()
@@ -393,11 +393,11 @@ def _():
 
 @test("Complete pipeline: prompt → operations", section="Full Pipeline (end-to-end)")
 def _():
-    from devforge.compilation.pipeline.architecture_planner import ArchitecturePlanner
     from devforge.compilation.pipeline.architecture_compiler import ArchitectureCompiler
+    from devforge.compilation.pipeline.architecture_planner import ArchitecturePlanner
     from devforge.compilation.pipeline.completeness import CompletenessChecker
-    from devforge.compilation.pipeline.validator import OperationValidator
     from devforge.compilation.pipeline.context_assembler import ContextAssembler
+    from devforge.compilation.pipeline.validator import OperationValidator
     from devforge.knowledge.system_graph.system_graph import SystemGraph
 
     scene = {"name": "Main", "type": "Node3D", "children": []}

@@ -5,16 +5,11 @@ Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_spatial.p
 
 from __future__ import annotations
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 
-from devforge.spatial.lexicon import AssetLexicon, SlotViolation
 from devforge.spatial.anchors import AnchorResolver
 from devforge.spatial.compiler import SpatialCompiler
-
+from devforge.spatial.lexicon import AssetLexicon, SlotViolation
 
 # ── Fixtures ─────────────────────────────────────────────────────
 

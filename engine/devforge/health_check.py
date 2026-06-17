@@ -7,9 +7,9 @@ Run with::
 Imports are lazy — this module does nothing at import time.
 """
 
-import sys
 import importlib
 import pkgutil
+import sys
 
 
 def run() -> int:
@@ -61,13 +61,13 @@ def run() -> int:
     # ── Check pipeline ──
     print("Checking pipeline components...")
     try:
-        import devforge.compilation.pipeline.architecture_planner
         import devforge.compilation.pipeline.architecture_compiler
-        import devforge.compilation.pipeline.validator
+        import devforge.compilation.pipeline.architecture_planner
         import devforge.compilation.pipeline.completeness
-        import devforge.compilation.pipeline.repair_engine
         import devforge.compilation.pipeline.context_assembler
         import devforge.compilation.pipeline.operation_generator
+        import devforge.compilation.pipeline.repair_engine
+        import devforge.compilation.pipeline.validator
 
         print("  OK  All pipeline components load\n")
     except Exception as e:

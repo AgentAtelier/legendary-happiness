@@ -1,10 +1,10 @@
 """Design Companion — genre pattern database for open-world FP RPG."""
 
 from devforge.companion.companion import (
+    PATTERNS,
+    DesignCompanion,
     Pattern,
     Suggestion,
-    DesignCompanion,
-    PATTERNS,
     analyze_design,
 )
 

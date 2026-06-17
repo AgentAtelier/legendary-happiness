@@ -26,8 +26,8 @@ from pathlib import Path
 from types import TracebackType
 from typing import Dict, List
 
-from devforge.transaction.git_ops import GitOps
 from devforge.infrastructure.logger import logger
+from devforge.transaction.git_ops import GitOps
 
 
 def _safe_snapshot_name(path: Path) -> str:

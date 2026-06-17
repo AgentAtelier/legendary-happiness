@@ -6,14 +6,14 @@ Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_ssp_plann
 from __future__ import annotations
 
 import json
-import pytest
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from devforge.spatial.ssp_planner import SSPPlanner, SSPPlanningError
-from devforge.spatial.ssp import SSPEngine
-from devforge.spatial.lexicon import AssetLexicon
+import pytest
 
+from devforge.spatial.lexicon import AssetLexicon
+from devforge.spatial.ssp import SSPEngine
+from devforge.spatial.ssp_planner import SSPPlanner, SSPPlanningError
 
 # ── Fixtures ─────────────────────────────────────────────────────
 

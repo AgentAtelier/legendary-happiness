@@ -10,12 +10,12 @@ file (max 10 files × 5 MB each) for post-mortem debugging.
 
 from __future__ import annotations
 
+import json
 import logging
 import logging.handlers
 import os
-import time
-import json
 import sys
+import time
 from dataclasses import dataclass, field
 from typing import Any
 

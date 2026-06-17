@@ -3,27 +3,26 @@ from __future__ import annotations
 from typing import Dict, List
 
 from devforge.compilation.ir.plan import (
-    PlanStep,
-    DevForgePlan,
+    AttachScriptStep,
+    ConnectSignalStep,
     CreateEntityStep,
     CreateScriptStep,
-    AttachScriptStep,
+    DevForgePlan,
+    PlanStep,
     RemoveNodeStep,
     RenameNodeStep,
     SetPropertyStep,
-    ConnectSignalStep,
 )
-
-from devforge.knowledge.scene.scene_graph import SceneGraph, VALID_GODOT_TYPES
+from devforge.infrastructure.logger import logger
+from devforge.knowledge.scene.godot_node_types import (
+    NODES_WITHOUT_VECTOR3_TRANSFORM as _NON_3D_TYPES,
+)
 from devforge.knowledge.scene.resource_templates import (
     MESH_RESOURCES,
     SHAPE_RESOURCES,
     make_material,
 )
-from devforge.knowledge.scene.godot_node_types import (
-    NODES_WITHOUT_VECTOR3_TRANSFORM as _NON_3D_TYPES,
-)
-from devforge.infrastructure.logger import logger
+from devforge.knowledge.scene.scene_graph import VALID_GODOT_TYPES, SceneGraph
 
 # The signal a node most commonly emits — used to wire a connection when the
 # planner names no signal. "body_entered" is only right for Areas; a Timer emits

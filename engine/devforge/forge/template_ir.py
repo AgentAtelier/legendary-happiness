@@ -23,7 +23,6 @@ from typing import Any
 
 from devforge.infrastructure.logger import logger
 
-
 # ── Data model ───────────────────────────────────────────────────
 
 

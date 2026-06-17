@@ -11,7 +11,6 @@ from typing import Dict, List
 
 from devforge.infrastructure.logger import logger
 
-
 # Godot 3 → Godot 4 node type renames
 _GODOT3_TO_4: Dict[str, str] = {
     "KinematicBody": "CharacterBody3D",

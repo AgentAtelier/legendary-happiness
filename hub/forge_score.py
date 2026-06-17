@@ -6,6 +6,7 @@ tests/test_forge_score.py.
 """
 
 from __future__ import annotations
+
 from statistics import median
 from typing import Any
 

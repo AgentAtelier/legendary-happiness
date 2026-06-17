@@ -11,7 +11,6 @@ pipeline unchanged.
 
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -19,13 +18,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import yaml
 
 from devforge.compilation.ir.plan import (
-    DevForgePlan,
     CreateEntityStep,
+    DevForgePlan,
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger
-from devforge.spatial.lexicon import AssetLexicon, SlotViolation
 from devforge.spatial.anchors import AnchorResolver
+from devforge.spatial.lexicon import AssetLexicon, SlotViolation
 
 # Reusable mesh resources for room shell (floor/ceiling planes).
 _PLANE_MESH = {"__class__": "PlaneMesh", "size": {"x": 10, "y": 10}}

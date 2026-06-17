@@ -16,9 +16,9 @@ Usage:
         --actual-files sim/ecology/eco_region.gd
 """
 
-import json
-import datetime
 import argparse
+import datetime
+import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 

@@ -7,8 +7,7 @@ final Godot operations. Steps compile() into deterministic operations.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, List
-
+from typing import Any, Dict, List
 
 # ── Base Step ──────────────────────────────────────────────
 

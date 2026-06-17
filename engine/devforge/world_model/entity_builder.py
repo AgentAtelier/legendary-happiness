@@ -1,7 +1,8 @@
-from .world_model import WorldModel
-from .component import Component
-from devforge.reasoning.architectural_reasoner import ArchitecturalReasoner
 from devforge.patterns.pattern_expander import PatternExpander
+from devforge.reasoning.architectural_reasoner import ArchitecturalReasoner
+
+from .component import Component
+from .world_model import WorldModel
 
 
 class EntityBuilder:

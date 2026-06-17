@@ -12,9 +12,9 @@ Usage:
     python -m devforge.governance.decision_log stats --log decision_log.jsonl
 """
 
-import json
 import argparse
 import datetime
+import json
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -30,7 +30,7 @@ DEFAULT_LOG_PATH = "decision_log.jsonl"
 def _validate_against_schema(entry: dict, schema_path: str) -> None:
     """Validate entry against JSON schema. Falls back to basic checks if jsonschema unavailable."""
     try:
-        from jsonschema import validate, ValidationError
+        from jsonschema import ValidationError, validate
 
         with open(schema_path, "r") as f:
             schema = json.load(f)

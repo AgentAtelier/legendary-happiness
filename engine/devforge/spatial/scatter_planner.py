@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Optional
 
 from devforge.infrastructure.logger import logger
 from devforge.spatial.lexicon import AssetLexicon

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from devforge.governance.analyzer import analyze_file, analyze_directory, GDFileAnalysis
+from devforge.governance.analyzer import GDFileAnalysis, analyze_directory, analyze_file
 from devforge.governance.contracts import ContractsParser
 from devforge.infrastructure.logger import logger
 

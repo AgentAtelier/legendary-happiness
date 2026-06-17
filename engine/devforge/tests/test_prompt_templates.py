@@ -407,8 +407,9 @@ def test_normalize_gbnf_idempotent_on_single_line():
 
 
 def test_generated_grammar_file_has_no_continuation_lines():
-    from devforge.knowledge.scene.godot_node_types import generate_grammar_file
     import tempfile
+
+    from devforge.knowledge.scene.godot_node_types import generate_grammar_file
 
     with tempfile.TemporaryDirectory() as td:
         path = generate_grammar_file(output_dir=td)
@@ -419,7 +420,9 @@ def test_generated_grammar_file_has_no_continuation_lines():
 
 def test_loaded_grammar_is_normalized():
     """LlamaClient must normalize grammar files at load time."""
-    import tempfile, os as _os
+    import os as _os
+    import tempfile
+
     from devforge.infrastructure.llm.llama_client import LlamaClient
 
     with tempfile.NamedTemporaryFile("w", suffix=".gbnf", delete=False) as f:
@@ -542,7 +545,7 @@ class TestNormalizeGbnfStrongIdempotency:
         src = 'root ::= object\nobject ::= "{" ws pair (ws "," ws pair)* ws "}"\npair ::= string ws ":" ws value\nstring ::= "\\"" char* "\\""\nchar ::= [^"\\\\]\n | "\\\\" escape\nescape ::= ["\\\\/bfnrt]\nvalue ::= string\n | number\n | object\n | array\n | "true" | "false" | "null"\nws ::= [ \\t\\n]*'
         once = normalize_gbnf(src)
         twice = normalize_gbnf(once)
-        assert once == twice, f"Complex grammar not idempotent"
+        assert once == twice, "Complex grammar not idempotent"
         # Verify no standalone | lines remain
         for line in once.split("\n"):
             stripped = line.strip()

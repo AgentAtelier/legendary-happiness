@@ -1,7 +1,9 @@
 """Scene Refactorer tests — extraction, listing, edge cases."""
 
 from __future__ import annotations
-import os, sys
+
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 

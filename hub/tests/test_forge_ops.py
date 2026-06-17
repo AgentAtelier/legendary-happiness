@@ -1,21 +1,14 @@
 """Tests for forge_ops — transactional swap, VRAM check, rollback."""
 
-import asyncio
-from pathlib import Path
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from forge_ops import (
-    swap_model,
-    get_free_vram,
-    run_cmd_capture,
     check_drift,
     reconcile_model,
-    LLAMA_SERVICE,
-    HEALTH_POLL_ATTEMPTS,
+    run_cmd_capture,
+    swap_model,
 )
-from forge_models import ApplyError
 
 
 class TestCheckDrift:
@@ -332,7 +325,7 @@ class TestActionLog:
     """Phase 4: durable action log tests."""
 
     def test_record_and_retrieve(self):
-        from forge_ops import record_action, get_action_history
+        from forge_ops import get_action_history, record_action
 
         # Record a test action
         record_action("test", ["test", "arg"], 0, 1.0, output="all good")
@@ -344,7 +337,7 @@ class TestActionLog:
         assert found[0]["exit_code"] == 0
 
     def test_failed_action_has_classification(self):
-        from forge_ops import record_action, get_action_history
+        from forge_ops import get_action_history, record_action
 
         record_action("test-fail", ["bad"], 1, 0.5, error="cudaMalloc failed: out of memory")
         history = get_action_history(5)

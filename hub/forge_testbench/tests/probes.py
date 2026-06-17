@@ -18,13 +18,12 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any
 
-from ..context import Context
-from ..test import Test
-from ..result import ScoredResult, Status
-from ..metric import Metric
 from ..catalog import register
+from ..context import Context
+from ..metric import Metric
+from ..result import ScoredResult, Status
+from ..test import Test
 
 HOME = Path.home()
 PRESETS = HOME / "dev/ai/odysseus/data/presets.json"

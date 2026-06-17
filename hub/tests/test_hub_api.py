@@ -1,10 +1,9 @@
 """Tests for the hub's FastAPI endpoints — guards, job lifecycle, 409-when-busy."""
 
-import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
-from hub import app, _jobs, _job_lock
+from hub import _jobs, app
 
 client = TestClient(app)
 
@@ -316,7 +315,7 @@ class TestScenarioModule:
     """Unit tests for scenarios.py (no live services needed)."""
 
     def test_scenario_catalog(self):
-        from scenarios import SCENARIOS, SCENARIO_BY_ID
+        from scenarios import SCENARIO_BY_ID, SCENARIOS
 
         assert len(SCENARIOS) >= 10
         # Verify unique IDs

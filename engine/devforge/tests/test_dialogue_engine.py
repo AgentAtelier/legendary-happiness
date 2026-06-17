@@ -1,7 +1,11 @@
 """Dialogue Engine tests — validation, loading, edge cases."""
 
 from __future__ import annotations
-import os, sys, json, tempfile
+
+import json
+import os
+import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 

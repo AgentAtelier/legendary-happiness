@@ -16,12 +16,8 @@ evaluated against the resolved room dimensions.
 
 from __future__ import annotations
 
-import math
 import re
-from typing import Any, Dict, List, Optional, Tuple
-
-from devforge.infrastructure.logger import logger
-
+from typing import Any, Dict, List, Tuple
 
 # A 3D position in Godot space (x=right, y=up, z=forward)
 Vec3 = Dict[str, float]

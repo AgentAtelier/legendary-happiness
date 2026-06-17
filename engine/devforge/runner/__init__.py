@@ -2,9 +2,9 @@
 
 from devforge.runner.smoke_runner import (
     POIStop,
-    StopResult,
     SmokeReport,
     SmokeRunner,
+    StopResult,
     build_poi,
     run_smoke_test,
 )

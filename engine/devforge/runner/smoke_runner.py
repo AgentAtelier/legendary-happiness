@@ -17,7 +17,6 @@ from typing import Callable
 
 from devforge.infrastructure.logger import logger
 
-
 # ── Data model ───────────────────────────────────────────────────
 
 

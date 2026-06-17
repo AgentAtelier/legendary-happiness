@@ -7,18 +7,17 @@ from __future__ import annotations
 
 import json
 
-from devforge.lore.lorekeeper import load_schema
-from devforge.lore.schema import SchemaDefinition
 from devforge.infrastructure.logger import logger
-
 from devforge.lint.rules import (
     LintFinding,
     check_duplicate_ids,
-    check_naming_convention,
+    check_duplicate_ids_cross_file,
     check_empty_required,
     check_mismatched_keys,
-    check_duplicate_ids_cross_file,
+    check_naming_convention,
 )
+from devforge.lore.lorekeeper import load_schema
+from devforge.lore.schema import SchemaDefinition
 
 
 class ContentLinter:

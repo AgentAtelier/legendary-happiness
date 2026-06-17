@@ -1,5 +1,5 @@
-from devforge.knowledge.system_graph.system_graph import SystemGraph
 from devforge.knowledge.default_patterns import load_default_patterns
+from devforge.knowledge.system_graph.system_graph import SystemGraph
 
 
 class GameArchitect:

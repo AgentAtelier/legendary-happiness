@@ -7,20 +7,19 @@ from __future__ import annotations
 
 import pytest
 
-from devforge.spatial.lexicon import AssetLexicon
-from devforge.spatial.compiler import SpatialCompiler
 from devforge.spatial.bsp import (
+    _DOOR_GAP,
+    _FLOOR_THICKNESS,
+    _MAX_RATIO,
+    _MIN_RATIO,
+    _WALL_HEIGHT,
+    _WALL_THICKNESS,
     BSPPartitioner,
     RoomRect,
     _WallSpec,
-    _DOOR_GAP,
-    _WALL_HEIGHT,
-    _WALL_THICKNESS,
-    _FLOOR_THICKNESS,
-    _MIN_RATIO,
-    _MAX_RATIO,
 )
-
+from devforge.spatial.compiler import SpatialCompiler
+from devforge.spatial.lexicon import AssetLexicon
 
 # ── Fixtures ─────────────────────────────────────────────────────
 

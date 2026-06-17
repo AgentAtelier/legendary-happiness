@@ -4,20 +4,18 @@ import json
 from typing import Callable
 
 from devforge.compilation.ir.plan import DevForgePlan
+from devforge.compilation.ir.steps.component_steps import (
+    AttachComponentStep,
+    CreateComponentStep,
+)
 from devforge.compilation.ir.steps.scene_steps import (
+    AttachScriptStep,
     CreateEntityStep,
     CreateScriptStep,
-    AttachScriptStep,
     SetPropertyStep,
 )
-
-from devforge.compilation.ir.steps.component_steps import (
-    CreateComponentStep,
-    AttachComponentStep,
-)
-
-from devforge.reasoning.prompts.planner_prompt import PlannerPromptTemplate
 from devforge.reasoning.ai.planning.feature_decomposer import FeatureDecomposer
+from devforge.reasoning.prompts.planner_prompt import PlannerPromptTemplate
 
 
 class PlanningOrchestrator:

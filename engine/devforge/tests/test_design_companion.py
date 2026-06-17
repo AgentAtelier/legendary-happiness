@@ -1,7 +1,9 @@
 """Design Companion tests — pattern matching, category coverage, edge cases."""
 
 from __future__ import annotations
-import os, sys
+
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 

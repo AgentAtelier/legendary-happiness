@@ -19,21 +19,21 @@ Architecture:
   prompts/           — *.gbnf grammars for LLM output constraint
 """
 
-from devforge.spatial.lexicon import AssetLexicon
 from devforge.spatial.anchors import AnchorResolver
+from devforge.spatial.bsp import BSPPartitioner
+from devforge.spatial.building_planner import BuildingPlanner
 from devforge.spatial.compiler import SpatialCompiler
 from devforge.spatial.layout_planner import LayoutPlanner
-from devforge.spatial.building_planner import BuildingPlanner
-from devforge.spatial.bsp import BSPPartitioner
+from devforge.spatial.lexicon import AssetLexicon
+from devforge.spatial.room_intent_planner import RoomIntentPlanner
 from devforge.spatial.scatter import ScatterEngine
 from devforge.spatial.scatter_planner import ScatterPlanner
 from devforge.spatial.ssp import SSPEngine
 from devforge.spatial.ssp_planner import SSPPlanner
-from devforge.spatial.wfc import WFCEngine
-from devforge.spatial.wfc_planner import WFCPlanner
 from devforge.spatial.voronoi import VoronoiEngine
 from devforge.spatial.voronoi_planner import VoronoiPlanner
-from devforge.spatial.room_intent_planner import RoomIntentPlanner
+from devforge.spatial.wfc import WFCEngine
+from devforge.spatial.wfc_planner import WFCPlanner
 
 __all__ = [
     "AssetLexicon",

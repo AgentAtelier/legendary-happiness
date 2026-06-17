@@ -10,7 +10,6 @@ any scene missing a light or camera — including the real main.tscn.
 
 from devforge.compilation.pipeline.completeness import CompletenessChecker
 
-
 # A 3D scene with a camera but NO DirectionalLight3D — the exact shape that
 # triggered the bug (root "Main" + Camera3D + Ground, no light).
 SCENE = {

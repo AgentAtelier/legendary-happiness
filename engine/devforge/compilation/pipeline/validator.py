@@ -6,12 +6,11 @@ with error messages explaining why.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List, Tuple
 
-from devforge.knowledge.scene.scene_graph import SceneGraph, VALID_GODOT_TYPES
-from devforge.knowledge.scene.godot_node_types import _property_matches_type
 from devforge.infrastructure.logger import logger
-
+from devforge.knowledge.scene.godot_node_types import _property_matches_type
+from devforge.knowledge.scene.scene_graph import VALID_GODOT_TYPES, SceneGraph
 
 SUPPORTED_OPERATIONS = {
     "add_node",

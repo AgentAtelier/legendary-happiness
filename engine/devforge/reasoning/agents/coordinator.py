@@ -19,14 +19,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from devforge.infrastructure.llm.router import LLMRouter
 from devforge.infrastructure.logger import logger
 from devforge.infrastructure.runtime_config import RuntimeConfig
-from devforge.infrastructure.llm.router import LLMRouter
-from devforge.knowledge.system_graph.system_graph import SystemGraph, NodeType
-
+from devforge.knowledge.system_graph.system_graph import NodeType, SystemGraph
 from devforge.reasoning.agents.architect_agent import ArchitectAgent
-from devforge.reasoning.agents.planner_agent import PlannerAgent
 from devforge.reasoning.agents.builder_agent import BuilderAgent
+from devforge.reasoning.agents.planner_agent import PlannerAgent
 from devforge.reasoning.agents.qa_agent import QAAgent
 from devforge.reasoning.agents.repair_agent import RepairAgent
 
@@ -169,8 +168,8 @@ class Coordinator:
     def _run_preflight(self, context: Dict[str, Any]) -> None:
         """Pre-flight: scope lock + risk scoring check."""
         try:
-            from devforge.governance.scope_lock import create_scope_lock
             from devforge.governance.risk_scoring import compute_risk
+            from devforge.governance.scope_lock import create_scope_lock
 
             # Create scope lock
             scope = create_scope_lock(

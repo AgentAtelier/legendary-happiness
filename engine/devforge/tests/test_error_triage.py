@@ -6,8 +6,8 @@ deduplication, empty input, category counts, unrecognised fallback.
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 def test_all_regexes_compile() -> None:
     """Every KNOWN_ERRORS entry has a compilable regex."""
     import re
+
     from devforge.triage.knowledge import KNOWN_ERRORS
 
     for entry in KNOWN_ERRORS:

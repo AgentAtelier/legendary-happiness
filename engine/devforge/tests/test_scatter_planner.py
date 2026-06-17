@@ -6,13 +6,13 @@ Run with:  cd engine && .venv/bin/python -m pytest devforge/tests/test_scatter_p
 from __future__ import annotations
 
 import json
-import pytest
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from devforge.spatial.scatter_planner import ScatterPlanner, ScatterPlanningError
-from devforge.spatial.lexicon import AssetLexicon
+import pytest
 
+from devforge.spatial.lexicon import AssetLexicon
+from devforge.spatial.scatter_planner import ScatterPlanner, ScatterPlanningError
 
 # ── Fixtures ─────────────────────────────────────────────────────
 

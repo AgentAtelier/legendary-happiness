@@ -9,9 +9,9 @@ Or directly: python devforge/tests/test_import_walk.py
 from __future__ import annotations
 
 import importlib
+import os
 import pathlib
 import sys
-import os
 
 # Modules that exist on disk but must not be imported.
 # Keep this list short and justified — every entry is a hole in the test.

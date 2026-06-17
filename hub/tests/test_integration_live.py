@@ -19,10 +19,9 @@ import time
 from pathlib import Path
 
 import pytest
-
-from forge_env import read_env, ENVFILE
-from forge_models import scan, plan_apply, GIB, vram_total, FIT_SAFETY_MARGIN
-from forge_ops import swap_model, get_free_vram, check_drift
+from forge_env import ENVFILE, read_env
+from forge_models import FIT_SAFETY_MARGIN, GIB, plan_apply, scan, vram_total
+from forge_ops import check_drift, get_free_vram, swap_model
 
 pytestmark = pytest.mark.live
 
@@ -283,7 +282,6 @@ class TestEstimatorCalibration:
     def test_gemma_swa_fudge_conservative(self):
         """The gemma SWA *0.45 fudge was measured empirically.
         It must stay in [0.3, 0.55] — lower risks OOM, higher wastes VRAM."""
-        from forge_models import KV_BYTES_PER_EL
 
         models = scan()
         gemma = next((m for m in models if "gemma" in m.get("arch", "").lower()), None)
@@ -294,7 +292,7 @@ class TestEstimatorCalibration:
         # `if arch.startswith(\"gemma\"): kv_per_tok *= 0.45`.
         # Verify kv_per_tok is positive and plausible.
         kv = gemma.get("kv_per_tok", 0)
-        assert kv > 0, f"Gemma model has no kv_per_tok"
+        assert kv > 0, "Gemma model has no kv_per_tok"
         # SWA halving means KV cache should be < ~65% of a non-gemma
         # model of similar parameter count (~same KV heads × layers).
         # Upper bound: file bytes / 500 — a 10 GiB GGUF → ~20 MB max
@@ -318,7 +316,7 @@ class TestActionLogDiagnostics:
     def test_refused_swap_recorded_with_classification(self):
         """A VRAM-based refusal should produce an action log record
         with classification, not just an opaque exit code."""
-        from forge_ops import get_action_history, record_action
+        from forge_ops import get_action_history
 
         cur_name, env = _sanity()
         models = scan()
