@@ -1,0 +1,44 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Virtualenvs ---
+.venv/
+venv/
+env/
+
+# --- Secrets ---
+.env
+.env.local
+*.secret
+
+# --- Databases (runtime state) ---
+*.db
+*.sqlite
+*.sqlite3
+.devforge/
+
+# --- Local LLM models (huge) ---
+*.gguf
+*.bin
+
+# --- Godot caches ---
+.godot/
+.import/
+
+# --- IDE (personal layout only; project config can be committed later) ---
+.idea/workspace.xml
+.idea/shelf/
+
+# --- Research PDFs: kept on disk, out of git ---
+*.pdf
+
+# --- Legacy archive (169 MB): kept on disk, out of git ---
+legacy/
+
+# --- Tooling ---
+.superpowers/
