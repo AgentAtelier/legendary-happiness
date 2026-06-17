@@ -881,6 +881,13 @@ class PipelineEngine:
 
         stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
 
+        # Log planned intent count for A/B measurement of conditioning impact.
+        # Grep-able: "World plan parsed: N intent(s)".
+        logger.info(
+            "pipeline.engine",
+            f"World plan parsed: {len(arch_delta.get('entities', []))} intent(s)",
+        )
+
         # Deterministic dedup — check the LIVE scene tree (source of truth).
         # The old dedup checked only the in-memory system_graph which is
         # shared across ALL apply_spec calls and never pruned; entities
