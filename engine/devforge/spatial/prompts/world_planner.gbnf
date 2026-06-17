@@ -1,0 +1,60 @@
+# world_planner.gbnf
+# GBNF grammar for WorldPlanner JSON output.
+# Constrains the LLM to emit a list of world_intents — each one
+# routes a sub-request to a specific spatial engine with bounds.
+#
+# Schema: { world_intents: [{engine, region_id, bounds?, keep_out?,
+#          inside?, spec?, connects?, width?, type?}...] }
+#
+# The "spec" field is an opaque JSON blob passed through to the
+# target engine's own GBNF grammar. The WorldPlanner routes; it
+# does not validate sub-engine specs.
+
+root ::= "{" ws "\"world_intents\"" ws ":" ws "[" ws intent (ws "," ws intent)* ws "]" ws "}"
+
+intent ::= "{" ws intent-pairs ws "}"
+
+intent-pairs ::= engine-pair (ws "," ws intent-extra-pair)*
+
+engine-pair ::= "\"engine\"" ws ":" ws engine-type ws "," ws "\"region_id\"" ws ":" ws string
+
+intent-extra-pair ::= bounds-pair | keep-out-pair | inside-pair | spec-pair | connects-pair | width-pair | type-pair
+
+bounds-pair ::= "\"bounds\"" ws ":" ws bounds-object
+
+bounds-object ::= "{" ws "\"x\"" ws ":" ws number ws "," ws "\"z\"" ws ":" ws number ws "," ws "\"w\"" ws ":" ws number ws "," ws "\"d\"" ws ":" ws number ws "}"
+
+keep-out-pair ::= "\"keep_out\"" ws ":" ws "[" ws bounds-object (ws "," ws bounds-object)* ws "]"
+
+inside-pair ::= "\"inside\"" ws ":" ws string
+
+spec-pair ::= "\"spec\"" ws ":" ws spec-object
+
+spec-object ::= "{" ws spec-member* ws "}"
+
+spec-member ::= string ws ":" ws spec-value ws ("," ws spec-member)*
+
+spec-value ::= string | number | boolean | "{" ws spec-member* ws "}" | "[" ws spec-value (ws "," ws spec-value)* ws "]"
+
+connects-pair ::= "\"connects\"" ws ":" ws "[" ws string (ws "," ws string)* ws "]"
+
+width-pair ::= "\"width\"" ws ":" ws number
+
+type-pair ::= "\"type\"" ws ":" ws string
+
+engine-type ::= "\"scatter\"" | "\"voronoi\"" | "\"wfc\"" | "\"building\"" | "\"ssp\"" | "\"room\"" | "\"network\""
+
+# ── primitives ──
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+boolean ::= "true" | "false"
+
+ws ::= [ \t\n\r]*

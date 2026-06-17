@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from devforge.compilation.ir.plan import (
     CreateEntityStep,
@@ -23,6 +23,9 @@ from devforge.compilation.ir.plan import (
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger
+
+if TYPE_CHECKING:
+    from devforge.spatial.world_state import WorldState
 
 # ── Constants ────────────────────────────────────────────────────
 
@@ -100,6 +103,7 @@ class VoronoiEngine:
         self,
         town_json: dict,
         root_path: str = "/root/Main",
+        world_state: "WorldState | None" = None,
     ) -> DevForgePlan:
         """Compile a town JSON into a DevForgePlan.
 
@@ -107,6 +111,11 @@ class VoronoiEngine:
             town_json: LLM output with ``region`` (width, depth),
                        ``districts`` (count), optional ``tile_size``, ``seed``.
             root_path: Godot node path to the scene root.
+            world_state: Optional shared WorldState for multi-engine
+                coordination. When provided, skips occupied cells for
+                building placement and marks placements. When None
+                (default), behaviour is identical to before this
+                parameter was added.
 
         Returns:
             DevForgePlan with CreateEntityStep + SetPropertyStep for
@@ -189,10 +198,17 @@ class VoronoiEngine:
                 cz_base = (row + 0.5) * spec.tile_size
                 jx = rng.uniform(-0.3, 0.3) * spec.tile_size
                 jz = rng.uniform(-0.3, 0.3) * spec.tile_size
+                bx = cx_base + jx
+                bz = cz_base + jz
+
+                # ── WorldState occupancy filter ──────────────────
+                if world_state is not None and world_state.is_occupied(bx, bz):
+                    continue
+
                 district_buildings[i].append(
                     (
-                        cx_base + jx,
-                        cz_base + jz,
+                        bx,
+                        bz,
                         bw,
                         bd,
                         bh,
@@ -349,6 +365,11 @@ class VoronoiEngine:
                         },
                     )
                 )
+
+                # ── WorldState mark building footprint ──────────────────
+                if world_state is not None:
+                    world_state.mark_occupied(bx, bz, name, (bw, bd))
+
                 node_count += 1
 
         logger.info(

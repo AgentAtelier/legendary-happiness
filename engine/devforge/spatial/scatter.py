@@ -14,7 +14,7 @@ import math
 import random
 import zlib
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 from devforge.compilation.ir.plan import (
     CreateEntityStep,
@@ -22,6 +22,9 @@ from devforge.compilation.ir.plan import (
     SetPropertyStep,
 )
 from devforge.infrastructure.logger import logger
+
+if TYPE_CHECKING:
+    from devforge.spatial.world_state import WorldState
 
 # ── Constants ────────────────────────────────────────────────────
 
@@ -93,6 +96,7 @@ class ScatterEngine:
         garden_json: dict,
         root_path: str = "/root/Main",
         seed: int = _DEFAULT_SEED,
+        world_state: "WorldState | None" = None,
     ) -> DevForgePlan:
         """Compile a garden JSON into a DevForgePlan.
 
@@ -100,6 +104,10 @@ class ScatterEngine:
             garden_json: LLM output with ``region``, ``keep_out``, ``species``.
             root_path: Godot node path to the scene root.
             seed: PRNG seed for deterministic placement.
+            world_state: Optional shared WorldState for multi-engine
+                coordination. When provided, skips occupied cells and
+                marks placements. When None (default), behaviour is
+                identical to before this parameter was added.
 
         Returns:
             DevForgePlan with CreateEntityStep + SetPropertyStep for
@@ -162,8 +170,13 @@ class ScatterEngine:
                 seed=seed + zlib.crc32(sp.asset_id.encode()),
             )
 
-            for i, (x, z) in enumerate(positions):
-                node_name = f"{sp.asset_id}_{i + 1}"
+            placed_count = 0
+            for x, z in positions:
+                # ── WorldState occupancy filter ──────────────────
+                if world_state is not None and world_state.is_occupied(x, z):
+                    continue
+
+                node_name = f"{sp.asset_id}_{placed_count + 1}"
                 node_path = f"{root_path}/{node_name}"
 
                 steps.append(
@@ -239,7 +252,13 @@ class ScatterEngine:
                     )
                 )
 
-            total_placed += len(positions)
+                # ── WorldState mark planted cell ──────────────────
+                if world_state is not None:
+                    world_state.mark_occupied(x, z, node_name, (radius * 2, radius * 2))
+
+                placed_count += 1
+
+            total_placed += placed_count
 
         logger.info(
             "scatter",

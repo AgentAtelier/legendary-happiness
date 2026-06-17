@@ -198,6 +198,9 @@ class PipelineEngine:
         self._voronoi_engine: Any = None
         self._room_intent_planner: Any = None
         self._spatial_compiler: Any = None
+        self._world_planner: Any = None
+        self._world_state: Any = None
+        self._world_engine_compile: dict = {}
         try:
             from devforge.spatial.bsp import BSPPartitioner
             from devforge.spatial.building_planner import BuildingPlanner
@@ -213,6 +216,8 @@ class PipelineEngine:
             from devforge.spatial.voronoi_planner import VoronoiPlanner
             from devforge.spatial.wfc import WFCEngine
             from devforge.spatial.wfc_planner import WFCPlanner
+            from devforge.spatial.world_planner import WorldPlanner
+            from devforge.spatial.world_state import WorldState
 
             lexicon = AssetLexicon()
             self._spatial_compiler = SpatialCompiler(lexicon)
@@ -228,9 +233,13 @@ class PipelineEngine:
             self._voronoi_planner = VoronoiPlanner()
             self._voronoi_engine = VoronoiEngine()
             self._room_intent_planner = RoomIntentPlanner(lexicon, self._ssp_engine)
+            self._world_planner = WorldPlanner()
+            self._world_state = WorldState()
+            # Build on first world call (after sub-engines are confirmed loaded)
+            self._world_engine_compile: dict = {}
             logger.info(
                 "pipeline.engine",
-                "Layout + building + scatter + SSP + WFC + Voronoi + RoomIntent planners initialised "
+                "Layout + building + scatter + SSP + WFC + Voronoi + RoomIntent + World planners initialised "
                 "(per-request routing ready)",
             )
         except ImportError as exc:
@@ -280,7 +289,7 @@ class PipelineEngine:
             temperature: Per-call sampler override (None = use config default).
             planner: Per-call planner override — "arch" | "layout"
                 | "building" | "scatter" | "ssp" | "room" | "wfc"
-                | "voronoi" | "ops".
+                | "voronoi" | "world" | "ops".
                 None = use the global DEVFORGE_PLANNER config.  Set to
                 "layout" for single-room spatial prompts; "building" for
                 multi-room BSP buildings; "scatter" for outdoor
@@ -289,7 +298,8 @@ class PipelineEngine:
                 for Intent Descriptor room generation (richer LLM brief);
                 "wfc" for dungeon/cave generation via Wave Function
                 Collapse; "voronoi" for town/district generation via
-                Voronoi tessellation.
+                Voronoi tessellation; "world" for multi-engine world
+                orchestration via WorldPlanner + WorldState.
             skip_cache: If True, bypass the plan cache (used by harness
                 diagnostics for repeat-diversity measurement).
 
@@ -460,6 +470,19 @@ class PipelineEngine:
                 files, operations, arch_delta, plan_retries = result
             elif effective_mode == "voronoi" and self._voronoi_planner is not None and self._voronoi_engine is not None:
                 result = self._run_voronoi_path(
+                    context,
+                    planner_prompt,
+                    scene,
+                    scene_version,
+                    stages,
+                    temperature=temperature,
+                    skip_cache=skip_cache,
+                )
+                if isinstance(result, PipelineResult):
+                    return result  # error early-return
+                files, operations, arch_delta, plan_retries = result
+            elif effective_mode == "world" and self._world_planner is not None:
+                result = self._run_world_path(
                     context,
                     planner_prompt,
                     scene,
@@ -1398,6 +1421,203 @@ class PipelineEngine:
             temperature=temperature,
             skip_cache=skip_cache,
         )
+
+    # ------------------------------------------------------------------
+    # World path (planner="world") — multi-engine orchestration via WorldState
+    # ------------------------------------------------------------------
+
+    def _run_world_path(
+        self,
+        context: str,
+        planner_prompt: str,
+        scene: Dict[str, Any],
+        scene_version: int,
+        stages: Dict[str, float],
+        temperature: float | None = None,
+        skip_cache: bool = False,
+    ) -> Tuple[List[Dict], List[Dict], Dict, int] | PipelineResult:
+        """Run the world path: WorldPlanner → sub-engines via WorldState.
+
+        The WorldPlanner emits a list of engine intents. Each intent is
+        dispatched to its sub-engine with a shared WorldState, merging
+        all DevForgePlans into one result.
+        """
+        t0 = time.perf_counter()
+        grammar = self._world_planner.grammar
+        arch_profile = self._config.sampler_profiles.get("arch", {})
+        if temperature is not None:
+            arch_profile = {**arch_profile, "temperature": temperature}
+        llm_fn = (
+            functools.partial(self._llm.generate, grammar=grammar, **arch_profile)
+            if grammar
+            else functools.partial(self._llm.generate, **arch_profile)
+        )
+
+        world_json: Dict = {}
+        max_retries = self._config.max_plan_retries
+        retry_errors: List[str] = []
+        retry_prompt = planner_prompt
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                world_json = self._world_planner.plan(
+                    context=context,
+                    prompt=retry_prompt,
+                    llm_fn=llm_fn,
+                    scene=scene,
+                    skip_cache=skip_cache,
+                )
+                break
+            except BudgetExceededError:
+                stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
+                return PipelineResult(
+                    errors=["Token budget exceeded during World planning."],
+                    scene_tree=scene,
+                    scene_version=scene_version,
+                    stage_latencies=stages,
+                )
+            except Exception as exc:
+                retry_errors.append(str(exc))
+                if attempt == max_retries:
+                    stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
+                    return PipelineResult(
+                        errors=[f"World planning failed after {attempt} attempts: " + "; ".join(retry_errors)],
+                        scene_tree=scene,
+                        scene_version=scene_version,
+                        stage_latencies=stages,
+                    )
+                retry_prompt = f"{planner_prompt}\n\nThe previous plan failed: {exc}. Fix only those issues."
+                logger.info("pipeline.engine", f"World planning retry {attempt}/{max_retries}")
+
+        stages["architecture_planning"] = (time.perf_counter() - t0) * 1000
+
+        if self._llm.last_truncated:
+            logger.warn("pipeline.engine", "World plan was truncated by n_predict")
+            return PipelineResult(
+                errors=["World plan truncated — response hit n_predict limit."],
+                scene_tree=scene,
+                scene_version=scene_version,
+                stage_latencies=stages,
+                truncated=True,
+            )
+
+        intents = world_json.get("world_intents", [])
+        if not intents:
+            return PipelineResult(
+                errors=["WorldPlanner returned no intents."],
+                scene_tree=scene,
+                scene_version=scene_version,
+                stage_latencies=stages,
+            )
+
+        # Reset WorldState for this request
+        self._world_state.clear_occupancy()
+
+        root_name = scene.get("name", "Main")
+        root_path = f"/root/{root_name}"
+        all_steps: list = []
+        world_errors: list[str] = []
+
+        # Lifted imports for RegionSpec (used in the intent loop below)
+        from devforge.spatial.world_state import RegionSpec
+
+        # Build engine dispatch lookup (cached after first world call)
+        if not self._world_engine_compile:
+            self._world_engine_compile = {
+                "scatter": self._scatter_engine.compile_garden if self._scatter_engine else None,
+                "voronoi": self._voronoi_engine.compile_town if self._voronoi_engine else None,
+                "wfc": self._wfc_engine.compile_dungeon if self._wfc_engine else None,
+                "building": self._bsp_partitioner.compile_building if self._bsp_partitioner else None,
+                "ssp": self._ssp_engine.compile_room if self._ssp_engine else None,
+                "room": self._ssp_engine.compile_room if self._ssp_engine else None,
+            }
+        _ENGINE_COMPILE = self._world_engine_compile
+
+        t_compile = time.perf_counter()
+        for i, intent in enumerate(intents):
+            engine_name = intent.get("engine", "")
+            region_id = intent.get("region_id", f"region_{i}")
+            spec = intent.get("spec", {})
+
+            # Register the region in WorldState
+            bounds = intent.get("bounds", {})
+            if bounds:
+                self._world_state.add_region(
+                    region_id,
+                    RegionSpec(
+                        type=engine_name,
+                        bounds=(
+                            float(bounds.get("x", 0)),
+                            float(bounds.get("z", 0)),
+                            float(bounds.get("w", 20)),
+                            float(bounds.get("d", 20)),
+                        ),
+                    ),
+                )
+
+            compile_fn = _ENGINE_COMPILE.get(engine_name)
+            if compile_fn is None:
+                world_errors.append(f"Intent {i}: engine '{engine_name}' not available")
+                continue
+
+            try:
+                sub_json = dict(spec)
+                if bounds and "region" not in sub_json:
+                    sub_json["region"] = {
+                        "width": float(bounds.get("w", 20)),
+                        "depth": float(bounds.get("d", 20)),
+                    }
+
+                # Only scatter and voronoi accept world_state (additive-only rule).
+                # Other engines (building, ssp, wfc, room) don't have the param yet.
+                if engine_name in ("scatter", "voronoi"):
+                    plan = compile_fn(sub_json, root_path=root_path, world_state=self._world_state)
+                else:
+                    plan = compile_fn(sub_json, root_path=root_path)
+                all_steps.extend(plan.steps)
+
+                logger.info(
+                    "pipeline.engine",
+                    f"World intent {i} ({engine_name} '{region_id}'): {len(plan.steps)} step(s)",
+                )
+            except Exception as exc:
+                logger.error(
+                    "pipeline.engine",
+                    f"World intent {i} ({engine_name} '{region_id}') failed: {exc}",
+                )
+                world_errors.append(f"Intent {i} ({engine_name}): {exc}")
+
+        stages["compilation"] = (time.perf_counter() - t_compile) * 1000
+
+        # Merge all steps into a single DevForgePlan
+        from devforge.compilation.ir.plan import DevForgePlan
+
+        merged_plan = DevForgePlan(
+            goal=f"World: {len(intents)} intent(s), {len(all_steps)} step(s)",
+            steps=all_steps,
+        )
+
+        # Phase 4: Operation Generation
+        t0 = time.perf_counter()
+        result = self._generator.generate_from_plan(merged_plan)
+        files = self._dedupe_files(result.get("files", []))
+        operations = self._dedupe_operations(result.get("operations", []))
+        stages["operation_generation"] = (time.perf_counter() - t0) * 1000
+
+        plan_retries = attempt - 1
+
+        # Log any sub-engine errors
+        for err in world_errors:
+            logger.error("pipeline.engine", f"World error: {err}")
+
+        arch_delta = {
+            "_world": world_json,
+            "_world_errors": world_errors,
+            "systems": [],
+            "entities": [],
+            "connections": [],
+        }
+        return files, operations, arch_delta, plan_retries
 
     # ------------------------------------------------------------------
     # Validation-only
