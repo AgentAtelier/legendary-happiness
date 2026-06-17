@@ -1,12 +1,8 @@
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-# Skip code that is dying (legacy runners, per ADR-005), throwaway, or archived.
+# Skip throwaway / archived code (the legacy runners are now fully deleted, ADR-005).
 extend-exclude = [
-    "hub/shootout.py",
-    "hub/multi_model_bench.py",
-    "hub/comprehensive_bench.py",
-    "hub/harness.py",
     "hub/static",
     "engine/experiments",
     "engine/docs",

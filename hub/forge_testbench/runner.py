@@ -19,9 +19,8 @@ from pathlib import Path
 from typing import Callable
 
 import httpx
-
-from hub.forge_env import read_env as _read_env
-from hub.mcp_client import (
+from forge_env import read_env as _read_env
+from mcp_client import (
     apply_spec as _devforge_call,
     devforge_call as _devforge_raw_call,
     godot_ai_call as _godot_ai_call,
@@ -38,7 +37,7 @@ ENVFILE = HOME / ".config/forge-stack/stack.env"
 
 async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
     """Run a short command; returns (exit_code, stdout)."""
-    from hub.forge_ops import run_cmd_capture
+    from forge_ops import run_cmd_capture
 
     return await run_cmd_capture(*cmd, timeout=timeout)
 

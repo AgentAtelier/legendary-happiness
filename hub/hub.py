@@ -32,7 +32,6 @@ from pathlib import Path
 # Downstream modules imported here (not mid-file) — none import hub.py back,
 # so there is no actual circular dependency.  The old mid-file placement was
 # defensive but unnecessary.
-import shootout  # noqa: E402
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
@@ -883,97 +882,6 @@ async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0
         return {"lines": [], "error": "godot-ai logs_read timed out (8s)", "stale_run_id": True}
     except Exception as e:
         return {"lines": [], "error": f"godot-ai not reachable: {type(e).__name__}", "stale_run_id": True}
-
-
-# ── Pipeline Shootout ────────────────────────────────────────────
-
-
-@app.post("/api/shootout")
-async def api_shootout(request: Request):
-    """Run the full pipeline shootout against all available models.
-
-    Optional JSON body: {"model": "qwen3"} to test a single model.
-
-    Swaps through each model sequentially, runs the Interactive
-    Collectible Arena test, scores with 22 static+runtime checks,
-    and returns a composite scorecard with rankings.
-
-    This is a long-running job (~8-10 min for 5 models). Progress
-    is streamed via the standard SSE /api/stream/<job_id> endpoint.
-    """
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        logging.debug("api_shootout: empty/unparseable body, using defaults")
-        pass  # empty or unparseable body is fine — shootout runs with defaults
-    model_filter = (body.get("model") or "").strip() or None
-
-    if _job_lock.locked():
-        raise HTTPException(409, "another command is still running")
-    await _job_lock.acquire()
-
-    label = model_filter or "all models"
-    job_id = uuid.uuid4().hex[:12]
-    job = {"lines": [f"shootout — {label} — starting..."], "done": False, "exit": None, "t": time.time()}
-    _jobs[job_id] = job
-
-    async def _runner():
-        try:
-
-            def emit(line: str) -> None:
-                job["lines"].append(line)
-
-            result = await shootout.run_shootout(emit, model_filter=model_filter)
-            if "error" in result:
-                job["exit"] = 1
-                job["lines"].append(f"[shootout] {result['error']}")
-            else:
-                job["exit"] = 0
-                job["scorecard"] = result
-        except Exception as e:
-            job["lines"].append(f"[shootout] crashed: {e}")
-            job["exit"] = 1
-        finally:
-            job["done"] = True
-            _job_lock.release()
-
-    asyncio.get_running_loop().create_task(_runner())
-    return {"job": job_id}
-
-
-@app.get("/api/shootout/preflight")
-async def api_shootout_preflight():
-    """Run pre-flight checks before a shootout."""
-    return await shootout.preflight_check()
-
-
-@app.get("/api/shootout/history")
-async def api_shootout_history():
-    """List all saved shootout scorecards."""
-    return {"shootouts": shootout.list_shootouts()}
-
-
-@app.get("/api/shootout/{ts}")
-async def api_shootout_detail(ts: str):
-    """Get a specific shootout scorecard by timestamp filename."""
-    fp = shootout.SHOOTOUT_DIR / f"shootout-{ts}.json"
-    if not fp.exists():
-        raise HTTPException(404, "no such shootout")
-    import json as _json
-
-    return _json.loads(fp.read_text())
-
-
-@app.get("/api/shootout/{ts}/log")
-async def api_shootout_log(ts: str):
-    """Get the companion log file for a shootout."""
-    if not re.match(r"^\d{8}-\d{6}$", ts):
-        raise HTTPException(400, "invalid shootout timestamp")
-    fp = shootout.SHOOTOUT_DIR / f"shootout-{ts}.log"
-    if not fp.exists():
-        raise HTTPException(404, "no log for this shootout")
-    return PlainTextResponse(fp.read_text())
 
 
 # ── Tier 1.1: probe-root health (part of chain-health above) ──
