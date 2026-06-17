@@ -14,57 +14,37 @@ from __future__ import annotations
 
 import functools
 import json
-import time
-import traceback
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-from devforge.infrastructure.logger import logger
-from devforge.infrastructure.runtime_config import RuntimeConfig
-from devforge.infrastructure.llm.router import LLMRouter
-
-from devforge.knowledge.system_graph.system_graph import SystemGraph
-from devforge.knowledge.scene.scene_graph import SceneGraph
-
-from devforge.compilation.pipeline.context_assembler import ContextAssembler
-from devforge.compilation.pipeline.architecture_planner import ArchitecturePlanner, PlanningError
-from devforge.compilation.pipeline.ops_planner import OpsPlanner, OpsPlanningError
-from devforge.infrastructure.llm.llama_client import BudgetExceededError
-from devforge.compilation.pipeline.architecture_compiler import ArchitectureCompiler
-from devforge.compilation.pipeline.operation_generator import OperationGenerator
-from devforge.compilation.pipeline.completeness import CompletenessChecker
-from devforge.compilation.pipeline.validator import OperationValidator
-from devforge.compilation.pipeline.repair_engine import RepairEngine
-
-# Spatial layout planner (DEVFORGE_PLANNER=layout / building).
-# These module-level placeholders exist for type annotations only;
-# the actual imports happen in PipelineEngine.__init__ — no silent
-# try/except at module level.
-_SpatialCompiler: Any = None
-_LayoutPlanner: Any = None
-_BuildingPlanner: Any = None
-_BSPPartitioner: Any = None
-_ScatterPlanner: Any = None
-_ScatterEngine: Any = None
-_SSPPlanner: Any = None
-_SSPEngine: Any = None
-_WFCPlanner: Any = None
-_WFCEngine: Any = None
-_VoronoiPlanner: Any = None
-_VoronoiEngine: Any = None
-_RoomIntentPlanner: Any = None
-_AssetLexicon: Any = None
-# Lift GDScript pasted into the prompt *before* the planner sees it,
-# so the planner does not invent duplicate systems for code we are
-# about to emit verbatim.
-from devforge.compilation.pipeline.script_extractor import extract as extract_scripts
 
 # Bug 2 (2026-06-14): deterministic delete/rename intent pre-pass.
 # Scans the prompt for "delete/remove <name>" and "rename <old> to <new>"
 # patterns and injects _remove / _rename markers into the delta so the
 # architecture compiler emits RemoveNodeStep / RenameNodeStep.
 import re as _re
+import time
+import traceback
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from devforge.compilation.pipeline.architecture_compiler import ArchitectureCompiler
+from devforge.compilation.pipeline.architecture_planner import ArchitecturePlanner, PlanningError
+from devforge.compilation.pipeline.completeness import CompletenessChecker
+from devforge.compilation.pipeline.context_assembler import ContextAssembler
+from devforge.compilation.pipeline.operation_generator import OperationGenerator
+from devforge.compilation.pipeline.ops_planner import OpsPlanner, OpsPlanningError
+from devforge.compilation.pipeline.repair_engine import RepairEngine
+
+# Lift GDScript pasted into the prompt *before* the planner sees it,
+# so the planner does not invent duplicate systems for code we are
+# about to emit verbatim.
+from devforge.compilation.pipeline.script_extractor import extract as extract_scripts
+from devforge.compilation.pipeline.validator import OperationValidator
+from devforge.infrastructure.llm.llama_client import BudgetExceededError
+from devforge.infrastructure.llm.router import LLMRouter
+from devforge.infrastructure.logger import logger
+from devforge.infrastructure.runtime_config import RuntimeConfig
+from devforge.knowledge.scene.scene_graph import SceneGraph
+from devforge.knowledge.system_graph.system_graph import SystemGraph
 
 
 def _clean_rename_target(name: str) -> str:
@@ -219,20 +199,20 @@ class PipelineEngine:
         self._room_intent_planner: Any = None
         self._spatial_compiler: Any = None
         try:
+            from devforge.spatial.bsp import BSPPartitioner
+            from devforge.spatial.building_planner import BuildingPlanner
             from devforge.spatial.compiler import SpatialCompiler
             from devforge.spatial.layout_planner import LayoutPlanner
-            from devforge.spatial.building_planner import BuildingPlanner
-            from devforge.spatial.bsp import BSPPartitioner
-            from devforge.spatial.scatter_planner import ScatterPlanner
-            from devforge.spatial.scatter import ScatterEngine
-            from devforge.spatial.ssp_planner import SSPPlanner
-            from devforge.spatial.ssp import SSPEngine
-            from devforge.spatial.wfc_planner import WFCPlanner
-            from devforge.spatial.wfc import WFCEngine
-            from devforge.spatial.voronoi_planner import VoronoiPlanner
-            from devforge.spatial.voronoi import VoronoiEngine
-            from devforge.spatial.room_intent_planner import RoomIntentPlanner
             from devforge.spatial.lexicon import AssetLexicon
+            from devforge.spatial.room_intent_planner import RoomIntentPlanner
+            from devforge.spatial.scatter import ScatterEngine
+            from devforge.spatial.scatter_planner import ScatterPlanner
+            from devforge.spatial.ssp import SSPEngine
+            from devforge.spatial.ssp_planner import SSPPlanner
+            from devforge.spatial.voronoi import VoronoiEngine
+            from devforge.spatial.voronoi_planner import VoronoiPlanner
+            from devforge.spatial.wfc import WFCEngine
+            from devforge.spatial.wfc_planner import WFCPlanner
 
             lexicon = AssetLexicon()
             self._spatial_compiler = SpatialCompiler(lexicon)

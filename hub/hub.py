@@ -150,7 +150,10 @@ async def _start_job(label: str, action_fn) -> str:
                 _jobs.pop(jid, None)
 
     asyncio.get_running_loop().create_task(_runner())
-    return job_idasync def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
+    return job_id
+
+
+async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
     """Run a subprocess and stream output into the job dict.
 
     Does NOT manage the job lock — callers (_start_job, legacy endpoints)
@@ -169,9 +172,7 @@ async def _start_job(label: str, action_fn) -> str:
 
         if job["exit"] == 0 and action in _RECONNECT_ACTIONS:
             job["lines"].append("[hub] DevForge/godot-ai restarted — restarting Odysseus to reconnect MCP...")
-            recode, reout = await _run_capture(
-                ["docker", "restart", "odysseus-odysseus-1"], timeout=30
-            )
+            recode, reout = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
             if recode == 0:
                 job["lines"].append("[hub] Odysseus restarted — MCP tools should reconnect")
             else:
@@ -226,21 +227,11 @@ async def run(request: Request):
     else:
         raise HTTPException(400, f"unknown action: {action}")
 
-    if _job_lock.locked():
-        raise HTTPException(409, "another command is still running")
-    await _job_lock.acquire()
+    async def _action_fn(job: dict) -> None:
+        await _job_runner(job, cmd, action)
 
-    job_id = uuid.uuid4().hex[:12]
-    job = {
-        "lines": [f"$ {' '.join(cmd)}"],
-        "done": False,
-        "exit": None,
-        "t": time.time(),
-        "label": f"{action} {' '.join(cmd[1:3]) if len(cmd) > 2 else ''}",
-    }
-    _jobs[job_id] = job
-    asyncio.get_running_loop().create_task(_job_runner(job, cmd, action))
-    return {"job": job_id}
+    label = f"{action} {' '.join(cmd[1:3]) if len(cmd) > 2 else ''}"
+    return {"job": await _start_job(label, _action_fn)}
 
 
 @app.post("/api/swap")
@@ -566,7 +557,6 @@ async def chain_health():
 
     async with _httpx.AsyncClient(timeout=3.0) as client:
         # ── fast checks (all parallel) ──
-        results = {}
 
         async def _check_http(label: str, url: str, expect_status: int = 200):
             # `ok`    → got the exact expected status (used for HTTP apps like llama /health).
@@ -1524,6 +1514,8 @@ async def api_thinking_toggle(request: Request):
 
     Returns the new state. Caller must restart llama for the change to take effect.
     """
+    import json as _json
+
     env = read_env(ENVFILE)
     kwargs_raw = env.get("LLAMA_ARG_CHAT_TEMPLATE_KWARGS", "")
     thinking_enabled = True
