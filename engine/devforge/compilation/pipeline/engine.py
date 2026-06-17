@@ -540,7 +540,7 @@ class PipelineEngine:
             stages["repair"] = (time.perf_counter() - t0) * 1000
 
             # Slice B: deterministic quality gate (advisory — signals, never blocks).
-            quality_warnings = assess_quality(operations, arch_delta, planner_prompt)
+            quality_warnings = assess_quality(operations, arch_delta, prompt)
             if quality_warnings:
                 logger.warn(
                     "pipeline.engine",
