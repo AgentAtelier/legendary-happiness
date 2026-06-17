@@ -37,8 +37,10 @@ from devforge.compilation.pipeline.completeness import CompletenessChecker
 from devforge.compilation.pipeline.validator import OperationValidator
 from devforge.compilation.pipeline.repair_engine import RepairEngine
 
-# Spatial layout planner (DEVFORGE_PLANNER=layout / building)
-_HAS_SPATIAL = False
+# Spatial layout planner (DEVFORGE_PLANNER=layout / building).
+# These module-level placeholders exist for type annotations only;
+# the actual imports happen in PipelineEngine.__init__ — no silent
+# try/except at module level.
 _SpatialCompiler: Any = None
 _LayoutPlanner: Any = None
 _BuildingPlanner: Any = None
@@ -53,25 +55,6 @@ _VoronoiPlanner: Any = None
 _VoronoiEngine: Any = None
 _RoomIntentPlanner: Any = None
 _AssetLexicon: Any = None
-try:
-    from devforge.spatial.compiler import SpatialCompiler as _SpatialCompiler
-    from devforge.spatial.layout_planner import LayoutPlanner as _LayoutPlanner
-    from devforge.spatial.building_planner import BuildingPlanner as _BuildingPlanner
-    from devforge.spatial.bsp import BSPPartitioner as _BSPPartitioner
-    from devforge.spatial.scatter_planner import ScatterPlanner as _ScatterPlanner
-    from devforge.spatial.scatter import ScatterEngine as _ScatterEngine
-    from devforge.spatial.ssp_planner import SSPPlanner as _SSPPlanner
-    from devforge.spatial.ssp import SSPEngine as _SSPEngine
-    from devforge.spatial.wfc_planner import WFCPlanner as _WFCPlanner
-    from devforge.spatial.wfc import WFCEngine as _WFCEngine
-    from devforge.spatial.voronoi_planner import VoronoiPlanner as _VoronoiPlanner
-    from devforge.spatial.voronoi import VoronoiEngine as _VoronoiEngine
-    from devforge.spatial.room_intent_planner import RoomIntentPlanner as _RoomIntentPlanner
-    from devforge.spatial.lexicon import AssetLexicon as _AssetLexicon
-
-    _HAS_SPATIAL = True
-except ImportError:
-    pass
 # Lift GDScript pasted into the prompt *before* the planner sees it,
 # so the planner does not invent duplicate systems for code we are
 # about to emit verbatim.
@@ -145,15 +128,8 @@ def _recover_entities_from_prompt(prompt: str) -> list[dict]:
     return entities
 
 
-# Governance gates (lazy-loaded, optional)
-_HAS_GOVERNANCE = False
-try:
-    from devforge.governance.gate1 import run_gate1
-    from devforge.governance.risk_scoring import compute_risk
-
-    _HAS_GOVERNANCE = True
-except ImportError:
-    pass
+# Governance gates — initialised in __init__, not hidden behind a module-level try/except.
+# See PipelineEngine.__init__ for the explicit init.
 
 
 @dataclass
@@ -242,29 +218,45 @@ class PipelineEngine:
         self._voronoi_engine: Any = None
         self._room_intent_planner: Any = None
         self._spatial_compiler: Any = None
-        if _HAS_SPATIAL:
-            lexicon = _AssetLexicon()
-            self._spatial_compiler = _SpatialCompiler(lexicon)
-            self._layout_planner = _LayoutPlanner(lexicon, self._spatial_compiler)
-            self._building_planner = _BuildingPlanner(lexicon, self._spatial_compiler)
-            self._bsp_partitioner = _BSPPartitioner(self._spatial_compiler)
-            self._scatter_planner = _ScatterPlanner(lexicon)
-            self._scatter_engine = _ScatterEngine(lexicon)
-            self._ssp_engine = _SSPEngine(self._spatial_compiler)
-            self._ssp_planner = _SSPPlanner(lexicon, self._ssp_engine)
-            self._wfc_planner = _WFCPlanner()
-            self._wfc_engine = _WFCEngine()
-            self._voronoi_planner = _VoronoiPlanner()
-            self._voronoi_engine = _VoronoiEngine()
-            self._room_intent_planner = _RoomIntentPlanner(lexicon, self._ssp_engine)
+        try:
+            from devforge.spatial.compiler import SpatialCompiler
+            from devforge.spatial.layout_planner import LayoutPlanner
+            from devforge.spatial.building_planner import BuildingPlanner
+            from devforge.spatial.bsp import BSPPartitioner
+            from devforge.spatial.scatter_planner import ScatterPlanner
+            from devforge.spatial.scatter import ScatterEngine
+            from devforge.spatial.ssp_planner import SSPPlanner
+            from devforge.spatial.ssp import SSPEngine
+            from devforge.spatial.wfc_planner import WFCPlanner
+            from devforge.spatial.wfc import WFCEngine
+            from devforge.spatial.voronoi_planner import VoronoiPlanner
+            from devforge.spatial.voronoi import VoronoiEngine
+            from devforge.spatial.room_intent_planner import RoomIntentPlanner
+            from devforge.spatial.lexicon import AssetLexicon
+
+            lexicon = AssetLexicon()
+            self._spatial_compiler = SpatialCompiler(lexicon)
+            self._layout_planner = LayoutPlanner(lexicon, self._spatial_compiler)
+            self._building_planner = BuildingPlanner(lexicon, self._spatial_compiler)
+            self._bsp_partitioner = BSPPartitioner(self._spatial_compiler)
+            self._scatter_planner = ScatterPlanner(lexicon)
+            self._scatter_engine = ScatterEngine(lexicon)
+            self._ssp_engine = SSPEngine(self._spatial_compiler)
+            self._ssp_planner = SSPPlanner(lexicon, self._ssp_engine)
+            self._wfc_planner = WFCPlanner()
+            self._wfc_engine = WFCEngine()
+            self._voronoi_planner = VoronoiPlanner()
+            self._voronoi_engine = VoronoiEngine()
+            self._room_intent_planner = RoomIntentPlanner(lexicon, self._ssp_engine)
             logger.info(
                 "pipeline.engine",
                 "Layout + building + scatter + SSP + WFC + Voronoi + RoomIntent planners initialised "
                 "(per-request routing ready)",
             )
-        else:
+        except ImportError as exc:
             logger.warn(
-                "pipeline.engine", "Spatial module not importable; layout/building/scatter/SSP planners unavailable"
+                "pipeline.engine",
+                f"Spatial module not importable ({exc}); layout/building/scatter/SSP planners unavailable",
             )
 
         self._compiler = ArchitectureCompiler()
@@ -645,7 +637,11 @@ class PipelineEngine:
         """
         results: List[GateResult] = []
 
-        if not _HAS_GOVERNANCE:
+        try:
+            from devforge.governance.gate1 import run_gate1
+            from devforge.governance.risk_scoring import compute_risk
+        except ImportError:
+            logger.warn("pipeline.engine", "Governance modules not importable; gates skipped")
             return results
 
         # ── Gate 1: Structural Contracts ──

@@ -19,6 +19,8 @@ Config is the single source of truth in `~/.config/forge-stack/stack.env`.
 - **[docs/INDEX.md](docs/INDEX.md)** — the documentation map and current state.
 - `docs/current/` — what's true now. `docs/archive/` — history.
 - `docs/decisions/` — why key choices were made (ADRs).
+- **[docs/current/CODE-ARCHITECTURE.md](docs/current/CODE-ARCHITECTURE.md)** — file-by-file map of the codebase.
+- **[docs/current/FORGE-STACK.md](docs/current/FORGE-STACK.md)** — the full stack reference.
 
 ## Running it
 The stack runs as user services (`forge-hub`, llama, the DevForge MCP). Open the
