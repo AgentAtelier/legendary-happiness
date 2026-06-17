@@ -34,4 +34,14 @@ from .test import Test
 
 # Import test modules to trigger @register decorators.
 # Each category gets its own module; add new ones here as they migrate.
-from .tests import probes, scenarios  # noqa: F401 — triggers registration
+from .tests import (  # noqa: F401 — triggers registration
+    building_gauntlet,
+    capability,
+    garden_gauntlet,
+    probes,
+    scenarios,
+    spatial_gauntlet,
+    ssp_gauntlet,
+    voronoi_gauntlet,
+    wfc_gauntlet,
+)
