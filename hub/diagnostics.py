@@ -34,8 +34,11 @@ import sys
 import time
 from pathlib import Path
 
-from bench import read_env, _devforge_call, _probe_scene_reset, _scene_paths
+from bench import _probe_scene_reset, _scene_paths
 from gauntlet import _compute_diversity
+
+from hub.forge_env import read_env
+from hub.mcp_client import devforge_call as _devforge_call
 
 DATA_DIR = Path(__file__).parent / "data" / "diagnostics"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -147,7 +150,7 @@ async def test_repeat_diversity(emit=print, runs: int = 10) -> dict:
     emit(f"  Jaccard distance:     {diversity['jaccard_distance']:.3f}  (0=identical, 1=all different)")
     emit(f"  Asset similarity:     {diversity['asset_similarity']:.3f}  (1=identical, 0=all different)")
     emit(f"  Distinct outputs:     {diversity['distinct_outputs']}/{diversity['total_runs']}")
-    emit(f"  Hypothesis:           ~0.0 jaccard, ~1 distinct (engine bottleneck)")
+    emit("  Hypothesis:           ~0.0 jaccard, ~1 distinct (engine bottleneck)")
 
     # Persist
     ts = time.strftime("%Y%m%d-%H%M%S")
@@ -289,7 +292,7 @@ async def test_model_ceiling(emit=print) -> dict:
     """
     emit("═══ Test 3: Model Ceiling ═══")
     emit(f"Prompt: '{CEILING_PROMPT}'")
-    emit(f"Planner: room (skip_cache=True)")
+    emit("Planner: room (skip_cache=True)")
     emit("")
     emit("  RUN THIS TWICE: once on 4B, once on 27B, then compare.")
     emit("")

@@ -30,30 +30,28 @@ import time
 import uuid
 from pathlib import Path
 
-import uvicorn
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import (
-    FileResponse,
-    JSONResponse,
-    PlainTextResponse,
-)
-
-from forge_env import read_env, write_env, plan_env, validate_env, ENVFILE
-from forge_models import GIB, vram_total, RESERVE
-from forge_ops import (
-    get_free_vram,
-    check_drift,
-    reconcile_model,
-    record_action,
-    get_action_history,
-)
-
 # Downstream modules imported here (not mid-file) — none import hub.py back,
 # so there is no actual circular dependency.  The old mid-file placement was
 # defensive but unnecessary.
 import bench  # noqa: E402
 import scenarios  # noqa: E402
 import shootout  # noqa: E402
+import uvicorn
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import (
+    FileResponse,
+    PlainTextResponse,
+)
+from forge_env import ENVFILE, read_env, validate_env, write_env
+from forge_models import GIB, RESERVE, vram_total
+from forge_ops import (
+    check_drift,
+    get_action_history,
+    get_free_vram,
+    reconcile_model,
+    record_action,
+)
+from mcp_client import godot_ai_call as _godot_ai_call
 
 HOME = Path.home()
 STACK = str(HOME / ".local/bin/stack")
@@ -118,22 +116,45 @@ async def origin_guard(request: Request, call_next):
 
 
 async def _run_capture(cmd: list[str], timeout: float = 20.0) -> tuple[int, str]:
-    """Run a short read-only command, return (exit_code, ansi-stripped output)."""
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        return proc.returncode or 0, ANSI.sub("", raw.decode(errors="replace"))
-    except asyncio.TimeoutError:
-        return 124, f"(timed out after {timeout}s: {' '.join(cmd)})"
-    except FileNotFoundError:
-        return 127, f"(not found: {cmd[0]})"
+    """Run a short read-only command — delegates to forge_ops.run_cmd_capture."""
+    from forge_ops import run_cmd_capture
+
+    return await run_cmd_capture(*cmd, timeout=timeout)
+
+
+async def _start_job(label: str, action_fn) -> str:
+    """Acquire the job lock and start a streaming task.
+
+    Used by every /api/* endpoint that runs a long-lived action.
+    Returns the job_id (12-char hex) for the SSE stream.
+    """
+    if _job_lock.locked():
+        raise HTTPException(409, "another command is still running")
+    await _job_lock.acquire()
+
+    job_id = uuid.uuid4().hex[:12]
+    job = {"lines": [f"$ {label}"], "done": False, "exit": None, "t": time.time(), "label": label}
+    _jobs[job_id] = job
+
+    async def _runner():
+        try:
+            await action_fn(job)
+        except Exception as e:
+            job["lines"].append(f"[hub] job failed: {e}")
+            job["exit"] = 1
+        finally:
+            job["done"] = True
+            _job_lock.release()
+            cutoff = time.time() - 600
+            for jid in [j for j, v in _jobs.items() if v["done"] and v["t"] < cutoff]:
+                _jobs.pop(jid, None)
+
+    asyncio.get_running_loop().create_task(_runner())
+    return job_id
 
 
 async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
+    """Legacy wrapper — kept for API compatibility; delegates to _start_job internals."""
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -145,9 +166,6 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
             job["lines"].append(ANSI.sub("", raw.decode(errors="replace")).rstrip("\n"))
         job["exit"] = await proc.wait()
 
-        # Phase 3c: MCP reconnect — if we restarted DevForge or godot-ai,
-        # Odysseus loses its MCP connections (only connects at startup).
-        # Restart the container so it reconnects.
         if job["exit"] == 0 and action in _RECONNECT_ACTIONS:
             job["lines"].append("[hub] DevForge/godot-ai restarted — restarting Odysseus to reconnect MCP...")
             recode, reout = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
@@ -155,13 +173,12 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
                 job["lines"].append("[hub] Odysseus restarted — MCP tools should reconnect")
             else:
                 job["lines"].append(f"[hub] Odysseus restart failed (exit {recode}): {reout[:200]}")
-    except Exception as e:  # surface, never hang the stream
+    except Exception as e:
         job["lines"].append(f"[hub] job failed: {e}")
         job["exit"] = 1
     finally:
         job["done"] = True
         _job_lock.release()
-        # prune old jobs
         cutoff = time.time() - 600
         for jid in [j for j, v in _jobs.items() if v["done"] and v["t"] < cutoff]:
             _jobs.pop(jid, None)
@@ -579,7 +596,7 @@ async def chain_health():
                         "model_alias", "?"
                     )
             except Exception:
-                logging.debug(f"chain_health: /props fetch failed, using defaults")
+                logging.debug("chain_health: /props fetch failed, using defaults")
                 pass  # /props fetch is best-effort; chain-health still works without it
 
         links.append(
@@ -742,7 +759,7 @@ async def chain_health():
     probe_root_fix = None
     if ga["alive"]:
         try:
-            h_result = await asyncio.wait_for(bench._godot_ai_call("scene_get_hierarchy", {"depth": 1}), timeout=5.0)
+            h_result = await asyncio.wait_for(_godot_ai_call("scene_get_hierarchy", {"depth": 1}), timeout=5.0)
             nodes = [n for n in h_result.get("nodes", []) if isinstance(n, dict)]
             roots = [n for n in nodes if n.get("path", "").count("/") == 1]
             if len(roots) != 1:
@@ -870,7 +887,7 @@ async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0
     offset = max(0, offset)
     try:
         result = await asyncio.wait_for(
-            bench._godot_ai_call(
+            _godot_ai_call(
                 "logs_read",
                 {
                     "source": source,
@@ -1316,7 +1333,6 @@ async def api_runs(kind: str = "", limit: int = 50):
     Returns [{kind, file, ts, model, config_hash, counts}, ...].
     Full detail is at /api/runs/{kind}/{ts} or the existing per-kind endpoints.
     """
-    import json as _json
 
     limit = max(1, min(limit, 200))
     kf = kind.strip() if kind else None
@@ -1337,7 +1353,6 @@ async def api_runs_compare(kind: str = "", a: str = "", b: str = ""):
 
     Returns {kind, runs: [{ts, model, config_hash, counts}]} with up to 2 runs.
     """
-    import json as _json
 
     kf = kind.strip()
     if not kf or kf not in _RUN_PATTERNS:
@@ -1390,7 +1405,7 @@ async def api_screenshot(source: str = "editor"):
       source: "editor" (viewport) | "game" (running project)
     """
     try:
-        result = await bench._godot_ai_call("editor_screenshot", {"source": source})
+        result = await _godot_ai_call("editor_screenshot", {"source": source})
         # godot-ai returns {"image": "base64...", "format": "png"}
         img_b64 = result.get("image", "") if isinstance(result, dict) else ""
         fmt = result.get("format", "png") if isinstance(result, dict) else "png"

@@ -16,120 +16,31 @@ from __future__ import annotations
 import asyncio
 import time
 from pathlib import Path
-from typing import Callable, Awaitable, Any
+from typing import Callable
 
 import httpx
 
+from hub.forge_env import read_env as _read_env
+from hub.mcp_client import (
+    apply_spec as _devforge_call,
+    devforge_call as _devforge_raw_call,
+    godot_ai_call as _godot_ai_call,
+    read_artifact as _read_artifact,
+)
+
+from .artifact import Artifact
 from .context import Context
 from .result import Result, Status
-from .artifact import Artifact
-from .catalog import get_suites
 
 HOME = Path.home()
 ENVFILE = HOME / ".config/forge-stack/stack.env"
 
 
-def _read_env() -> dict[str, str]:
-    env: dict[str, str] = {}
-    try:
-        for line in ENVFILE.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, _, v = line.partition("=")
-                env[k.strip()] = v.strip().strip('"').strip("'")
-    except OSError:
-        pass
-    return env
-
-
 async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
-    )
-    try:
-        raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
-        return 124, f"timeout after {timeout}s"
-    return proc.returncode or 0, raw.decode(errors="replace")
+    """Run a short command; returns (exit_code, stdout)."""
+    from hub.forge_ops import run_cmd_capture
 
-
-# ── MCP helpers (wired into Context) ────────────────────────────
-
-
-async def _godot_ai_call(tool: str, args: dict | None = None) -> Any:
-    from mcp.client.streamable_http import streamablehttp_client
-    from mcp import ClientSession
-
-    async with streamablehttp_client("http://127.0.0.1:8000/mcp") as (r, w, _):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            if tool == "__list__":
-                return await s.list_tools()
-            res = await s.call_tool(tool, args or {})
-            return __import__("json").loads(res.content[0].text)
-
-
-async def _devforge_call(
-    prompt: str,
-    planner: str = "",
-    temperature: float = 0.2,
-    skip_cache: bool = False,
-    timeout_s: int = 300,
-) -> dict:
-    from datetime import timedelta
-    from mcp.client.sse import sse_client
-    from mcp import ClientSession
-
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            args: dict = {"prompt": prompt, "temperature": temperature}
-            if planner:
-                args["planner"] = planner
-            if skip_cache:
-                args["skip_cache"] = True
-            res = await s.call_tool(
-                "apply_spec",
-                args,
-                read_timeout_seconds=timedelta(seconds=timeout_s),
-            )
-            return __import__("json").loads(res.content[0].text)
-
-
-async def _read_artifact(artifact_id: str, timeout_s: int = 30) -> dict:
-    from datetime import timedelta
-    from mcp.client.sse import sse_client
-    from mcp import ClientSession
-
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            res = await s.call_tool(
-                "read_artifact",
-                {"artifact_id": artifact_id},
-                read_timeout_seconds=timedelta(seconds=timeout_s),
-            )
-            return __import__("json").loads(res.content[0].text)
-
-
-async def _devforge_raw_call(tool: str, args: dict, timeout_s: int = 60) -> dict:
-    """Call any DevForge MCP tool generically."""
-    from datetime import timedelta
-    from mcp.client.sse import sse_client
-    from mcp import ClientSession
-
-    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
-        async with ClientSession(r, w) as s:
-            await s.initialize()
-            res = await s.call_tool(
-                tool,
-                args,
-                read_timeout_seconds=timedelta(seconds=timeout_s),
-            )
-            return __import__("json").loads(res.content[0].text)
+    return await run_cmd_capture(*cmd)
 
 
 # ── Scene helpers ───────────────────────────────────────────────
@@ -150,7 +61,6 @@ async def _scene_reset() -> None:
     forces a real disk reload — the "bounce trick" from bench.py.
     """
     import uuid
-    import json as _json
 
     # Fresh UIDs to bust the stale-tab cache
     bounce_uid = f"uid://cbounce{uuid.uuid4().hex[:12]}"
@@ -336,7 +246,7 @@ class Runner:
             self._log("No tests to run.")
             return Artifact(kind="single", suite=suite or "custom", models=models)
 
-        self._log(f"═══ Forge Testbench ═══")
+        self._log("═══ Forge Testbench ═══")
         self._log(f"Suite: {suite or 'custom'} | Models: {len(models)} | Tests: {len(test_classes)} | Repeat: {repeat}")
         self._log(f"Models: {', '.join(models)}")
         self._log(f"Tests: {', '.join(t.id for t in test_classes)}")
@@ -509,7 +419,7 @@ class Runner:
 
         # Persist
         out_dir = artifact.save()
-        self._log(f"\n═══ Complete ═══")
+        self._log("\n═══ Complete ═══")
         self._log(f"Results → {out_dir}/artifact.json")
 
         # Print summary

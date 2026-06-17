@@ -29,9 +29,10 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import httpx
+from forge_env import ENVFILE, read_env, write_env
+from forge_models import GIB, RESERVE, find, plan_apply, vram_total
 
-from forge_env import read_env, write_env, ENVFILE
-from forge_models import plan_apply, find, GIB, vram_total, RESERVE
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 LLAMA_SERVICE = "forge-llama.service"
 # display/desktop headroom kept free of the model (imported from forge_models)
@@ -173,16 +174,25 @@ def get_action_history(limit: int = 50) -> list[dict]:
 # ── helpers ──────────────────────────────────────────────────────
 
 
-async def run_cmd_capture(*cmd: str) -> tuple[int, str]:
-    """Run a short command, return (exit_code, stdout)."""
+async def run_cmd_capture(*cmd: str, timeout: float = 20.0) -> tuple[int, str]:
+    """Run a short command; returns (exit_code, ansi-stripped stdout).
+
+    Merges stderr into stdout so callers see the full output.  ANSI
+    colour codes are stripped (important for journalctl/systemctl output).
+    Accepts an optional *timeout* (seconds).
+    """
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
-        stdout, _ = await proc.communicate()
-        return proc.returncode or 0, stdout.decode(errors="replace")
+        try:
+            raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            return 124, f"timeout after {timeout:.0f}s: {' '.join(cmd)}"
+        return proc.returncode or 0, ANSI_RE.sub("", raw.decode(errors="replace"))
     except FileNotFoundError:
         return 127, f"command not found: {cmd[0] if cmd else '?'}"
 
