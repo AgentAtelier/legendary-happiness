@@ -61,6 +61,7 @@ DEFAULT_SUITES: dict[str, list[str]] = {
     "ssp-v1": [],
     "wfc-v1": [],
     "voronoi-v1": [],
+    "stress-v1": [],  # ACT I–V full-system stress tests
 }
 
 

@@ -43,6 +43,7 @@ from .tests import (  # noqa: F401 — triggers registration
     scenarios,
     spatial_gauntlet,
     ssp_gauntlet,
+    stress_v1,
     voronoi_gauntlet,
     wfc_gauntlet,
 )
