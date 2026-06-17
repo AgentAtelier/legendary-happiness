@@ -52,6 +52,15 @@ DEFAULT_SUITES: dict[str, list[str]] = {
         "probe.devforge.completeness",
         "probe.devforge.validate",
     ],
+    "scenarios-v1": [],  # populated from scenario tests
+    "diagnostics-v1": [],  # populated from variety tests
+    "capability-v1": [],
+    "spatial-v1": [],
+    "building-v1": [],
+    "garden-v1": [],
+    "ssp-v1": [],
+    "wfc-v1": [],
+    "voronoi-v1": [],
 }
 
 
@@ -62,11 +71,15 @@ def register(test_cls: type[Test]) -> type[Test]:
         @register
         class ProbeLlamaThroughput(Test):
             ...
+
+    Auto-adds the test to every suite listed in the class's suites attribute
+    that also appears in DEFAULT_SUITES.  This means suite definitions
+    declared on the Test class flow into get_suites() automatically.
     """
     CATALOG.append(test_cls)
-    # Auto-add to "everything" suite
-    if test_cls.id not in DEFAULT_SUITES["everything"]:
-        DEFAULT_SUITES["everything"].append(test_cls.id)
+    for suite in test_cls.suites:
+        if suite in DEFAULT_SUITES and test_cls.id not in DEFAULT_SUITES[suite]:
+            DEFAULT_SUITES[suite].append(test_cls.id)
     return test_cls
 
 

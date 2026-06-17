@@ -37,6 +37,7 @@ from .test import Test
 from .tests import (  # noqa: F401 — triggers registration
     building_gauntlet,
     capability,
+    diagnostics,
     garden_gauntlet,
     probes,
     scenarios,
