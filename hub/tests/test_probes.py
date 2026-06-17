@@ -1,5 +1,9 @@
 """Tests for the chain-probe framework in bench.py — verdict model, registry
 integrity, and the runner's roll-up/persistence. No live stack needed.
+
+⚠ DEPRECATED (Guide 1 Category G, June 2026): bench.py has been removed after
+all probe tests migrated to forge_testbench/tests/probes.py.
+These tests will fail — import `bench` no longer resolves.
 """
 
 import json

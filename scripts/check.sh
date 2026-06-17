@@ -50,7 +50,7 @@ while IFS= read -r -d '' f; do
     case "$rel" in
         */tests/*|*/test_*|*/.venv/*) continue ;;
         hub/static/*|engine/experiments/*|engine/docs/*|engine/integration_tests/*) continue ;;
-        hub/bench.py|hub/shootout.py|hub/scenarios.py|hub/gauntlet.py|hub/multi_model_bench.py|hub/comprehensive_bench.py|hub/harness.py) continue ;;
+        hub/shootout.py|hub/multi_model_bench.py|hub/comprehensive_bench.py|hub/harness.py) continue ;;
     esac
     skip=0
     for g in "${GRANDFATHERED[@]}"; do [ "$rel" = "$g" ] && skip=1 && break; done

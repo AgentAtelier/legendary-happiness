@@ -1040,7 +1040,9 @@ class StressA18Concept(Test):
     id = "stress.a18_concept"
     category = "stress"
     title = "Act V.18 — Abstract concept"
-    description = "'Build the concept of regret' and 'a kitchen made of sound' — degenerate/empty descriptors, must not crash."
+    description = (
+        "'Build the concept of regret' and 'a kitchen made of sound' — degenerate/empty descriptors, must not crash."
+    )
     suites = ["everything", "stress-v1"]
     needs_reset = True
     expect_break = True

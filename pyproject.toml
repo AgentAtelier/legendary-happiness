@@ -3,10 +3,7 @@ line-length = 120
 target-version = "py312"
 # Skip code that is dying (legacy runners, per ADR-005), throwaway, or archived.
 extend-exclude = [
-    "hub/bench.py",
     "hub/shootout.py",
-    "hub/scenarios.py",
-    "hub/gauntlet.py",
     "hub/multi_model_bench.py",
     "hub/comprehensive_bench.py",
     "hub/harness.py",

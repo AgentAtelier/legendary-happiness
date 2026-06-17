@@ -23,18 +23,62 @@ import traceback
 from pathlib import Path
 from typing import Any, Callable
 
-# Reuse MCP plumbing from scenarios.py
-from scenarios import (
-    _godot_ai_call,
-    _devforge_call,
-    _get_scene_snapshot,
-    DATA_DIR,
-)
+# ── DEPRECATION NOTICE ──────────────────────────────────────────────
+# Guide 1 Category G (teardown, June 2026): scenarios.py was removed.
+# MCP helpers that shootout.py depended on are now defined locally below.
+# The scenario suite migrated to forge_testbench/tests/scenarios.py.
+# ────────────────────────────────────────────────────────────────────
 
 HOME = Path.home()
 STACK_ENV = HOME / ".config/forge-stack/stack.env"
+DATA_DIR = Path(__file__).parent / "data"
 SHOOTOUT_DIR = DATA_DIR / "shootouts"
 SHOOTOUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ── MCP helpers (formerly in scenarios.py) ──────────────────────────
+
+
+async def _godot_ai_call(tool: str, args: dict | None = None) -> Any:
+    from mcp import ClientSession
+    from mcp.client.streamable_http import streamable_http_client
+
+    async with streamable_http_client("http://127.0.0.1:8000/mcp") as (r, w, _):
+        async with ClientSession(r, w) as s:
+            await s.initialize()
+            if tool == "__list__":
+                return await s.list_tools()
+            res = await s.call_tool(tool, args or {})
+            return json.loads(res.content[0].text)
+
+
+async def _devforge_call(tool: str, args: dict | None = None, timeout_s: int = 240) -> Any:
+    from datetime import timedelta
+
+    from mcp import ClientSession
+    from mcp.client.sse import sse_client
+
+    async with sse_client("http://127.0.0.1:8001/sse", timeout=10, sse_read_timeout=timeout_s + 30) as (r, w):
+        async with ClientSession(r, w) as s:
+            await s.initialize()
+            if tool == "__list__":
+                return await s.list_tools()
+            res = await s.call_tool(tool, args or {}, read_timeout_seconds=timedelta(seconds=timeout_s))
+            return json.loads(res.content[0].text)
+
+
+async def _get_scene_snapshot() -> dict:
+    """Get the current scene hierarchy as a flat path → {name, type} map."""
+    h = await _godot_ai_call("scene_get_hierarchy", {"depth": 10})
+    nodes = h.get("nodes", [])
+    snapshot: dict[str, dict] = {}
+    for n in nodes:
+        if isinstance(n, dict) and n.get("path"):
+            snapshot[n["path"]] = {
+                "name": n.get("name", ""),
+                "type": n.get("type", ""),
+            }
+    return snapshot
 
 
 # ── Planner mode switching (for --all-planners A/B comparison) ──
@@ -311,7 +355,7 @@ async def _resolve_models(model_filter: str | None = None) -> list[dict]:
 
     If model_filter is provided, only return models matching that alias/file fragment.
     """
-    from forge_models import scan as _scan, GIB, vram_total, RESERVE
+    from forge_models import GIB, RESERVE, scan as _scan, vram_total
     from forge_ops import get_free_vram
 
     all_models = _scan()
@@ -370,10 +414,10 @@ async def _swap_model(alias: str, emit: Callable[[str], None]) -> bool:
         emit(f"  swap FAILED (exit={exit_code})")
         return False
 
-    emit(f"  waiting for llama to be healthy...")
+    emit("  waiting for llama to be healthy...")
     healthy = await _wait_for_healthy()
     if not healthy:
-        emit(f"  llama did not become healthy within timeout")
+        emit("  llama did not become healthy within timeout")
         return False
 
     emit(f"  llama healthy, model={alias}")
@@ -814,7 +858,7 @@ def _attribute_failures(
             ):
                 stage, reason = "compile", f"planner had {coin} but compiler produced no add_node for it"
             else:
-                stage, reason = "execute", f"node was compiled but may have failed to execute"
+                stage, reason = "execute", "node was compiled but may have failed to execute"
 
         elif assertion_id == "player_type":
             e = delta_entities.get("Player", {})
@@ -950,18 +994,18 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
 
     try:
         if swap:
-            _log_write(f"  swap: starting...")
+            _log_write("  swap: starting...")
             if not await _swap_model(alias, emit):
-                _log_write(f"  swap: FAILED — model never tested")
+                _log_write("  swap: FAILED — model never tested")
                 model_result["errors"].append("swap failed — model was not tested")
                 # 'untested' is NOT 'scored 0' — exclude it from rankings so a
                 # harness/VRAM swap failure can't masquerade as a model that
                 # built nothing.
                 model_result["status"] = "untested"
                 return model_result
-            _log_write(f"  swap: OK")
+            _log_write("  swap: OK")
 
-        _log_write(f"  reset: pristine shootout scene")
+        _log_write("  reset: pristine shootout scene")
         await _reset_scene()
 
         # Capture scene before
@@ -974,7 +1018,7 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
 
         # apply_spec
         emit("[shootout:phase] apply_spec")
-        emit(f"  applying spec...")
+        emit("  applying spec...")
         _log_write(f"  apply_spec: sending prompt ({len(SHOOTOUT_PROMPT)} chars)...")
         try:
             raw = await _with_heartbeat(
@@ -1008,7 +1052,7 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
                     _log_error(e2, "read_artifact")
                     artifact = raw
             else:
-                _log_write(f"  apply_spec: NO artifact_id in response — model may have returned no plan")
+                _log_write("  apply_spec: NO artifact_id in response — model may have returned no plan")
         except Exception as e:
             _log_error(e, "apply_spec")
             model_result["errors"].append(f"apply_spec failed: {type(e).__name__}: {e}")
@@ -1041,7 +1085,7 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
 
         # static assertions
         emit("[shootout:phase] static_assertions")
-        emit(f"  static assertions...")
+        emit("  static assertions...")
         _log_write(f"  static: running {23} checks...")
         static_results = await _run_static_assertions(artifact)
         model_result["static_assertions"] = static_results
@@ -1058,8 +1102,8 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
 
         # runtime assertions
         emit("[shootout:phase] runtime_assertions")
-        emit(f"  runtime assertions...")
-        _log_write(f"  runtime: running checks...")
+        emit("  runtime assertions...")
+        _log_write("  runtime: running checks...")
         runtime_results = await _run_runtime_assertions(emit, files=artifact.get("files", []))
         model_result["runtime_assertions"] = runtime_results
         runtime_pass = sum(1 for a in runtime_results if a["status"] == "pass")
@@ -1090,7 +1134,7 @@ async def _test_one_model(m: dict, emit: Callable[[str], None], swap: bool = Tru
         model_result["status"] = "error"
 
     finally:
-        _log_write(f"  reset: restoring pristine shootout scene")
+        _log_write("  reset: restoring pristine shootout scene")
         await _reset_scene()
         model_result["ms_total"] = int((time.time() - t_model) * 1000)
         _log_write(
@@ -1120,10 +1164,6 @@ async def run_shootout(
 
     Returns a composite scorecard with per-model results + rankings.
     """
-
-    def log(msg: str) -> None:
-        if emit:
-            emit(msg)
 
     ts = time.strftime("%Y%m%d-%H%M%S")
     _log_open(ts)
@@ -1220,7 +1260,7 @@ async def run_shootout(
         for pmode in planner_modes:
             swap_needed = needs_swap and (pmode == "arch")
             if pmode == "ops":
-                log(f"  ── switching to ops planner ──")
+                log("  ── switching to ops planner ──")
                 _set_planner_mode("ops")
                 if not await _restart_devforge(emit):
                     log(f"  [shootout:error] DevForge restart failed for {pmode} planner")
@@ -1236,7 +1276,7 @@ async def run_shootout(
                     results.append(r)
                     _persist(done=False)
                     continue
-                log(f"  ops planner active — running test")
+                log("  ops planner active — running test")
 
             r = await _test_one_model(m, emit, swap=swap_needed, planner_mode=pmode)
             results.append(r)
@@ -1247,7 +1287,7 @@ async def run_shootout(
         if all_planners:
             _set_planner_mode("")
             await _restart_devforge(emit)
-            log(f"  restored arch planner default")
+            log("  restored arch planner default")
 
     # Leave the editor on the user's real game scene, not our throwaway.
     try:

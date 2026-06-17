@@ -87,12 +87,11 @@ Tests: `cd hub && .venv/bin/python -m pytest tests/ -v`
 | `forge_models.py` | GGUF metadata, VRAM fit, registry, plan_apply, scan cache (2s TTL) |
 | `forge_ops.py` | Transactional swap with reclaim, drift, reconcile, action log, failure classifier |
 | `shootout.py` | Shootout runner: full apply_spec pipeline test + preflight check + file-based logging |
-| `bench.py` | 21-layer chain test bench |
-| `scenarios.py` | Scenario suite + tool-call probes for model scoring (Stream A) |
 | `calibrate_vram.py` | Standalone VRAM calibration — loads each model × ctx, records peak VRAM |
 | `static/index.html` | Vanilla JS UI: health sidebar, swap progress, ambiguity picker, scorecards |
 | `tests/` | pytest — 121 unit + 11 live-integration tests |
 | `data/actions/` | Durable JSONL action records (one file per day) |
 | `data/shootouts/` | Shootout scorecards + companion `.log` files |
-| `data/bench/` | Bench run history + saved bundles |
-| `data/scorecards/` | Model scorecards from scenario suite runs |
+| `data/bench/` | (Legacy — pre-teardown bench run data, kept for reference) |
+| `data/scorecards/` | (Legacy — pre-teardown scenario scorecards, kept for reference) |
+| `forge_testbench/` | Test suite plug-ins — probes, scenarios, gauntlet, diagnostics, stress (migrated from legacy runners, Guide 1) |

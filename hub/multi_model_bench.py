@@ -2,6 +2,13 @@
 """
 Multi-Model Comprehensive Benchmark — runs ALL tests across ALL 4 Qwen models.
 
+⚠ DEPRECATED (Guide 1 Category G, June 2026): The legacy runners (bench.py,
+scenarios.py, gauntlet.py, diagnostics.py) have been removed after all test
+categories migrated to forge_testbench/. This script still imports gauntlet and
+calls bench.py + diagnostics.py as subprocesses — it will fail.
+
+If you need multi-model benchmarking, use the forge_testbench runner instead.
+
 Strategy:
   1. Run unit tests ONCE (shared across all models — they don't depend on which
      model is loaded)
