@@ -1,140 +1,143 @@
 # Layer 3 Survey — Code Health & Maintainability (for CLI AIs)
 
-**Purpose:** get independent, concrete recommendations for making this codebase
-easier to **review** (by a non-programmer owner) and easier to **navigate** (by AI
-assistants). Three prompts, each run through up to four CLI AIs. Each CLI AI can
-read the real repository, so the advice should be specific to *this* code — and
-each writes its findings into its **own report file** (CLI agents are terse in
-chat; the substance must land in a file).
+**Purpose:** independent, concrete recommendations for making this codebase easier
+to **review** (by a non-programmer owner) and easier to **navigate** (by AI
+assistants). One self-contained prompt block, run through up to four CLI AIs. Each
+AI reads the real repo and writes its findings into its **own** report file.
 
 ---
 
-## ⛔ READ-ONLY ON THE CODE — ONE PERMITTED WRITE: YOUR REPORT FILE
+## How to run this (the one thing YOU do)
 
-> Paste this banner at the TOP of every prompt.
->
-> **This is a READ-ONLY review of the code. The ONLY thing you may write is your
-> own report file.**
-> - Do **not** edit, create, move, or delete any file in the project **except** the
->   single response file described under "Where to write your answer" below.
-> - Do **not** run the application or any build/test command. Do **not** run any
->   state-changing `git` command (no add / commit / checkout / push / restore).
->   Do **not** install packages or change configuration.
-> - You **may read any file.** You **must** put your findings **in your report
->   file, not in chat** — your chat reply can be a single line pointing to the
->   file. Be thorough in the file; sparse chat output is not collected.
-> - Treat all code as a museum exhibit behind glass. The report file is the only
->   thing you touch.
+1. Open the **PROMPT BLOCK** below.
+2. Find the single line `OUTPUT FILE: docs/reviews/layer3/response-codex.md` and
+   change `codex` to the AI you're about to use — `gemini`, `claude`, `cursor`,
+   etc. **You set the filename; never rely on the AI to name its own file.** Give
+   each AI a *different* name.
+3. Paste the whole block into that CLI AI. It will read the repo, write that one
+   file, and reply with a single line (the path).
+4. Repeat for each AI, changing the filename each time.
 
-## Where to write your answer
-
-> Copy the template `docs/reviews/layer3/_TEMPLATE.md` to a new file named with
-> **your** name:
->
-> ```
-> docs/reviews/layer3/RESPONSE-<your-name>.md
-> ```
-> e.g. `RESPONSE-codex.md`, `RESPONSE-gemini.md`, `RESPONSE-claude.md`,
-> `RESPONSE-cursor.md`. Fill in only the prompts you were asked. Reference real
-> code as `path/to/file.py:line`. **This file is the only file you may create or
-> write.**
-
-## Shared context (paste under the banner)
-
-> This repository is a local, self-hosted toolchain that turns natural-language
-> prompts into Godot game scenes. Roughly: a **`hub/`** (FastAPI ops panel) that
-> orchestrates everything; an **`engine/`** (the "DevForge" generation engine)
-> that the hub talks to over an **MCP / subprocess boundary** (they do *not*
-> import each other); a local LLM server (llama.cpp); and a test system (an older
-> set of runners in `hub/` plus a newer `hub/forge_testbench/`). The owner is a
-> **non-programmer** who directs AI assistants to write all the code; the owner
-> reviews changes but cannot read code deeply. **Maintainability and reviewability
-> by that owner are first-class goals**, not afterthoughts.
->
-> Important: several large files in `hub/` (`bench.py`, `shootout.py`,
-> `scenarios.py`, `gauntlet.py`, `multi_model_bench.py`, `comprehensive_bench.py`)
-> are **legacy test runners scheduled for deletion** in an in-progress migration
-> to `hub/forge_testbench/`. Do **not** recommend investing in them.
->
-> The owner's stated wants: keep Python files short; use functions to reduce
-> duplication; adopt a **few loose conventions** (not a rigid cage); settle on
-> **one architecture pattern** and stay close to it; a naming convention. The
-> spirit is **an environment/system that lowers review load and eases navigation
-> — not a straitjacket.**
+That's it. The block is self-contained — the report structure is inlined, so the
+AI never needs to open this folder or any template, which is what stops them from
+overwriting each other's reports.
 
 ---
 
-## Prompt 1 — One architecture + splitting the god files
+## PROMPT BLOCK — paste everything between the lines
 
-> Read this repository (read-only) and recommend **one simple, coherent
-> architecture / layering** that fits the project *as it actually is* (hub
-> orchestrator, engine behind an MCP boundary, a test system, supporting scripts).
-> Describe it in a few sentences a non-programmer can hold in their head, and show
-> where the current code already follows it versus where it muddies it.
->
-> Then tackle the **god files**. The largest long-lived ones are
-> `engine/devforge/platform/mcp_server.py` (~2150 lines), `hub/hub.py` (~1940),
-> `engine/devforge/compilation/pipeline/engine.py` (~1440), and
-> `engine/devforge/execution/godot_ai_mcp.py` (~1080). For each, propose
-> concretely **how to split it along the architecture's natural seams** — what the
-> resulting modules would be, each module's single responsibility, and a **safe
-> order** to do the splits in (lowest risk first). Skip the legacy test runners
-> noted above.
->
-> Optimize for the smallest set of boundaries that buys the most clarity for a
-> non-coder owner directing AI. What am I not asking that I should be?
->
-> **→ Write your full answer into the "Prompt 1" section of
-> `docs/reviews/layer3/RESPONSE-<your-name>.md`. Keep your chat reply to one line.**
+```
+============================ COPY FROM HERE ============================
+READ-ONLY CODE REVIEW — ONE PERMITTED WRITE.
 
-## Prompt 2 — A short conventions guide (files, functions, naming, the few rules)
+You are reviewing a code repository. This task is READ-ONLY. The ONLY change you
+may make anywhere is writing your report to ONE file:
 
-> Read this repository (read-only) and propose a **SHORT conventions guide — a
-> handful of rules, not a style bible** — tuned for code that is reviewed by a
-> non-programmer and maintained by AI assistants. Cover:
-> 1. **File & function length:** a sensible maximum, and *where the code already
->    exceeds it* (name files/functions with line counts).
-> 2. **Duplication → functions:** the most valuable repeated logic to collapse
->    into shared helpers — point at **real examples** in the code.
-> 3. **Naming convention** for files, functions, and modules — and where current
->    names mislead or are fossils (call them out specifically).
-> 4. **The minimal set of "loose rules"** actually worth standardizing.
->
-> For each rule give a **one-line rationale**. The goal is the *fewest* rules that
-> most reduce cognitive load — explicitly **not** a rigid cage; if a rule wouldn't
-> earn its keep for a solo non-coder project, leave it out. What am I not asking
-> that I should be?
->
-> **→ Write your full answer into the "Prompt 2" section of
-> `docs/reviews/layer3/RESPONSE-<your-name>.md`. Keep your chat reply to one line.**
+    OUTPUT FILE:  docs/reviews/layer3/response-codex.md
 
-## Prompt 3 — The review & navigation "environment" (system, not willpower)
+Create that exact file and write your report into it. Hard rules:
+- Do NOT edit, create, move, rename, or delete ANY file except the OUTPUT FILE.
+- Do NOT open, read, or list any OTHER file inside docs/reviews/. Other
+  reviewers' reports live there; they are OFF-LIMITS — never touch them. You do
+  not need anything from that folder.
+- Do NOT run the app or any build/test command. Do NOT run any state-changing
+  git command (no add/commit/checkout/restore/push). Do NOT install anything.
+- You MAY read any source/code/config file elsewhere in the repo. Put ALL your
+  findings IN THE OUTPUT FILE, not in chat. Your chat reply must be a single
+  line: the path you wrote. Sparse chat output is not collected — be thorough in
+  the file.
 
-> Read this repository (read-only). The owner is a non-programmer who reviews
-> AI-written changes and needs the codebase to be **(1) easy to review** and
-> **(2) easy for AI assistants to navigate**. Recommend the **lightweight system**
-> — not discipline, not a cage — that delivers this. Consider:
-> - **Structural signals** that make a file's purpose obvious at a glance (module
->   docstrings, consistent entry points, a top-level architecture map / index,
->   predictable file placement).
-> - **Reviewability:** what makes a diff understandable to someone who can't read
->   code deeply (commit size/shape, what to summarize, what to surface).
-> - **Automated guardrails** that *enforce the few conventions so humans don't have
->   to police them* — e.g., a formatter, a linter, simple checks — chosen for the
->   **most relief per unit of setup and ongoing burden** (this owner can't babysit
->   tooling).
->
-> Prioritize concretely and point at real files. Recommend only what a non-coder,
-> AI-directed project will actually sustain. What am I not asking that I should be?
->
-> **→ Write your full answer into the "Prompt 3" section of
-> `docs/reviews/layer3/RESPONSE-<your-name>.md`. Keep your chat reply to one line.**
+CONTEXT:
+This repository is a local, self-hosted toolchain that turns natural-language
+prompts into Godot game scenes. Roughly: a `hub/` (FastAPI ops panel) that
+orchestrates everything; an `engine/` (the "DevForge" generation engine) that the
+hub talks to over an MCP / subprocess boundary (they do NOT import each other); a
+local LLM server (llama.cpp); and a test system (older runners in `hub/` plus a
+newer `hub/forge_testbench/`). The owner is a NON-PROGRAMMER who directs AI
+assistants to write all the code and reviews changes but cannot read code deeply.
+Maintainability and reviewability by that owner are first-class goals.
+
+NOTE: several large files in `hub/` (`bench.py`, `shootout.py`, `scenarios.py`,
+`gauntlet.py`, `multi_model_bench.py`, `comprehensive_bench.py`) are LEGACY test
+runners scheduled for deletion in an in-progress migration to
+`hub/forge_testbench/`. Do NOT recommend investing in them.
+
+The owner wants: short Python files; functions to cut duplication; a FEW loose
+conventions (not a rigid cage); ONE architecture pattern to stay close to; a
+naming convention. The spirit is an environment that lowers review load and eases
+navigation — NOT a straitjacket. Recommend only what a solo, non-coder,
+AI-directed project will actually sustain; flag over-engineering.
+
+DO ALL THREE TASKS. Reference real code as path/to/file.py:line.
+
+TASK 1 — One architecture + god-file splits.
+Recommend ONE simple, coherent architecture/layering that fits the project AS IT
+ACTUALLY IS (hub orchestrator, engine behind an MCP boundary, a test system,
+supporting scripts), described in a few sentences a non-programmer can hold in
+their head. Show where the code follows it vs. muddies it. Then, for each of the
+long-lived god files — engine/devforge/platform/mcp_server.py (~2150 lines),
+hub/hub.py (~1940), engine/devforge/compilation/pipeline/engine.py (~1440),
+engine/devforge/execution/godot_ai_mcp.py (~1080) — propose concretely how to
+split it along the architecture's seams: the resulting modules, each module's
+single responsibility, and a SAFE order (lowest risk first). Skip the legacy
+runners above. End with: what am I not asking that I should be?
+
+TASK 2 — A short conventions guide.
+Propose a SHORT conventions guide (a handful of rules, not a style bible) for code
+reviewed by a non-programmer and maintained by AI. Cover: (a) sensible file &
+function length limits, plus where the code already exceeds them (name
+files/functions with line counts); (b) the most valuable duplication to collapse
+into shared functions (point at real examples, path:line); (c) a naming
+convention for files/functions/modules, and any misleading or fossil names to
+fix; (d) the minimal set of "loose rules" worth standardizing. One-line rationale
+per rule; drop any rule that wouldn't earn its keep for a solo non-coder project.
+End with: what am I not asking that I should be?
+
+TASK 3 — The review & navigation "environment" (system, not willpower).
+Recommend the lightweight SYSTEM that makes the codebase (1) easy to review for a
+non-coder and (2) easy for AI assistants to navigate. Consider: structural
+signals that make a file's purpose obvious at a glance (module docstrings,
+consistent entry points, a top-level architecture map/index, predictable file
+placement); what makes a diff understandable to someone who can't read code
+deeply; and automated guardrails (formatter, linter, simple checks) that ENFORCE
+the few conventions so humans don't police them — chosen for the most relief per
+unit of setup and ongoing burden (this owner can't babysit tooling). Point at
+real files. End with: what am I not asking that I should be?
+
+WRITE THE OUTPUT FILE WITH EXACTLY THIS STRUCTURE:
+
+    # Layer-3 Code-Health Review — <name of the AI you are>
+    (date, and which tasks you answered)
+
+    ## Task 1 — Architecture + god-file splits
+    ### Recommended architecture
+    ### Where the code follows it vs. muddies it
+    ### God-file split plan (per file: target modules, responsibility, risk order)
+    ### What you're not asking that you should be
+
+    ## Task 2 — Conventions guide
+    ### File & function length (+ offenders with line counts)
+    ### Duplication to collapse (real path:line examples)
+    ### Naming convention (+ fossil names to fix)
+    ### Minimal loose rules (each + one-line rationale)
+    ### What you're not asking that you should be
+
+    ## Task 3 — Review & navigation environment
+    ### Structural signals
+    ### Reviewable diffs for a non-coder
+    ### Automated guardrails (most relief per setup)
+    ### What you're not asking that you should be
+
+    ## Cross-cutting / anything else
+
+After writing the file, reply in chat with ONLY the file path. Nothing else.
+============================= TO HERE ==================================
+```
 
 ---
 
 ## How to use the answers
-Each reviewer's file lands in `docs/reviews/layer3/`. The responses will be
-reconciled against the real codebase (some CLI AIs will over-engineer for a solo
-project), and the good parts folded into a short conventions doc + an architecture
-ADR + a god-file split plan — handed to the implementing AI, owner-approved before
-any code moves.
+Each reviewer's file lands in `docs/reviews/layer3/`. The responses get reconciled
+against the real codebase (some CLI AIs over-engineer for a solo project), and the
+good parts folded into a short conventions doc + an architecture ADR + a god-file
+split plan — handed to the implementing AI, owner-approved before any code moves.

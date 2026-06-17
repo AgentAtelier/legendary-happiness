@@ -1,18 +1,18 @@
 # Layer 3 — Code-Health Review responses
 
-Raw external input from CLI AIs answering the prompts in
+Raw external input from CLI AIs answering the prompt block in
 `docs/current/LAYER3-CODE-SURVEY-PROMPTS.md`.
 
-Each reviewer writes **one** file here:
+Each reviewer writes exactly **one** file here, named by **you** (not the AI)
+before you paste the prompt:
 
 ```
-RESPONSE-<name>.md      e.g. RESPONSE-codex.md, RESPONSE-gemini.md,
-                             RESPONSE-claude.md, RESPONSE-cursor.md
+response-codex.md   response-gemini.md   response-claude.md   response-cursor.md
 ```
 
-Copy `_TEMPLATE.md` to that filename and fill in only the prompts you answered.
-This is the **only** file a reviewer is allowed to write — everything else in the
-repository is read-only for this exercise.
+The prompt is self-contained: the report structure is inlined, and the AI is told
+to write only its one assigned file and never to open or modify anything else in
+this folder. That keeps each AI from clobbering the previous one's report.
 
 These are raw notes, not decisions. They get reconciled against the real codebase
 and distilled into a conventions doc + an architecture ADR + a god-file split
