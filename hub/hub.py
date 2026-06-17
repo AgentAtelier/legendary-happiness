@@ -889,22 +889,28 @@ async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0
 
 @app.get("/api/screenshot")
 async def api_screenshot(source: str = "editor"):
-    """Capture a screenshot of the Godot editor viewport or running game.
+    """Capture a FRAMED screenshot of the Godot editor viewport.
 
-    Returns a base64-encoded PNG suitable for <img src="data:image/png;base64,...">.
-    Useful for answering "did it actually build?" without alt-tabbing to Godot.
-
-    Query params:
-      source: "editor" (viewport) | "game" (running project)
+    Returns a base64 PNG (and a data_uri) of the built scene, with the editor
+    camera framed on the scene so content is visible — answers "did it build?"
+    without alt-tabbing to Godot. (``source`` is accepted for compatibility but the
+    capture always frames the editor viewport.)
     """
     try:
-        result = await _godot_ai_call("editor_screenshot", {"source": source})
-        # godot-ai returns {"image": "base64...", "format": "png"}
-        img_b64 = result.get("image", "") if isinstance(result, dict) else ""
-        fmt = result.get("format", "png") if isinstance(result, dict) else "png"
-        if not img_b64:
-            return {"error": "godot-ai returned no image data"}
-        return {"image": img_b64, "format": fmt, "source": source, "data_uri": f"data:image/{fmt};base64,{img_b64}"}
+        from mcp_client import capture_screenshot
+
+        result = await capture_screenshot()
+        img_b64 = result.get("image", "")
+        if result.get("error") or not img_b64:
+            return {"error": result.get("error", "godot-ai returned no image data")}
+        fmt = result.get("format", "png")
+        return {
+            "image": img_b64,
+            "format": fmt,
+            "source": "viewport",
+            "view_target": result.get("view_target"),
+            "data_uri": f"data:image/{fmt};base64,{img_b64}",
+        }
     except Exception as e:
         return {"error": f"screenshot failed: {type(e).__name__}: {e}"}
 
