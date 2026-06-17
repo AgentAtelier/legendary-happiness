@@ -3,20 +3,41 @@
 **Purpose:** get independent, concrete recommendations for making this codebase
 easier to **review** (by a non-programmer owner) and easier to **navigate** (by AI
 assistants). Three prompts, each run through up to four CLI AIs. Each CLI AI can
-read the real repository, so the advice should be specific to *this* code.
+read the real repository, so the advice should be specific to *this* code — and
+each writes its findings into its **own report file** (CLI agents are terse in
+chat; the substance must land in a file).
 
 ---
 
-## ⛔ READ-ONLY — paste this banner at the TOP of every prompt
+## ⛔ READ-ONLY ON THE CODE — ONE PERMITTED WRITE: YOUR REPORT FILE
 
-> **THIS IS A STRICTLY READ-ONLY TASK. DO NOT MODIFY ANYTHING.**
-> Do **not** edit, create, move, or delete any file. Do **not** run the
-> application or any build/test command. Do **not** run any `git` command that
-> changes state (no add/commit/checkout/push). Do **not** install packages or
-> change configuration. You may **only read files** and produce a **written
-> report** in your reply. If you are tempted to "just fix it," stop — output the
-> recommendation as text instead. Treat the repository as a museum exhibit behind
-> glass.
+> Paste this banner at the TOP of every prompt.
+>
+> **This is a READ-ONLY review of the code. The ONLY thing you may write is your
+> own report file.**
+> - Do **not** edit, create, move, or delete any file in the project **except** the
+>   single response file described under "Where to write your answer" below.
+> - Do **not** run the application or any build/test command. Do **not** run any
+>   state-changing `git` command (no add / commit / checkout / push / restore).
+>   Do **not** install packages or change configuration.
+> - You **may read any file.** You **must** put your findings **in your report
+>   file, not in chat** — your chat reply can be a single line pointing to the
+>   file. Be thorough in the file; sparse chat output is not collected.
+> - Treat all code as a museum exhibit behind glass. The report file is the only
+>   thing you touch.
+
+## Where to write your answer
+
+> Copy the template `docs/reviews/layer3/_TEMPLATE.md` to a new file named with
+> **your** name:
+>
+> ```
+> docs/reviews/layer3/RESPONSE-<your-name>.md
+> ```
+> e.g. `RESPONSE-codex.md`, `RESPONSE-gemini.md`, `RESPONSE-claude.md`,
+> `RESPONSE-cursor.md`. Fill in only the prompts you were asked. Reference real
+> code as `path/to/file.py:line`. **This file is the only file you may create or
+> write.**
 
 ## Shared context (paste under the banner)
 
@@ -62,6 +83,9 @@ read the real repository, so the advice should be specific to *this* code.
 >
 > Optimize for the smallest set of boundaries that buys the most clarity for a
 > non-coder owner directing AI. What am I not asking that I should be?
+>
+> **→ Write your full answer into the "Prompt 1" section of
+> `docs/reviews/layer3/RESPONSE-<your-name>.md`. Keep your chat reply to one line.**
 
 ## Prompt 2 — A short conventions guide (files, functions, naming, the few rules)
 
@@ -80,6 +104,9 @@ read the real repository, so the advice should be specific to *this* code.
 > most reduce cognitive load — explicitly **not** a rigid cage; if a rule wouldn't
 > earn its keep for a solo non-coder project, leave it out. What am I not asking
 > that I should be?
+>
+> **→ Write your full answer into the "Prompt 2" section of
+> `docs/reviews/layer3/RESPONSE-<your-name>.md`. Keep your chat reply to one line.**
 
 ## Prompt 3 — The review & navigation "environment" (system, not willpower)
 
@@ -99,11 +126,15 @@ read the real repository, so the advice should be specific to *this* code.
 >
 > Prioritize concretely and point at real files. Recommend only what a non-coder,
 > AI-directed project will actually sustain. What am I not asking that I should be?
+>
+> **→ Write your full answer into the "Prompt 3" section of
+> `docs/reviews/layer3/RESPONSE-<your-name>.md`. Keep your chat reply to one line.**
 
 ---
 
 ## How to use the answers
-Bring the responses back. They'll be reconciled against the real codebase (some
-CLI AIs will over-engineer for a solo project), and the good parts folded into a
-short conventions doc + an architecture ADR + a god-file split plan — handed to
-the implementing AI, owner-approved before any code moves.
+Each reviewer's file lands in `docs/reviews/layer3/`. The responses will be
+reconciled against the real codebase (some CLI AIs will over-engineer for a solo
+project), and the good parts folded into a short conventions doc + an architecture
+ADR + a god-file split plan — handed to the implementing AI, owner-approved before
+any code moves.
