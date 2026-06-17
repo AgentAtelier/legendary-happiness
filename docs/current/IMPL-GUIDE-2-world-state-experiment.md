@@ -1,99 +1,132 @@
-# Implementation Guide 2 — World-State Slice + the Richness Test (for a CLI AI)
+# Implementation Guide 2 (CORRECTED) — The 4B-vs-27B Richness Verdict
 
-Paste the block below into a code-writing CLI AI. This builds the **decisive
-experiment** from ADR-003: does scene richness actually scale with model size, or
-is the brief a lossy bottleneck that makes a 4B and a 27B produce the same scene?
+Paste the block below into a code-writing CLI AI. This is a **rewrite** of the
+first attempt, which drifted off the actual goal. Read the failure analysis below
+before you start — it is the most important part.
 
-**This is design-then-build.** The experiment's design IS the make-or-break — so
-the guide makes the AI produce a design proposal and STOP for owner approval
-before building any engine. It must be built to be able to FAIL.
-
-**Depends on Guide 1:** the richness metric uses the migrated diagnostics
-(`variety.*`) from the testbench. Prefer to run this after Guide 1 category D
-lands; if not yet available, the design must still specify the measurement.
+## Why this guide was rewritten (the last CLI AI failed these — do NOT repeat)
+The previous attempt:
+1. **Self-approved its own design** and barreled from "design" into "build"
+   without owner review. → This guide removes the design step: the design is
+   already reviewed and specified below. You build to THIS spec. You do not
+   invent your own.
+2. **Measured the wrong thing.** It built the world-state machinery and measured
+   *coordination* (clipping %, engine diversity) — and never ran the
+   **4B-vs-27B richness comparison**, which is the entire point of the experiment.
+   → The ONLY deliverable that matters here is that comparison and its verdict.
+3. **Never ran its own code.** It shipped a Python syntax error and an
+   import-path bug that crashed the whole testbench, because it only did
+   import/parse checks. → Static checks are NOT acceptance here. You must RUN it
+   against the live stack and paste real output.
+4. **Invented scope and tangled branches**, left the gate red with broken
+   imports. → Strict containment rules below.
 
 ---
 
 ```
 ============================ COPY FROM HERE ============================
-TASK — build the minimal falsifiable "world-state richness" experiment. This is
-DESIGN-FIRST: you stop for owner approval before building engines.
+TASK — settle ONE question with evidence: does a bigger local model (qwen 27B)
+produce a VISIBLY and MEASURABLY richer game scene than a small one (qwen 4B),
+or do they collapse to the same output? Per ADR-003 this is the project's
+make-or-break bet. Your deliverable is a VERDICT backed by screenshots + numbers.
 
-AUTHORITATIVE DOCS (read first):
-- docs/decisions/003-approach-survey-and-world-state-gap.md  (the bet + the test)
-- docs/current/SPATIAL-GENERATION-ARCHITECTURE.md            (existing engines)
-- docs/current/CONVENTIONS.md                                (coding rules)
+READ FIRST: docs/decisions/003-approach-survey-and-world-state-gap.md (the bet),
+docs/current/CONVENTIONS.md (rules). The world-state machinery from a prior
+attempt lives on branches exp/world-state and exp/world-state-richness
+(world_state.py, scatter/voronoi occupancy params, world_planner.py + .gbnf, a
+_run_world_path). Its DESIGN is sound and APPROVED — reuse it. Its MEASUREMENT was
+wrong — you replace it per STEP 2 below.
 
-THE QUESTION TO SETTLE (do not lose sight of it): with our architecture
-(deterministic engine + LLM "brief"), does a bigger local model (27B) produce a
-VISIBLY and MEASURABLY richer scene than a small one (4B) for large-scale
-environments — or do they collapse to the same output because the brief/engine is
-a lossy bottleneck? ADR-003 commits to settling this EMPIRICALLY before scaling
-the macro frontier. The experiment must be able to return "no difference" — if it
-can't fail, it's worthless. Do NOT tune anything to flatter the 27B.
+THE GOAL IS NOT "make the world-state layer coordinate without clipping." That is
+plumbing. The goal is the richness verdict. Do not drift.
 
-THE SHAPE (from ADR-003): a persistent SHARED SPATIAL WORLD-STATE (a heightfield +
-masks/zones: water, slope, buildable, proximity-to-road) that deterministic
-engines READ and WRITE so they coordinate, and a brief that can address SPACE
-("denser near the river"), not just flat globals. The minimal slice: terrain +
-ONE forest engine that reads slope/moisture + a road that carves terrain and
-updates the masks.
+=== HARD RULES (the last AI broke these; you will not) ===
+1. BRANCH off main: `git checkout main && git checkout -b exp/richness-verdict`.
+   NEVER commit to main. NEVER merge. This is an EXPERIMENT that may be thrown
+   away — it does not go to production no matter how well it works.
+2. RUN IT, DON'T CLAIM IT. Before you say any step "works," paste the actual
+   command output into your report. "Imports OK" / "should work" / "parses" are
+   NOT acceptance — the last AI shipped two crash bugs that way. Acceptance = you
+   swapped a model, ran apply_spec with a real prompt against the live stack, read
+   the scene back, and saved a screenshot. If you cannot drive the live stack
+   (forge-llama/forge-devforge/forge-godot-ai must be up; a godot-ai editor
+   session is needed for screenshots), STOP and say so — do not fake it.
+3. Keep `scripts/check.sh` GREEN after every change. New files ≤500 lines.
+4. ADDITIVE only. You may create new files and add a "world" planner route. The
+   ONLY existing engines you may touch are scatter.py and voronoi.py, and ONLY by
+   adding an optional `world_state=None` param whose absence leaves old behaviour
+   byte-identical. PROVE that: run one garden + one town with world_state=None and
+   confirm output is unchanged. Touch nothing else.
+5. DO NOT self-approve past a STOP. If you hit a decision the spec doesn't cover,
+   HALT and write the question in your report. Do not guess and proceed.
+6. Report failures honestly. A "the bet FAILS" result is a SUCCESS for this
+   experiment — it saves months. Do NOT tune, cherry-pick, or massage anything to
+   make the 27B look better. If they look the same, say so loudly.
 
-GROUND RULES:
-1. BRANCH: `git checkout -b exp/world-state-richness`. Never commit to main,
-   never merge. Push + report; owner reviews.
-2. Keep `scripts/check.sh` GREEN after every change (ruff + format + length gate);
-   new files ≤500 lines, match the spatial engines' style. Behavior-preserving
-   for existing engines — this is ADDITIVE (a new slice), not a rewrite of
-   room/building/scatter/wfc/voronoi.
-3. The stack runs as systemd services; screenshots need a live godot-ai session.
+=== STEP 0 — Assemble + PROVE the machinery runs (this is where the last AI failed) ===
+On exp/richness-verdict (off current main, which has the full testbench):
+- Bring the world-state machinery from the exp branches: world_state.py, the
+  scatter/voronoi world_state params, world_planner.py, world_planner.gbnf, and
+  the _run_world_path method (port it into engine.py — do not blind-overwrite the
+  file). Wire "world" as a per-request planner route like the other spatial ones.
+- ACCEPTANCE (paste output for each):
+  (a) `bash scripts/check.sh` → green.
+  (b) The engine imports under the runtime path (hub runs python from hub/, repo
+      root is NOT on sys.path — use BARE imports, e.g. `from forge_env import`,
+      never `from hub.forge_env import`; that exact bug crashed the testbench).
+  (c) Behaviour-preserving proof: run a scatter garden and a voronoi town with
+      world_state=None; confirm node output identical to before your changes.
+  (d) ONE real world build end-to-end against the live stack: apply_spec a
+      multi-engine "world" prompt, read the scene back, SAVE a screenshot. Paste
+      the node summary + screenshot path.
+If (d) does not actually produce a scene in Godot, STOP — the machinery isn't
+working and the richness test is meaningless until it does.
 
-=== PHASE A — DESIGN PROPOSAL (build NOTHING yet; stop at the end) ===
-Read the existing spatial engines (engine/devforge/spatial/) and the pipeline,
-then write a concrete design proposal to
-docs/reviews/world-state/DESIGN-PROPOSAL.md covering:
-  1. WORLD-STATE representation — concrete data structure for the heightfield +
-     masks (water/slope/buildable/near-road). How it is stored, passed between
-     engines, and serialized.
-  2. ENGINE COORDINATION — the read/write contract: terrain writes the
-     heightfield; the forest engine reads slope+moisture to place/thin trees; the
-     road engine carves the heightfield and writes a near-road mask. Show the
-     interfaces, no implementation.
-  3. BRIEF SCHEMA EXTENSION — how the LLM brief addresses space ("denser near the
-     river", "thin the forest by the road") within the existing GBNF/brief
-     approach. Keep it grammar-constrained.
-  4. THE MINIMAL SLICE — the exact smallest build that tests the bet: terrain +
-     one slope/water-aware forest + a carving road. Nothing more.
-  5. MEASUREMENT PROTOCOL — the falsifiable test: the SAME deliberately-WIDE
-     prompt run on qwen 4b and 27b, repeated N times (skip_cache=True), producing
-     (a) Godot editor screenshots for the eyeball A/B and (b) a typed richness/
-     diversity metric via the testbench (variety.*). State the explicit KILL
-     CRITERION up front: if the 4B and 27B outputs are visually indistinguishable
-     AND the metric shows no separation, the bet FAILS and the recommendation is
-     to pivot the LLM to the narrative layer (per ADR-003). Define "visibly
-     different" and the metric threshold BEFORE running.
-Then STOP. Reply with the proposal path. Do not write engine code until the owner
-approves the design.
+=== STEP 1 — Pick the richness prompt (one, wide, with room to be rich) ===
+Choose ONE deliberately rich, open-ended world prompt that exercises the slice and
+leaves the model room to add character — e.g. "A village in a forest clearing with
+a road leading to it; the forest grows denser away from the road; a small market
+square at the village center." Write it down in the report verbatim. Same prompt
+for both models — no per-model prompt tweaks.
 
-=== PHASE B — BUILD + RUN (only after the owner approves Phase A) ===
-Implement exactly the approved minimal slice + the measurement harness. Wire the
-new engine(s) behind a per-request planner route like the existing spatial
-engines. Run the A/B (4B vs 27B, N repeats), save screenshots + the artifact, and
-write docs/reviews/world-state/RESULT.md with: the two screenshot sets side by
-side, the richness metric per model, and a plain verdict — "richness scales
-(bet holds)" or "indistinguishable (bet fails, pivot)". Report honestly even if
-the answer kills the approach.
+=== STEP 2 — The corrected MEASUREMENT (this is the fix) ===
+Run the SAME prompt on BOTH models, N≥5 times each, skip_cache=True, via the
+proven transactional swap (forge_ops.swap_model):
+  - qwen 4b (the small one)
+  - qwen 27b (the big one)
+For each run capture: a Godot editor SCREENSHOT, and richness numbers — reuse the
+testbench where you can (the just-migrated variety.* diversity metric), plus
+simple counts: total placed nodes, distinct asset/prop types, props-per-area
+(density), and count of distinct "features" (e.g. market, road, clearings).
+Aggregate per model: mean ± spread.
 
-REPORT: push the branch; reply with the branch name + one-line status (e.g.
-"design proposal written, awaiting approval").
+Define the verdict thresholds BEFORE looking at results, and write them down:
+  - BET HOLDS if the 27B is BOTH (i) visibly richer in the screenshots (a person
+    can tell them apart) AND (ii) measurably higher on the richness numbers by a
+    clear margin you state up front.
+  - BET FAILS if 4B and 27B are visually indistinguishable AND the richness
+    numbers overlap. In that case the recommendation is the ADR-003 pivot: move
+    the LLM to the narrative layer, keep structure deterministic/human-driven.
+
+=== STEP 3 — Write the VERDICT ===
+Write docs/reviews/world-state-richness/RESULT.md with: the exact prompt, the
+per-model screenshots side by side (paths), the richness numbers per model
+(mean ± spread), the thresholds you set in STEP 2, and a one-line plain verdict:
+"BET HOLDS — richness scales" or "BET FAILS — indistinguishable, pivot". Be honest
+even if it kills the approach.
+
+=== REPORT + STOP ===
+Push the branch (never merge). Reply in chat with: the branch name, whether STEP
+0(d) actually produced a scene, and the one-line verdict (or "STOPPED at STEP X:
+<reason>"). Do not declare success without the pasted run output behind it.
 ============================= TO HERE ==================================
 ```
 
 ---
 
-## After this
-The owner + Claude review the Phase-A design before any build. The Phase-B result
-is the **decision point for the whole project's central bet** — if richness is
-invisible, ADR-003's pivot triggers; if it scales, the macro frontier
-(mountains/forests/cities/weather) gets built on the world-state pattern with
-evidence behind it.
+## After this runs
+The owner + Claude review `RESULT.md` and the screenshots. This is the **decision
+point for the project's central bet**: a "bet holds" greenlights building the
+macro frontier on the world-state pattern; a "bet fails" triggers the ADR-003
+pivot. Either outcome is a real result — the experiment exists to be *allowed to
+fail*, and the branch never touches `main` until that verdict is reviewed.
