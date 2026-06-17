@@ -12,6 +12,8 @@ for context, not for execution. When a doc is superseded, move it to `archive/`.
 
 ### Orientation & planning
 - [current/FORGE-STACK.md](current/FORGE-STACK.md) — the system map: how hub, engine, llama, and Godot connect
+- [current/CONVENTIONS.md](current/CONVENTIONS.md) — the few coding rules (read at session start)
+- [current/GOD-FILE-SPLIT-PLAN.md](current/GOD-FILE-SPLIT-PLAN.md) — handoff plan to split the god files + quick-win bug fixes
 - [current/ROADMAP.md](current/ROADMAP.md) — what's next
 - [current/FORGE-BACKLOG.md](current/FORGE-BACKLOG.md) — backlog
 - [current/LAYER1-SURVEY-PROMPTS.md](current/LAYER1-SURVEY-PROMPTS.md) — the workspace-cleanup survey prompts (active)
@@ -32,6 +34,7 @@ in [archive/](archive/). Git preserves full history; nothing is lost.
 - [decisions/001-monorepo-and-engine-rename.md](decisions/001-monorepo-and-engine-rename.md)
 - [decisions/002-flat-layout-and-doc-structure.md](decisions/002-flat-layout-and-doc-structure.md)
 - [decisions/003-approach-survey-and-world-state-gap.md](decisions/003-approach-survey-and-world-state-gap.md)
+- [decisions/004-architecture-conventions-guardrails.md](decisions/004-architecture-conventions-guardrails.md)
 
 ---
 
