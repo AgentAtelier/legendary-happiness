@@ -31,6 +31,7 @@ in [archive/](archive/). Git preserves full history; nothing is lost.
 ## 📐 Decisions (ADRs) — the "why"
 - [decisions/001-monorepo-and-engine-rename.md](decisions/001-monorepo-and-engine-rename.md)
 - [decisions/002-flat-layout-and-doc-structure.md](decisions/002-flat-layout-and-doc-structure.md)
+- [decisions/003-approach-survey-and-world-state-gap.md](decisions/003-approach-survey-and-world-state-gap.md)
 
 ---
 

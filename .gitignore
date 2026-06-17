@@ -30,9 +30,8 @@ env/
 .godot/
 .import/
 
-# --- IDE (personal layout only; project config can be committed later) ---
-.idea/workspace.xml
-.idea/shelf/
+# --- IDE (whole folder; avoids PyCharm module churn) ---
+.idea/
 
 # --- Research PDFs: kept on disk, out of git ---
 *.pdf
