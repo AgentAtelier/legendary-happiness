@@ -568,7 +568,6 @@ class Monitor:
 
 
 # ── Module-level singleton ──────────────────────────────────────────
-# Import `monitor` from this module to use the shared instance.
-# The database is created at .devforge.platform.monitor.db by default.
-
-monitor = Monitor()
+# DO NOT create the singleton here — __init__.py owns the single instance.
+# Import `monitor` from the package (devforge.platform.monitor), not from
+# this module directly.

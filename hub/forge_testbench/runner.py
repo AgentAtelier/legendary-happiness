@@ -33,14 +33,10 @@ from .context import Context
 from .result import Result, Status
 
 HOME = Path.home()
-ENVFILE = HOME / ".config/forge-stack/stack.env"
-
-
-async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
+ENVFILE = HOME / ".config/forge-stack/stack.env"async def _sh(*cmd: str, timeout: float = 30.0) -> tuple[int, str]:
     """Run a short command; returns (exit_code, stdout)."""
     from hub.forge_ops import run_cmd_capture
-
-    return await run_cmd_capture(*cmd)
+    return await run_cmd_capture(*cmd, timeout=timeout)
 
 
 # ── Scene helpers ───────────────────────────────────────────────

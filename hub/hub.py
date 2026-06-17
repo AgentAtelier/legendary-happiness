@@ -150,11 +150,12 @@ async def _start_job(label: str, action_fn) -> str:
                 _jobs.pop(jid, None)
 
     asyncio.get_running_loop().create_task(_runner())
-    return job_id
+    return job_idasync def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
+    """Run a subprocess and stream output into the job dict.
 
-
-async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
-    """Legacy wrapper — kept for API compatibility; delegates to _start_job internals."""
+    Does NOT manage the job lock — callers (_start_job, legacy endpoints)
+    own the lock lifecycle.  Only the caller who acquired the lock should
+    release it."""
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -168,7 +169,9 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
 
         if job["exit"] == 0 and action in _RECONNECT_ACTIONS:
             job["lines"].append("[hub] DevForge/godot-ai restarted — restarting Odysseus to reconnect MCP...")
-            recode, reout = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
+            recode, reout = await _run_capture(
+                ["docker", "restart", "odysseus-odysseus-1"], timeout=30
+            )
             if recode == 0:
                 job["lines"].append("[hub] Odysseus restarted — MCP tools should reconnect")
             else:
@@ -176,12 +179,6 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
     except Exception as e:
         job["lines"].append(f"[hub] job failed: {e}")
         job["exit"] = 1
-    finally:
-        job["done"] = True
-        _job_lock.release()
-        cutoff = time.time() - 600
-        for jid in [j for j, v in _jobs.items() if v["done"] and v["t"] < cutoff]:
-            _jobs.pop(jid, None)
 
 
 # ── routes ───────────────────────────────────────────────────────
