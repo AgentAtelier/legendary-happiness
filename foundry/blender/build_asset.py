@@ -68,30 +68,25 @@ def apply_bevel(mesh_data):
 
 
 def assign_uvs(mesh_data):
-    """Assign UVs to all vertices using a simple world-space projection along Z
-    (top-down) so the mesh has texture coordinates for baking WITHOUT cutting
-    any edges. No seams = watertight topology is preserved."""
+    """UV unwrap every face using Blender's smart_project so all faces (top
+    AND legs) get sensible texture coordinates.  May introduce UV seams at
+    island boundaries, but the gate tolerates those (position-only watertight
+    check)."""
     obj = _find_object_for_mesh(mesh_data)
     if obj is None:
         return
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
 
-    # Create or get the UV layer.
+    # Ensure a UV layer exists.
     if not mesh_data.uv_layers:
         mesh_data.uv_layers.new(name="UVMap")
-    uv_layer = mesh_data.uv_layers.active
 
-    # Assign UVs from world-space X/Y coordinates (top-down projection),
-    # remapping the table's footprint to [0,1] range.
-    # The table occupies roughly [-0.75, 0.75] in X and [-0.5, 0.5] in Y.
-    for loop in mesh_data.loops:
-        vert = mesh_data.vertices[loop.vertex_index]
-        co = vert.co
-        # Map world X/Y to UV [0,1]; Z is omitted for the projection.
-        u = (co.x / 1.5) + 0.5  # width 1.5 → [0,1]
-        v = (co.y / 1.0) + 0.5  # depth 1.0 → [0,1]
-        uv_layer.data[loop.index].uv = (u, v)
+    # Enter edit mode, select all faces, run smart_project.
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02)
+    bpy.ops.object.mode_set(mode="OBJECT")
 
 
 def _find_object_for_mesh(mesh_data):

@@ -85,4 +85,8 @@ def test_table_has_bevel_and_pbr_material(tmp_path):
         f"Expected beveled table to have >80 triangles (got {n_faces}); "
         "un-beveled baseline is 60"
     )
-    assert mesh.is_watertight, "beveled mesh must remain watertight"
+
+    # Watertight check on position-only topology (tolerates UV seams).
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    assert topo.is_watertight, "beveled mesh must remain watertight"
