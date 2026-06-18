@@ -9,7 +9,7 @@ import json
 
 from materials import MATERIAL_PALETTE
 
-GENERATORS = {"table"}
+GENERATORS = {"table", "chair"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -22,7 +22,16 @@ PARAM_RANGES = {
         "leg_height": (0.3, 1.1),
         "leg_radius": (0.03, 0.12),
         "leg_inset": (0.0, 0.3),
-    }
+    },
+    "chair": {
+        "seat_width": (0.3, 0.55),
+        "seat_depth": (0.3, 0.55),
+        "seat_thickness": (0.03, 0.08),
+        "leg_height": (0.25, 0.55),
+        "leg_radius": (0.02, 0.05),
+        "leg_inset": (0.0, 0.1),
+        "back_height": (0.15, 0.4),
+    },
 }
 
 

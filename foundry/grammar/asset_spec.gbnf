@@ -1,18 +1,20 @@
-# asset_spec.gbnf — Constrains LLM output to a valid table asset-spec JSON.
+# asset_spec.gbnf — Constrains LLM output to a valid asset-spec JSON.
 # Ranges are NOT enforced here (the AssetPlanner clamps after parsing).
 # Single-line alternations only — normalize_gbnf() joins any multi-line `|`.
 #
-# Keys are ordered to match compiler.PARAM_RANGES.
+# Params are GENERIC (string:number pairs); the per-generator schema is
+# enforced by planner clamping against compiler.PARAM_RANGES[generator].
 
 root ::= "{" ws "\"asset_id\"" ws ":" ws asset-id-val ws "," ws "\"generator\"" ws ":" ws generator-val ws "," ws "\"material\"" ws ":" ws material-val ws "," ws "\"params\"" ws ":" ws params-object ws "}"
 
-asset-id-val ::= "\"table\""
-generator-val ::= "\"table\""
+asset-id-val ::= "\"table\"" | "\"chair\""
+generator-val ::= "\"table\"" | "\"chair\""
 material-val ::= "\"worn_oak\"" | "\"dark_walnut\"" | "\"weathered_pine\""
 
 params-object ::= "{" ws param-list ws "}"
 
-param-list ::= "\"top_width\"" ws ":" ws number ws "," ws "\"top_depth\"" ws ":" ws number ws "," ws "\"top_thickness\"" ws ":" ws number ws "," ws "\"leg_height\"" ws ":" ws number ws "," ws "\"leg_radius\"" ws ":" ws number ws "," ws "\"leg_inset\"" ws ":" ws number
+param-list ::= (member (ws "," ws member)*)?
+member ::= string ws ":" ws number
 
 # ── JSON primitives ──────────────────────────────────────────────
 
