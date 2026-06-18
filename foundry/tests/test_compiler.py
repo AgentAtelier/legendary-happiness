@@ -52,3 +52,29 @@ def test_load_spec_reads_file(tmp_path):
     p = tmp_path / "t.json"
     p.write_text(json.dumps(_spec()), encoding="utf-8")
     assert load_spec(str(p))["asset_id"] == "table"
+
+
+# ── Slice 6: material palette ─────────────────────────────────────
+
+def test_worn_oak_compiles():
+    s = _spec(); s["material"] = "worn_oak"
+    out = compile_spec(s)
+    assert out["material"] == "worn_oak"
+
+
+def test_dark_walnut_compiles():
+    s = _spec(); s["material"] = "dark_walnut"
+    out = compile_spec(s)
+    assert out["material"] == "dark_walnut"
+
+
+def test_weathered_pine_compiles():
+    s = _spec(); s["material"] = "weathered_pine"
+    out = compile_spec(s)
+    assert out["material"] == "weathered_pine"
+
+
+def test_unknown_material_still_rejected():
+    s = _spec(); s["material"] = "neon_plasma"
+    with pytest.raises(SpecError):
+        compile_spec(s)

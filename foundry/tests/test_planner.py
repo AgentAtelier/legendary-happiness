@@ -63,6 +63,15 @@ def test_build_prompt_contains_request_and_schema():
     assert "leg_inset" in prompt
 
 
+def test_build_prompt_contains_material_hints():
+    """Slice 6: the prompt lists the three palette materials with tone hints."""
+    planner = AssetPlanner()
+    prompt = planner.build_prompt("a dark walnut table")
+    assert "worn_oak" in prompt
+    assert "dark_walnut" in prompt
+    assert "weathered_pine" in prompt
+
+
 # ── Parse tests ───────────────────────────────────────────────────
 
 
@@ -183,6 +192,18 @@ def _fake_llm_non_numeric_param(prompt: str, grammar: str | None) -> str:
     })
 
 
+def test_plan_with_valid_spec_preserved():
+    """A valid spec passes compile_spec unchanged (except float coercion)."""
+    planner = AssetPlanner()
+    spec = planner.plan("a table", _fake_llm_valid)
+    assert spec["generator"] == "table"
+    assert spec["material"] == "worn_oak"
+    assert spec["params"]["top_width"] == 1.5
+    assert spec["params"]["top_depth"] == 0.8
+    # Must pass compile_spec
+    compile_spec(spec)  # does not raise
+
+
 def test_plan_with_non_numeric_param_defaults_to_midpoint():
     """A non-numeric param value (string) is replaced with the range midpoint."""
     planner = AssetPlanner()
@@ -193,15 +214,6 @@ def test_plan_with_non_numeric_param_defaults_to_midpoint():
     # Other params unchanged
     assert spec["params"]["top_depth"] == 0.8
     compile_spec(spec)
-    """A valid spec passes compile_spec unchanged (except float coercion)."""
-    planner = AssetPlanner()
-    spec = planner.plan("a table", _fake_llm_valid)
-    assert spec["generator"] == "table"
-    assert spec["material"] == "worn_oak"
-    assert spec["params"]["top_width"] == 1.5
-    assert spec["params"]["top_depth"] == 0.8
-    # Must pass compile_spec
-    compile_spec(spec)  # does not raise
 
 
 def test_plan_with_out_of_range_params_clamped():
@@ -272,24 +284,105 @@ def _llama_server_reachable() -> bool:
         return False
 
 
+# ── Slice 6: material palette plan() tests ─────────────────────────
+
+def _fake_llm_dark_walnut(prompt: str, grammar: str | None) -> str:
+    """Fake LLM that returns a spec with material=dark_walnut."""
+    return json.dumps({
+        "asset_id": "table",
+        "generator": "table",
+        "material": "dark_walnut",
+        "params": {
+            "top_width": 1.5,
+            "top_depth": 0.8,
+            "top_thickness": 0.06,
+            "leg_height": 0.65,
+            "leg_radius": 0.05,
+            "leg_inset": 0.1,
+        },
+    })
+
+
+def _fake_llm_weathered_pine(prompt: str, grammar: str | None) -> str:
+    """Fake LLM that returns a spec with material=weathered_pine."""
+    return json.dumps({
+        "asset_id": "table",
+        "generator": "table",
+        "material": "weathered_pine",
+        "params": {
+            "top_width": 1.5,
+            "top_depth": 0.8,
+            "top_thickness": 0.06,
+            "leg_height": 0.65,
+            "leg_radius": 0.05,
+            "leg_inset": 0.1,
+        },
+    })
+
+
+def _fake_llm_unknown_material(prompt: str, grammar: str | None) -> str:
+    """Fake LLM that returns a spec with an unknown material."""
+    return json.dumps({
+        "asset_id": "table",
+        "generator": "table",
+        "material": "glitter_unobtanium",
+        "params": {
+            "top_width": 1.5,
+            "top_depth": 0.8,
+            "top_thickness": 0.06,
+            "leg_height": 0.65,
+            "leg_radius": 0.05,
+            "leg_inset": 0.1,
+        },
+    })
+
+
+def test_plan_with_dark_walnut_material():
+    """plan() preserves a valid palette material from the LLM."""
+    planner = AssetPlanner()
+    spec = planner.plan("a dark table", _fake_llm_dark_walnut)
+    assert spec["material"] == "dark_walnut"
+    compile_spec(spec)  # does not raise
+
+
+def test_plan_with_weathered_pine_material():
+    """plan() preserves weathered_pine from the LLM."""
+    planner = AssetPlanner()
+    spec = planner.plan("a pale table", _fake_llm_weathered_pine)
+    assert spec["material"] == "weathered_pine"
+    compile_spec(spec)  # does not raise
+
+
+def test_plan_with_unknown_material_defaults_to_worn_oak():
+    """An LLM returning an out-of-palette material is defaulted to worn_oak."""
+    planner = AssetPlanner()
+    spec = planner.plan("a table", _fake_llm_unknown_material)
+    assert spec["material"] == "worn_oak"
+    compile_spec(spec)  # does not raise
+
+
 def test_plan_live_produces_buildable_spec():
     """Integration: real LLM produces a spec that passes compile_spec.
 
-    Content is non-deterministic — we only assert VALIDITY/buildability,
-    not specific numbers.  Uses the real FoundryLLM on the local server.
+    Prompt with "a dark walnut coffee table" — assert material is one of the
+    three palette ids (do NOT hard-assert dark_walnut).
     """
     if not _llama_server_reachable():
         pytest.skip("llama.cpp server not reachable at 127.0.0.1:8002")
 
+    from compiler import MATERIALS
+
     llm = FoundryLLM()
     planner = AssetPlanner()
-    spec = planner.plan("a small wooden table", llm)
+    spec = planner.plan("a dark walnut coffee table", llm)
 
     # Must have the required keys
     assert "asset_id" in spec
     assert "generator" in spec
     assert spec["generator"] == "table"
-    assert spec["material"] == "worn_oak"
+    assert spec["material"] in MATERIALS, (
+        f"material {spec['material']!r} not in palette {sorted(MATERIALS)}"
+    )
     assert "params" in spec
 
     # All six params must be present

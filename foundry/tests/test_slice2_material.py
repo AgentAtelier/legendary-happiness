@@ -90,3 +90,86 @@ def test_table_has_bevel_and_pbr_material(tmp_path):
     topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
     topo.merge_vertices()
     assert topo.is_watertight, "beveled mesh must remain watertight"
+
+
+# ── Slice 6: material palette roughness tests ─────────────────────
+
+def _build_with_material(material: str, tmp_path) -> str:
+    """Build a table GLB with the given material and return the GLB path."""
+    spec_data = json.loads(Path(SPEC).read_text(encoding="utf-8"))
+    spec_data["material"] = material
+    spec_path = tmp_path / f"table_{material}.json"
+    spec_path.write_text(json.dumps(spec_data), encoding="utf-8")
+
+    glb = str(tmp_path / f"table_{material}.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, f"Blender build failed for {material}:\n{proc.stderr or proc.stdout}"
+    assert os.path.exists(glb), f"no GLB written for {material}"
+    return glb
+
+
+def test_dark_walnut_yields_roughness_055(tmp_path):
+    """Building with material=dark_walnut yields roughnessFactor ≈ 0.55."""
+    glb = _build_with_material("dark_walnut", tmp_path)
+    factors = _read_pbr_factors(glb)
+    assert abs(factors["roughnessFactor"] - 0.55) <= 0.05, (
+        f"dark_walnut roughnessFactor={factors['roughnessFactor']}"
+    )
+
+
+def test_weathered_pine_yields_roughness_075(tmp_path):
+    """Building with material=weathered_pine yields roughnessFactor ≈ 0.75."""
+    glb = _build_with_material("weathered_pine", tmp_path)
+    factors = _read_pbr_factors(glb)
+    assert abs(factors["roughnessFactor"] - 0.75) <= 0.05, (
+        f"weathered_pine roughnessFactor={factors['roughnessFactor']}"
+    )
+
+
+def test_worn_oak_yields_roughness_065(tmp_path):
+    """Building with material=worn_oak still yields roughnessFactor ≈ 0.65."""
+    glb = _build_with_material("worn_oak", tmp_path)
+    factors = _read_pbr_factors(glb)
+    assert abs(factors["roughnessFactor"] - 0.65) <= 0.05, (
+        f"worn_oak roughnessFactor={factors['roughnessFactor']}"
+    )
+
+
+def test_all_materials_keep_baked_texture_and_uvs(tmp_path):
+    """Slice 3 assertions (baked texture, UVs) stay green for all materials."""
+    from pygltflib import GLTF2
+
+    for material in ("worn_oak", "dark_walnut", "weathered_pine"):
+        glb = _build_with_material(material, tmp_path)
+        gltf = GLTF2().load(glb)
+
+        # (a) gltf.images non-empty
+        assert gltf.images is not None, f"[{material}] gltf.images is None"
+        assert len(gltf.images) > 0, f"[{material}] expected embedded images, got {len(gltf.images) if gltf.images else 0}"
+
+        # (b) baseColorTexture is wired
+        mat = gltf.materials[0]
+        pbr = mat.pbrMetallicRoughness
+        assert pbr.baseColorTexture is not None, f"[{material}] expected baseColorTexture"
+        bct = pbr.baseColorTexture
+        assert bct.index is not None, f"[{material}] baseColorTexture.index is None"
+        assert 0 <= bct.index < len(gltf.textures), (
+            f"[{material}] baseColorTexture index {bct.index} out of range [0, {len(gltf.textures)})"
+        )
+
+        # (c) mesh primitive has TEXCOORD_0
+        mesh = gltf.meshes[0]
+        primitive = mesh.primitives[0]
+        assert primitive.attributes.TEXCOORD_0 is not None, (
+            f"[{material}] expected TEXCOORD_0"
+        )
+
+        # Also watertight
+        tmesh = trimesh.load(glb, force="mesh")
+        tmesh.merge_vertices()
+        topo = trimesh.Trimesh(vertices=tmesh.vertices, faces=tmesh.faces)
+        topo.merge_vertices()
+        assert topo.is_watertight, f"[{material}] mesh must remain watertight"
