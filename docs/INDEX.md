@@ -11,6 +11,7 @@ for context, not for execution. When a doc is superseded, move it to `archive/`.
 ## 🟢 Current — the project as it is now
 
 ### Orientation & planning
+- [current/CONTEXT-HANDOFF-C-AND-A.md](current/CONTEXT-HANDOFF-C-AND-A.md) — **START HERE to resume** — schema/scale probe (C) then asset-kit (A); the schema-ceiling insight
 - [current/FORGE-STACK.md](current/FORGE-STACK.md) — the system map: how hub, engine, llama, and Godot connect
 - [current/NEXT-PHASE-RECONCILED-DIRECTION.md](current/NEXT-PHASE-RECONCILED-DIRECTION.md) — **the next direction** (deterministic eval + reliability loop; VLM demoted) after reconciling the survey
 - [current/NEXT-PHASE-VISUAL-EVAL-SURVEY.md](current/NEXT-PHASE-VISUAL-EVAL-SURVEY.md) — the survey prompts that produced it (input/history)
