@@ -78,3 +78,40 @@ def test_unknown_material_still_rejected():
     s = _spec(); s["material"] = "neon_plasma"
     with pytest.raises(SpecError):
         compile_spec(s)
+
+
+# ── Slice 7: chair generator ──────────────────────────────────────
+
+def _chair_spec():
+    return {
+        "asset_id": "chair",
+        "generator": "chair",
+        "material": "worn_oak",
+        "params": {
+            "seat_width": 0.5, "seat_depth": 0.5, "seat_thickness": 0.06,
+            "leg_height": 0.45, "leg_radius": 0.04, "leg_inset": 0.05,
+            "back_height": 0.35,
+        },
+    }
+
+
+def test_chair_is_valid_generator():
+    """'chair' is a known generator and a full spec validates."""
+    out = compile_spec(_chair_spec())
+    assert out["generator"] == "chair"
+    assert out["material"] == "worn_oak"
+    assert out["params"]["seat_width"] == 0.5
+
+
+def test_chair_param_out_of_range_rejected():
+    """An out-of-range chair param is rejected by compile_spec."""
+    s = _chair_spec(); s["params"]["seat_width"] = 999.0
+    with pytest.raises(SpecError):
+        compile_spec(s)
+
+
+def test_chair_missing_param_rejected():
+    """A missing chair param is rejected."""
+    s = _chair_spec(); del s["params"]["back_height"]
+    with pytest.raises(SpecError):
+        compile_spec(s)

@@ -38,6 +38,12 @@ def test_normalized_grammar_has_no_line_starting_with_pipe():
         )
 
 
+def test_normalized_grammar_contains_chair():
+    """The normalized grammar contains 'chair' (as a generator value)."""
+    grammar = load_grammar()
+    assert "chair" in grammar, "grammar should contain 'chair'"
+
+
 def test_normalize_gbnf_handles_empty_lines_and_comments():
     """Empty lines and comments between a rule and its | continuation are skipped."""
     raw = "root ::= \"x\"\n# comment\n         | \"y\""
@@ -393,6 +399,98 @@ def test_plan_live_produces_buildable_spec():
 
     # Must pass the compiler gate
     compile_spec(spec)  # does not raise
+
+    # Sanity: numbers should be positive
+    for key, val in params.items():
+        assert val > 0, f"param {key}={val} is not positive"
+
+
+# ── Slice 7: chair generator plan() tests ─────────────────────────
+
+def _fake_llm_chair(prompt: str, grammar: str | None) -> str:
+    """Fake LLM returning a valid chair spec."""
+    return json.dumps({
+        "asset_id": "chair",
+        "generator": "chair",
+        "material": "worn_oak",
+        "params": {
+            "seat_width": 0.5,
+            "seat_depth": 0.5,
+            "seat_thickness": 0.06,
+            "leg_height": 0.45,
+            "leg_radius": 0.04,
+            "leg_inset": 0.05,
+            "back_height": 0.35,
+        },
+    })
+
+
+def _fake_llm_chair_missing_params(prompt: str, grammar: str | None) -> str:
+    """Fake LLM returning a chair spec missing some params."""
+    return json.dumps({
+        "asset_id": "chair",
+        "generator": "chair",
+        "material": "worn_oak",
+        "params": {
+            "seat_width": 0.5,
+            # missing seat_depth, seat_thickness, leg_height, leg_radius,
+            # leg_inset, back_height
+        },
+    })
+
+
+def test_plan_chair_with_fake_llm():
+    """plan('a chair', fake_llm) → generator=='chair', asset_id=='chair', buildable."""
+    planner = AssetPlanner()
+    spec = planner.plan("a chair", _fake_llm_chair)
+    assert spec["generator"] == "chair"
+    assert spec["asset_id"] == "chair"
+    assert spec["material"] == "worn_oak"
+    # Must pass compile_spec
+    compile_spec(spec)
+
+
+def test_plan_chair_missing_params_filled():
+    """Missing chair params are filled from range defaults."""
+    planner = AssetPlanner()
+    spec = planner.plan("a chair", _fake_llm_chair_missing_params)
+
+    ranges = PARAM_RANGES["chair"]
+    # seat_width was provided
+    assert spec["params"]["seat_width"] == 0.5
+    # Missing ones get midpoints
+    for key in ("seat_depth", "seat_thickness", "leg_height", "leg_radius",
+                "leg_inset", "back_height"):
+        lo, hi = ranges[key]
+        assert spec["params"][key] == pytest.approx((lo + hi) / 2.0)
+
+    compile_spec(spec)
+
+
+def test_plan_live_chair_produces_buildable_spec():
+    """Integration: real LLM produces a chair spec from 'a simple wooden chair'."""
+    if not _llama_server_reachable():
+        pytest.skip("llama.cpp server not reachable at 127.0.0.1:8002")
+
+    from compiler import MATERIALS
+
+    llm = FoundryLLM()
+    planner = AssetPlanner()
+    spec = planner.plan("a simple wooden chair", llm)
+
+    assert "generator" in spec
+    assert spec["material"] in MATERIALS
+    assert "params" in spec
+
+    gen = spec["generator"]
+    # The LLM should pick chair for a chair request, but don't hardcode
+    # (report what it returned if wrong).
+    params = spec["params"]
+    for key in PARAM_RANGES.get(gen, {}):
+        assert key in params, f"Missing param '{key}' for generator {gen}"
+        assert isinstance(params[key], (int, float)), f"Param {key} is not a number"
+
+    compile_spec(spec)
 
     # Sanity: numbers should be positive
     for key, val in params.items():
