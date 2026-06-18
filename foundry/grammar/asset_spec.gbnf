@@ -1,0 +1,27 @@
+# asset_spec.gbnf — Constrains LLM output to a valid table asset-spec JSON.
+# Ranges are NOT enforced here (the AssetPlanner clamps after parsing).
+# Single-line alternations only — normalize_gbnf() joins any multi-line `|`.
+#
+# Keys are ordered to match compiler.PARAM_RANGES.
+
+root ::= "{" ws "\"asset_id\"" ws ":" ws asset-id-val ws "," ws "\"generator\"" ws ":" ws generator-val ws "," ws "\"material\"" ws ":" ws material-val ws "," ws "\"params\"" ws ":" ws params-object ws "}"
+
+asset-id-val ::= "\"table\""
+generator-val ::= "\"table\""
+material-val ::= "\"worn_oak\""
+
+params-object ::= "{" ws param-list ws "}"
+
+param-list ::= "\"top_width\"" ws ":" ws number ws "," ws "\"top_depth\"" ws ":" ws number ws "," ws "\"top_thickness\"" ws ":" ws number ws "," ws "\"leg_height\"" ws ":" ws number ws "," ws "\"leg_radius\"" ws ":" ws number ws "," ws "\"leg_inset\"" ws ":" ws number
+
+# ── JSON primitives ──────────────────────────────────────────────
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*
