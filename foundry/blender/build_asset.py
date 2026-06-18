@@ -167,12 +167,21 @@ def _lerp(a, b, t):
     return tuple(a[i] + (b[i] - a[i]) * t for i in range(3))
 
 
-def apply_material(mesh, material_name):
+def apply_material(mesh, material_name, seed=0.0):
     """Create a procedural wood material with shader nodes, bake the base colour
     to an image texture with Cycles-CPU, then wire the baked texture into the
     Principled BSDF Base Color so the glTF exporter writes a baseColorTexture.
 
-    Material colours and roughness are driven by foundry/materials.py."""
+    Material colours and roughness are driven by foundry/materials.py.
+
+    Shader recipe (anti-procedural-tell):
+      - Object-space coordinates through an anisotropic Mapping so grain runs
+        along the asset's long axis.
+      - Noise-based coordinate warp BEFORE the wave is measured (breaks the
+        parallel-stripe corduroy read).
+      - CONSTANT ColorRamp for stepped, painted-band wood tones.
+      - seed offsets the Mapping Location so two same-material assets are not
+        pixel-identical."""
     # Find the object that owns this mesh.
     obj = _find_object_for_mesh(mesh)
     if obj is None:
@@ -198,25 +207,61 @@ def apply_material(mesh, material_name):
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = 0.0
-    bsdf.location = (400, 200)
+    bsdf.location = (800, 300)
 
     material_output = nodes.new("ShaderNodeOutputMaterial")
-    material_output.location = (800, 200)
+    material_output.location = (1200, 300)
 
-    # Wave Texture (bands) for wood grain.
+    # ── Object-space coordinate chain ───────────────────────
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    tex_coord.location = (-1000, 300)
+
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = (-800, 300)
+    mapping.vector_type = "TEXTURE"
+    # Anisotropic scale: grain runs along the long axis (Z-up → stretch Z
+    # so the wave compresses along height; bands run across the horizontal).
+    mapping.inputs["Scale"].default_value = (1.0, 1.0, 8.0)
+    # Per-asset seed offsets the location so two same-material assets differ.
+    mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+
+    # ── Noise warp (breaks parallel stripe corduroy) ─────────
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.location = (-800, 0)
+    noise.inputs["Scale"].default_value = 5.0
+    noise.inputs["Detail"].default_value = 2.0
+
+    noise_scale = nodes.new("ShaderNodeVectorMath")
+    noise_scale.operation = "MULTIPLY"
+    noise_scale.location = (-600, 0)
+    noise_scale.inputs[1].default_value = (0.05, 0.05, 0.05)
+
+    warp_add = nodes.new("ShaderNodeVectorMath")
+    warp_add.operation = "ADD"
+    warp_add.location = (-400, 300)
+
+    # ── Wave Texture (bands) for wood grain ─────────────────
     wave = nodes.new("ShaderNodeTexWave")
     wave.wave_type = "BANDS"
     wave.bands_direction = "X"
     wave.inputs["Scale"].default_value = 12.0
-    wave.inputs["Distortion"].default_value = 1.5
-    wave.inputs["Detail"].default_value = 2.0
+    wave.inputs["Distortion"].default_value = 2.5
+    wave.inputs["Detail"].default_value = 3.0
     wave.inputs["Detail Scale"].default_value = 3.0
-    wave.location = (-600, 200)
+    wave.location = (-200, 300)
+
+    # ── Wire the coordinate warp chain ──────────────────────
+    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], warp_add.inputs[0])
+    links.new(noise.outputs["Color"], noise_scale.inputs[0])
+    links.new(noise_scale.outputs["Vector"], warp_add.inputs[1])
+    links.new(warp_add.outputs["Vector"], wave.inputs["Vector"])
 
     # ColorRamp: map wave fac to wood tones from the palette.
+    # CONSTANT interpolation → stepped, painted-band read.
     ramp = nodes.new("ShaderNodeValToRGB")
-    ramp.location = (-200, 200)
-    ramp.color_ramp.interpolation = "LINEAR"
+    ramp.location = (200, 300)
+    ramp.color_ramp.interpolation = "CONSTANT"
     # 4-stop ramp: dark → mid → light → dark
     stops = ramp.color_ramp.elements
     stops[0].position = 0.0
@@ -244,7 +289,7 @@ def apply_material(mesh, material_name):
     # Image Texture node — this must be the active node for baking.
     bake_tex = nodes.new("ShaderNodeTexImage")
     bake_tex.image = bake_image
-    bake_tex.location = (200, -200)
+    bake_tex.location = (800, 0)
     # Select it as the active bake target.
     nodes.active = bake_tex
     bake_tex.select = True
@@ -258,7 +303,7 @@ def apply_material(mesh, material_name):
     # Temporarily replace the Principled BSDF with an Emission shader so
     # the EMIT bake captures exactly the procedural colour (no lighting).
     emit = nodes.new("ShaderNodeEmission")
-    emit.location = (400, -200)
+    emit.location = (1000, 0)
     links.new(ramp.outputs["Color"], emit.inputs["Color"])
     links.new(emit.outputs["Emission"], material_output.inputs["Surface"])
 
