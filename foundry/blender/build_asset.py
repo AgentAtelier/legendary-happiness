@@ -35,7 +35,8 @@ def _add_box(bm, cx, cy, cz, sx, sy, sz):
         v.co.z = v.co.z * sz + cz
 
 
-def build_table(params):
+def _build_table_geometry(params):
+    """Build the table mesh from params. Returns a Blender mesh data block."""
     tw, td, tt = params["top_width"], params["top_depth"], params["top_thickness"]
     lh, lr, li = params["leg_height"], params["leg_radius"], params["leg_inset"]
     leg = lr * 2.0
@@ -54,6 +55,62 @@ def build_table(params):
     bm.to_mesh(mesh)
     bm.free()
     return mesh
+
+
+def _build_chair_geometry(params):
+    """Build the chair mesh from params. Returns a Blender mesh data block.
+
+    Chair layout (Z-up, X=width, Y=depth):
+    - Seat box centered above the legs
+    - Four legs at the corners from floor to seat bottom
+    - Backrest box behind the seat, sitting on top of the seat
+    """
+    sw, sd, st = params["seat_width"], params["seat_depth"], params["seat_thickness"]
+    lh, lr, li = params["leg_height"], params["leg_radius"], params["leg_inset"]
+    bh = params["back_height"]
+    leg = lr * 2.0
+    back_thickness = 0.04  # fixed backrest thickness
+
+    mesh = bpy.data.meshes.new("chair")
+    obj = bpy.data.objects.new("chair", mesh)
+    bpy.context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+
+    # ── Seat ─────────────────────────────────────────────────────
+    _add_box(bm, 0.0, 0.0, lh + st / 2.0, sw, sd, st)
+
+    # ── Four legs ────────────────────────────────────────────────
+    hx = sw / 2.0 - li - leg / 2.0
+    hy = sd / 2.0 - li - leg / 2.0
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            _add_box(bm, sx * hx, sy * hy, lh / 2.0, leg, leg, lh)
+
+    # ── Backrest ─────────────────────────────────────────────────
+    back_y = -(sd / 2.0 - back_thickness / 2.0)
+    back_z = lh + st + bh / 2.0
+    back_w = sw * 0.8  # slightly narrower than the seat
+    _add_box(bm, 0.0, back_y, back_z, back_w, back_thickness, bh)
+
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+_BUILDERS = {
+    "table": _build_table_geometry,
+    "chair": _build_chair_geometry,
+}
+
+
+def build_geometry(spec):
+    """Dispatch to the correct geometry builder based on spec['generator']."""
+    gen = spec.get("generator", "table")
+    builder = _BUILDERS.get(gen)
+    if builder is None:
+        raise ValueError(f"unknown generator: {gen!r} (known: {sorted(_BUILDERS)})")
+    return builder(spec["params"])
 
 
 def apply_bevel(mesh_data):
@@ -227,7 +284,7 @@ def main():
     spec = json.load(open(spec_path, "r", encoding="utf-8"))
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    mesh = build_table(spec["params"])
+    mesh = build_geometry(spec)
     apply_bevel(mesh)
     assign_uvs(mesh)
     apply_material(mesh, spec.get("material", "default"))
