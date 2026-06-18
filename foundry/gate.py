@@ -32,6 +32,10 @@ def gate_asset(
     if mesh is None or mesh.is_empty:
         return GateResult(False, ["empty mesh"])
 
+    # Blender 5.x glTF exporter emits per-face vertices; merge them by position
+    # so the mesh is topologically correct for watertight/material checks.
+    mesh.merge_vertices()
+
     ext = mesh.extents  # [x, y, z]
     width, h, depth = float(ext[0]), float(ext[1]), float(ext[2])
 
