@@ -30,7 +30,7 @@ Schema:
 {{
   "asset_id": "table",
   "generator": "table",
-  "material": "worn_oak",
+  "material": "<pick from the palette below>",
   "params": {{
     "top_width": <number: width of tabletop (X)>,
     "top_depth": <number: depth of tabletop (Z)>,
@@ -44,7 +44,8 @@ Schema:
 Allowed values:
 - asset_id: "table"
 - generator: "table"
-- material: "worn_oak"
+- material: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated).
+  Choose the one that best matches the request's wood tone.
 - All param values are positive floats (decimals). Reasonable defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.
 
 Request: {request}
@@ -142,7 +143,12 @@ class AssetPlanner:
         if "generator" not in spec:
             spec["generator"] = gen
         if "material" not in spec or spec["material"] not in MATERIALS:
+            old = spec.get("material")
             spec["material"] = "worn_oak"
+            if old is not None:
+                log.info(f"material: {old!r} not in palette → default worn_oak")
+            else:
+                log.info("material: missing → default worn_oak")
         if "asset_id" not in spec:
             spec["asset_id"] = spec.get("generator", "table")
 

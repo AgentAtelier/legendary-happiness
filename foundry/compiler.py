@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import json
 
+from materials import MATERIAL_PALETTE
+
 GENERATORS = {"table"}
-MATERIALS = {"worn_oak"}
+MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
 # the guardrail against the "95% of the parameter space is garbage" failure.
