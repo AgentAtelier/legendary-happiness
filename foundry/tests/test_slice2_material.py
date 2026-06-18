@@ -33,6 +33,7 @@ def _read_pbr_factors(glb_path: str) -> dict:
         "roughnessFactor": pbr.roughnessFactor,
         "baseColorFactor": list(pbr.baseColorFactor),
         "metallicFactor": pbr.metallicFactor,
+        "has_baseColorTexture": pbr.baseColorTexture is not None,
     }
 
 
@@ -59,9 +60,15 @@ def test_table_has_bevel_and_pbr_material(tmp_path):
     assert abs(factors["roughnessFactor"] - 0.65) <= 0.05, (
         f"roughnessFactor={factors['roughnessFactor']}"
     )
-    # Target base color: [0.45, 0.28, 0.14, 1.0]
+    # Slice 3 wires a baked texture to Base Color, so the factor is white
+    # [1,1,1,1] (the texture carries the colour).
     bcf = factors["baseColorFactor"]
-    for channel, (actual, expected) in enumerate(zip(bcf, [0.45, 0.28, 0.14, 1.0])):
+    has_tex = factors["has_baseColorTexture"]
+    if has_tex:
+        expected_bcf = [1.0, 1.0, 1.0, 1.0]
+    else:
+        expected_bcf = [0.45, 0.28, 0.14, 1.0]
+    for channel, (actual, expected) in enumerate(zip(bcf, expected_bcf)):
         assert abs(actual - expected) <= 0.05, (
             f"baseColorFactor[{channel}]={actual}, expected ≈ {expected}"
         )
