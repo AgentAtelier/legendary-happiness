@@ -184,6 +184,7 @@ def apply_material(mesh, material_name, seed=0.0):
       - Noise-based coordinate warp BEFORE the wave is measured (breaks the
         parallel-stripe corduroy read).
       - CONSTANT ColorRamp for stepped, painted-band wood tones.
+      - AO baked INTO baseColor via MixRGB(MULTIPLY) to ground the asset.
       - seed offsets the Mapping Location so two same-material assets are not
         pixel-identical."""
     # Find the object that owns this mesh.
@@ -277,9 +278,24 @@ def apply_material(mesh, material_name, seed=0.0):
     s3 = stops.new(1.0)
     s3.color = (*dark, 1.0)
 
-    # Wire procedural: wave → ramp → bsdf
+    # ── Ambient Occlusion (grounds the asset, baked INTO baseColor) ─
+    ao = nodes.new("ShaderNodeAmbientOcclusion")
+    ao.location = (200, 100)
+    ao.inputs["Distance"].default_value = 0.2
+
+    # MixRGB(MULTIPLY): albedo × AO → grounded base colour.
+    mix_ao = nodes.new("ShaderNodeMixRGB")
+    mix_ao.blend_type = "MULTIPLY"
+    mix_ao.location = (500, 300)
+    mix_ao.inputs["Fac"].default_value = 1.0  # full mix
+
+    # Wire: ramp → mix_ao(Color1), AO → mix_ao(Color2)
+    links.new(ramp.outputs["Color"], mix_ao.inputs["Color1"])
+    links.new(ao.outputs["Color"], mix_ao.inputs["Color2"])
+
+    # Wire procedural: wave → ramp → mix_ao → bsdf
     links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
-    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    links.new(mix_ao.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
 
     # ── baking: capture the procedural colour into an image ───
@@ -305,10 +321,10 @@ def apply_material(mesh, material_name, seed=0.0):
     scene.cycles.samples = 1  # fast bake; quality is fine for a 1K texture
 
     # Temporarily replace the Principled BSDF with an Emission shader so
-    # the EMIT bake captures exactly the procedural colour (no lighting).
+    # the EMIT bake captures exactly the grounded base colour (albedo × AO).
     emit = nodes.new("ShaderNodeEmission")
     emit.location = (1000, 0)
-    links.new(ramp.outputs["Color"], emit.inputs["Color"])
+    links.new(mix_ao.outputs["Color"], emit.inputs["Color"])
     links.new(emit.outputs["Emission"], material_output.inputs["Surface"])
 
     # Bake.

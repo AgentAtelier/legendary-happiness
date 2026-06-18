@@ -248,3 +248,54 @@ def test_age_changes_vertex_positions(tmp_path):
         f"RMS vertex displacement ({rms:.6f}) between age=0.15 and age=1.0 too small; "
         f"age may not be deforming the mesh"
     )
+
+
+# ── Task 3: Ambient Occlusion baked into baseColor ───────────────
+
+def test_ao_table_passes_gate(tmp_path):
+    """A table built with the AO-augmented material still passes the gate."""
+    spec = dict(_AGE_SPEC)
+    spec["age"] = 0.15
+    glb = _build(tmp_path, spec, "ao_gate.glb")
+    res = gate_asset(glb, FOOTPRINT, HEIGHT)
+    assert res.passed, f"gate failed for AO table: {res.reasons}"
+
+
+def test_ao_creates_occlusion_contrast(tmp_path):
+    """The baked texture shows contrast from AO: both bright exposed areas
+    and dark occluded regions, with overall mean in a reasonable range.
+
+    AO multiplies the wood colour → occluded crevices (under tabletop,
+    leg-to-top junction) are noticeably darker than open faces."""
+    spec = dict(_AGE_SPEC)
+    spec["age"] = 0.15  # minimal entropy for clearer AO test
+    glb = _build(tmp_path, spec, "ao_contrast.glb")
+
+    arr = _extract_texture_array(glb)
+
+    if len(arr.shape) == 3 and arr.shape[2] >= 3:
+        grey = arr[:, :, :3].mean(axis=2)
+    else:
+        grey = arr.astype(np.float64)
+    grey = grey / 255.0
+
+    # ── AO creates dark occluded regions ─────────────────────
+    dark_count = int((grey < 0.15).sum())
+    assert dark_count > 30, (
+        f"only {dark_count} pixels below 0.15 brightness; "
+        f"AO may not be darkening occluded regions"
+    )
+
+    # ── Open faces remain reasonably bright ──────────────────
+    bright_count = int((grey > 0.4).sum())
+    assert bright_count > 100, (
+        f"only {bright_count} pixels above 0.4 brightness; "
+        f"AO may be over-darkening the entire texture"
+    )
+
+    # ── Overall mean in expected range (not all black/white) ─
+    mean_val = float(grey.mean())
+    assert 0.10 < mean_val < 0.65, (
+        f"texture mean ({mean_val:.3f}) out of expected range [0.10, 0.65]; "
+        f"AO may be misbehaving"
+    )
