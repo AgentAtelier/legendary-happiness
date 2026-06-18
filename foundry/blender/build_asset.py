@@ -1,14 +1,11 @@
 """Run INSIDE Blender:
     blender --background --python build_asset.py -- <spec_json> <out_glb>
 
-Slice 1 builds the table from bmesh box primitives. Five boxes (tabletop + 4 legs)
-are created in a single bmesh and exported as one GLB. Blender is Z-up; the glTF
+Slice 2 builds the table from bmesh box primitives with edge bevels and a
+stylized-PBR wood material. Five boxes (tabletop + 4 legs) are created in a
+single bmesh, beveled, and exported as one GLB. Blender is Z-up; the glTF
 exporter writes Y-up, so the GLB has height on Y, footprint on X/Z.
-
-Note: The five boxes are separate components that overlap at the tabletop/leg
-junction. The gate repairs topology via mesh.merge_vertices(), after which each
-box is individually watertight and the combined multi-body mesh passes
-is_watertight. Proper single-manifold construction is deferred to a later slice."""
+"""
 
 import json
 import sys
@@ -51,12 +48,33 @@ def build_table(params):
     return mesh
 
 
+def apply_bevel(mesh_data):
+    """Apply a small uniform edge bevel so edges catch light.
+
+    Offset ~0.015 m, 2 segments; bakes into the exported mesh.
+    """
+    bm = bmesh.new()
+    bm.from_mesh(mesh_data)
+    bmesh.ops.bevel(
+        bm,
+        geom=[e for e in bm.edges],
+        offset=0.015,
+        offset_type="OFFSET",
+        segments=2,
+        profile=0.5,
+    )
+    bm.to_mesh(mesh_data)
+    bm.free()
+
+
 def apply_material(mesh, material_name):
     mat = bpy.data.materials.new(material_name)
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     if bsdf is not None:
-        bsdf.inputs["Base Color"].default_value = (0.40, 0.26, 0.15, 1.0)
+        bsdf.inputs["Base Color"].default_value = (0.45, 0.28, 0.14, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.65
+        bsdf.inputs["Metallic"].default_value = 0.0
     mesh.materials.append(mat)
 
 
@@ -67,6 +85,7 @@ def main():
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mesh = build_table(spec["params"])
+    apply_bevel(mesh)
     apply_material(mesh, spec.get("material", "default"))
 
     bpy.ops.export_scene.gltf(
