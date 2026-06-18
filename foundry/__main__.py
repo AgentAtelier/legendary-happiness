@@ -2,6 +2,10 @@
     cd foundry && .venv/bin/python -m foundry <spec.json> <lexicon.json> <library_dir>
     OR  --request "a low wide coffee table" <lexicon.json> <library_dir>
     OR from repo root: PYTHONPATH=. foundry/.venv/bin/python -m foundry ...
+
+Subcommands:
+    publish <library_dir> <project_dir> <lexicon_path> [assets_subdir]
+        Publish forged .glb assets into a Godot project.
 """
 
 import sys
@@ -18,6 +22,13 @@ from runner import forge, forge_from_request
 
 
 def main() -> int:
+    # -- subcommand routing
+    if len(sys.argv) >= 2 and sys.argv[1] == "publish":
+        from publish import _main as publish_main
+        # Shift argv so publish._main sees only its own args
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        return publish_main()
+
     if "--request" in sys.argv:
         # --request "<text>" <lexicon.json> <library_dir>
         try:
@@ -39,6 +50,7 @@ def main() -> int:
     if len(sys.argv) != 4:
         print("usage: python -m foundry <spec.json> <lexicon.json> <library_dir>")
         print("       python -m foundry --request \"<text>\" <lexicon.json> <library_dir>")
+        print("       python -m foundry publish <library_dir> <project_dir> <lexicon_path>")
         return 2
     result = forge(sys.argv[1], sys.argv[2], sys.argv[3])
     status = "PASS" if result.gate.passed else "FAIL"
