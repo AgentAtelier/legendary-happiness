@@ -445,6 +445,101 @@ class TestSpatialCompiler:
         ]
         assert len(mat_steps) >= 1, "Greybox asset should emit material_override op"
 
+    def test_variants_entry_emits_instanced_default_variant(self, tmp_path):
+        """A lexicon entry with 'variants' → the compiler emits an add_node
+        with scene_path = the default variant (and emits NO greybox)."""
+        import json
+
+        lexicon_json = {
+            "assets": {
+                "table": {
+                    "path": "",
+                    "category": ["furniture"],
+                    "footprint": {"width": 1.5, "depth": 1.0},
+                    "height": 0.75,
+                    "greybox": {"mesh": "box", "color": [0.5, 0.3, 0.2]},
+                    "variants": {
+                        "worn_oak": "res://assets/table_worn_oak.glb",
+                        "default": "res://assets/table.glb",
+                        "dark_walnut": "res://assets/table_dark_walnut.glb",
+                    },
+                },
+            }
+        }
+        lexicon_path = tmp_path / "test_lexicon.json"
+        lexicon_path.write_text(json.dumps(lexicon_json))
+
+        lex = AssetLexicon(path=lexicon_path)
+        comp = SpatialCompiler(lex)
+
+        layout = {
+            "pattern": "rectangle_room",
+            "dimensions": {"width": 5, "height": 3, "depth": 5},
+            "slot_fills": {"center_table": "table"},
+            "arcs_overrides": [],
+        }
+        plan = comp.compile_layout(layout)
+
+        # Collect add_node ops
+        create_steps = [s for s in plan.steps if s.step_type == "create_entity"]
+        table_steps = [s for s in create_steps if "table" in s.name]
+
+        assert len(table_steps) == 1
+        step = table_steps[0]
+        assert hasattr(step, "scene_path")
+        # Should pick "default" variant
+        assert step.scene_path == "res://assets/table.glb"
+
+        # NO greybox mesh ops for the table
+        mesh_steps = [
+            s
+            for s in plan.steps
+            if getattr(s, "step_type", "") == "set_property"
+            and getattr(s, "property", "") == "mesh"
+            and "table_center_table" in s.node
+        ]
+        assert len(mesh_steps) == 0
+
+    def test_variants_no_default_uses_alphabetical_first(self, tmp_path):
+        """Without an explicit 'default' variant, the alphabetically-first
+        variant key is used."""
+        import json
+
+        lexicon_json = {
+            "assets": {
+                "table": {
+                    "path": "",
+                    "category": ["furniture"],
+                    "footprint": {"width": 1.5, "depth": 1.0},
+                    "height": 0.75,
+                    "greybox": {"mesh": "box", "color": [0.5, 0.3, 0.2]},
+                    "variants": {
+                        "dark_walnut": "res://assets/table_dark_walnut.glb",
+                        "worn_oak": "res://assets/table_worn_oak.glb",
+                    },
+                },
+            }
+        }
+        lexicon_path = tmp_path / "test_lexicon.json"
+        lexicon_path.write_text(json.dumps(lexicon_json))
+
+        lex = AssetLexicon(path=lexicon_path)
+        comp = SpatialCompiler(lex)
+
+        layout = {
+            "pattern": "rectangle_room",
+            "dimensions": {"width": 5, "height": 3, "depth": 5},
+            "slot_fills": {"center_table": "table"},
+            "arcs_overrides": [],
+        }
+        plan = comp.compile_layout(layout)
+
+        create_steps = [s for s in plan.steps if s.step_type == "create_entity"]
+        table_steps = [s for s in create_steps if "table" in s.name]
+        assert len(table_steps) == 1
+        # Alphabetically-first: "dark_walnut" < "worn_oak"
+        assert table_steps[0].scene_path == "res://assets/table_dark_walnut.glb"
+
     def test_arcs_override_nudged_off_slot_object(self, compiler):
         """ARCS overrides get the same collision-nudge as slot fills — an
         override placed on top of a slot asset must not clip into it

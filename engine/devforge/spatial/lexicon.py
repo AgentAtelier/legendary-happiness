@@ -97,7 +97,20 @@ class AssetLexicon:
         ``facing`` is an optional [x, y, z] look-at direction.
         """
         entry = self.require(asset_id)
-        asset_path = entry.get("path", "")
+
+        # Resolve asset_path: variants → legacy path → greybox.
+        # DEFFERED: material-DRIVEN variant selection ("LLM picked walnut"
+        # → walnut variant) is a follow-up; for now resolve a deterministic
+        # default.
+        variants = entry.get("variants", {})
+        if variants:
+            if "default" in variants:
+                asset_path = variants["default"]
+            else:
+                asset_path = variants[sorted(variants.keys())[0]]
+        else:
+            asset_path = entry.get("path", "")
+
         h = entry.get("height", 1.0)
 
         # ── Instanced asset (real .glb scene) ──

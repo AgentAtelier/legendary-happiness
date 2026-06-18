@@ -30,3 +30,25 @@ def register_asset(lexicon_path: str, asset_id: str, asset_path: str) -> None:
         raise KeyError(f"asset_id {asset_id!r} not in lexicon")
     data["assets"][asset_id]["path"] = asset_path
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def register_variant(
+    lexicon_path: str, asset_id: str, material_id: str, asset_path: str
+) -> None:
+    """Register a material-variant path for *asset_id* in the lexicon.
+
+    Sets ``lexicon["assets"][asset_id]["variants"][material_id] = asset_path``,
+    creating the ``variants`` dict if absent.  The legacy ``path`` field is
+    left untouched for back-compat.
+
+    Raises ``KeyError`` if *asset_id* is not in the lexicon.
+    """
+    path = Path(lexicon_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if asset_id not in data["assets"]:
+        raise KeyError(f"asset_id {asset_id!r} not in lexicon")
+    entry = data["assets"][asset_id]
+    if "variants" not in entry:
+        entry["variants"] = {}
+    entry["variants"][material_id] = asset_path
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

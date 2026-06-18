@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from library import LIVE_LEXICON
-from publish import publish, _resolve_asset_id
+from publish import publish, _resolve_asset_and_material
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -27,38 +27,63 @@ def _make_glb(path: Path) -> None:
     box.export(str(path))
 
 
-# ── Unit: _resolve_asset_id ─────────────────────────────────────────
+# ── Unit: _resolve_asset_and_material ──────────────────────────
 
 
 def test_resolve_exact_match():
     ids = {"table", "chair", "fridge"}
-    assert _resolve_asset_id("table", ids) == "table"
-    assert _resolve_asset_id("chair", ids) == "chair"
+    asset_id, mat_id = _resolve_asset_and_material("table", ids)
+    assert asset_id == "table"
+    assert mat_id == "default"
+
+
+def test_resolve_exact_match_sets_default():
+    ids = {"table", "chair", "fridge"}
+    _, mat_id = _resolve_asset_and_material("chair", ids)
+    assert mat_id == "default"
 
 
 def test_resolve_material_suffix_fallback():
     ids = {"table", "chair", "fridge"}
-    assert _resolve_asset_id("table_dark_walnut", ids) == "table"
-    assert _resolve_asset_id("chair_oak", ids) == "chair"
+    asset_id, mat_id = _resolve_asset_and_material("table_dark_walnut", ids)
+    assert asset_id == "table"
+    assert mat_id == "dark_walnut"
 
 
 def test_resolve_unknown_stem_returns_none():
     ids = {"table", "chair", "fridge"}
-    assert _resolve_asset_id("dragon", ids) is None
-    assert _resolve_asset_id("dragon_red", ids) is None
+    asset_id, mat_id = _resolve_asset_and_material("dragon", ids)
+    assert asset_id is None
+    assert mat_id == ""
+
+
+def test_resolve_unknown_suffix_material():
+    ids = {"table", "chair", "fridge"}
+    asset_id, mat_id = _resolve_asset_and_material("dragon_red", ids)
+    assert asset_id is None
 
 
 def test_resolve_full_stem_with_underscore_takes_priority():
     """If the full stem is itself a lexicon id, use it directly."""
     ids = {"table", "table_dark", "chair"}
-    assert _resolve_asset_id("table_dark", ids) == "table_dark"
+    asset_id, mat_id = _resolve_asset_and_material("table_dark", ids)
+    assert asset_id == "table_dark"
+    assert mat_id == "default"
+
+
+def test_resolve_single_underscore_suffix():
+    """A stem with one underscore splits correctly."""
+    ids = {"table", "chair"}
+    asset_id, mat_id = _resolve_asset_and_material("table_oak", ids)
+    assert asset_id == "table"
+    assert mat_id == "oak"
 
 
 # ── Integration: publish ─────────────────────────────────────────────
 
 
-def test_publish_copies_glb_and_registers_path(tmp_path, lexicon_copy):
-    """A matching .glb is copied and the lexicon path is set to res://."""
+def test_publish_copies_glb_and_registers_variant(tmp_path, lexicon_copy):
+    """A matching .glb is copied and registered as the 'default' variant."""
     lib_dir = tmp_path / "library"
     lib_dir.mkdir()
     _make_glb(lib_dir / "table.glb")
@@ -72,13 +97,14 @@ def test_publish_copies_glb_and_registers_path(tmp_path, lexicon_copy):
     assert len(result["skipped"]) == 0
     entry = result["published"][0]
     assert entry["id"] == "table"
+    assert entry["material_id"] == "default"
     assert entry["res_path"] == "res://assets/table.glb"
     assert Path(entry["dst"]).exists()
     assert Path(entry["dst"]).suffix == ".glb"
 
-    # Lexicon entry updated
+    # Lexicon entry has the variant registered
     data = json.loads(Path(lexicon_copy).read_text(encoding="utf-8"))
-    assert data["assets"]["table"]["path"] == "res://assets/table.glb"
+    assert data["assets"]["table"]["variants"]["default"] == "res://assets/table.glb"
 
 
 def test_unknown_stem_is_skipped(tmp_path, lexicon_copy):
@@ -102,8 +128,8 @@ def test_unknown_stem_is_skipped(tmp_path, lexicon_copy):
     assert not assets.exists() or not list(assets.glob("*.glb"))
 
 
-def test_material_suffix_fallback_copies_and_registers(tmp_path, lexicon_copy):
-    """A stem like 'table_dark_walnut' resolves to 'table' via fallback."""
+def test_material_suffix_registers_variant(tmp_path, lexicon_copy):
+    """A stem like 'table_dark_walnut' registers a 'dark_walnut' variant."""
     lib_dir = tmp_path / "library"
     lib_dir.mkdir()
     _make_glb(lib_dir / "table_dark_walnut.glb")
@@ -117,14 +143,16 @@ def test_material_suffix_fallback_copies_and_registers(tmp_path, lexicon_copy):
     assert len(result["skipped"]) == 0
     entry = result["published"][0]
     assert entry["id"] == "table"
-    assert entry["res_path"] == "res://assets/table.glb"
+    assert entry["material_id"] == "dark_walnut"
+    assert entry["res_path"] == "res://assets/table_dark_walnut.glb"
 
     data = json.loads(Path(lexicon_copy).read_text(encoding="utf-8"))
-    assert data["assets"]["table"]["path"] == "res://assets/table.glb"
+    assert data["assets"]["table"]["variants"]["dark_walnut"] == \
+        "res://assets/table_dark_walnut.glb"
 
 
 def test_res_path_format(tmp_path, lexicon_copy):
-    """The res_path is exactly res://<assets_subdir>/<id>.glb."""
+    """The res_path uses the full stem for variant-awareness."""
     lib_dir = tmp_path / "library"
     lib_dir.mkdir()
     _make_glb(lib_dir / "chair.glb")
@@ -134,6 +162,7 @@ def test_res_path_format(tmp_path, lexicon_copy):
 
     result = publish(str(lib_dir), str(project_dir), lexicon_copy)
     assert result["published"][0]["res_path"] == "res://assets/chair.glb"
+    assert result["published"][0]["material_id"] == "default"
 
 
 def test_custom_assets_subdir(tmp_path, lexicon_copy):
@@ -153,8 +182,61 @@ def test_custom_assets_subdir(tmp_path, lexicon_copy):
     assert Path(entry["dst"]).exists()
 
 
+def test_publish_two_variants_no_collapse(tmp_path, lexicon_copy):
+    """Publishing table.glb + table_dark_walnut.glb registers TWO variants
+    ('default', 'dark_walnut') under ONE 'table' entry (no collapse)."""
+    lib_dir = tmp_path / "library"
+    lib_dir.mkdir()
+    _make_glb(lib_dir / "table.glb")
+    _make_glb(lib_dir / "table_dark_walnut.glb")
+
+    project_dir = tmp_path / "my_project"
+    project_dir.mkdir()
+
+    result = publish(str(lib_dir), str(project_dir), lexicon_copy)
+
+    assert len(result["published"]) == 2
+    assert len(result["skipped"]) == 0
+
+    pub_by_id = {}
+    for e in result["published"]:
+        pub_by_id.setdefault(e["id"], []).append(e["material_id"])
+    assert set(pub_by_id["table"]) == {"default", "dark_walnut"}
+
+    data = json.loads(Path(lexicon_copy).read_text(encoding="utf-8"))
+    variants = data["assets"]["table"]["variants"]
+    assert len(variants) == 2
+    assert variants["default"] == "res://assets/table.glb"
+    assert variants["dark_walnut"] == "res://assets/table_dark_walnut.glb"
+
+    # Both GLBs are copied to the project with distinct filenames.
+    assert (project_dir / "assets" / "table.glb").exists()
+    assert (project_dir / "assets" / "table_dark_walnut.glb").exists()
+
+
+def test_publish_copies_sidecar_if_present(tmp_path, lexicon_copy):
+    """If a .sidecar.json exists next to the .glb, it is copied too."""
+    lib_dir = tmp_path / "library"
+    lib_dir.mkdir()
+    _make_glb(lib_dir / "table.glb")
+    # Create a dummy sidecar
+    sidecar = {"asset_id": "table", "pipeline_type": "procedural"}
+    (lib_dir / "table.sidecar.json").write_text(json.dumps(sidecar))
+
+    project_dir = tmp_path / "my_project"
+    project_dir.mkdir()
+
+    result = publish(str(lib_dir), str(project_dir), lexicon_copy)
+
+    assert len(result["published"]) == 1
+    sidecar_dst = project_dir / "assets" / "table.sidecar.json"
+    assert sidecar_dst.exists()
+    sidecar_data = json.loads(sidecar_dst.read_text(encoding="utf-8"))
+    assert sidecar_data["asset_id"] == "table"
+
+
 def test_idempotent(tmp_path, lexicon_copy):
-    """Running publish twice yields the same lexicon path (no corruption)."""
+    """Running publish twice yields the same variant paths (no corruption)."""
     lib_dir = tmp_path / "library"
     lib_dir.mkdir()
     _make_glb(lib_dir / "table.glb")
@@ -175,7 +257,7 @@ def test_idempotent(tmp_path, lexicon_copy):
 
     # Lexicon is intact
     data = json.loads(Path(lexicon_copy).read_text(encoding="utf-8"))
-    assert data["assets"]["table"]["path"] == path_after_first
+    assert data["assets"]["table"]["variants"]["default"] == path_after_first
 
 
 def test_mixed_published_and_skipped(tmp_path, lexicon_copy):

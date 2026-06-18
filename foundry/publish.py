@@ -1,6 +1,7 @@
 """Publish forged assets into a Godot project by copying .glb files and
-registering their lexicon paths.  This is the bridge that makes the live
-spatial compiler emit instanced-asset ops instead of greyboxes."""
+registering their lexicon paths (as material variants where applicable).
+This is the bridge that makes the live spatial compiler emit instanced-asset
+ops instead of greyboxes."""
 
 from __future__ import annotations
 
@@ -9,7 +10,7 @@ import shutil
 from pathlib import Path
 from typing import List, TypedDict
 
-from library import register_asset
+from library import register_asset, register_variant
 
 
 class PublishedEntry(TypedDict):
@@ -17,6 +18,7 @@ class PublishedEntry(TypedDict):
     src: str
     dst: str
     res_path: str
+    material_id: str
 
 
 class SkippedEntry(TypedDict):
@@ -29,21 +31,29 @@ class PublishResult(TypedDict):
     skipped: List[SkippedEntry]
 
 
-def _resolve_asset_id(stem: str, lexicon_ids: set) -> str | None:
-    """Derive an asset id from a filename stem.
+def _resolve_asset_and_material(
+    stem: str, lexicon_ids: set
+) -> tuple[str | None, str]:
+    """Derive (asset_id, material_id) from a filename stem.
 
-    Returns the matching lexicon id, or None if the stem cannot be resolved.
-    Handles material-suffix stems like ``table_dark_walnut`` by falling back
-    to the part before the first underscore when the full stem is not itself a
-    known lexicon id.
+    Rules:
+    - Full stem is a lexicon id → (stem, "default")
+    - Full stem is NOT a lexicon id → split on FIRST "_" only:
+      part0 must be a lexicon id → (part0, rest_with_underscores)
+      Otherwise → (None, "")
+
+    Examples:
+      "table"            → ("table", "default")
+      "table_dark_walnut" → ("table", "dark_walnut")
+      "table_dark"        → ("table", "dark")  -- if "table" is known
+      "dragon"            → (None, "")
     """
     if stem in lexicon_ids:
-        return stem
-    # Material-suffix fallback
+        return stem, "default"
     parts = stem.split("_", 1)
     if len(parts) == 2 and parts[0] in lexicon_ids:
-        return parts[0]
-    return None
+        return parts[0], parts[1]
+    return None, ""
 
 
 def publish(
@@ -95,7 +105,7 @@ def publish(
 
     for glb_path in sorted(lib.glob("*.glb")):
         stem = glb_path.stem  # "table" or "table_dark_walnut"
-        asset_id = _resolve_asset_id(stem, lexicon_ids)
+        asset_id, material_id = _resolve_asset_and_material(stem, lexicon_ids)
 
         if asset_id is None:
             skipped.append({
@@ -104,19 +114,26 @@ def publish(
             })
             continue
 
-        # Destination
-        dst = assets_dir / f"{asset_id}.glb"
+        # Destination — keep the full stem as filename (variant-aware).
+        dst = assets_dir / f"{stem}.glb"
         shutil.copy2(glb_path, dst)
 
-        res_path = f"res://{assets_subdir}/{asset_id}.glb"
-        register_asset(lexicon_path, asset_id, res_path)
+        res_path = f"res://{assets_subdir}/{stem}.glb"
+        register_variant(lexicon_path, asset_id, material_id, res_path)
 
         published.append({
             "id": asset_id,
             "src": str(glb_path),
             "dst": str(dst),
             "res_path": res_path,
+            "material_id": material_id,
         })
+
+        # Copy the sidecar JSON alongside if it exists.
+        sidecar_src = glb_path.with_suffix(".sidecar.json")
+        if sidecar_src.exists():
+            sidecar_dst = assets_dir / f"{stem}.sidecar.json"
+            shutil.copy2(sidecar_src, sidecar_dst)
 
     return {"published": published, "skipped": skipped}
 
@@ -150,7 +167,7 @@ def _main() -> int:
 
     print(f"Published {len(result['published'])}:")
     for entry in result["published"]:
-        print(f"  {entry['id']} → {entry['res_path']}")
+        print(f"  {entry['id']} [{entry['material_id']}] → {entry['res_path']}")
 
     print(f"\nSkipped {len(result['skipped'])}:")
     for entry in result["skipped"]:
