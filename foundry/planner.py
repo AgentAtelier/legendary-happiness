@@ -26,27 +26,39 @@ _GRAMMAR = _load_grammar(_GRAMMAR_PATH)
 
 _ASSET_PLANNER_PROMPT = """You are an asset planner for a 3D game. Convert the user's natural-language description into an asset specification JSON. Output ONLY the JSON — no prose, no explanation.
 
-Schema:
+Choose the generator that best matches the request:
+- "table" — a table (flat top + four legs). Request about tables, desks, coffee tables, dining tables → use "table".
+- "chair" — a chair (seat box + four legs + backrest). Request about chairs, stools, seats → use "chair".
+
+Set asset_id to the same value as generator.
+
+Table params (generator="table"):
 {{
-  "asset_id": "table",
-  "generator": "table",
-  "material": "<pick from the palette below>",
-  "params": {{
-    "top_width": <number: width of tabletop (X)>,
-    "top_depth": <number: depth of tabletop (Z)>,
-    "top_thickness": <number: thickness of the tabletop board>,
-    "leg_height": <number: height from floor to underside of top>,
-    "leg_radius": <number: radius of each cylindrical leg>,
-    "leg_inset": <number: how far in from edges the legs sit>
-  }}
+  "top_width": <number: width of tabletop (X)>,
+  "top_depth": <number: depth of tabletop (Z)>,
+  "top_thickness": <number: thickness of the tabletop board>,
+  "leg_height": <number: height from floor to underside of top>,
+  "leg_radius": <number: radius of each cylindrical leg>,
+  "leg_inset": <number: how far in from edges the legs sit>
 }}
 
-Allowed values:
-- asset_id: "table"
-- generator: "table"
-- material: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated).
-  Choose the one that best matches the request's wood tone.
-- All param values are positive floats (decimals). Reasonable defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.
+Chair params (generator="chair"):
+{{
+  "seat_width": <number: width of the seat (X)>,
+  "seat_depth": <number: depth of the seat (Z)>,
+  "seat_thickness": <number: thickness of the seat board>,
+  "leg_height": <number: height from floor to underside of seat>,
+  "leg_radius": <number: radius of each leg>,
+  "leg_inset": <number: how far in from edges the legs sit>,
+  "back_height": <number: height of the backrest above the seat>
+}}
+
+Allowed material values: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated).
+Choose the one that best matches the request's wood tone.
+All param values are positive floats (decimals).
+
+Table defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.
+Chair defaults: seat_width ~0.45-0.5, seat_depth ~0.45-0.5, seat_thickness ~0.05-0.06, leg_height ~0.4-0.5, leg_radius ~0.03-0.04, leg_inset ~0.03-0.05, back_height ~0.3-0.4.
 
 Request: {request}
 
