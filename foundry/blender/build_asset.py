@@ -7,8 +7,12 @@ exporter writes a baseColorTexture. Blender is Z-up; the glTF exporter writes
 Y-up, so the GLB has height on Y, footprint on X/Z.
 """
 
+import hashlib
 import json
+import math
 import os
+import random
+import struct
 import sys
 
 import bmesh
@@ -323,16 +327,138 @@ def apply_material(mesh, material_name, seed=0.0):
     bake_image.pack()
 
 
+def _derive_entropy_seed(spec: dict) -> int:
+    """Derive a deterministic 32-bit integer seed from the spec.
+
+    Uses stable hash (SHA-256), not Python's hash(), so the seed is
+    reproducible across Python versions and processes.
+    """
+    key = f"{spec.get('asset_id', 'table')}_{spec.get('material', 'default')}"
+    h = hashlib.sha256(key.encode()).digest()
+    return struct.unpack('>I', h[:4])[0]
+
+
+def _derive_material_offset(spec: dict) -> float:
+    """Derive a deterministic float in [0, 10) from the spec for the
+    material Mapping Location offset (anti-pixel-identical guarantee).
+    """
+    key = f"{spec.get('asset_id', 'table')}_{spec.get('material', 'default')}"
+    h = hashlib.sha256(key.encode()).digest()
+    return (struct.unpack('>I', h[4:8])[0] / (2**32)) * 10.0
+
+
+def apply_entropy(mesh_data, age, seed):
+    """Apply bounded, seeded deformations that scale with *age* to break
+    the CAD-perfect silhouette.
+
+    Deformations (all magnitudes capped for gate safety):
+      - Per-vertex displacement along normals (sub-mm noise).
+      - Global Z-twist proportional to height.
+      - Tabletop sag: centre vertices pulled down.
+      - Leg taper: bottom of each leg narrowed toward its centre.
+      - Leg splay: bottom of each leg shifted horizontally.
+
+    The mesh is deformed BEFORE bevelling (call order enforced in main()).
+    Deterministic: identical (spec, age, seed) → byte-identical mesh.
+    """
+    rng = random.Random(seed)
+
+    bm = bmesh.new()
+    bm.from_mesh(mesh_data)
+    bm.verts.ensure_lookup_table()
+
+    z_vals = [v.co.z for v in bm.verts]
+    min_z = min(z_vals)
+    max_z = max(z_vals)
+    z_range = max(max_z - min_z, 0.01)
+    mid_z = sum(z_vals) / len(z_vals)
+
+    # ── Magnitude caps (all well inside gate +15 % tolerance) ─
+    max_displace = 0.002 * age   #  2 mm surface noise at age=1
+    max_twist = 0.004 * age      # ~0.2° at age=1
+    max_sag = 0.012 * age        # 12 mm centre droop at age=1
+    max_taper = 0.12 * age       # 12 % of distance to leg centre at age=1
+    max_splay = 0.006 * age      #  6 mm leg-base shift at age=1
+
+    # ── 1. Per-vertex displacement along normals ─────────────
+    for v in bm.verts:
+        offset = (rng.random() - 0.5) * 2 * max_displace
+        v.co += v.normal * offset
+
+    # ── 2. Global Z-twist (amount ∝ height) ──────────────────
+    twist = (rng.random() - 0.5) * 2 * max_twist
+    for v in bm.verts:
+        t = (v.co.z - min_z) / z_range
+        angle = twist * t
+        c, s = math.cos(angle), math.sin(angle)
+        v.co.x, v.co.y = v.co.x * c - v.co.y * s, v.co.x * s + v.co.y * c
+
+    # ── 3. Top sag ───────────────────────────────────────────
+    top_verts = [v for v in bm.verts if v.co.z > mid_z]
+    if top_verts:
+        max_top_xy = max(math.hypot(v.co.x, v.co.y) for v in top_verts)
+        if max_top_xy > 0.001:
+            for v in top_verts:
+                dist = math.hypot(v.co.x, v.co.y)
+                sag = max(0.0, 1.0 - dist / max_top_xy)
+                v.co.z -= sag * max_sag * rng.uniform(0.8, 1.0)
+
+    # ── 4. Leg taper + splay ─────────────────────────────────
+    leg_verts = [v for v in bm.verts if v.co.z < mid_z]
+    if leg_verts:
+        # Cluster into 4 quadrants
+        quads = [[], [], [], []]  # ++, -+, --, +-
+        for v in leg_verts:
+            if v.co.x >= 0 and v.co.y >= 0:
+                quads[0].append(v)
+            elif v.co.x < 0 and v.co.y >= 0:
+                quads[1].append(v)
+            elif v.co.x < 0 and v.co.y < 0:
+                quads[2].append(v)
+            else:
+                quads[3].append(v)
+
+        for quad in quads:
+            if len(quad) < 4:
+                continue
+            cx = sum(v.co.x for v in quad) / len(quad)
+            cy = sum(v.co.y for v in quad) / len(quad)
+            leg_bottom = min(v.co.z for v in quad)
+            leg_z_range = max(mid_z - leg_bottom, 0.01)
+
+            splay_angle = rng.random() * 2 * math.pi
+            splay_dx = math.cos(splay_angle) * max_splay
+            splay_dy = math.sin(splay_angle) * max_splay
+
+            for v in quad:
+                t = (mid_z - v.co.z) / leg_z_range  # 0 at top, 1 at bottom
+                # Taper toward leg centre
+                v.co.x += (cx - v.co.x) * t * max_taper
+                v.co.y += (cy - v.co.y) * t * max_taper
+                # Splay at base
+                v.co.x += splay_dx * t
+                v.co.y += splay_dy * t
+
+    bm.to_mesh(mesh_data)
+    bm.free()
+
+
 def main():
     args = _argv()
     spec_path, out_glb = args[0], args[1]
     spec = json.load(open(spec_path, "r", encoding="utf-8"))
 
+    # Derive deterministic seeds from the spec.
+    entropy_seed = _derive_entropy_seed(spec)
+    material_offset = _derive_material_offset(spec)
+    age = float(spec.get("age", 0.15))
+
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mesh = build_geometry(spec)
+    apply_entropy(mesh, age, entropy_seed)
     apply_bevel(mesh)
     assign_uvs(mesh)
-    apply_material(mesh, spec.get("material", "default"))
+    apply_material(mesh, spec.get("material", "default"), seed=material_offset)
 
     bpy.ops.export_scene.gltf(
         filepath=out_glb, export_format="GLB", use_selection=False

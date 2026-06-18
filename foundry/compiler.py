@@ -54,6 +54,13 @@ def compile_spec(spec: dict) -> dict:
     if material not in MATERIALS:
         raise SpecError(f"unknown material: {material!r} (known: {sorted(MATERIALS)})")
 
+    age = spec.get("age", 0.15)
+    if not isinstance(age, (int, float)):
+        raise SpecError(f"age must be a number, got {type(age).__name__}")
+    age = float(age)
+    if not (0.15 <= age <= 1.0):
+        raise SpecError(f"age={age} out of range [0.15, 1.0]")
+
     params = spec.get("params") or {}
     ranges = PARAM_RANGES[gen]
     for key, (lo, hi) in ranges.items():
@@ -69,5 +76,6 @@ def compile_spec(spec: dict) -> dict:
         "asset_id": spec.get("asset_id", gen),
         "generator": gen,
         "material": material,
+        "age": age,
         "params": {k: float(params[k]) for k in ranges},
     }

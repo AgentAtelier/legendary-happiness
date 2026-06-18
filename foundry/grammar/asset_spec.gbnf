@@ -5,7 +5,7 @@
 # Params are GENERIC (string:number pairs); the per-generator schema is
 # enforced by planner clamping against compiler.PARAM_RANGES[generator].
 
-root ::= "{" ws "\"asset_id\"" ws ":" ws asset-id-val ws "," ws "\"generator\"" ws ":" ws generator-val ws "," ws "\"material\"" ws ":" ws material-val ws "," ws "\"params\"" ws ":" ws params-object ws "}"
+root ::= "{" ws "\"asset_id\"" ws ":" ws asset-id-val ws "," ws "\"generator\"" ws ":" ws generator-val ws "," ws "\"material\"" ws ":" ws material-val ws "," ws "\"age\"" ws ":" ws number ws "," ws "\"params\"" ws ":" ws params-object ws "}"
 
 asset-id-val ::= "\"table\"" | "\"chair\""
 generator-val ::= "\"table\"" | "\"chair\""

@@ -60,6 +60,12 @@ All param values are positive floats (decimals).
 Table defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.
 Chair defaults: seat_width ~0.45-0.5, seat_depth ~0.45-0.5, seat_thickness ~0.05-0.06, leg_height ~0.4-0.5, leg_radius ~0.03-0.04, leg_inset ~0.03-0.05, back_height ~0.3-0.4.
 
+"age": <number between 0.15 and 1.0 — controls wear and imperfection.>
+0.15 = lightly imperfect (baseline, always slightly off from CAD-perfect).
+0.7-1.0 = old / battered / rustic / weathered.
+0.15-0.3 = new / fine / polished / pristine.
+Default is 0.15.
+
 Request: {request}
 
 Output JSON now:"""
@@ -163,6 +169,20 @@ class AssetPlanner:
                 log.info("material: missing → default worn_oak")
         if "asset_id" not in spec:
             spec["asset_id"] = spec.get("generator", "table")
+
+        # ── Clamp age ───────────────────────────────────────────
+        age = spec.get("age", 0.15)
+        if not isinstance(age, (int, float)):
+            log.info(f"age: non-numeric ({type(age).__name__}) → default 0.15")
+            age = 0.15
+        age = float(age)
+        if age < 0.15:
+            log.info(f"age={age} < 0.15 → 0.15")
+            age = 0.15
+        elif age > 1.0:
+            log.info(f"age={age} > 1.0 → 1.0")
+            age = 1.0
+        spec["age"] = age
 
         # Verify the final spec passes compile_spec
         compile_spec(spec)
