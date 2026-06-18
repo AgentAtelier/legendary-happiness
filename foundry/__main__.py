@@ -1,8 +1,17 @@
 """CLI: forge one asset.
     cd foundry && .venv/bin/python -m foundry <spec.json> <lexicon.json> <library_dir>
+    OR from repo root: PYTHONPATH=. foundry/.venv/bin/python -m foundry ...
 """
 
 import sys
+from pathlib import Path
+
+# Ensure the foundry package directory is on sys.path so bare imports
+# (from compiler import ...) work for both direct execution from foundry/
+# and python -m foundry from the repo root.
+_foundry_dir = str(Path(__file__).resolve().parent)
+if _foundry_dir not in sys.path:
+    sys.path.insert(0, _foundry_dir)
 
 from runner import forge
 
