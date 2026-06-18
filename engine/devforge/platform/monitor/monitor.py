@@ -81,6 +81,9 @@ class EventType(str, Enum):
     # Game model
     MODEL_LEARNED = "model_learned"
 
+    # Generic pipeline step
+    STEP = "step"
+
     # Warnings and errors
     WARNING = "warning"
     ERROR = "error"
@@ -100,7 +103,7 @@ class Severity(str, Enum):
 class Trace:
     """Represents a single request flowing through the pipeline."""
 
-    __slots__ = ("trace_id", "prompt", "start_time", "intent", "metadata")
+    __slots__ = ("trace_id", "prompt", "start_time", "intent", "metadata", "status")
 
     def __init__(self, prompt: str):
         self.trace_id = str(uuid.uuid4())[:12]
@@ -108,6 +111,7 @@ class Trace:
         self.start_time = time.time()
         self.intent: str | None = None
         self.metadata: dict[str, Any] = {}
+        self.status: str = "running"
 
 
 # ── SQLite Schema ───────────────────────────────────────────────────
@@ -227,8 +231,13 @@ class Monitor:
                 ),
             )
         self._emit(trace, EventType.TRACE_END, Severity.INFO, f"Completed in {total_ms}ms: {status}")
+        trace.status = status
 
     # ── Pipeline event loggers ──────────────────────────────────────
+
+    def log_step(self, trace: Trace, name: str, data: dict | None = None) -> None:
+        """Log a generic pipeline step with optional data."""
+        self._emit(trace, EventType.STEP, Severity.DEBUG, f"Step: {name}", data=data or {})
 
     def log_context_built(
         self,

@@ -1338,6 +1338,30 @@ async def testbench_catalog():
         return {"tests": [], "suites": {}, "error": f"forge_testbench not available: {e}"}
 
 
+# ── Legacy bench aliases (old /api/bench/* → new /api/testbench/*) ──
+
+
+@app.get("/api/bench/tests")
+async def bench_tests():
+    """Legacy alias for /api/testbench/catalog."""
+    try:
+        from forge_testbench import catalog_entries, get_suites
+
+        return {
+            "tests": catalog_entries(),
+            "bundles": list(get_suites().keys()),
+            "suites": get_suites(),
+        }
+    except ImportError as e:
+        return {"tests": [], "bundles": [], "suites": {}, "error": f"forge_testbench not available: {e}"}
+
+
+@app.get("/api/bench/history")
+async def bench_history(limit: int = 20):
+    """Legacy alias for /api/testbench/history."""
+    return await testbench_history(limit=limit)
+
+
 @app.post("/api/testbench/run")
 async def testbench_run(request: Request):
     """Run tests via the forge_testbench runner. Returns SSE streaming job_id.

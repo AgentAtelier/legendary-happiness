@@ -7,7 +7,7 @@ The game: A third-person walk across a cold, fog-bound field. Warmth drains
 in the open and recovers near a campfire. Reach the cabin before you freeze.
 
 Usage:
-    python tests/integration/test_forgeborn.py
+    python integration_tests/integration/test_forgeborn.py
     python tests/integration/test_forgeborn.py --start-at 3    # resume from step 3
     python tests/integration/test_forgeborn.py --dry-run        # just print prompts
 """
@@ -21,7 +21,7 @@ from pathlib import Path
 
 # Add project root to path for shared imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tests.integration.mcp_client import MCPClient
+from integration_tests.integration.mcp_client import MCPClient
 
 # ── Prompt Sequence ────────────────────────────────────────────
 
