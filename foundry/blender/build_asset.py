@@ -8,10 +8,18 @@ Y-up, so the GLB has height on Y, footprint on X/Z.
 """
 
 import json
+import os
 import sys
 
 import bmesh
 import bpy
+
+# Allow importing from the foundry package directory (materials.py).
+_foundry_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _foundry_dir not in sys.path:
+    sys.path.insert(0, _foundry_dir)
+
+from materials import MATERIAL_PALETTE
 
 
 def _argv():
@@ -97,14 +105,27 @@ def _find_object_for_mesh(mesh_data):
     return None
 
 
+def _lerp(a, b, t):
+    """Linear interpolation between two RGB tuples."""
+    return tuple(a[i] + (b[i] - a[i]) * t for i in range(3))
+
+
 def apply_material(mesh, material_name):
     """Create a procedural wood material with shader nodes, bake the base colour
     to an image texture with Cycles-CPU, then wire the baked texture into the
-    Principled BSDF Base Color so the glTF exporter writes a baseColorTexture."""
+    Principled BSDF Base Color so the glTF exporter writes a baseColorTexture.
+
+    Material colours and roughness are driven by foundry/materials.py."""
     # Find the object that owns this mesh.
     obj = _find_object_for_mesh(mesh)
     if obj is None:
         raise RuntimeError("Could not find object for the table mesh")
+
+    # ── Look up the material palette entry ────────────────────
+    mat_info = MATERIAL_PALETTE.get(material_name, MATERIAL_PALETTE["worn_oak"])
+    dark = mat_info["grain_dark_rgb"]
+    light = mat_info["grain_light_rgb"]
+    roughness = mat_info["roughness"]
 
     mat = bpy.data.materials.new(material_name)
     mat.use_nodes = True
@@ -118,7 +139,7 @@ def apply_material(mesh, material_name):
 
     # ── procedural wood nodes ────────────────────────────────
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
-    bsdf.inputs["Roughness"].default_value = 0.65
+    bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = 0.0
     bsdf.location = (400, 200)
 
@@ -135,20 +156,20 @@ def apply_material(mesh, material_name):
     wave.inputs["Detail Scale"].default_value = 3.0
     wave.location = (-600, 200)
 
-    # ColorRamp: map wave fac to wood browns.
+    # ColorRamp: map wave fac to wood tones from the palette.
     ramp = nodes.new("ShaderNodeValToRGB")
     ramp.location = (-200, 200)
     ramp.color_ramp.interpolation = "LINEAR"
-    # Modify the two default stops and add intermediate ones.
+    # 4-stop ramp: dark → mid → light → dark
     stops = ramp.color_ramp.elements
     stops[0].position = 0.0
-    stops[0].color = (0.25, 0.14, 0.06, 1.0)
+    stops[0].color = (*dark, 1.0)
     stops[1].position = 0.4
-    stops[1].color = (0.45, 0.28, 0.14, 1.0)
+    stops[1].color = (*_lerp(dark, light, 0.5), 1.0)
     s2 = stops.new(0.7)
-    s2.color = (0.60, 0.40, 0.22, 1.0)
+    s2.color = (*light, 1.0)
     s3 = stops.new(1.0)
-    s3.color = (0.35, 0.20, 0.10, 1.0)
+    s3.color = (*dark, 1.0)
 
     # Wire procedural: wave → ramp → bsdf
     links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
