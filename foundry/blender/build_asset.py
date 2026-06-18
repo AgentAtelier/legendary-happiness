@@ -1,14 +1,14 @@
 """Run INSIDE Blender:
     blender --background --python build_asset.py -- <spec_json> <out_glb>
 
-Slice 1 builds the table from bmesh box primitives (manifold by construction).
-Geometry-Nodes node-tree authoring is Slice 2; the spine is identical. Blender is
-Z-up; the glTF exporter writes Y-up, so the GLB has height on Y, footprint on X/Z.
+Slice 1 builds the table from bmesh box primitives. Five boxes (tabletop + 4 legs)
+are created in a single bmesh and exported as one GLB. Blender is Z-up; the glTF
+exporter writes Y-up, so the GLB has height on Y, footprint on X/Z.
 
-Deviation note: Blender 5.x glTF exporter emits per-face vertices (non-shared)
-causing trimesh.is_watertight to return False even for a simple cube. The gate
-calls mesh.merge_vertices() after loading to fix this — each box becomes a proper
-watertight component, and the combined multi-body mesh passes is_watertight."""
+Note: The five boxes are separate components that overlap at the tabletop/leg
+junction. The gate repairs topology via mesh.merge_vertices(), after which each
+box is individually watertight and the combined multi-body mesh passes
+is_watertight. Proper single-manifold construction is deferred to a later slice."""
 
 import json
 import sys
