@@ -442,13 +442,14 @@ class SpatialCompiler:
         for op in ops:
             t = op.get("type", "")
             if t == "add_node":
-                steps.append(
-                    CreateEntityStep(
-                        name=op["name"],
-                        node_type=op.get("node_type", "MeshInstance3D"),
-                        parent=op.get("parent", "/root/Main"),  # caller resolves the root
-                    )
+                step = CreateEntityStep(
+                    name=op["name"],
+                    node_type=op.get("node_type", "MeshInstance3D"),
+                    parent=op.get("parent", "/root/Main"),  # caller resolves the root
                 )
+                if op.get("scene_path"):
+                    step.scene_path = op["scene_path"]
+                steps.append(step)
             elif t == "set_property":
                 steps.append(
                     SetPropertyStep(

@@ -30,7 +30,7 @@ OP_TO_COMMAND: dict[str, str] = {
 # Field name remapping for the params dict. The plugin handlers read
 # the target node from `path` (via _resolve_node / McpScenePath).
 FIELD_MAP: dict[str, dict[str, str]] = {
-    "add_node": {"parent": "parent_path", "node_type": "type"},
+    "add_node": {"parent": "parent_path", "node_type": "type", "scene_path": "scene_path"},
     "set_property": {"node": "path"},
     "attach_script": {"node": "path", "script": "script_path"},
     "connect_signal": {"source": "path"},

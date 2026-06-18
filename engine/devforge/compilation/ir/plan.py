@@ -35,6 +35,7 @@ class CreateEntityStep(PlanStep):
     name: str = ""
     node_type: str = "Node3D"
     parent: str = "/root/Main"
+    scene_path: str = ""
 
     def __post_init__(self):
         self.step_type = "create_entity"
@@ -48,14 +49,15 @@ class CreateEntityStep(PlanStep):
         return errors
 
     def compile(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "type": "add_node",
-                "parent": self.parent,
-                "node_type": self.node_type,
-                "name": self.name,
-            }
-        ]
+        op: Dict[str, Any] = {
+            "type": "add_node",
+            "parent": self.parent,
+            "node_type": self.node_type,
+            "name": self.name,
+        }
+        if self.scene_path:
+            op["scene_path"] = self.scene_path
+        return [op]
 
 
 @dataclass
