@@ -1,3 +1,2 @@
 trimesh
 pytest
-scipy
