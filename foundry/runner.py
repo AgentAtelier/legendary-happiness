@@ -16,6 +16,7 @@ from typing import Optional
 from compiler import compile_spec, load_spec
 from gate import GateResult, gate_asset
 from library import read_envelope, register_asset
+from sidecar import build_sidecar, write_sidecar
 
 _BUILD_SCRIPT = str(Path(__file__).resolve().parent / "blender" / "build_asset.py")
 
@@ -45,6 +46,10 @@ def forge(spec_path: str, lexicon_path: str, library_dir: str, blender: str = "b
 
     _build(spec_path, out_glb, blender)
     result = gate_asset(out_glb, footprint, height)
+
+    # Emit sidecar alongside the GLB (after build+gate, per C-07).
+    sidecar = build_sidecar(spec, Path(out_glb).name)
+    write_sidecar(library_dir, spec["asset_id"], sidecar)
 
     registered = False
     if result.passed:
@@ -95,6 +100,10 @@ def forge_from_request(
 
         _build(spec_path, out_glb, blender)
         result = gate_asset(out_glb, footprint, height)
+
+        # Emit sidecar alongside the GLB (after build+gate, per C-07).
+        sidecar = build_sidecar(sp, Path(out_glb).name)
+        write_sidecar(library_dir, sp["asset_id"], sidecar)
 
         registered = False
         if result.passed:
