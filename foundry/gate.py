@@ -53,7 +53,13 @@ def gate_asset(
         reasons.append(f"height {h:.3f} exceeds {height} (+{tol:.0%})")
 
     # Watertight (manifold-ish): every edge shared by exactly two faces.
-    if not mesh.is_watertight:
+    # Check on position-only topology so UV seams don't cause false
+    # rejects.  Real Blender exports split vertices at seam boundaries /
+    # hard edges even though the geometry is closed; building a bare mesh
+    # from vertices+faces and welding by position merges those splits.
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    if not topo.is_watertight:
         reasons.append("mesh is not watertight")
 
     # Polygon budget.
