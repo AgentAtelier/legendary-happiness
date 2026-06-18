@@ -296,6 +296,38 @@ def test_empty_library_dir(tmp_path, lexicon_copy):
     assert result == {"published": [], "skipped": []}
 
 
+def test_publish_material_suffixed_filenames_two_variants(tmp_path, lexicon_copy):
+    """Publish of table_worn_oak.glb + table_dark_walnut.glb (both material-
+    suffixed, no bare 'table.glb') registers TWO real variants under 'table'."""
+    lib_dir = tmp_path / "library"
+    lib_dir.mkdir()
+    _make_glb(lib_dir / "table_worn_oak.glb")
+    _make_glb(lib_dir / "table_dark_walnut.glb")
+
+    project_dir = tmp_path / "my_project"
+    project_dir.mkdir()
+
+    result = publish(str(lib_dir), str(project_dir), lexicon_copy)
+
+    assert len(result["published"]) == 2
+    assert len(result["skipped"]) == 0
+
+    pub_by_id = {}
+    for e in result["published"]:
+        pub_by_id.setdefault(e["id"], []).append(e["material_id"])
+    assert set(pub_by_id["table"]) == {"worn_oak", "dark_walnut"}
+
+    data = json.loads(Path(lexicon_copy).read_text(encoding="utf-8"))
+    variants = data["assets"]["table"]["variants"]
+    assert len(variants) == 2
+    assert variants["worn_oak"] == "res://assets/table_worn_oak.glb"
+    assert variants["dark_walnut"] == "res://assets/table_dark_walnut.glb"
+
+    # Both GLBs are copied with distinct filenames.
+    assert (project_dir / "assets" / "table_worn_oak.glb").exists()
+    assert (project_dir / "assets" / "table_dark_walnut.glb").exists()
+
+
 def test_nonexistent_library_dir(lexicon_copy):
     """A non-existent library dir publishes nothing without error."""
     import tempfile

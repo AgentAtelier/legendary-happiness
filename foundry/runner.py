@@ -42,14 +42,15 @@ def forge(spec_path: str, lexicon_path: str, library_dir: str, blender: str = "b
     footprint, height = read_envelope(lexicon_path, spec["asset_id"])
 
     Path(library_dir).mkdir(parents=True, exist_ok=True)
-    out_glb = str(Path(library_dir) / f"{spec['asset_id']}.glb")
+    basename = f"{spec['asset_id']}_{spec['material']}"
+    out_glb = str(Path(library_dir) / f"{basename}.glb")
 
     _build(spec_path, out_glb, blender)
     result = gate_asset(out_glb, footprint, height)
 
     # Emit sidecar alongside the GLB (after build+gate, per C-07).
     sidecar = build_sidecar(spec, Path(out_glb).name)
-    write_sidecar(library_dir, spec["asset_id"], sidecar)
+    write_sidecar(library_dir, basename, sidecar)
 
     registered = False
     if result.passed:
@@ -96,14 +97,15 @@ def forge_from_request(
         footprint, height = read_envelope(lexicon_path, sp["asset_id"])
 
         Path(library_dir).mkdir(parents=True, exist_ok=True)
-        out_glb = str(Path(library_dir) / f"{sp['asset_id']}.glb")
+        basename = f"{sp['asset_id']}_{sp['material']}"
+        out_glb = str(Path(library_dir) / f"{basename}.glb")
 
         _build(spec_path, out_glb, blender)
         result = gate_asset(out_glb, footprint, height)
 
         # Emit sidecar alongside the GLB (after build+gate, per C-07).
         sidecar = build_sidecar(sp, Path(out_glb).name)
-        write_sidecar(library_dir, sp["asset_id"], sidecar)
+        write_sidecar(library_dir, basename, sidecar)
 
         registered = False
         if result.passed:
