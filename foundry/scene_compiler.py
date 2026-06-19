@@ -71,6 +71,30 @@ _SHELL_NODES: List[dict] = [
 _NPC_BODY_CATEGORY = "humanoid"
 _NPC_BODY_MATERIAL = "rough_granite"
 
+# ── Collision shape defaults (FIX-1) ────────────────────────────
+# Default BoxShape3D sizes per category for interactable props.
+# The GLB AABB isn't available at compile time, so we use sane
+# defaults based on the category's typical dimensions.
+
+_COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
+    "table": (1.2, 0.6, 0.8),
+    "shelf": (1.0, 1.2, 0.3),
+    "cabinet": (0.8, 1.5, 0.5),
+    "chair": (0.5, 0.9, 0.5),
+    "humanoid": (0.5, 1.8, 0.4),
+    # Default for unknown categories
+    "?": (0.5, 0.5, 0.5),
+}
+
+# Player spawn offset (FIX-1): player sits at (0, PLAYER_SPAWN_Y, 0)
+# to be clear of the floor (top at y=0) and props.
+_PLAYER_SPAWN_Y = 1.0
+
+# Props within this radius of (0,0,0) on the XZ plane are pushed away
+# from the player spawn (FIX-1e).  1.0 m is enough to avoid sitting
+# directly on the player.
+_PLAYER_CLEAR_RADIUS = 1.0
+
 
 def _emit_control_layout(lines: list[str], fill: bool = False) -> None:
     """Emit Godot 4 Control layout properties for a full-window fill."""
@@ -127,6 +151,25 @@ def _fmt_pos(v: float) -> str:
     return str(v)
 
 
+def _fmt_vec3(x: float, y: float, z: float) -> str:
+    """Format a Vector3 string for sub_resource size fields."""
+    return f"Vector3({_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
+
+
+def _guard_player_spawn(x: float, z: float) -> Tuple[float, float]:
+    """If (x,z) is too close to the player spawn at (0,0), push it away.
+
+    Returns (adjusted_x, adjusted_z).  Safe to call with default values.
+    """
+    dist = (x * x + z * z) ** 0.5
+    if dist < _PLAYER_CLEAR_RADIUS:
+        if dist < 0.001:
+            return (_PLAYER_CLEAR_RADIUS, 0.0)
+        scale = _PLAYER_CLEAR_RADIUS / dist
+        return (x * scale, z * scale)
+    return (x, z)
+
+
 def compile_scene(
     quest_spec: dict,
     manifest: List[PlacedEntity],
@@ -139,6 +182,11 @@ def compile_scene(
     Also writes a ``_quest_data.json`` file alongside the .tscn
     containing dialogue, objective, and quest metadata so the
     scene loader (P5) can read it without parsing .tscn metadata.
+
+    FIX-1: Props are now StaticBody3D with CollisionShape3D children;
+    GLBs are instanced via header-line ``instance=ExtResource(...)``
+    (not a property line); floor + player collision shapes added;
+    props are pushed away from the player spawn.
 
     Args:
         quest_spec: Validated quest spec from ``QuestBehaviourPlanner.plan()``.
@@ -161,18 +209,12 @@ def compile_scene(
     unique_glbs = _resolve_unique_glbs(manifest)
 
     # ── Inject NPC body GLB into unique_glbs (P7) ───────────────
-    # The NPC body is a generated humanoid GLB — instance it like a
-    # prop.  Add it to unique_glbs so it gets an ext_resource ID.
     npc_glb_pair = (_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL)
     if npc_glb_pair not in unique_glbs:
         unique_glbs.append(npc_glb_pair)
         unique_glbs.sort()
 
     # ── Compute unique tag→script mappings (P5) ──────────────────
-    # Which component scripts does this scene need?  The compiler
-    # invariants are: one target prop tagged "pickup", one NPC tagged
-    # "talk".  Both are non-optional, so their scripts are always
-    # added as ext_resources.
     used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
     used_tags = {"pickup", "talk"}
     for tag in sorted(used_tags):
@@ -180,9 +222,19 @@ def compile_scene(
         if path:
             used_tag_scripts[path] = f"s_{tag}"
 
+    # ── Identify interactable entities (FIX-1d) ──────────────────
+    # The target prop (pickup) and NPC (talk) need collision shapes
+    # so the camera raycast hits them.
+    interactable_ids: set[str] = {target_entity}
+
+    # ── Compute sub_resource count (FIX-1) ──────────────────────
+    # floor BoxShape3D + player CapsuleShape3D + one BoxShape3D per
+    # interactable (target + NPC).
+    num_sub_resources = 2 + len(interactable_ids) + 1  # +1 for NPC
+
     # ── Write quest data as a JSON file alongside the .tscn ──────
     output_dir = str(Path(output_path).parent)
-    tscn_stem = Path(output_path).stem  # e.g. "slice1_fetch"
+    tscn_stem = Path(output_path).stem
     data_filename = f"{tscn_stem}_quest_data.json"
     data_path = str(Path(output_dir) / data_filename)
     quest_data: dict = {
@@ -196,14 +248,51 @@ def compile_scene(
         encoding="utf-8",
     )
 
+    # ── Build GLB id map ────────────────────────────────────────
+    glb_ids: dict[Tuple[str, str], str] = {}
+    for i, (cat, mat) in enumerate(unique_glbs, start=1):
+        glb_ids[(cat, mat)] = str(i)
+
+    # ── Build collision shape data for each interactable ────────
+    # Map entity id → (sub_resource_id, size_tuple)
+    collision_info: dict[str, Tuple[str, Tuple[float, float, float]]] = {}
+    sub_res_idx = 1
+
+    # Floor sub_resource
+    floor_sub_id = f"sub_{sub_res_idx}"
+    sub_res_idx += 1
+
+    # Player sub_resource
+    player_sub_id = f"sub_{sub_res_idx}"
+    sub_res_idx += 1
+
+    # Target prop collision
+    for entry in manifest:
+        eid = entry["id"]
+        if eid == target_entity:
+            cat = entry.get("category", "?")
+            collision_info[eid] = (
+                f"sub_{sub_res_idx}",
+                _COLLISION_SIZES.get(cat, _COLLISION_SIZES["?"]),
+            )
+            sub_res_idx += 1
+            break
+
+    # NPC collision
+    collision_info["NPC"] = (
+        f"sub_{sub_res_idx}",
+        _COLLISION_SIZES.get("humanoid", (0.5, 1.8, 0.4)),
+    )
+    sub_res_idx += 1
+
     # ── Build .tscn content ─────────────────────────────────────
     lines: list[str] = []
 
-    # Header
-    # load_steps = GLBs + 4 shell scripts + tag scripts
-    # (NPC body is now a GLB, counted in unique_glbs; sub_resources removed)
-    total_load_steps = len(unique_glbs) + 4 + len(used_tag_scripts)
-    header = f'[gd_scene load_steps={total_load_steps} format=3]'
+    # Header — load_steps = ext_resources + sub_resources
+    total_load_steps = (
+        len(unique_glbs) + 4 + len(used_tag_scripts) + num_sub_resources
+    )
+    header = f"[gd_scene load_steps={total_load_steps} format=3]"
     if scene_uid:
         header = f'[gd_scene load_steps={total_load_steps} format=3 uid="{scene_uid}"]'
     lines.append(header)
@@ -225,15 +314,41 @@ def compile_scene(
         )
     lines.append("")
 
+    # ── SubResources: collision shapes (FIX-1) ──────────────────
+    # Floor: BoxShape3D 20×1×20
+    lines.append(f'[sub_resource type="BoxShape3D" id="{floor_sub_id}"]')
+    lines.append("size = Vector3(20, 1, 20)")
+    lines.append("")
+
+    # Player: CapsuleShape3D
+    lines.append(f'[sub_resource type="CapsuleShape3D" id="{player_sub_id}"]')
+    lines.append("radius = 0.5")
+    lines.append("height = 1.8")
+    lines.append("")
+
+    # Interactable collision shapes (target prop + NPC)
+    for eid, (sub_id, (sx, sy, sz)) in sorted(collision_info.items()):
+        lines.append(f'[sub_resource type="BoxShape3D" id="{sub_id}"]')
+        lines.append(f"size = {_fmt_vec3(sx, sy, sz)}")
+        lines.append("")
+
     # Root (no parent attribute — Godot 4 convention)
     lines.append('[node name="Root" type="Node3D"]')
     lines.append("")
 
-    # Placed props
-    glb_ids: dict[Tuple[str, str], str] = {}
-    for i, (cat, mat) in enumerate(unique_glbs, start=1):
-        glb_ids[(cat, mat)] = str(i)
+    # ── Floor node (FIX-1b) ─────────────────────────────────────
+    # StaticBody3D covering 20×1×20, top at y=0 → centre at y=-0.5
+    lines.append('[node name="Floor" type="StaticBody3D" parent="."]')
+    lines.append(
+        "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)"
+    )
+    lines.append(f'[node name="FloorCollision" type="CollisionShape3D" parent="Floor"]')
+    lines.append(f'shape = SubResource("{floor_sub_id}")')
+    lines.append("")
 
+    # ── Placed props (FIX-1a/d/e) ───────────────────────────────
+    # Props are now StaticBody3D with collision shapes.  GLB model
+    # is instanced via header-line instance=ExtResource(...).
     for entry in manifest:
         eid = entry["id"]
         cat = entry.get("category", "?")
@@ -243,7 +358,15 @@ def compile_scene(
         z = entry.get("z", 0.0)
         tag = "pickup" if eid == target_entity else "inert"
         glb_id = glb_ids.get((cat, mat), "1")
-        lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
+
+        # Guard: push away from player spawn (FIX-1e)
+        x, z = _guard_player_spawn(x, z)
+
+        # Prop root: Node3D for inert, StaticBody3D for interactable
+        if eid in interactable_ids:
+            lines.append(f'[node name="{eid}" type="StaticBody3D" parent="."]')
+        else:
+            lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
         lines.append(
             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
             f"{_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
@@ -257,15 +380,25 @@ def compile_scene(
             )
         lines.append("")
 
+        # Collision shape for interactable props (FIX-1d)
+        if eid in collision_info:
+            sub_id = collision_info[eid][0]
+            lines.append(
+                f'[node name="{eid}_collision" type="CollisionShape3D" parent="{eid}"]'
+            )
+            lines.append(f'shape = SubResource("{sub_id}")')
+            lines.append("")
+
+        # GLB model — instanced via header line (FIX-1a)
         lines.append(
-            f'[node name="{eid}_model" type="Node3D" parent="{eid}"]'
+            f'[node name="{eid}_model" parent="{eid}" instance=ExtResource("{glb_id}")]'
         )
-        lines.append(f'instance = ExtResource("{glb_id}")')
         lines.append("")
 
-    # NPC node
+    # ── NPC node (FIX-1d) ───────────────────────────────────────
+    # StaticBody3D with collision so camera raycast + parent-walk works.
     npc_x, npc_y, npc_z = 0.0, 0.0, -2.0
-    lines.append('[node name="NPC" type="Node3D" parent="."]')
+    lines.append('[node name="NPC" type="StaticBody3D" parent="."]')
     lines.append(
         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
         f"{_fmt_pos(npc_x)}, {_fmt_pos(npc_y)}, {_fmt_pos(npc_z)})"
@@ -279,15 +412,24 @@ def compile_scene(
             f'script = ExtResource("{used_tag_scripts[npc_script_path]}")'
         )
     lines.append("")
-    # NPC body GLB instance (P7: procedurally generated humanoid)
+
+    # NPC collision shape (FIX-1d)
+    if "NPC" in collision_info:
+        npc_sub_id = collision_info["NPC"][0]
+        lines.append(
+            f'[node name="NPC_collision" type="CollisionShape3D" parent="NPC"]'
+        )
+        lines.append(f'shape = SubResource("{npc_sub_id}")')
+        lines.append("")
+
+    # NPC body GLB instance (P7 + FIX-1a: header-line instancing)
     npc_glb_id = glb_ids.get(npc_glb_pair, "1")
     lines.append(
-        f'[node name="Body" type="Node3D" parent="NPC"]'
+        f'[node name="Body" parent="NPC" instance=ExtResource("{npc_glb_id}")]'
     )
-    lines.append(f'instance = ExtResource("{npc_glb_id}")')
     lines.append("")
 
-    # Shell nodes (P4: with scripts attached + proper UI layout)
+    # ── Shell nodes (P4: with scripts attached + proper UI layout)
     for shell in _SHELL_NODES:
         parent = shell["parent"]
         lines.append(
@@ -301,12 +443,26 @@ def compile_scene(
                 "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)"
             )
             lines.append("current = true")
+        if shell["name"] == "Player":
+            # Player spawn at y=1 to be clear of floor (FIX-1c)
+            lines.append(
+                "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
+                f"0, {_fmt_pos(_PLAYER_SPAWN_Y)}, 0)"
+            )
         if shell["name"] == "HUD":
             _emit_control_layout(lines, fill=True)
         if shell["name"] == "WinScreen":
             lines.append("visible = false")
             _emit_control_layout(lines, fill=True)
         lines.append("")
+
+    # Player CollisionShape3D (FIX-1c) — placed AFTER the Player node
+    # so it's a child of Player.
+    lines.append(
+        f'[node name="PlayerCollision" type="CollisionShape3D" parent="Player"]'
+    )
+    lines.append(f'shape = SubResource("{player_sub_id}")')
+    lines.append("")
 
     # HUD child labels
     lines.append('[node name="ObjectiveLabel" type="Label" parent="HUD"]')
@@ -344,12 +500,15 @@ def compile_scene(
 def _parse_scene_text(tscn_text: str) -> dict:
     """Parse a .tscn text into a structured dict for test assertions.
 
-    Returns a dict with keys: ``ext_resources``, ``nodes``, and
-    ``metadata`` (a dict keyed by node name → metadata key-value pairs).
-    Handles ``instance = ExtResource(...)`` on property lines below
-    ``[node]`` declarations.
+    Returns a dict with keys: ``ext_resources``, ``sub_resources``,
+    ``nodes``, and ``metadata`` (a dict keyed by node name → metadata
+    key-value pairs).
+
+    Handles ``instance=ExtResource(...)`` both on the ``[node]`` header
+    line (FIX-1a) and on property lines (legacy format).
     """
     ext_resources: list[dict] = []
+    sub_resources: list[dict] = []
     nodes: list[dict] = []
     metadata: dict[str, dict[str, str]] = {}
     current_node: dict | None = None
@@ -362,9 +521,19 @@ def _parse_scene_text(tscn_text: str) -> dict:
         if stripped.startswith("[ext_resource "):
             id_match = re.search(r'id="([^"]+)"', stripped)
             path_match = re.search(r'path="([^"]+)"', stripped)
+            type_match = re.search(r'type="([^"]+)"', stripped)
             ext_resources.append({
                 "id": id_match.group(1) if id_match else "",
                 "path": path_match.group(1) if path_match else "",
+                "type": type_match.group(1) if type_match else "",
+            })
+
+        elif stripped.startswith("[sub_resource "):
+            id_match = re.search(r'id="([^"]+)"', stripped)
+            type_match = re.search(r'type="([^"]+)"', stripped)
+            sub_resources.append({
+                "id": id_match.group(1) if id_match else "",
+                "type": type_match.group(1) if type_match else "",
             })
 
         elif stripped.startswith("[node "):
@@ -386,7 +555,7 @@ def _parse_scene_text(tscn_text: str) -> dict:
 
         elif current_node and (
             stripped.startswith(("instance ", "transform ", "metadata/",
-                                 "script ",
+                                 "script ", "shape ",
                                  "current ", "visible ",
                                  "layout_mode ", "anchors_preset ",
                                  "anchor_", "offset_", "grow_", "text ",
@@ -405,6 +574,12 @@ def _parse_scene_text(tscn_text: str) -> dict:
                 )
                 if m:
                     current_node["script"] = m.group(1)
+            elif stripped.startswith("shape = SubResource"):
+                m = re.search(
+                    r'shape\s*=\s*SubResource\("([^"]+)"\)', stripped
+                )
+                if m:
+                    current_node["shape"] = m.group(1)
             elif stripped.startswith("metadata/"):
                 key_val = stripped[len("metadata/"):]
                 eq = key_val.find(" = ")
@@ -418,6 +593,7 @@ def _parse_scene_text(tscn_text: str) -> dict:
 
     return {
         "ext_resources": ext_resources,
+        "sub_resources": sub_resources,
         "nodes": nodes,
         "metadata": metadata,
     }

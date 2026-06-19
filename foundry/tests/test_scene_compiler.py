@@ -151,7 +151,7 @@ def test_scene_has_npc_node():
     _, parsed, _ = _compile_and_parse()
     npc_nodes = [n for n in parsed["nodes"] if n["name"] == "NPC"]
     assert len(npc_nodes) == 1
-    assert npc_nodes[0]["type"] == "Node3D"
+    assert npc_nodes[0]["type"] == "StaticBody3D"
 
 
 def test_scene_has_shell_nodes():
@@ -332,28 +332,33 @@ def test_prop_transforms_match_manifest():
 
 
 def test_default_position_zero():
-    """Entries without x/y/z get (0,0,0)."""
+    """Entries without x/y/z default to (0,0,0) but get pushed away
+    from player spawn (FIX-1e guard)."""
     manifest_no_pos: list[PlacedEntity] = [
         {"id": "thing", "category": "table", "material": "worn_oak"}
     ]
     spec = dict(_QUEST_SPEC)
     spec["target_entity"] = "thing"
     text, _, _ = _compile_and_parse(quest_spec=spec, manifest=manifest_no_pos)
-    expected = "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)"
-    assert expected in text
+    # (0,0,0) is within PLAYER_CLEAR_RADIUS (1.0) → pushed to (1, 0, 0)
+    expected = "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)"
+    assert expected in text, (
+        f"default (0,0,0) position should be guarded to (1,0,0), "
+        f"text:\n{text[:500]}"
+    )
 
 
 # ── NPC body (P7: generated humanoid GLB) ───────────────────────
 
 def test_npc_has_glb_body():
-    """NPC Body node instances a GLB (generated humanoid, not primitive)."""
+    """NPC Body node instances a GLB via header-line instance= (FIX-1a)."""
     _, parsed, _ = _compile_and_parse()
     body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
     assert len(body_nodes) == 1
     assert body_nodes[0]["parent"] == "NPC"
-    assert body_nodes[0]["type"] == "Node3D"
+    # FIX-1a: type= is omitted when instance= is on the [node] header line
     assert body_nodes[0].get("instance") is not None, (
-        "Body node should instance a GLB via ExtResource"
+        "Body node should instance a GLB via ExtResource (on header line)"
     )
 
 
@@ -412,3 +417,167 @@ def test_empty_dialogue_ok():
     spec["dialogue"] = {"greet": "", "ask": "", "wrong": "", "thank": ""}
     _, _, data = _compile_and_parse(quest_spec=spec)
     assert data["dialogue"]["greet"] == ""
+
+
+# ── FIX-1: Floor node ───────────────────────────────────────────
+
+def test_floor_node_exists():
+    """FIX-1b: Scene has a Floor StaticBody3D."""
+    _, parsed, _ = _compile_and_parse()
+    floor_nodes = [n for n in parsed["nodes"] if n["name"] == "Floor"]
+    assert len(floor_nodes) == 1
+    assert floor_nodes[0]["type"] == "StaticBody3D"
+    assert floor_nodes[0]["parent"] == "."
+
+
+def test_floor_collision_shape_exists():
+    """FIX-1b: Floor has a CollisionShape3D child with BoxShape3D sub_resource."""
+    _, parsed, _ = _compile_and_parse()
+    collision = next(
+        (n for n in parsed["nodes"] if n["name"] == "FloorCollision"), None
+    )
+    assert collision is not None, "FloorCollision node missing"
+    assert collision["parent"] == "Floor"
+    assert collision["type"] == "CollisionShape3D"
+    assert collision.get("shape") is not None, (
+        "FloorCollision should reference a SubResource"
+    )
+
+
+def test_sub_resources_include_box_and_capsule():
+    """FIX-1: sub_resources block has at least BoxShape3D (floor) and
+    CapsuleShape3D (player)."""
+    _, parsed, _ = _compile_and_parse()
+    sub_types = {s["type"] for s in parsed.get("sub_resources", [])}
+    assert "BoxShape3D" in sub_types, (
+        f"expected BoxShape3D in sub_resources, got {sub_types}"
+    )
+    assert "CapsuleShape3D" in sub_types, (
+        f"expected CapsuleShape3D in sub_resources, got {sub_types}"
+    )
+
+
+# ── FIX-1: Player collision ─────────────────────────────────────
+
+def test_player_collision_shape_exists():
+    """FIX-1c: Player has a CollisionShape3D child (CapsuleShape3D)."""
+    _, parsed, _ = _compile_and_parse()
+    collision = next(
+        (n for n in parsed["nodes"] if n["name"] == "PlayerCollision"), None
+    )
+    assert collision is not None, "PlayerCollision node missing"
+    assert collision["parent"] == "Player"
+    assert collision["type"] == "CollisionShape3D"
+    assert collision.get("shape") is not None, (
+        "PlayerCollision should reference a CapsuleShape3D SubResource"
+    )
+
+
+# ── FIX-1: Interactable collision shapes ────────────────────────
+
+def test_target_prop_has_collision_shape():
+    """FIX-1d: The target prop has a CollisionShape3D child."""
+    _, parsed, _ = _compile_and_parse()
+    target = _QUEST_SPEC["target_entity"]
+    collision = next(
+        (n for n in parsed["nodes"] if n["name"] == f"{target}_collision"), None
+    )
+    assert collision is not None, (
+        f"expected {target}_collision node, got nodes: "
+        f"{[n['name'] for n in parsed['nodes']]}"
+    )
+    assert collision["parent"] == target
+    assert collision["type"] == "CollisionShape3D"
+    assert collision.get("shape") is not None
+
+
+def test_npc_has_collision_shape():
+    """FIX-1d: The NPC has a CollisionShape3D child."""
+    _, parsed, _ = _compile_and_parse()
+    collision = next(
+        (n for n in parsed["nodes"] if n["name"] == "NPC_collision"), None
+    )
+    assert collision is not None, "NPC_collision node missing"
+    assert collision["parent"] == "NPC"
+    assert collision["type"] == "CollisionShape3D"
+    assert collision.get("shape") is not None
+
+
+def test_target_prop_type_is_static_body():
+    """FIX-1a/d: The target prop (interactable) is a StaticBody3D."""
+    _, parsed, _ = _compile_and_parse()
+    target = _QUEST_SPEC["target_entity"]
+    node = next(n for n in parsed["nodes"] if n["name"] == target)
+    assert node["type"] == "StaticBody3D", (
+        f"target prop should be StaticBody3D (for raycast), got {node['type']}"
+    )
+
+
+def test_inert_props_remain_node3d():
+    """FIX-1: Non-interactable props stay as Node3D (no collision needed)."""
+    _, parsed, _ = _compile_and_parse()
+    target = _QUEST_SPEC["target_entity"]
+    for entry in _MANIFEST:
+        if entry["id"] == target:
+            continue
+        node = next(n for n in parsed["nodes"] if n["name"] == entry["id"])
+        assert node["type"] == "Node3D", (
+            f"inert prop {entry['id']!r} should be Node3D, got {node['type']}"
+        )
+
+
+# ── FIX-1a: GLB instancing via header line ──────────────────────
+
+def test_model_nodes_have_no_type():
+    """FIX-1a: GLB model nodes omit type= (instance= on header line)."""
+    _, parsed, _ = _compile_and_parse()
+    for entry in _MANIFEST:
+        model_name = f"{entry['id']}_model"
+        model = next(n for n in parsed["nodes"] if n["name"] == model_name)
+        assert model.get("type") == "", (
+            f"{model_name} should have no type= (instanced via header line), "
+            f"got type={model.get('type')!r}"
+        )
+        assert model.get("instance") is not None
+
+
+# ── FIX-1b: Floor transform ─────────────────────────────────────
+
+def test_floor_transform_is_at_y_neg_half():
+    """Floor top at y=0 → centre at y=-0.5 for a 1-unit-thick box."""
+    text, _, _ = _compile_and_parse()
+    assert "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)" in text, (
+        "Floor should be centred at y=-0.5 (top at y=0)"
+    )
+
+
+# ── FIX-1c: Player spawn transform ──────────────────────────────
+
+def test_player_spawn_at_y_1():
+    """FIX-1c: Player spawns at y=1 to be clear of floor and props."""
+    text, _, _ = _compile_and_parse()
+    # Player should have a transform with y=1 (not the old default 0)
+    assert "0, 1, 0)" in text, (
+        f"Player spawn transform should include y=1\ntext:\n{text[:1000]}"
+    )
+
+
+# ── FIX-1e: Player spawn guard ──────────────────────────────────
+
+def test_prop_near_origin_pushed_away():
+    """Props at (0,0,0) get pushed away from player spawn."""
+    from scene_compiler import _guard_player_spawn
+    x, z = _guard_player_spawn(0.0, 0.0)
+    assert x > 0.5, (
+        f"(0,0) should be pushed away from origin, got ({x},{z})"
+    )
+    assert z == 0.0
+
+
+def test_prop_far_from_origin_stays():
+    """Props far from origin are not moved by the guard."""
+    from scene_compiler import _guard_player_spawn
+    x, z = _guard_player_spawn(5.0, 3.0)
+    assert (x, z) == (5.0, 3.0), (
+        f"(5,3) should stay unchanged, got ({x},{z})"
+    )
