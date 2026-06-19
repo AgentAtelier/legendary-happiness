@@ -28,6 +28,41 @@
       "type": "string",
       "description": "Semantic version of the active style schema at time of generation (C-06)."
     },
+    "decisions": {
+      "type": "array",
+      "description": "Decision Points emitted during generation (slice 1 of explainable-failure). Each item is a to_dict-shaped decision (code, stage, severity, technical, plain, context, choices). Omitted when no decisions were emitted.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string" },
+          "stage": { "type": "string" },
+          "severity": { "type": "string" },
+          "technical": { "type": "string" },
+          "plain": { "type": "string" },
+          "context": { "type": "object" },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "label": { "type": "string" },
+                "plain": { "type": "string" },
+                "apply": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "field": { "type": "string" },
+                    "value": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "procedural": {
       "type": ["object", "null"],
       "description": "Required when pipeline_type is 'procedural'.",

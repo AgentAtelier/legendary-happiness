@@ -1,0 +1,5 @@
+trimesh
+pytest
+pygltflib
+requests
+jsonschema

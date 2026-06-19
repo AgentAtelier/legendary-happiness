@@ -82,20 +82,64 @@ class AssetLexicon:
     def greybox_ops(
         self, asset_id: str, parent: str, name: str, position: dict, facing: Optional[list] = None
     ) -> List[dict]:
-        """Produce the batch_execute ops to place a greybox asset.
+        """Produce the batch_execute ops to place an asset.
 
-        Returns the standard DevForge op dicts: add_node + set_property
-        (mesh, color, position, rotation). Uses the existing Phase 4 props
-        pipeline — zero new executor surface.
+        When the lexicon entry has a non-empty ``path``, this returns a
+        single ``add_node`` op carrying ``scene_path`` to instance the
+        real .glb scene — the position transform is inlined into the
+        add_node op itself since godot-ai's create_node accepts a
+        ``position`` param.
+
+        When ``path`` is empty (greybox), returns the standard
+        add_node + set_property (mesh, color, position) ops.
 
         ``position`` is {x, y, z} in Godot space.
         ``facing`` is an optional [x, y, z] look-at direction.
         """
         entry = self.require(asset_id)
+
+        # Resolve asset_path: variants → legacy path → greybox.
+        # DEFFERED: material-DRIVEN variant selection ("LLM picked walnut"
+        # → walnut variant) is a follow-up; for now resolve a deterministic
+        # default.
+        variants = entry.get("variants", {})
+        if variants:
+            if "default" in variants:
+                asset_path = variants["default"]
+            else:
+                asset_path = variants[sorted(variants.keys())[0]]
+        else:
+            asset_path = entry.get("path", "")
+
+        h = entry.get("height", 1.0)
+
+        # ── Instanced asset (real .glb scene) ──
+        if asset_path:
+            node_path = f"{parent}/{name}"
+            return [
+                {
+                    "type": "add_node",
+                    "parent": parent,
+                    "node_type": "Node3D",
+                    "name": name,
+                    "scene_path": asset_path,
+                },
+                {
+                    "type": "set_property",
+                    "node": node_path,
+                    "property": "position",
+                    "value": {
+                        "x": position["x"],
+                        "y": position["y"],
+                        "z": position["z"],
+                    },
+                },
+            ]
+
+        # ── Greybox path (path is empty) ──
         gb = entry.get("greybox", {})
         mesh = gb.get("mesh", "box")
         color = gb.get("color", [0.5, 0.5, 0.5])
-        h = entry.get("height", 1.0)
         fp = entry.get("footprint", {})
 
         ops: List[dict] = []

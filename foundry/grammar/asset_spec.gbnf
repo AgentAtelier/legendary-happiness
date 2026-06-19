@@ -1,0 +1,28 @@
+# asset_spec.gbnf — Constrains LLM output to a valid asset-spec JSON.
+# Ranges are NOT enforced here (the AssetPlanner clamps after parsing).
+# Single-line alternations only — normalize_gbnf() joins any multi-line `|`.
+#
+# Params are GENERIC (string:number pairs); the per-generator schema is
+# enforced by planner clamping against compiler.PARAM_RANGES[generator].
+
+root ::= "{" ws "\"asset_id\"" ws ":" ws asset-id-val ws "," ws "\"generator\"" ws ":" ws generator-val ws "," ws "\"age\"" ws ":" ws number ws "," ws "\"params\"" ws ":" ws params-object ws "}"
+
+asset-id-val ::= "\"table\"" | "\"chair\"" | "\"shelf\"" | "\"cabinet\""
+generator-val ::= "\"table\"" | "\"chair\"" | "\"shelf\"" | "\"cabinet\""
+
+params-object ::= "{" ws param-list ws "}"
+
+param-list ::= (member (ws "," ws member)*)?
+member ::= string ws ":" ws number
+
+# ── JSON primitives ──────────────────────────────────────────────
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

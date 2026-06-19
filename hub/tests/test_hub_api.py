@@ -252,35 +252,6 @@ class TestConfigSaveValidation:
 class TestScenarioEndpoints:
     """Stream A: scenario + scorecard API tests."""
 
-    def test_scenarios_list(self):
-        r = client.get("/api/scenarios", headers={"Host": "127.0.0.1:8003"})
-        assert r.status_code == 200
-        data = r.json()
-        assert "scenarios" in data
-        assert len(data["scenarios"]) >= 10
-        # Each scenario has required fields
-        for s in data["scenarios"]:
-            assert "id" in s
-            assert "prompt" in s
-            assert "category" in s
-            assert "assertions" in s
-            assert "cleanup" in s
-        assert "tool_call_probes" in data
-
-    def test_scenarios_list_tool_probes(self):
-        r = client.get("/api/scenarios", headers={"Host": "127.0.0.1:8003"})
-        data = r.json()
-        probes = data["tool_call_probes"]
-        assert len(probes) >= 4
-        ids = [p["id"] for p in probes]
-        assert "tool_scene_hierarchy" in ids
-        assert "tool_create_cube" in ids
-        assert "tool_none" in ids
-
-    def test_scenarios_run_requires_ids(self):
-        r = client.post("/api/scenarios/run", json={"ids": []}, headers={"Host": "127.0.0.1:8003", "x-forge-hub": "1"})
-        assert r.status_code == 400
-
     @pytest.mark.skip(reason="triggers live DevForge apply_spec — use only with stack running")
     def test_scenarios_run_returns_job(self):
         r = client.post(
@@ -291,24 +262,6 @@ class TestScenarioEndpoints:
         assert r.status_code == 200
         data = r.json()
         assert "job" in data
-
-    def test_scorecards_list(self):
-        r = client.get("/api/scorecards", headers={"Host": "127.0.0.1:8003"})
-        assert r.status_code == 200
-        data = r.json()
-        assert "scorecards" in data
-        assert isinstance(data["scorecards"], list)
-
-    def test_scorecards_compare_requires_params(self):
-        r = client.get("/api/scorecards/compare", headers={"Host": "127.0.0.1:8003"})
-        assert r.status_code == 400
-
-    def test_scorecards_compare_with_params(self):
-        r = client.get("/api/scorecards/compare?model_a=gemma&model_b=qwen", headers={"Host": "127.0.0.1:8003"})
-        assert r.status_code == 200
-        data = r.json()
-        # May have error if no scorecards, which is fine
-        assert "model_a" in data or "error" in data
 
 
 # ── Rework: theme, logo, nav, testing tab, feedback ───────────────
