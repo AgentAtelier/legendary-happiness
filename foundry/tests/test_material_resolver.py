@@ -1,0 +1,212 @@
+"""TDD tests for foundry.material_resolver — deterministic material pre-pass.
+
+This is the first real emitter of Decision Points (slice 1 of explainable
+failure). It also fixes the headline bug: 'wrought-iron cabinet' must NOT
+resolve to worn_oak — that's the bug we're correcting.
+
+The pipeline never blocks; lexical material matching is a regex's task.
+These tests assert (material_id, list_of_decisions) for representative
+requests.
+"""
+
+from __future__ import annotations
+
+from materials import MATERIAL_PALETTE
+
+
+# ── Confident matches (specific OR single-member family) → no decision ──
+
+
+def test_oak_table_resolves_to_worn_oak_no_decision():
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a sturdy oak dining table")
+    assert m == "worn_oak"
+    assert decisions == []  # confident match
+
+
+def test_wrought_iron_cabinet_headline_bug():
+    """The headline bug: 'wrought-iron cabinet' must be wrought_iron, not oak."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a tall wrought-iron storage cabinet")
+    assert m == "wrought_iron", (
+        f"expected wrought_iron, got {m!r} — the pre-pass bug regressed"
+    )
+    assert decisions == []
+
+
+def test_granite_shelf_resolves_to_rough_granite_no_decision():
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a rough granite shelf")
+    assert m == "rough_granite"
+    assert decisions == []
+
+
+def test_marble_resolves_to_rough_granite_no_decision():
+    """Marble is not in the palette; the design spec maps it to rough_granite."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a polished marble table")
+    assert m == "rough_granite"
+    assert decisions == []
+
+
+def test_iron_keyword_resolves_to_wrought_iron():
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("an iron table")
+    assert m == "wrought_iron"
+    assert decisions == []
+
+
+def test_steel_keyword_resolves_to_wrought_iron():
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a steel-framed table")
+    assert m == "wrought_iron"
+    assert decisions == []
+
+
+def test_stone_keyword_resolves_single_member_family_no_decision():
+    """Stone family has exactly one member → confident (no Decision Point)."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a small stone side table")
+    assert m == "rough_granite"
+    assert decisions == []
+
+
+def test_metal_keyword_resolves_single_member_family_no_decision():
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a small metal side table")
+    assert m == "wrought_iron"
+    assert decisions == []
+
+
+# ── Family with >1 member → family_defaulted decision ─────────────
+
+
+def test_wooden_table_emits_family_defaulted_decision():
+    """Wood family has 3 members (worn_oak, dark_walnut, weathered_pine).
+    Default is worn_oak (first declared); the other two are choices.
+    """
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a wooden table")
+    assert m == "worn_oak"
+    assert len(decisions) == 1
+    dp = decisions[0]
+    assert dp.code == "material.family_defaulted"
+    assert dp.stage == "planner"
+    assert dp.severity == "assumption"
+    assert dp.context["family"] == "wood"
+    assert dp.context["resolved"] == "worn_oak"
+
+    # Choices cover the OTHER (non-resolved) wood members
+    choice_values = {c.apply["value"] for c in dp.choices}
+    assert "dark_walnut" in choice_values
+    assert "weathered_pine" in choice_values
+    assert "worn_oak" not in choice_values
+    assert len(choice_values) == 2  # the two non-resolved wood members
+
+
+def test_timber_keyword_also_emits_family_defaulted():
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a timber plank")
+    assert m == "worn_oak"
+    assert len(decisions) == 1
+    assert decisions[0].code == "material.family_defaulted"
+
+
+def test_family_defaulted_choice_apply_is_material_field():
+    """Every choice.apply must be {"field": "material", "value": <id>}."""
+    from material_resolver import resolve_material
+
+    _, decisions = resolve_material("a wooden table")
+    assert len(decisions) == 1
+    for c in decisions[0].choices:
+        assert c.apply.get("field") == "material"
+        assert "value" in c.apply
+        assert c.apply["value"] in MATERIAL_PALETTE
+
+
+# ── No match → unspecified_defaulted decision ────────────────────
+
+
+def test_no_material_word_emits_unspecified_defaulted():
+    """A request that names no material defaults to worn_oak and offers
+    ALL palette materials as choices."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a small side table")
+    assert m == "worn_oak"
+    assert len(decisions) == 1
+    dp = decisions[0]
+    assert dp.code == "material.unspecified_defaulted"
+    assert dp.stage == "planner"
+    assert dp.severity == "assumption"
+    assert dp.context["resolved"] == "worn_oak"
+
+    # Choices cover ALL palette materials
+    choice_values = {c.apply["value"] for c in dp.choices}
+    assert choice_values == set(MATERIAL_PALETTE.keys()), (
+        f"unspecified_defaulted choices miss materials: "
+        f"{set(MATERIAL_PALETTE.keys()) - choice_values}"
+    )
+    assert len(choice_values) == len(MATERIAL_PALETTE)
+
+
+def test_unspecified_defaulted_messages_match_templates():
+    """The plain and technical lines come from the templates registered in
+    decisions.py for the unspecified code.
+    """
+    from material_resolver import resolve_material
+
+    _, decisions = resolve_material("a thing")
+    dp = decisions[0]
+    assert dp.plain == "You didn't name a material, so I used worn_oak."
+    assert dp.technical == "no material keyword matched; defaulted to worn_oak."
+
+
+def test_family_defaulted_messages_match_templates():
+    from material_resolver import resolve_material
+
+    _, decisions = resolve_material("a wooden table")
+    dp = decisions[0]
+    assert dp.plain == (
+        "You asked for wood, so I used worn_oak. You can switch to another wood."
+    )
+    assert dp.technical == (
+        "material family=wood has multiple members; defaulted to worn_oak."
+    )
+
+
+# ── Determinism / data-driven ────────────────────────────────────
+
+
+def test_resolver_reads_MATERIAL_PALETTE_not_hard_coded():
+    """If a material is added to MATERIAL_PALETTE, the resolver picks it up
+    automatically — no hard-coded list maintained in two places.
+    """
+    from material_resolver import _family_members
+
+    # Each family in the palette has at least one material.
+    seen_families: set[str] = set()
+    for info in MATERIAL_PALETTE.values():
+        seen_families.add(info["family"])
+    for fam in seen_families:
+        assert len(_family_members(fam)) >= 1
+
+
+def test_resolver_returns_a_decision_point_type():
+    """The list items must be DecisionPoint instances, not raw dicts."""
+    from decisions import DecisionPoint
+    from material_resolver import resolve_material
+
+    _, decisions = resolve_material("a wooden table")
+    assert len(decisions) == 1
+    assert isinstance(decisions[0], DecisionPoint)
