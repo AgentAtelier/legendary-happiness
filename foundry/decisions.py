@@ -86,6 +86,24 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "Your request mentions {families} — I went with {resolved}. You can switch.",
     ),
+    "world.referential_integrity": (
+        # technical
+        "placement {placement_id}: material {material} not in known palette.",
+        # plain
+        "Placement {placement_id} uses an unknown material ({material}).",
+    ),
+    "world.zone_budget_exceeded": (
+        # technical
+        "zone {zone}: {count} placements exceed budget of {max}.",
+        # plain
+        "Zone '{zone}' has too many placements ({count} — max {max}).",
+    ),
+    "world.material_monoculture": (
+        # technical
+        "zone {zone}: all {placement_count} placements share material {material}.",
+        # plain
+        "Every placement in zone '{zone}' uses {material} — consider variety.",
+    ),
 }
 
 
