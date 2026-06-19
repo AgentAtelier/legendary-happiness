@@ -119,6 +119,15 @@ SIGNAL_SEVERITY: dict[str, str] = {
     "age_mismatch":      "high",
     # Low — mild assumptions / decisions; informative but not a fail.
     "decision_fired":    "low",
+    # ── Quest signals (P8) ────────────────────────────────────
+    # High — these mean the quest is literally broken / unwinnable.
+    "quest_build_error":        "high",
+    "quest_no_target":          "high",
+    "quest_no_npc":             "high",
+    "quest_unwinnable":         "high",
+    # Low — mild assumptions, informative.
+    "quest_dialogue_fallback":  "low",
+    "quest_decision_fired":     "low",
 }
 
 
@@ -344,6 +353,105 @@ def record_tier(tags) -> str:
 
 
 def material_conflict_detail(request: str):
+    """Public, detail-returning twin of the material_conflict signal so
+    the friction report can surface WHY a record was flagged (the
+    competing cues + the planner's single resolved material).
+
+    Returns ``None`` when there's no family conflict; otherwise::
+
+        {
+            "request":  <str>,
+            "cues":     [(keyword, family), ...]   # all matched cues
+            "resolved": <material_id>              # from resolve_material
+        }
+
+    No spec dependency: this signal is purely request-level.
+    """
+    cues = material_cues(request or "")
+    families = {fam for _, fam in cues}
+    if len(families) <= 1:
+        return None
+    resolved, _ = resolve_material(request or "")
+    return {
+        "request": request,
+        "cues": list(cues),
+        "resolved": resolved,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  P8: quest playability oracle — deterministic quest-level signals
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def compute_quest_signals(record) -> Set[str]:
+    """Return the set of objective signal tags for a QuestRecord.
+
+    Mirrors ``compute_signals`` for the quest pipeline.  Pure function —
+    checks only the fields already populated in the record (no file I/O).
+
+    Quest signal tags:
+      ``quest_build_error``      — record.error is set or compiled is False
+      ``quest_dialogue_fallback`` — any decision code starts with "quest.dialogue_"
+      ``quest_no_target``        — target_entity not in manifest
+      ``quest_no_npc``           — npc_role is missing or empty in quest_spec
+      ``quest_unwinnable``       — target_entity reaches no tagged node
+                                   (can't be picked up)
+      ``quest_decision_fired``   — decisions is non-empty
+      ``clean``                  — none of the above
+    """
+    tags: Set[str] = set()
+
+    # 1. Build error
+    if record.error or not getattr(record, "compiled", True):
+        tags.add("quest_build_error")
+
+    # 2. Dialogue fallback
+    for d in (record.decisions or []):
+        code = d.get("code", "")
+        if code.startswith("quest.dialogue_"):
+            tags.add("quest_dialogue_fallback")
+            break
+
+    # 3. Decision fired (quest-specific)
+    if record.decisions:
+        tags.add("quest_decision_fired")
+
+    # 4. Target entity exists in manifest
+    spec = getattr(record, "quest_spec", None)
+    manifest = getattr(record, "manifest", None) or []
+
+    if isinstance(spec, dict) and manifest:
+        target_id = spec.get("target_entity", "")
+        manifest_ids = {e.get("id") for e in manifest if "id" in e}
+
+        if target_id not in manifest_ids:
+            tags.add("quest_no_target")
+
+        # 5. NPC exists (npc_role present and non-empty)
+        npc_role = spec.get("npc_role", "")
+        if not npc_role or not str(npc_role).strip():
+            tags.add("quest_no_npc")
+
+        # 6. Win reachability: target must have a known tag AND
+        #    NPC must exist.  The compiler maps target_entity → "pickup"
+        #    tag and NPC → "talk" tag.  If either is missing, the quest
+        #    is unwinnable.
+        if not tags.intersection({"quest_no_target", "quest_no_npc"}):
+            # NPC and target both structurally present → check if the
+            # quest_spec has the required objective shape
+            obj = spec.get("objective", {})
+            if obj.get("type") != "fetch":
+                tags.add("quest_unwinnable")
+
+    if not tags:
+        tags.add("clean")
+    return tags
+
+
+def quest_decision_codes(record) -> List[str]:
+    """Return the list of Decision-Point codes on a QuestRecord."""
+    return [d.get("code", "?") for d in (record.decisions or [])]
     """Public, detail-returning twin of the material_conflict signal so
     the friction report can surface WHY a record was flagged (the
     competing cues + the planner's single resolved material).

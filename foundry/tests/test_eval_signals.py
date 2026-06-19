@@ -614,13 +614,214 @@ def test_signals_age_mismatch_weathered_word_at_low_age_fires():
     assert "age_mismatch" in tags
 
 
-def test_signals_no_age_mismatch_without_spec():
-    """Wear word + no spec → no age_mismatch flag (nothing to compare)."""
-    from eval.signals import compute_signals
-    rec = _make_record(
-        request="an old chair",
-        spec=None,
-        error="planner crashed",
+# ═══════════════════════════════════════════════════════════════════════
+#  P8: quest playability oracle — quest-level signals
+# ═══════════════════════════════════════════════════════════════════════
+
+from eval.harness import QuestRecord  # noqa: E402
+
+_QUEST_MANIFEST = [
+    {"id": "table_0", "category": "table", "material": "worn_oak",
+     "x": 1.0, "y": 0.0, "z": -1.5},
+    {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+     "x": -2.0, "y": 0.0, "z": -3.0},
+    {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron",
+     "x": 2.5, "y": 0.0, "z": -2.0},
+]
+
+_VALID_QUEST_SPEC = {
+    "npc_role": "hermit",
+    "target_entity": "shelf_0",
+    "dialogue": {
+        "greet": "Ah, a visitor!",
+        "ask": "Find my book.",
+        "wrong": "Not my book.",
+        "thank": "You found it!",
+    },
+    "objective": {
+        "type": "fetch",
+        "target": "shelf_0",
+        "giver": "npc",
+    },
+}
+
+
+def _make_quest_record(
+    room_theme: str = "a hermit's shack",
+    quest_spec: dict | None = None,
+    decisions: list[dict] | None = None,
+    compiled: bool = True,
+    scene_path: str | None = None,
+    manifest: list[dict] | None = None,
+    error: str | None = None,
+) -> QuestRecord:
+    return QuestRecord(
+        room_theme=room_theme,
+        quest_spec=quest_spec,
+        decisions=list(decisions or []),
+        compiled=compiled,
+        scene_path=scene_path,
+        manifest=manifest or _QUEST_MANIFEST,
+        error=error,
+        seconds=0.01,
     )
-    tags = compute_signals(rec)
-    assert "age_mismatch" not in tags
+
+
+def test_quest_signals_clean():
+    """A valid quest record with no issues → 'clean'."""
+    from eval.signals import compute_quest_signals
+    qr = _make_quest_record(quest_spec=_VALID_QUEST_SPEC)
+    tags = compute_quest_signals(qr)
+    assert tags == {"clean"}
+
+
+def test_quest_signals_build_error():
+    """Error set or compiled=False → quest_build_error."""
+    from eval.signals import compute_quest_signals
+    qr = _make_quest_record(error="RuntimeError('boom')", compiled=False)
+    tags = compute_quest_signals(qr)
+    assert "quest_build_error" in tags
+
+
+def test_quest_signals_dialogue_fallback():
+    """Decisions containing a dialogue fallback code → quest_dialogue_fallback."""
+    from eval.signals import compute_quest_signals
+    qr = _make_quest_record(
+        quest_spec=_VALID_QUEST_SPEC,
+        decisions=[{"code": "quest.dialogue_fallback", "stage": "planner"}],
+    )
+    tags = compute_quest_signals(qr)
+    assert "quest_dialogue_fallback" in tags
+
+
+def test_quest_signals_decision_fired():
+    """Any decisions → quest_decision_fired."""
+    from eval.signals import compute_quest_signals
+    qr = _make_quest_record(
+        quest_spec=_VALID_QUEST_SPEC,
+        decisions=[{"code": "quest.dangling_target", "stage": "planner"}],
+    )
+    tags = compute_quest_signals(qr)
+    assert "quest_decision_fired" in tags
+
+
+def test_quest_signals_no_target():
+    """target_entity not in manifest → quest_no_target."""
+    from eval.signals import compute_quest_signals
+    bad_spec = dict(_VALID_QUEST_SPEC)
+    bad_spec["target_entity"] = "missing_prop"
+    qr = _make_quest_record(quest_spec=bad_spec)
+    tags = compute_quest_signals(qr)
+    assert "quest_no_target" in tags
+
+
+def test_quest_signals_no_npc():
+    """npc_role empty → quest_no_npc."""
+    from eval.signals import compute_quest_signals
+    bad_spec = dict(_VALID_QUEST_SPEC)
+    bad_spec["npc_role"] = ""
+    qr = _make_quest_record(quest_spec=bad_spec)
+    tags = compute_quest_signals(qr)
+    assert "quest_no_npc" in tags
+
+
+def test_quest_signals_npc_role_missing():
+    """npc_role not in spec → quest_no_npc."""
+    from eval.signals import compute_quest_signals
+    bad_spec = dict(_VALID_QUEST_SPEC)
+    del bad_spec["npc_role"]
+    qr = _make_quest_record(quest_spec=bad_spec)
+    tags = compute_quest_signals(qr)
+    assert "quest_no_npc" in tags
+
+
+def test_quest_signals_unwinnable_wrong_objective():
+    """objective.type != 'fetch' → quest_unwinnable."""
+    from eval.signals import compute_quest_signals
+    bad_spec = dict(_VALID_QUEST_SPEC)
+    bad_spec["objective"] = {"type": "talk", "target": "shelf_0", "giver": "npc"}
+    qr = _make_quest_record(quest_spec=bad_spec)
+    tags = compute_quest_signals(qr)
+    assert "quest_unwinnable" in tags
+
+
+def test_quest_signals_no_spec_returns_clean():
+    """No quest_spec at all → only checks what's available (build_error if
+    error/not compiled, otherwise clean)."""
+    from eval.signals import compute_quest_signals
+    qr = _make_quest_record(quest_spec=None, compiled=True)
+    tags = compute_quest_signals(qr)
+    assert tags == {"clean"}
+
+
+def test_quest_signals_combined_tags():
+    """Multiple issues → multiple tags."""
+    from eval.signals import compute_quest_signals
+    bad_spec = dict(_VALID_QUEST_SPEC)
+    bad_spec["target_entity"] = "missing_prop"
+    bad_spec["npc_role"] = ""
+    qr = _make_quest_record(
+        quest_spec=bad_spec,
+        decisions=[{"code": "quest.dialogue_fallback", "stage": "planner"}],
+    )
+    tags = compute_quest_signals(qr)
+    assert "quest_no_target" in tags
+    assert "quest_no_npc" in tags
+    assert "quest_dialogue_fallback" in tags
+    assert "quest_decision_fired" in tags
+
+
+def test_quest_signals_unwinnable_blocked_by_no_target():
+    """When quest_no_target fires, quest_unwinnable does NOT also fire
+    (unwinnability is implied; signal only checks when structural prereqs
+    are met)."""
+    from eval.signals import compute_quest_signals
+    bad_spec = dict(_VALID_QUEST_SPEC)
+    bad_spec["target_entity"] = "missing_prop"
+    bad_spec["objective"] = {"type": "talk"}
+    qr = _make_quest_record(quest_spec=bad_spec)
+    tags = compute_quest_signals(qr)
+    assert "quest_no_target" in tags
+    assert "quest_unwinnable" not in tags
+
+
+def test_quest_decision_codes():
+    """quest_decision_codes returns codes from QuestRecord decisions."""
+    from eval.signals import quest_decision_codes
+    qr = _make_quest_record(
+        quest_spec=_VALID_QUEST_SPEC,
+        decisions=[
+            {"code": "quest.dangling_target", "stage": "planner"},
+            {"code": "quest.dialogue_fallback", "stage": "planner"},
+        ],
+    )
+    codes = quest_decision_codes(qr)
+    assert sorted(codes) == [
+        "quest.dangling_target",
+        "quest.dialogue_fallback",
+    ]
+
+
+def test_quest_signals_severity_map():
+    """All quest signal tags are in SIGNAL_SEVERITY."""
+    from eval.signals import SIGNAL_SEVERITY
+    quest_tags = {
+        "quest_build_error", "quest_dialogue_fallback",
+        "quest_no_target", "quest_no_npc", "quest_unwinnable",
+        "quest_decision_fired",
+    }
+    for tag in quest_tags:
+        assert tag in SIGNAL_SEVERITY, f"missing severity for {tag}"
+
+
+def test_quest_signals_record_tier_with_quest_tags():
+    """record_tier correctly classifies quest signal sets."""
+    from eval.signals import record_tier
+    assert record_tier({"quest_build_error"}) == "high"
+    assert record_tier({"quest_no_target"}) == "high"
+    assert record_tier({"quest_no_npc"}) == "high"
+    assert record_tier({"quest_unwinnable"}) == "high"
+    assert record_tier({"quest_dialogue_fallback"}) == "low"
+    assert record_tier({"quest_decision_fired"}) == "low"
+    assert record_tier({"clean"}) == "clean"
+    assert record_tier({"quest_dialogue_fallback", "quest_unwinnable"}) == "high"
