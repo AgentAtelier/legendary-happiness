@@ -128,6 +128,21 @@ def _resolve_unique_glbs(manifest: List[PlacedEntity]) -> List[Tuple[str, str]]:
     return result
 
 
+def resolve_unique_glbs_with_npc(manifest: List[PlacedEntity]) -> List[Tuple[str, str]]:
+    """Return sorted unique (category, material) pairs INCLUDING the NPC body.
+
+    This is the single source of truth for which GLBs a compiled scene
+    references. Used by both compile_scene() (to emit ext_resource blocks)
+    and scaffold.py (to copy the correct asset family per GLB).
+    """
+    unique = _resolve_unique_glbs(manifest)
+    npc_pair = (_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL)
+    if npc_pair not in unique:
+        unique.append(npc_pair)
+        unique.sort()
+    return unique
+
+
 def _ext_resource_block(unique_glbs: List[Tuple[str, str]], assets_subdir: str) -> str:
     """Build the [ext_resource] header block for unique GLBs.
 
@@ -206,13 +221,7 @@ def compile_scene(
     objective = quest_spec.get("objective", {})
     dialogue = quest_spec.get("dialogue", {})
 
-    unique_glbs = _resolve_unique_glbs(manifest)
-
-    # ── Inject NPC body GLB into unique_glbs (P7) ───────────────
-    npc_glb_pair = (_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL)
-    if npc_glb_pair not in unique_glbs:
-        unique_glbs.append(npc_glb_pair)
-        unique_glbs.sort()
+    unique_glbs = resolve_unique_glbs_with_npc(manifest)
 
     # ── Compute unique tag→script mappings (P5) ──────────────────
     used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
@@ -422,7 +431,7 @@ def compile_scene(
         lines.append("")
 
     # NPC body GLB instance (P7 + FIX-1a: header-line instancing)
-    npc_glb_id = glb_ids.get(npc_glb_pair, "1")
+    npc_glb_id = glb_ids.get((_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL), "1")
     lines.append(
         f'[node name="Body" parent="NPC" instance=ExtResource("{npc_glb_id}")]'
     )

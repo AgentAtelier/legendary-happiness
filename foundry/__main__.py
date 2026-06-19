@@ -8,7 +8,7 @@ Subcommands:
         Publish forged .glb assets into a Godot project.
     quest --request "<prompt>" --scene <name> [--model <name>] [--port <port>]
         Full prompt→scene entrypoint: behaviour-gen → compile_scene →
-        write .tscn + _quest_data.json to rpg/scenes/.
+        scaffold disposable project → builds/<name>/.
 """
 
 import sys
@@ -80,13 +80,13 @@ def _cmd_quest(args: list[str]) -> int:
         python -m foundry quest --request "<prompt>" --scene <name>
             [--model <name>] [--port <port>]
             [--lexicon <path>]
-            [--rpg-dir <path>]
+            [--library-dir <path>]
 
     Runs the full prompt→scene path:
         1. QuestBehaviourPlanner generates a quest spec from the prompt
            + a default placed-entity manifest.
-        2. compile_scene writes the .tscn + _quest_data.json to
-           <rpg-dir>/scenes/<name>.tscn.
+        2. scaffold_project copies the template, compiles the scene,
+           copies assets, pre-imports → builds/<name>/.
     """
     import argparse
 
@@ -100,7 +100,7 @@ def _cmd_quest(args: list[str]) -> int:
     )
     parser.add_argument(
         "--scene", required=True,
-        help="Output scene name (written to rpg/scenes/<name>.tscn)"
+        help="Output scene name (scaffolded under builds/<name>/)"
     )
     parser.add_argument(
         "--model", default=None,
@@ -116,9 +116,9 @@ def _cmd_quest(args: list[str]) -> int:
         help="Path to asset lexicon JSON"
     )
     parser.add_argument(
-        "--rpg-dir",
-        default="/home/mrg/dev/games/rpg",
-        help="Path to rpg Godot project"
+        "--library-dir",
+        default="/home/mrg/dev/games/rpg/assets",
+        help="Directory containing forged GLBs + their families"
     )
     parsed = parser.parse_args(args)
 
@@ -159,18 +159,22 @@ def _cmd_quest(args: list[str]) -> int:
     for key in ("greet", "ask", "wrong", "thank"):
         print(f"  {key}: {dialogue.get(key, '')}")
 
-    # ── Step 2: Compile scene ─────────────────────────────────
-    from scene_compiler import compile_scene
-    scene_path = str(
-        Path(parsed.rpg_dir) / "scenes" / f"{parsed.scene}.tscn"
+    # ── Step 2: Compile scene into scaffolded project ──────────
+    from scaffold import scaffold_project
+    from pathlib import Path as _Path2
+    template_dir = str(_Path2(__file__).resolve().parent / "godot_template")
+    build_path = scaffold_project(
+        name=parsed.scene,
+        quest_spec=spec,
+        manifest=manifest,
+        template_dir=template_dir,
+        library_dir=parsed.library_dir,
+        out_root=str(_Path2.cwd() / "builds"),
     )
-    compile_scene(spec, manifest, scene_path)
-    print(f"[quest] Scene compiled: {scene_path}")
+    print(f"[quest] Build scaffolded: {build_path}")
 
     # Show quest data path
-    data_path = str(
-        Path(parsed.rpg_dir) / "scenes" / f"{parsed.scene}_quest_data.json"
-    )
+    data_path = str(build_path / "scenes" / "main_quest_data.json")
     print(f"[quest] Quest data: {data_path}")
 
     # ── Surface any Decision Points ───────────────────────────
@@ -178,7 +182,7 @@ def _cmd_quest(args: list[str]) -> int:
     if rendered.strip():
         print(rendered)
 
-    print(f"[quest] Done. Scene ready at rpg/scenes/{parsed.scene}.tscn")
+    print(f"[quest] Done. Launch: godot --path {build_path}")
     return 0
 
 

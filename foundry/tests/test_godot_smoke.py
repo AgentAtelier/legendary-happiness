@@ -1,8 +1,11 @@
 """Godot-in-the-loop smoke test (FIX-0).
 
-Compiles a scene from a synthetic spec+manifest, runs Godot headless
-with probe_smoke.gd, and asserts the scene is actually playable —
-not just parseable.  Written to FAIL on current main (red test).
+Scaffolds a disposable Godot project from a synthetic spec+manifest,
+runs Godot headless with the smoke and playthrough probes, and asserts
+the scene is actually playable — not just parseable.
+
+This is the completeness gate: if the probe passes, all asset families
+were copied correctly and the scene opens + plays.
 
 Assertions:
     1. MeshInstance3D_count > 0  (props rendered)
@@ -23,12 +26,11 @@ from pathlib import Path
 
 import pytest
 
-from scene_compiler import compile_scene
-
 # ── Test data ─────────────────────────────────────────────────────────
 
-_RPG_PROJECT_DIR = "/home/mrg/dev/games/rpg"
 _GODOT_BIN = "/usr/bin/godot"
+_LIBRARY_DIR = "/home/mrg/dev/games/rpg/assets"
+_TEMPLATE_DIR = str(Path(__file__).resolve().parent.parent / "godot_template")
 
 _SYNTHETIC_MANIFEST = [
     {"id": "table_0", "category": "table", "material": "worn_oak",
@@ -61,20 +63,33 @@ _SYNTHETIC_QUEST_SPEC = {
 # ── Helpers ───────────────────────────────────────────────────────────
 
 def _godot_available() -> bool:
-    """Return True if Godot and the rpg project are available."""
-    return os.path.exists(_GODOT_BIN) and os.path.isdir(_RPG_PROJECT_DIR)
+    """Return True if Godot, the asset library, and the template exist."""
+    return (
+        os.path.exists(_GODOT_BIN)
+        and os.path.isdir(_LIBRARY_DIR)
+        and os.path.isdir(_TEMPLATE_DIR)
+    )
 
 
 def _compile_and_probe(quest_spec, manifest, tmp_dir: str, probe_script: str = "probe_smoke.gd") -> dict:
-    """Compile a scene, run the Godot probe, return the parsed JSON result."""
-    scene_path = str(Path(tmp_dir) / "smoke_test.tscn")
-    compile_scene(quest_spec, manifest, scene_path, assets_subdir="assets")
+    """Scaffold a disposable project, run the Godot probe, return the parsed JSON result."""
+    from scaffold import scaffold_project
 
+    build_path = scaffold_project(
+        name="smoke_test",
+        quest_spec=quest_spec,
+        manifest=manifest,
+        template_dir=_TEMPLATE_DIR,
+        library_dir=_LIBRARY_DIR,
+        out_root=tmp_dir,
+    )
+
+    scene_path = str(build_path / "scenes" / "main.tscn")
     assert Path(scene_path).exists(), f"Scene not written: {scene_path}"
 
     cmd = [
         _GODOT_BIN, "--headless",
-        "--path", _RPG_PROJECT_DIR,
+        "--path", str(build_path),
         "-s", probe_script,
         scene_path,
     ]
@@ -123,7 +138,7 @@ def _compile_and_probe(quest_spec, manifest, tmp_dir: str, probe_script: str = "
 
 # ── Tests ─────────────────────────────────────────────────────────────
 
-@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
 def test_mesh_count_positive():
     """FIX-0: MeshInstance3D_count > 0 (props rendered).
 
@@ -143,7 +158,7 @@ def test_mesh_count_positive():
     )
 
 
-@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
 def test_floor_collision_exists():
     """FIX-0: Floor StaticBody3D + CollisionShape3D (BoxShape) exists.
 
@@ -159,7 +174,7 @@ def test_floor_collision_exists():
     )
 
 
-@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
 def test_player_collision_exists():
     """FIX-0: Player has a CollisionShape3D.
 
@@ -175,7 +190,7 @@ def test_player_collision_exists():
     )
 
 
-@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
 def test_no_resource_errors_in_stderr():
     """FIX-0: Zero 'Resource file not found' / 'non-existent resource'
     errors in Godot stderr.
@@ -197,7 +212,7 @@ def test_no_resource_errors_in_stderr():
     )
 
 
-@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
 def test_target_reachable_by_raycast():
     """FIX-0: The target prop is reachable by a downward/forward raycast.
 
@@ -216,7 +231,7 @@ def test_target_reachable_by_raycast():
 
 # ── FIX-4: Scripted playthrough ──────────────────────────────────────
 
-@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
 def test_scripted_playthrough_talk_right_win():
     """FIX-4: Scripted playthrough — talk → pickup → deliver → win.
 

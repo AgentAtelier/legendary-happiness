@@ -35,6 +35,8 @@ HUB_CSRF_HEADER = "x-forge-hub"
 HEALTH_POLL_ATTEMPTS = 60
 HEALTH_POLL_INTERVAL = 2.0
 
+LLAMA_SERVICE = "forge-llama.service"
+
 
 def _get_current_model() -> Optional[str]:
     """Query the hub for the currently-loaded model alias.
@@ -177,6 +179,7 @@ def _wait_for_health(expected_alias: Optional[str] = None) -> bool:
 def _run_quest(prompt: str, scene: str) -> Tuple[bool, str, dict]:
     """Run ``python -m foundry quest`` and capture the spec.
 
+    The quest command scaffolds into ``builds/<scene>/``.
     Returns ``(ok, stdout, spec_dict)``.
     """
     cmd = [
@@ -218,6 +221,82 @@ def _run_quest(prompt: str, scene: str) -> Tuple[bool, str, dict]:
 
     print(f"  [quest] spec captured: {spec}")
     return True, stdout, spec
+
+
+def _check_model_fit(alias: str) -> dict:
+    """Check a model's VRAM fit status via the hub API.
+
+    Returns {"status": str, "need_gb": float, "ctx": int} or {} on failure.
+    """
+    try:
+        r = requests.get(
+            f"{HUB_URL}/api/models",
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+        models = data.get("models", [])
+        for m in models:
+            if m.get("alias") == alias:
+                fit = m.get("fit", {})
+                return {
+                    "status": fit.get("status", "?"),
+                    "need_gb": fit.get("need_gb", 0.0),
+                    "ctx": fit.get("ctx", 0),
+                }
+    except requests.RequestException as e:
+        print(f"  [fit] WARNING: cannot check fit for {alias}: {e}")
+    return {}
+
+
+def _pre_configure_27b() -> bool:
+    """Pre-configure qwen3-6-27b with ctx=8192 for 16 GB VRAM fit.
+
+    Runs ``forge-model set qwen3-6-27b ctx=8192``.  Returns True if the
+    command succeeds.
+    """
+    from pathlib import Path as _P
+    HOME = _P.home()
+    fm = str(HOME / ".local/bin/forge-model")
+    if not _P(fm).exists():
+        print("[27b-fit] forge-model CLI not found, skipping pre-config")
+        return True  # not fatal — the VRAM pre-flight will catch the spill
+
+    print("[27b-fit] pre-configuring qwen3-6-27b ctx=8192...")
+    result = subprocess.run(
+        [fm, "set", "qwen3-6-27b", "ctx=8192"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode == 0:
+        print("[27b-fit] ctx=8192 set")
+        return True
+    # ctx=8192 may still be too large — try 4096
+    print(f"[27b-fit] ctx=8192 failed (exit {result.returncode}), trying ctx=4096...")
+    result2 = subprocess.run(
+        [fm, "set", "qwen3-6-27b", "ctx=4096"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result2.returncode == 0:
+        print("[27b-fit] ctx=4096 set")
+        return True
+    print(f"[27b-fit] ERROR: ctx=4096 also failed (exit {result2.returncode})")
+    return False
+
+
+def _reset_failed_llama() -> None:
+    """Run ``systemctl --user reset-failed forge-llama.service``.
+
+    Clears the start-limit-hit state so a prior OOM doesn't block recovery.
+    """
+    subprocess.run(
+        ["systemctl", "--user", "reset-failed", LLAMA_SERVICE],
+        capture_output=True,
+        timeout=10,
+    )
 
 
 def _resolve_model_alias(fragment: str) -> str:
@@ -297,6 +376,10 @@ def run_compare(
 
     Returns 0 on success, 1 on failure.
     """
+    # ── 0. Pre-configure 27B if it's among the fragments ──────
+    if any("27b" in f.lower() or "qwen3-6-27b" in f.lower() for f in fragments):
+        _pre_configure_27b()
+
     # ── 1. Record current model ────────────────────────────────
     if original_model is None:
         original_model = _get_current_model()
@@ -334,21 +417,36 @@ def run_compare(
             "error": None,
         }
 
-        # 2a. Swap model
+        # 2a. VRAM pre-flight: skip if model spills
+        fit = _check_model_fit(alias)
+        if fit.get("status") == "spills":
+            gb = fit.get("need_gb", 0.0)
+            ctx = fit.get("ctx", 0)
+            msg = (
+                f"VRAM pre-flight: {alias} spills (~{gb} GiB needed "
+                f"at ctx={ctx}) — skipping"
+            )
+            print(f"  [fit] {msg}")
+            result["error"] = msg
+            results.append(result)
+            all_ok = False
+            continue
+
+        # 2b. Swap model
         if not _swap_model(fragment):
             result["error"] = "swap failed"
             results.append(result)
             all_ok = False
             continue
 
-        # 2b. Wait for /health
+        # 2c. Wait for /health
         if not _wait_for_health():
             result["error"] = "health check failed"
             results.append(result)
             all_ok = False
             continue
 
-        # 2c. Run quest generation
+        # 2d. Run quest generation
         ok, stdout, spec = _run_quest(prompt, scene_name)
         if not ok:
             result["error"] = "quest generation failed"
@@ -368,7 +466,12 @@ def run_compare(
 
     # ── 4. Restore original model ──────────────────────────────
     if original_model:
-        print(f"\n[quest_compare] Restoring original model: {original_model}")
+        # Safe restore: clear start-limit-hit so a prior OOM
+        # doesn't block recovery.
+        print("\n[quest_compare] Resetting failed state on llama service...")
+        _reset_failed_llama()
+
+        print(f"[quest_compare] Restoring original model: {original_model}")
         if _swap_model(original_model):
             _wait_for_health(expected_alias=original_model)
             print(f"[quest_compare] Original model restored.")

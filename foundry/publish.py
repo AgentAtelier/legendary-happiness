@@ -6,9 +6,10 @@ ops instead of greyboxes."""
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from pathlib import Path
-from typing import List, TypedDict
+from typing import List, Optional, Tuple, TypedDict
 
 from library import register_asset, register_variant
 
@@ -136,6 +137,42 @@ def publish(
             shutil.copy2(sidecar_src, sidecar_dst)
 
     return {"published": published, "skipped": skipped}
+
+
+def copy_asset_family(
+    category: str,
+    material: str,
+    library_dir: str,
+    dest_assets_dir: str,
+) -> List[str]:
+    """Copy a GLB and its entire file family into a destination.
+
+    For a (category, material) pair, globs and copies every file whose
+    stem starts with ``{category}_{material}``: the .glb, its .glb.import
+    sidecar, any ``_baked_*.png`` textures, any ``*.png.import`` sidecars,
+    and the .sidecar.json.  Does NOT reason about which textures are
+    actually referenced — brings the whole family so the probe is the
+    completeness gate.
+
+    Returns the list of copied file names (basename only).
+    """
+    stem = f"{category}_{material}"
+    lib = Path(library_dir)
+    dest = Path(dest_assets_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+
+    copied: list[str] = []
+    # Match: {stem}.glb, {stem}.glb.import, {stem}_baked_*.png,
+    #        {stem}_baked_*.png.import, {stem}.sidecar.json
+    # ([._][^.]+)? matches both _texture and .sidecar suffixes.
+    pattern = re.compile(r"^" + re.escape(stem) + r"([._][^.]+)?\.(glb|png|json)(\.import)?$")
+    for fpath in sorted(lib.iterdir()):
+        if pattern.match(fpath.name):
+            dst = dest / fpath.name
+            shutil.copy2(fpath, dst)
+            copied.append(fpath.name)
+
+    return copied
 
 
 def _main() -> int:
