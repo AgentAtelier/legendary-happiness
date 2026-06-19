@@ -99,6 +99,33 @@ def _choice(material_id: str) -> Choice:
 # ── Public entry point ─────────────────────────────────────────────
 
 
+def material_cues(request: str) -> List[Tuple[str, str]]:
+    """Return ALL matched material cues for *request* as
+    ``(keyword, family)`` — the multi-match counterpart of
+    ``resolve_material``.  Single-sourced from ``_SPECIFIC_KW`` and
+    ``_FAMILY_KW``:
+
+    - a specific keyword → ``MATERIAL_PALETTE[mat]["family"]``
+    - a family keyword → its own family name
+
+    Iteration order is specific-first then family (matches
+    ``resolve_material``'s priority); within each map, declaration
+    order.  Same whole-word matching as ``_word_in``.
+
+    Returns ``[]`` when no material keyword matches.
+    """
+    cues: List[Tuple[str, str]] = []
+    for kw, mat_id in _SPECIFIC_KW.items():
+        if _word_in(request, kw):
+            info = MATERIAL_PALETTE.get(mat_id, {})
+            family = info.get("family", mat_id)
+            cues.append((kw, family))
+    for kw, family in _FAMILY_KW.items():
+        if _word_in(request, kw):
+            cues.append((kw, family))
+    return cues
+
+
 def resolve_material(request: str) -> Tuple[str, List[DecisionPoint]]:
     """Resolve the material for *request* deterministically.  Returns
     ``(material_id, decisions)``.

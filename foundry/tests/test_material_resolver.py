@@ -210,3 +210,81 @@ def test_resolver_returns_a_decision_point_type():
     _, decisions = resolve_material("a wooden table")
     assert len(decisions) == 1
     assert isinstance(decisions[0], DecisionPoint)
+
+
+# ── material_cues (slice 2) ────────────────────────────────────────
+# material_cues is the multi-match counterpart to resolve_material: it
+# returns ALL matched cues as (keyword, family), single-sourced from
+# _SPECIFIC_KW / _FAMILY_KW.  Same whole-word match as resolve_material.
+
+
+def test_material_cues_stone_look_wooden_cabinet_spans_two_families():
+    from material_resolver import material_cues
+
+    cues = material_cues("a stone-look wooden cabinet")
+    families = {fam for _, fam in cues}
+    assert families == {"stone", "wood"}, (
+        f"expected both stone + wood families; got families={families}, cues={cues}"
+    )
+
+
+def test_material_cues_oak_walnut_same_family_wood():
+    """Two specific cues (oak, walnut) both map to family=wood → one family."""
+    from material_resolver import material_cues
+
+    cues = material_cues("an oak walnut table")
+    families = {fam for _, fam in cues}
+    assert families == {"wood"}, f"expected only wood family; got {families}"
+    # And both keywords are present:
+    keywords = {kw for kw, _ in cues}
+    assert {"oak", "walnut"}.issubset(keywords)
+
+
+def test_material_cues_wooden_table_single_family():
+    """A single family keyword → only one family in cues."""
+    from material_resolver import material_cues
+
+    cues = material_cues("a wooden table")
+    families = {fam for _, fam in cues}
+    assert families == {"wood"}
+    keywords = {kw for kw, _ in cues}
+    assert "wooden" in keywords
+
+
+def test_material_cues_no_match_returns_empty_list():
+    """A request with no material keywords → empty cues list."""
+    from material_resolver import material_cues
+
+    cues = material_cues("a plain cabinet")
+    assert cues == []
+
+
+def test_material_cues_oak_keyword_resolves_to_wood_family():
+    """Specific keyword 'oak' → family via MATERIAL_PALETTE, not the
+    material id."""
+    from material_resolver import material_cues
+
+    cues = material_cues("an oak table")
+    # 'oak' is a _SPECIFIC_KW → MATERIAL_PALETTE["worn_oak"]["family"] = "wood"
+    assert ("oak", "wood") in cues
+
+
+def test_material_cues_family_keyword_maps_to_its_own_family():
+    """Family keyword 'stone' → family 'stone' (no MATERIAL_PALETTE roundtrip)."""
+    from material_resolver import material_cues
+
+    cues = material_cues("a stone table")
+    assert ("stone", "stone") in cues
+
+
+def test_material_cues_returns_list_of_tuples():
+    """Return type contract: list[tuple[str, str]]."""
+    from material_resolver import material_cues
+
+    cues = material_cues("an iron table")
+    assert isinstance(cues, list)
+    for c in cues:
+        assert isinstance(c, tuple)
+        assert len(c) == 2
+        assert isinstance(c[0], str)
+        assert isinstance(c[1], str)

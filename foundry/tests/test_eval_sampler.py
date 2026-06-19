@@ -266,3 +266,129 @@ def test_estimate_clean_rate_dict_keys():
     """The estimator returns the three named keys."""
     out = estimate_clean_rate(clean_pass=1, clean_sampled=2, clean_size=10)
     assert set(out.keys()) >= {"sample_pass_rate", "projected_clean_ok", "clean_size"}
+
+
+# ── Severity-weighted sampler (slice 2) ──────────────────────────────────
+# SIGNAL_SEVERITY maps each signal tag to "high" or "low".  A record's
+# tier is "high" if ANY tag is high; else "low" if any low tag; else
+# "clean".  The new low_severity_cap parameter caps the low-tier
+# records; high-tier are always included.
+
+
+def _decision_fired_record(i: int) -> RunRecord:
+    """A record whose ONLY signal is decision_fired (low-tier).  Uses the
+    benign material.family_defaulted — exactly the live-run-blame case
+    the design doc calls out (15 of 47 records bloomed the probe set)."""
+    return _rec(
+        request=f"wooden table {i}",
+        decisions=[{"code": "material.family_defaulted", "stage": "planner"}],
+        spec={
+            "asset_id": "table", "generator": "table", "material": "worn_oak",
+            "age": 0.15,
+            "params": {
+                "top_width": 1.2, "top_depth": 0.8, "top_thickness": 0.06,
+                "leg_height": 0.65, "leg_radius": 0.05, "leg_inset": 0.1,
+            },
+        },
+        gate_passed=True,
+    )
+
+
+def test_sampler_severity_low_capped_at_low_severity_cap_high_all_in_clean_intact():
+    """20 low-tier decision_fired + 3 high-tier gate_rejected + 30 clean,
+    low_severity_cap=8, clean_baseline_n=10:
+      - all 3 high-tier included
+      - exactly 8 low-tier included (seeded-sampled from 20)
+      - exactly 10 clean baseline
+      - stratum_sizes reflect the FULL population.
+    """
+    recs: List[RunRecord] = []
+    recs.extend(_decision_fired_record(i) for i in range(20))
+    recs.extend(_gate_rejected_record(i + 20) for i in range(3))
+    recs.extend(_clean_record(i + 23) for i in range(30))
+
+    out = stratify_and_sample(
+        recs, seed=1337, clean_baseline_n=10, low_severity_cap=8,
+    )
+
+    high_probes  = [p for p in out.probes if p["strata"] == ["gate_rejected"]]
+    low_probes   = [p for p in out.probes if "decision_fired" in p["strata"]]
+    clean_probes = [p for p in out.probes if p["strata"] == ["clean"]]
+
+    assert len(high_probes) == 3,   f"expected 3 high-tier probes; got {len(high_probes)}"
+    assert len(low_probes) == 8,    f"expected 8 low-tier probes; got {len(low_probes)}"
+    assert len(clean_probes) == 10, f"expected 10 clean probes; got {len(clean_probes)}"
+    assert len(out.probes) == 21
+
+    for p in high_probes:
+        assert "high-tier" in p["reason"], p["reason"]
+    for p in low_probes:
+        assert "low-tier-sampled" in p["reason"], p["reason"]
+    for p in clean_probes:
+        assert "clean-baseline" in p["reason"], p["reason"]
+
+    assert out.stratum_sizes["decision_fired"] == 20
+    assert out.stratum_sizes["gate_rejected"] == 3
+    assert out.stratum_sizes["clean"] == 30
+
+
+def test_sampler_severity_deterministic_by_seed():
+    """Same seed → identical probe set when low_severity_cap kicks in."""
+    recs = [_decision_fired_record(i) for i in range(20)] + [_clean_record(99)]
+    out1 = stratify_and_sample(recs, seed=99, clean_baseline_n=0, low_severity_cap=5)
+    out2 = stratify_and_sample(recs, seed=99, clean_baseline_n=0, low_severity_cap=5)
+    assert [p["index"] for p in out1.probes] == [p["index"] for p in out2.probes]
+    assert [p["strata"] for p in out1.probes] == [p["strata"] for p in out2.probes]
+
+
+def test_sampler_severity_low_below_cap_keeps_all_low_records():
+    """When low-tier population ≤ low_severity_cap, every low-tier
+    record is included (no rng.sample draw needed)."""
+    recs = [_decision_fired_record(i) for i in range(5)] + [_clean_record(99)]
+    out = stratify_and_sample(recs, seed=1, clean_baseline_n=0, low_severity_cap=8)
+    low_probes = [p for p in out.probes if "decision_fired" in p["strata"]]
+    assert len(low_probes) == 5
+
+
+def test_sampler_severity_default_low_severity_cap_is_8():
+    """low_severity_cap defaults to 8 (per design spec)."""
+    recs = [_decision_fired_record(i) for i in range(20)]
+    out = stratify_and_sample(recs, seed=42, clean_baseline_n=0)  # no kwarg
+    assert len(out.probes) == 8
+
+
+def test_sampler_severity_high_included_regardless_of_cap():
+    """High-tier records are NEVER pruned by low_severity_cap."""
+    recs = (
+        [_decision_fired_record(i) for i in range(20)]
+        + [_gate_rejected_record(i + 20) for i in range(5)]
+    )
+    out = stratify_and_sample(recs, seed=42, clean_baseline_n=0, low_severity_cap=8)
+    high_probes = [p for p in out.probes if "gate_rejected" in p["strata"]]
+    assert len(high_probes) == 5
+
+
+def test_sampler_severity_record_tier_helper():
+    """record_tier boxes a tag set into high/low/clean."""
+    from eval.signals import record_tier
+    assert record_tier({"clean"}) == "clean"
+    assert record_tier(set()) == "clean"
+    assert record_tier({"decision_fired"}) == "low"
+    assert record_tier({"build_error"}) == "high"
+    assert record_tier({"gate_rejected", "decision_fired"}) == "high"  # high wins
+    assert record_tier({"size_mismatch"}) == "high"
+    assert record_tier({"material_conflict"}) == "high"
+    assert record_tier({"age_mismatch"}) == "high"
+
+
+def test_sampler_severity_signal_severity_public_dict():
+    """SIGNAL_SEVERITY is a public deterministic map used by both the
+    sampler and the regression tests."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY["build_error"]       == "high"
+    assert SIGNAL_SEVERITY["gate_rejected"]     == "high"
+    assert SIGNAL_SEVERITY["size_mismatch"]     == "high"
+    assert SIGNAL_SEVERITY["material_mismatch"] == "high"
+    assert SIGNAL_SEVERITY["material_conflict"] == "high"
+    assert SIGNAL_SEVERITY["age_mismatch"]      == "high"
+    assert SIGNAL_SEVERITY["decision_fired"]    == "low"
