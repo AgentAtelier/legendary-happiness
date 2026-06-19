@@ -84,16 +84,29 @@ def _compile_and_probe(quest_spec, manifest, tmp_dir: str) -> dict:
         capture_output=True, text=True, timeout=60,
     )
 
-    # Parse the JSON from stdout (last non-empty line that starts with {)
+    # Parse the JSON from stdout — look for PROBE_JSON_OUTPUT: marker
     probe_json = None
-    for line in reversed(result.stdout.splitlines()):
+    marker = "PROBE_JSON_OUTPUT:"
+    for line in result.stdout.splitlines():
         line = line.strip()
-        if line.startswith("{"):
+        idx = line.find(marker)
+        if idx != -1:
             try:
-                probe_json = json.loads(line)
+                probe_json = json.loads(line[idx + len(marker):])
                 break
             except json.JSONDecodeError:
                 continue
+
+    if probe_json is None:
+        # Fallback: try the old format (line starting with {)
+        for line in reversed(result.stdout.splitlines()):
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    probe_json = json.loads(line)
+                    break
+                except json.JSONDecodeError:
+                    continue
 
     if probe_json is None:
         raise RuntimeError(
