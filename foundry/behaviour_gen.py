@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
-from decisions import DecisionPoint, make_decision
+from decisions import Choice, DecisionPoint, make_decision
 from dialogue_validator import validate_dialogue
 
 log = logging.getLogger(__name__)
@@ -26,6 +26,117 @@ _GRAMMAR_PATH = str(Path(__file__).resolve().parent / "grammar" / "quest_spec.gb
 from llm import load_grammar as _load_grammar
 
 _GRAMMAR = _load_grammar(_GRAMMAR_PATH)
+
+# ── NPC role constants ───────────────────────────────────────────
+
+_DEFAULT_NPC_ROLE = "villager"
+_MAX_NPC_ROLE_LEN = 60
+
+
+# ── NPC role validation ──────────────────────────────────────────
+
+def _validate_npc_role(raw_role: object) -> Tuple[str, List[DecisionPoint]]:
+    """Validate and clean an NPC role string.
+
+    Returns ``(cleaned_role, decisions)``.  Never raises — always
+    returns a usable role, emitting Decision Points for recoverable
+    issues (mirrors how ``material_resolver`` never blocks).
+
+    Checks:
+        - **empty**: role is empty or non-string → default to
+          ``"villager"``, emit ``quest.npc_role_empty``.
+        - **too long**: role exceeds *_MAX_NPC_ROLE_LEN* → truncate,
+          emit ``quest.npc_role_malformed``.
+        - **repeated words**: e.g. ``"hermit hermit"`` → collapse
+          adjacent duplicate words, emit ``quest.npc_role_malformed``.
+    """
+    decisions: list[DecisionPoint] = []
+
+    # Coerce to string
+    if not isinstance(raw_role, str):
+        raw_role = str(raw_role) if raw_role is not None else ""
+    role = raw_role.strip()
+
+    # Empty check
+    if not role:
+        decisions.append(
+            make_decision(
+                code="quest.npc_role_empty",
+                stage="planner",
+                severity="assumption",
+                context={"resolved": _DEFAULT_NPC_ROLE},
+                choices=_npc_role_choices(_DEFAULT_NPC_ROLE),
+            )
+        )
+        return _DEFAULT_NPC_ROLE, decisions
+
+    # Too-long check
+    if len(role) > _MAX_NPC_ROLE_LEN:
+        truncated = role[:_MAX_NPC_ROLE_LEN].rstrip()
+        decisions.append(
+            make_decision(
+                code="quest.npc_role_malformed",
+                stage="planner",
+                severity="assumption",
+                context={"original": role, "resolved": truncated},
+                choices=_npc_role_choices(truncated),
+            )
+        )
+        return truncated, decisions
+
+    # Duplicate adjacent words check (e.g. "hermit hermit")
+    words = role.split()
+    collapsed_words: list[str] = []
+    changed = False
+    for w in words:
+        if collapsed_words and collapsed_words[-1].lower() == w.lower():
+            changed = True
+            continue
+        collapsed_words.append(w)
+    if changed:
+        cleaned = " ".join(collapsed_words)
+        if not cleaned:
+            cleaned = _DEFAULT_NPC_ROLE
+        decisions.append(
+            make_decision(
+                code="quest.npc_role_malformed",
+                stage="planner",
+                severity="assumption",
+                context={"original": role, "resolved": cleaned},
+                choices=_npc_role_choices(cleaned),
+            )
+        )
+        return cleaned, decisions
+
+    return role, decisions
+
+
+def _npc_role_choices(resolved: str) -> Tuple[Choice, ...]:
+    """Build the standard set of NPC role override choices."""
+    return (
+        Choice(
+            label=resolved.title(),
+            plain=f"Keep '{resolved}' as the NPC role.",
+            apply={"field": "npc_role", "value": resolved},
+        ),
+        Choice(
+            label="Custom role",
+            plain="Provide a different NPC role.",
+            apply={"field": "npc_role", "action": "custom"},
+        ),
+    )
+
+
+def _target_choice(entity_id: str, category: str) -> Choice:
+    """Build a Choice to set a specific target entity."""
+    label = entity_id
+    plain = f"Make '{entity_id}' ({category}) the quest target."
+    return Choice(
+        label=label,
+        plain=plain,
+        apply={"field": "target_entity", "value": entity_id},
+    )
+
 
 # ── Prompt template ──────────────────────────────────────────────
 
@@ -163,8 +274,8 @@ class QuestBehaviourPlanner:
             dict; ``decisions`` is the list of Decision Points emitted.
 
         Raises:
-            ValueError: if the manifest has no eligible targets, or the
-                        LLM's target_entity is not in the manifest.
+            ValueError: only when the manifest has no eligible targets
+                        (unrecoverable — a quest needs at least one prop).
         """
         decisions: list[DecisionPoint] = []
 
@@ -177,7 +288,13 @@ class QuestBehaviourPlanner:
                     stage="planner",
                     severity="error",
                     context={},
-                    choices=(),
+                    choices=(
+                        Choice(
+                            label="Add props",
+                            plain="Add placed props to the manifest so there is something to fetch.",
+                            apply={"action": "add_props"},
+                        ),
+                    ),
                 )
             )
             raise ValueError(
@@ -191,22 +308,34 @@ class QuestBehaviourPlanner:
         # ── Parse the response ───────────────────────────────────
         spec = self.parse(response)
 
-        # ── Validate target_entity ───────────────────────────────
+        # ── Validate NPC role (non-blocking) ────────────────────
+        raw_role = spec.get("npc_role", "")
+        npc_role, role_decisions = _validate_npc_role(raw_role)
+        decisions.extend(role_decisions)
+
+        # ── Validate target_entity (non-blocking, auto-recover) ──
         target_entity = spec.get("target_entity", "")
         if target_entity not in valid_ids:
+            # Auto-pick the first available prop as fallback
+            fallback_id = sorted(valid_ids)[0]
+            cat = self._target_category(manifest, fallback_id)
             decisions.append(
                 make_decision(
                     code="quest.dangling_target",
                     stage="planner",
                     severity="error",
                     context={"entity": target_entity},
-                    choices=(),
+                    choices=(
+                        _target_choice(fallback_id, cat),
+                        Choice(
+                            label="Re-run",
+                            plain="Re-run the LLM to pick a different target.",
+                            apply={"action": "retry"},
+                        ),
+                    ),
                 )
             )
-            raise ValueError(
-                f"target_entity {target_entity!r} not found in manifest"
-                f" (valid: {sorted(valid_ids)})"
-            )
+            target_entity = fallback_id
 
         # ── Validate / fallback dialogue ─────────────────────────
         category = self._target_category(manifest, target_entity)
@@ -225,7 +354,7 @@ class QuestBehaviourPlanner:
 
         # ── Assemble the validated spec ──────────────────────────
         validated_spec: dict = {
-            "npc_role": spec.get("npc_role", "villager"),
+            "npc_role": npc_role,
             "target_entity": target_entity,
             "dialogue": validated_dialogue,
             "objective": objective,

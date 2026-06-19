@@ -1,14 +1,17 @@
 """Tests for QuestBehaviourPlanner — quest-spec grammar + behaviour-gen call.
 
 The deterministic core needs NO live LLM.  All plan() tests pass a
-FAKE callable so the manifest validation, dialogue validation, and
-Decision Point emission can be exercised deterministically.
+FAKE callable so the manifest validation, dialogue validation, NPC role
+validation, and Decision Point emission can be exercised deterministically.
 
-Tests (per P1 TDD spec):
+Tests (per P1 + P2 TDD spec):
   (a) manifest of 4 props → spec references a real id
-  (b) LLM returns a dangling id → rejected/Decision-Point
+  (b) LLM returns a dangling id → auto-recover + DP (P2: non-blocking)
   (c) junk dialogue → fallback fires
   (d) good dialogue → passes through
+  (e) NPC role empty → default + DP
+  (f) NPC role too long / duplicated → cleaned + DP
+  (g) all quest DPs carry actionable choices
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import socket
 
 import pytest
 
-from behaviour_gen import QuestBehaviourPlanner
+from behaviour_gen import QuestBehaviourPlanner, _validate_npc_role, _DEFAULT_NPC_ROLE, _MAX_NPC_ROLE_LEN
 from decisions import DecisionPoint
 from llm import normalize_gbnf, load_grammar
 
@@ -253,33 +256,63 @@ def test_plan_with_valid_manifest_and_good_dialogue():
     assert decisions == []  # no issues
 
 
-# (b) LLM returns a dangling id → rejected/Decision-Point
+# (b) LLM returns a dangling id → auto-recover + DecisionPoint (P2: non-blocking)
 
-def test_plan_dangling_target_raises():
-    """LLM picks an id not in manifest → ValueError raised with the
-    dangling id in the error message.  The DP template itself is tested
-    separately in test_quest_dangling_target_decision_emitted."""
+def test_plan_dangling_target_auto_recovers():
+    """P2: dangling target is now non-blocking.  The pipeline auto-picks
+    the first available prop and emits a quest.dangling_target DP with
+    actionable choices."""
     planner = QuestBehaviourPlanner()
-    with pytest.raises(ValueError, match="dragon_gold"):
-        planner.plan("a test room", _MANIFEST_4, _fake_llm_dangling)
-
-
-def test_quest_dangling_target_decision_emitted():
-    """Verify that quest.dangling_target DP is built correctly via
-    make_decision."""
-    from decisions import make_decision as md
-
-    dp = md(
-        code="quest.dangling_target",
-        stage="planner",
-        severity="error",
-        context={"entity": "dragon_gold"},
-        choices=(),
+    spec, decisions = planner.plan(
+        "a test room", _MANIFEST_4, _fake_llm_dangling
     )
-    assert dp.code == "quest.dangling_target"
+
+    # Auto-recovered: should pick the first available prop alphabetically
+    assert spec["target_entity"] in _VALID_MANIFEST_IDS
+    assert spec["target_entity"] == sorted(_VALID_MANIFEST_IDS)[0]  # cabinet_0
+    # Dangling DP emitted
+    dangling_dps = [d for d in decisions if d.code == "quest.dangling_target"]
+    assert len(dangling_dps) == 1
+    dp = dangling_dps[0]
     assert dp.severity == "error"
-    assert "dragon_gold" in dp.technical
-    assert "dragon_gold" in dp.plain
+    assert dp.context["entity"] == "dragon_gold"
+    # Choices should exist (P2: actionable)
+    assert len(dp.choices) >= 1
+    # First choice should set a real target entity
+    assert dp.choices[0].apply.get("field") == "target_entity"
+    assert dp.choices[0].apply["value"] in _VALID_MANIFEST_IDS
+
+
+def test_dangling_target_dp_has_actionable_choices():
+    """The dangling target DP carries choices: auto-pick + re-run."""
+    planner = QuestBehaviourPlanner()
+    _, decisions = planner.plan("a room", _MANIFEST_4, _fake_llm_dangling)
+    dp = next(d for d in decisions if d.code == "quest.dangling_target")
+    choice_labels = {c.label for c in dp.choices}
+    assert "cabinet_0" in choice_labels  # auto-pick choice
+    assert "Re-run" in choice_labels      # retry choice
+
+
+def test_dangling_target_also_recovers_empty_npc_role():
+    """When the LLM returns both a dangling target AND an empty npc_role,
+    both recover: target auto-picks, role defaults to villager."""
+    def fake_dangling_empty_role(prompt, grammar):
+        return json.dumps({
+            "npc_role": "",
+            "target_entity": "dragon_gold",
+            "dialogue": {
+                "greet": "Hello traveler, can you help me find something?",
+                "ask": "Find my missing item!",
+                "wrong": "Not what I need.",
+                "thank": "Thank you, you found it!",
+            },
+            "objective": {"type": "fetch", "target": "dragon_gold", "giver": "npc"},
+        })
+
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan("a room", _MANIFEST_4, fake_dangling_empty_role)
+    assert spec["npc_role"] == _DEFAULT_NPC_ROLE
+    assert spec["target_entity"] in _VALID_MANIFEST_IDS
 
 
 # (c) Junk dialogue → fallback fires
@@ -354,6 +387,151 @@ def test_plan_short_irrelevant_dialogue_gets_fallback():
     assert len(fallback_dps) == 3
     fields = {d.context["field"] for d in fallback_dps}
     assert fields == {"ask", "wrong", "thank"}
+
+
+# ── P2: NPC role validation (non-blocking) ──────────────────────
+
+def test_validate_npc_role_empty_defaults_to_villager():
+    """Empty npc_role → default to 'villager' + quest.npc_role_empty DP."""
+    role, decisions = _validate_npc_role("")
+    assert role == _DEFAULT_NPC_ROLE
+    assert len(decisions) == 1
+    assert decisions[0].code == "quest.npc_role_empty"
+    assert decisions[0].severity == "assumption"
+    assert decisions[0].context["resolved"] == _DEFAULT_NPC_ROLE
+
+
+def test_validate_npc_role_whitespace_defaults_to_villager():
+    """Whitespace-only npc_role → default."""
+    role, decisions = _validate_npc_role("   ")
+    assert role == _DEFAULT_NPC_ROLE
+    assert len(decisions) == 1
+    assert decisions[0].code == "quest.npc_role_empty"
+
+
+def test_validate_npc_role_empty_has_choices():
+    """The npc_role_empty DP carries actionable choices."""
+    _, decisions = _validate_npc_role("")
+    dp = decisions[0]
+    assert len(dp.choices) >= 2
+    choice_labels = {c.label for c in dp.choices}
+    assert "Villager" in choice_labels
+    assert "Custom role" in choice_labels
+    assert dp.choices[0].apply["field"] == "npc_role"
+    assert dp.choices[0].apply["value"] == _DEFAULT_NPC_ROLE
+
+
+def test_validate_npc_role_too_long_truncates():
+    """NPC role exceeding _MAX_NPC_ROLE_LEN → truncated + DP."""
+    long_role = "a" * (_MAX_NPC_ROLE_LEN + 10)
+    role, decisions = _validate_npc_role(long_role)
+    assert len(role) <= _MAX_NPC_ROLE_LEN
+    assert len(decisions) == 1
+    assert decisions[0].code == "quest.npc_role_malformed"
+    assert decisions[0].severity == "assumption"
+    assert decisions[0].context["original"] == long_role
+    assert decisions[0].context["resolved"] == role
+
+
+def test_validate_npc_role_duplicate_words_collapsed():
+    """'hermit hermit' → collapsed to 'hermit' + DP."""
+    role, decisions = _validate_npc_role("hermit hermit")
+    assert role == "hermit"
+    assert len(decisions) == 1
+    assert decisions[0].code == "quest.npc_role_malformed"
+    assert decisions[0].context["original"] == "hermit hermit"
+    assert decisions[0].context["resolved"] == "hermit"
+
+
+def test_validate_npc_role_multiple_duplicates_collapsed():
+    """'hermit hermit hermit' → single 'hermit'."""
+    role, decisions = _validate_npc_role("hermit hermit hermit")
+    assert role == "hermit"
+    assert len(decisions) == 1
+    assert decisions[0].code == "quest.npc_role_malformed"
+
+
+def test_validate_npc_role_alternating_duplicates_collapsed():
+    """'hermit shopkeeper hermit' → 'hermit shopkeeper' (only adjacent
+    duplicates are collapsed)."""
+    role, decisions = _validate_npc_role("hermit shopkeeper hermit")
+    assert role == "hermit shopkeeper hermit"  # not adjacent, preserved
+    assert decisions == []
+
+
+def test_validate_npc_role_malformed_has_choices():
+    """The npc_role_malformed DP carries actionable choices."""
+    _, decisions = _validate_npc_role("hermit hermit")
+    dp = decisions[0]
+    assert len(dp.choices) >= 2
+    choice_labels = {c.label for c in dp.choices}
+    assert "Hermit" in choice_labels
+    assert "Custom role" in choice_labels
+
+
+def test_validate_npc_role_good_passes_through():
+    """A valid NPC role → no decisions, role unchanged."""
+    role, decisions = _validate_npc_role("hermit")
+    assert role == "hermit"
+    assert decisions == []
+
+
+def test_plan_empty_npc_role_gets_default():
+    """LLM returns empty npc_role → plan() defaults to villager + DP."""
+    def fake_empty_role(prompt, grammar):
+        return json.dumps({
+            "npc_role": "",
+            "target_entity": "table_0",
+            "dialogue": {
+                "greet": "Hello traveler, can you help me find something?",
+                "ask": "Find my lost book on the table!",
+                "wrong": "No, that is not my book.",
+                "thank": "Yes, you found my book! Thank you.",
+            },
+            "objective": {"type": "fetch", "target": "table_0", "giver": "npc"},
+        })
+
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan("a room", _MANIFEST_4, fake_empty_role)
+    assert spec["npc_role"] == _DEFAULT_NPC_ROLE
+    assert any(d.code == "quest.npc_role_empty" for d in decisions)
+
+
+def test_plan_duplicate_npc_role_words_collapsed():
+    """LLM returns 'hermit hermit' → collapsed to 'hermit' + DP."""
+    def fake_dupe_role(prompt, grammar):
+        return json.dumps({
+            "npc_role": "hermit hermit",
+            "target_entity": "table_0",
+            "dialogue": {
+                "greet": "Hello traveler, can you help me find something?",
+                "ask": "Find my lost book on the table!",
+                "wrong": "No, that is not my book.",
+                "thank": "Yes, you found my book! Thank you.",
+            },
+            "objective": {"type": "fetch", "target": "table_0", "giver": "npc"},
+        })
+
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan("a room", _MANIFEST_4, fake_dupe_role)
+    assert spec["npc_role"] == "hermit"
+    assert any(d.code == "quest.npc_role_malformed" for d in decisions)
+
+
+# ── P2: Dialogue fallback DP has choices ─────────────────────────
+
+def test_dialogue_fallback_dp_has_choices():
+    """The dialogue_fallback DP carries at least one choice."""
+    planner = QuestBehaviourPlanner()
+    _, decisions = planner.plan(
+        "a room", _MANIFEST_4, _fake_llm_junk_dialogue
+    )
+    fallback_dps = [d for d in decisions if d.code == "quest.dialogue_fallback"]
+    assert len(fallback_dps) == 4
+    for dp in fallback_dps:
+        # Each fallback DP should mention the field and original
+        assert "field" in dp.context
+        assert dp.context["field"] in {"greet", "ask", "wrong", "thank"}
 
 
 # ── Edge cases ────────────────────────────────────────────────────

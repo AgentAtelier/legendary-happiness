@@ -122,6 +122,18 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The room has nothing to fetch — add a prop so there is something to find.",
     ),
+    "quest.npc_role_empty": (
+        # technical
+        "npc_role was empty; defaulted to {resolved}.",
+        # plain
+        "The model didn't name the NPC's role, so I used {resolved}.",
+    ),
+    "quest.npc_role_malformed": (
+        # technical
+        "npc_role was malformed (original: {original!r}); cleaned to {resolved}.",
+        # plain
+        "The model produced a garbled NPC role, so I cleaned it up to '{resolved}'.",
+    ),
 }
 
 
