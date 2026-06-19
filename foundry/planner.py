@@ -8,9 +8,11 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional, Tuple
 
-from compiler import MATERIALS, PARAM_RANGES, compile_spec
+from compiler import PARAM_RANGES, compile_spec
+from decisions import DecisionPoint
+from material_resolver import resolve_material
 
 log = logging.getLogger(__name__)
 
@@ -74,8 +76,6 @@ Cabinet params (generator="cabinet"):
   "base_height": <number: height of the bottom plinth>
 }}
 
-Allowed material values: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated), "rough_granite" (mottled grey stone), "wrought_iron" (dark tinted metal).
-Choose the one that best matches the request's material need.
 All param values are positive floats (decimals).
 
 Table defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.
@@ -132,7 +132,7 @@ class AssetPlanner:
 
         return data
 
-    def plan(self, request: str, llm: Callable[[str, Optional[str]], str]) -> dict:
+    def plan(self, request: str, llm: Callable[[str, Optional[str]], str]) -> Tuple[dict, List[DecisionPoint]]:
         """Plan an asset-spec from a natural-language request.
 
         Args:
@@ -141,9 +141,18 @@ class AssetPlanner:
                  FAKE for tests, or foundry.llm.FoundryLLM for production.
 
         Returns:
-            A dict that is guaranteed to pass compiler.compile_spec().
+            ``(spec, decisions)`` — ``spec`` is a dict guaranteed to pass
+            ``compiler.compile_spec()``; ``decisions`` is the list of
+            Decision Points emitted by the material pre-pass
+            (lexical material matching is the resolver's job, not qwen's).
         """
-        # Build the prompt
+        # ── Resolve material BEFORE the LLM call ────────────────────
+        # The prompt no longer asks qwen to pick a material; the resolver
+        # is authoritative. Returning its decisions lets the caller
+        # surface them (CLI, sidecar, future UI).
+        material, decisions = resolve_material(request)
+
+        # Build the prompt (no material lines — see _ASSET_PLANNER_PROMPT).
         prompt = self.build_prompt(request)
 
         # Call the LLM with the pre-loaded grammar
@@ -183,13 +192,10 @@ class AssetPlanner:
         spec["params"] = clamped_params
         if "generator" not in spec:
             spec["generator"] = gen
-        if "material" not in spec or spec["material"] not in MATERIALS:
-            old = spec.get("material")
-            spec["material"] = "worn_oak"
-            if old is not None:
-                log.info(f"material: {old!r} not in palette → default worn_oak")
-            else:
-                log.info("material: missing → default worn_oak")
+        # Material comes from the resolver, not from the LLM — its verdict
+        # is authoritative (overrides any stale/hallucinated material the
+        # LLM might have emitted while the grammar change rolls out).
+        spec["material"] = material
         if "asset_id" not in spec:
             spec["asset_id"] = spec.get("generator", "table")
 
@@ -210,4 +216,4 @@ class AssetPlanner:
         # Verify the final spec passes compile_spec
         compile_spec(spec)
 
-        return spec
+        return spec, decisions
