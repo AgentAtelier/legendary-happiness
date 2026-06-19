@@ -7,11 +7,7 @@ Usage (from the repo root):
         /tmp/eval-out \\
         [--no-build] [--seed 1337] [--baseline 10]
 
-Or from inside foundry/:
-    .venv/bin/python -m foundry.eval run \\
-        eval/corpus/seed_requests.txt \\
-        library/asset_lexicon.json \\
-        /tmp/eval-out
+Subcommands: run | stability | regression | augment.
 
 Mirrors foundry/__main__.py's sys.path pattern so bare imports
 (`from compiler import ...`, `from planner import ...`, ...) resolve
@@ -31,9 +27,6 @@ from pathlib import Path
 _foundry_dir = str(Path(__file__).resolve().parent.parent)
 if _foundry_dir not in sys.path:
     sys.path.insert(0, _foundry_dir)
-
-
-# ── Subcommand: `run <corpus> <lexicon> <out_dir> ────────────────────
 
 
 def _cmd_augment(args: argparse.Namespace) -> int:
@@ -73,8 +66,8 @@ def _cmd_stability(args: argparse.Namespace) -> int:
     print(f"[stability] corpus={args.corpus}  requests={len(requests)}  "
           f"runs={args.runs}  seed={args.seed}")
 
-    # Use stub LLM by default; --live wires in FoundryLLM for real
-    # qwen variance measurement (the point of this lens).
+    # Stub LLM by default; --live wires in FoundryLLM for real qwen
+    # variance measurement (the point of this lens).
     if args.live:
         try:
             from llm import FoundryLLM
@@ -108,6 +101,55 @@ def _cmd_stability(args: argparse.Namespace) -> int:
           f"stable={report_dict['stable_count']}/{report_dict['total']}")
     print(f"[stability] wrote {out_dir/'report.json'}")
     print(f"[stability] wrote {out_dir/'report.md'}")
+    return 0
+
+
+def _cmd_regression(args: argparse.Namespace) -> int:
+    from eval.report import load_corpus
+    from eval.regression import run_regression, build_report_dict, build_report_md
+
+    requests = load_corpus(args.corpus)
+    if not requests:
+        print(f"error: corpus {args.corpus!r} is empty (after skipping "
+              f"comments/blanks).", file=sys.stderr)
+        return 2
+
+    expectations_dir = args.expectations or str(Path(args.out_dir) / "expectations")
+
+    if args.live:
+        try:
+            from llm import FoundryLLM
+        except Exception as exc:
+            print(f"error: could not import FoundryLLM: {exc}", file=sys.stderr)
+            return 3
+        llm = FoundryLLM()
+    else:
+        llm = _stub_llm()
+
+    print(f"[regression] corpus={args.corpus}  requests={len(requests)}  "
+          f"expectations={expectations_dir}  update={args.update}")
+
+    results, score = run_regression(
+        requests,
+        expectations_dir,
+        llm=llm,
+        update=args.update,
+    )
+
+    report_dict = build_report_dict(results, score)
+    digest = build_report_md(report_dict)
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "report.json").write_text(
+        json.dumps(report_dict, indent=2) + "\n", encoding="utf-8"
+    )
+    (out_dir / "report.md").write_text(digest, encoding="utf-8")
+
+    print(f"[regression] score={score['score']:.1%}  "
+          f"hard_pass={score['hard_pass']}  hard_fail={score['hard_fail']}")
+    print(f"[regression] wrote {out_dir/'report.json'}")
+    print(f"[regression] wrote {out_dir/'report.md'}")
     return 0
 
 
@@ -152,9 +194,6 @@ def _cmd_run(args: argparse.Namespace) -> int:
         build=build,
     )
 
-    # We don't actually need the captures for `findry.eval`, but the
-    # sampler needs the signals.  Pre-compute once here so we don't
-    # re-derive under sampler.
     sample = stratify_and_sample(
         records,
         seed=args.seed,
@@ -210,9 +249,10 @@ def _stub_llm():
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m foundry.eval",
-        description="Foundry eval harness (slice 1).",
+        description="Foundry eval harness.",
     )
     sub = p.add_subparsers(dest="cmd", required=True)
+
     run = sub.add_parser("run", help="drive a corpus through the harness")
     run.add_argument("corpus", help="path to a corpus file (one request per line, '#' = comment)")
     run.add_argument("lexicon", help="path to the asset lexicon JSON")
@@ -226,17 +266,31 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--library-dir", default="",
                      help="where forge writes .glb assets (default: <out_dir>/library)")
     run.set_defaults(func=_cmd_run)
+
     stab = sub.add_parser("stability", help="measure run-to-run planner variance")
     stab.add_argument("corpus", help="path to a corpus file (one request per line, '#' = comment)")
     stab.add_argument("lexicon", help="path to the asset lexicon JSON (not used — consistency with 'run')")
     stab.add_argument("out_dir", help="directory to write report.json and report.md")
     stab.add_argument("--runs", type=int, default=5,
-                       help="number of planner runs per request (default 5)")
+                      help="number of planner runs per request (default 5)")
     stab.add_argument("--seed", type=int, default=1337,
-                       help="RNG seed echoed in report (default 1337)")
+                      help="RNG seed echoed in report (default 1337)")
     stab.add_argument("--live", action="store_true",
-                       help="use FoundryLLM (default: stub — always-stable)")
+                      help="use FoundryLLM (default: stub — always-stable)")
     stab.set_defaults(func=_cmd_stability)
+
+    reg = sub.add_parser("regression", help="compare planner output against golden expectations")
+    reg.add_argument("corpus", help="path to a corpus file (one request per line, '#' = comment)")
+    reg.add_argument("lexicon", help="path to the asset lexicon JSON (not used — consistency)")
+    reg.add_argument("out_dir", help="directory to write report.json and report.md")
+    reg.add_argument("--expectations", default=None,
+                     help="expectations directory (default: <out_dir>/expectations)")
+    reg.add_argument("--update", action="store_true",
+                     help="re-bless expectations from current planner output")
+    reg.add_argument("--live", action="store_true",
+                     help="use FoundryLLM (default: stub)")
+    reg.set_defaults(func=_cmd_regression)
+
     aug = sub.add_parser("augment", help="generate augmented corpus via slot-filling")
     aug.add_argument("out_file", help="path to write the augmented corpus .txt")
     aug.add_argument("--target", type=int, default=250,
@@ -246,17 +300,16 @@ def _build_parser() -> argparse.ArgumentParser:
     aug.add_argument("--dry-run", action="store_true",
                      help="print stats without writing")
     aug.set_defaults(func=_cmd_augment)
+
     return p
 
 
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
-    # Default library_dir (when the user did not pass --library-dir) to
-    # <out_dir>/library so forge outputs land in a clean subdir, NOT
-    # mixed with the report files.  Empties ("") from argparse defaults
-    # trigger this fallback the same way as a missing flag.
-    if not args.library_dir:
+    # Default library_dir (when not passed) to <out_dir>/library so forge
+    # outputs land in a clean subdir, NOT mixed with the report files.
+    if getattr(args, "library_dir", None) is not None and not args.library_dir:
         args.library_dir = str(Path(args.out_dir) / "library")
     return args.func(args)
 
