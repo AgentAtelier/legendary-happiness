@@ -288,3 +288,89 @@ def test_material_cues_returns_list_of_tuples():
         assert len(c) == 2
         assert isinstance(c[0], str)
         assert isinstance(c[1], str)
+
+
+# ── material.conflict (Prompt 2) ──────────────────────────────────
+# When material cues span more than one family, resolve_material emits
+# a material.conflict DecisionPoint so users get recoverable choices.
+
+
+def test_stone_look_wooden_cabinet_emits_material_conflict():
+    """'stone-look wooden cabinet' → stone + wood families → conflict.
+    'wooden' matches first (declaration order) → wood → worn_oak."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a stone-look wooden cabinet")
+    assert m == "worn_oak"
+    # Should have family_defaulted (wood has >1 member) AND material.conflict
+    assert any(d.code == "material.family_defaulted" for d in decisions)
+    assert any(d.code == "material.conflict" for d in decisions)
+    conflict_dp = next(d for d in decisions if d.code == "material.conflict")
+    assert conflict_dp.severity == "ambiguous"
+    assert conflict_dp.stage == "planner"
+    assert "stone" in conflict_dp.context["families"]
+    assert "wood" in conflict_dp.context["families"]
+    assert conflict_dp.context["resolved"] == "worn_oak"
+    # Choices: one per competing family (stone → rough_granite)
+    choice_values = {c.apply["value"] for c in conflict_dp.choices}
+    assert "rough_granite" in choice_values
+    assert "worn_oak" not in choice_values
+
+
+def test_oak_walnut_same_family_no_conflict():
+    """'oak walnut table' → both wood → no material.conflict."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("an oak walnut table")
+    assert m == "worn_oak"
+    assert not any(d.code == "material.conflict" for d in decisions)
+
+
+def test_single_cue_no_conflict():
+    """A single material keyword → no material.conflict."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a wooden table")
+    assert m == "worn_oak"
+    assert not any(d.code == "material.conflict" for d in decisions)
+
+
+def test_oak_iron_conflict_two_specific_keywords():
+    """'oak iron table' → oak (wood) + iron (metal) → conflict.
+    'oak' wins (specific keyword, first in order) → worn_oak."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("an oak iron table")
+    assert m == "worn_oak"
+    assert any(d.code == "material.conflict" for d in decisions)
+    conflict_dp = next(d for d in decisions if d.code == "material.conflict")
+    choice_values = {c.apply["value"] for c in conflict_dp.choices}
+    assert "wrought_iron" in choice_values
+
+
+def test_specific_keyword_wins_tie_despite_conflict():
+    """'granite wooden cabinet' → granite is specific (stone), wooden
+    is family (wood).  Granite → rough_granite wins; conflict emitted
+    with wood-family alternative."""
+    from material_resolver import resolve_material
+
+    m, decisions = resolve_material("a granite wooden cabinet")
+    assert m == "rough_granite"
+    assert any(d.code == "material.conflict" for d in decisions)
+    conflict_dp = next(d for d in decisions if d.code == "material.conflict")
+    assert conflict_dp.context["resolved"] == "rough_granite"
+    choice_values = {c.apply["value"] for c in conflict_dp.choices}
+    assert "worn_oak" in choice_values
+
+
+def test_conflict_template_fills_correctly():
+    """The material.conflict template fills both registers."""
+    from material_resolver import resolve_material
+
+    _, decisions = resolve_material("a stone wooden table")
+    conflict_dp = next(d for d in decisions if d.code == "material.conflict")
+    assert "stone" in conflict_dp.plain
+    assert "wood" in conflict_dp.plain
+    assert "worn_oak" in conflict_dp.plain
+    assert "families" in conflict_dp.technical
+    assert "cues" in conflict_dp.technical
