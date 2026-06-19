@@ -509,6 +509,50 @@ def test_plan_with_rough_granite_material():
     compile_spec(spec)
 
 
+# ── Slice 10: shelf + cabinet generator plan() tests ───────────────
+
+def _fake_llm_shelf(prompt: str, grammar: str | None) -> str:
+    return json.dumps({
+        "asset_id": "shelf",
+        "generator": "shelf",
+        "material": "worn_oak",
+        "params": {
+            "width": 1.0, "depth": 0.3, "height": 1.2,
+            "board_thickness": 0.04, "n_shelves": 3, "side_thickness": 0.03,
+        },
+    })
+
+
+def _fake_llm_cabinet(prompt: str, grammar: str | None) -> str:
+    return json.dumps({
+        "asset_id": "cabinet",
+        "generator": "cabinet",
+        "material": "worn_oak",
+        "params": {
+            "width": 0.8, "depth": 0.5, "height": 1.5,
+            "panel_thickness": 0.04, "base_height": 0.08,
+        },
+    })
+
+
+def test_plan_shelf_with_fake_llm():
+    """plan('a wooden bookshelf', fake_llm) → generator=='shelf'."""
+    planner = AssetPlanner()
+    spec = planner.plan("a wooden bookshelf", _fake_llm_shelf)
+    assert spec["generator"] == "shelf"
+    assert spec["asset_id"] == "shelf"
+    compile_spec(spec)
+
+
+def test_plan_cabinet_with_fake_llm():
+    """plan('a tall storage cabinet', fake_llm) → generator=='cabinet'."""
+    planner = AssetPlanner()
+    spec = planner.plan("a tall storage cabinet", _fake_llm_cabinet)
+    assert spec["generator"] == "cabinet"
+    assert spec["asset_id"] == "cabinet"
+    compile_spec(spec)
+
+
 def test_plan_live_chair_produces_buildable_spec():
     """Integration: real LLM produces a chair spec from 'a simple wooden chair'."""
     if not _llama_server_reachable():

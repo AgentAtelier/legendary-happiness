@@ -131,3 +131,55 @@ def test_wrought_iron_compiles():
     s = _spec(); s["material"] = "wrought_iron"
     out = compile_spec(s)
     assert out["material"] == "wrought_iron"
+
+
+# ── Slice 10: shelf + cabinet generators ──────────────────────────
+
+def _shelf_spec():
+    return {
+        "asset_id": "shelf",
+        "generator": "shelf",
+        "material": "worn_oak",
+        "params": {
+            "width": 1.0, "depth": 0.3, "height": 1.2,
+            "board_thickness": 0.04, "n_shelves": 3, "side_thickness": 0.03,
+        },
+    }
+
+
+def _cabinet_spec():
+    return {
+        "asset_id": "cabinet",
+        "generator": "cabinet",
+        "material": "worn_oak",
+        "params": {
+            "width": 0.8, "depth": 0.5, "height": 1.5,
+            "panel_thickness": 0.04, "base_height": 0.08,
+        },
+    }
+
+
+def test_shelf_is_valid_generator():
+    out = compile_spec(_shelf_spec())
+    assert out["generator"] == "shelf"
+    assert out["params"]["width"] == 1.0
+    assert out["params"]["n_shelves"] == 3.0
+
+
+def test_cabinet_is_valid_generator():
+    out = compile_spec(_cabinet_spec())
+    assert out["generator"] == "cabinet"
+    assert out["params"]["width"] == 0.8
+    assert out["params"]["base_height"] == 0.08
+
+
+def test_shelf_param_out_of_range_rejected():
+    s = _shelf_spec(); s["params"]["width"] = 999.0
+    with pytest.raises(SpecError):
+        compile_spec(s)
+
+
+def test_cabinet_missing_param_rejected():
+    s = _cabinet_spec(); del s["params"]["panel_thickness"]
+    with pytest.raises(SpecError):
+        compile_spec(s)

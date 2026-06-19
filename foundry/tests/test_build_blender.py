@@ -246,6 +246,84 @@ def test_iron_table_metallic_factor_is_one(tmp_path):
     )
 
 
+# ── Task 4: Shelf generator build test ─────────────────────────────
+
+_SHELF_SPEC = {
+    "asset_id": "shelf",
+    "generator": "shelf",
+    "material": "worn_oak",
+    "params": {
+        "width": 1.0, "depth": 0.3, "height": 1.2,
+        "board_thickness": 0.04, "n_shelves": 3, "side_thickness": 0.03,
+    },
+}
+
+
+def test_build_shelf_passes_gate(tmp_path):
+    """A shelf builds, exports, and passes the gate vs the shelf envelope."""
+    spec_path = tmp_path / "shelf.json"
+    spec_path.write_text(json.dumps(_SHELF_SPEC), encoding="utf-8")
+
+    out = str(tmp_path / "shelf.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), out],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert os.path.exists(out), "no GLB written"
+
+    # Gate check with shelf envelope (footprint 1.0×0.3, height 1.2, +15% tol)
+    from gate import gate_asset
+    res = gate_asset(out, {"width": 1.0, "depth": 0.3}, 1.2)
+    assert res.passed, f"gate failed: {res.reasons}"
+
+    # Watertight
+    mesh = trimesh.load(out, force="mesh")
+    mesh.merge_vertices()
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    assert topo.is_watertight, "shelf mesh must be watertight"
+
+
+# ── Task 5: Cabinet generator build test ───────────────────────────
+
+_CABINET_SPEC = {
+    "asset_id": "cabinet",
+    "generator": "cabinet",
+    "material": "worn_oak",
+    "params": {
+        "width": 0.8, "depth": 0.5, "height": 1.5,
+        "panel_thickness": 0.04, "base_height": 0.08,
+    },
+}
+
+
+def test_build_cabinet_passes_gate(tmp_path):
+    """A cabinet builds, exports, and passes the gate vs the cabinet envelope."""
+    spec_path = tmp_path / "cabinet.json"
+    spec_path.write_text(json.dumps(_CABINET_SPEC), encoding="utf-8")
+
+    out = str(tmp_path / "cabinet.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), out],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert os.path.exists(out), "no GLB written"
+
+    # Gate check with cabinet envelope (footprint 0.8×0.5, height 1.6, +15% tol)
+    from gate import gate_asset
+    res = gate_asset(out, {"width": 0.8, "depth": 0.5}, 1.6)
+    assert res.passed, f"gate failed: {res.reasons}"
+
+    # Watertight
+    mesh = trimesh.load(out, force="mesh")
+    mesh.merge_vertices()
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    assert topo.is_watertight, "cabinet mesh must be watertight"
+
+
 def test_chair_has_baked_texture_and_uvs(tmp_path):
     """Chair GLB has embedded texture, baseColorTexture, and UVs."""
     from pygltflib import GLTF2

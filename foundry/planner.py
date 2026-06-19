@@ -29,6 +29,8 @@ _ASSET_PLANNER_PROMPT = """You are an asset planner for a 3D game. Convert the u
 Choose the generator that best matches the request:
 - "table" — a table (flat top + four legs). Request about tables, desks, coffee tables, dining tables → use "table".
 - "chair" — a chair (seat box + four legs + backrest). Request about chairs, stools, seats → use "chair".
+- "shelf" — a shelf unit (two side panels + N horizontal boards). Request about shelves, bookshelves, wall shelves → use "shelf".
+- "cabinet" — a storage cabinet (closed box on a short plinth). Request about cabinets, cupboards, storage units → use "cabinet".
 
 Set asset_id to the same value as generator.
 
@@ -53,12 +55,33 @@ Chair params (generator="chair"):
   "back_height": <number: height of the backrest above the seat>
 }}
 
+Shelf params (generator="shelf"):
+{{
+  "width": <number: overall width of the shelf unit (X)>,
+  "depth": <number: depth of the shelf unit (Z)>,
+  "height": <number: overall height from floor to top (Y)>,
+  "board_thickness": <number: thickness of each horizontal shelf board>,
+  "n_shelves": <number: how many horizontal shelf boards>,
+  "side_thickness": <number: thickness of the two side panels>
+}}
+
+Cabinet params (generator="cabinet"):
+{{
+  "width": <number: overall width of the cabinet (X)>,
+  "depth": <number: depth of the cabinet (Z)>,
+  "height": <number: overall height from floor to top (Y)>,
+  "panel_thickness": <number: wall thickness of the cabinet body>,
+  "base_height": <number: height of the bottom plinth>
+}}
+
 Allowed material values: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated).
 Choose the one that best matches the request's wood tone.
 All param values are positive floats (decimals).
 
 Table defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.
 Chair defaults: seat_width ~0.45-0.5, seat_depth ~0.45-0.5, seat_thickness ~0.05-0.06, leg_height ~0.4-0.5, leg_radius ~0.03-0.04, leg_inset ~0.03-0.05, back_height ~0.3-0.4.
+Shelf defaults: width ~0.8-1.0, depth ~0.25-0.3, height ~1.0-1.2, board_thickness ~0.03-0.04, n_shelves 3-4, side_thickness ~0.03-0.04.
+Cabinet defaults: width ~0.7-0.8, depth ~0.4-0.5, height ~1.2-1.5, panel_thickness ~0.03-0.04, base_height ~0.05-0.08.
 
 "age": <number between 0.15 and 1.0 — controls wear and imperfection.>
 0.15 = lightly imperfect (baseline, always slightly off from CAD-perfect).

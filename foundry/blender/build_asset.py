@@ -284,9 +284,88 @@ def _wood_color_nodes(nodes, links, mat_info, seed):
     return ramp.outputs["Color"]
 
 
+def _build_shelf_geometry(params):
+    """Build a shelf unit: two side panels + N horizontal boards.
+
+    Layout (Z-up): side panels run full height on left/right edges.
+    Boards are evenly distributed between bottom and top."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    bt = params["board_thickness"]
+    n = int(params["n_shelves"])
+    st = params["side_thickness"]
+
+    mesh = bpy.data.meshes.new("shelf")
+    obj = bpy.data.objects.new("shelf", mesh)
+    bpy.context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+
+    # ── Two side panels ──────────────────────────────────────
+    panel_x = w / 2.0 - st / 2.0
+    for sx in (-1, 1):
+        _add_box(bm, sx * panel_x, 0.0, h / 2.0, st, d, h)
+
+    # ── N horizontal boards ──────────────────────────────────
+    # Distribute evenly from bottom_board_z to top_board_z
+    bottom_z = bt / 2.0
+    top_z = h - bt / 2.0
+    for i in range(n):
+        t = i / max(n - 1, 1)
+        board_z = bottom_z + t * (top_z - bottom_z)
+        _add_box(bm, 0.0, 0.0, board_z, w, d, bt)
+
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_cabinet_geometry(params):
+    """Build a cabinet: closed box body on a short base/plinth.
+
+    Layout (Z-up): plinth at the bottom, body sits on top."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    pt = params["panel_thickness"]
+    bh = params["base_height"]
+
+    body_h = h - bh
+
+    mesh = bpy.data.meshes.new("cabinet")
+    obj = bpy.data.objects.new("cabinet", mesh)
+    bpy.context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+
+    # ── Base / plinth ────────────────────────────────────────
+    _add_box(bm, 0.0, 0.0, bh / 2.0, w, d, bh)
+
+    # ── Body (closed box — hollow shell via panel walls) ─────
+    body_cz = bh + body_h / 2.0
+
+    # Floor panel
+    _add_box(bm, 0.0, 0.0, bh + pt / 2.0, w, d, pt)
+
+    # Ceiling panel
+    _add_box(bm, 0.0, 0.0, h - pt / 2.0, w, d, pt)
+
+    # Left + right walls
+    wall_x = w / 2.0 - pt / 2.0
+    for sx in (-1, 1):
+        _add_box(bm, sx * wall_x, 0.0, body_cz, pt, d - 2 * pt, body_h)
+
+    # Back wall
+    wall_y = -(d / 2.0 - pt / 2.0)
+    _add_box(bm, 0.0, wall_y, body_cz, w - 2 * pt, pt, body_h)
+
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
+    "shelf": _build_shelf_geometry,
+    "cabinet": _build_cabinet_geometry,
 }
 
 _COLOR_BUILDERS = {
