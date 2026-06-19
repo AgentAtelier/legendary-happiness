@@ -22,12 +22,17 @@ Rules (per spec):
 
 A record with multiple tags is normal: a build that errored AND would
 also be gated counts both.
+
+The ``size_mismatch_detail`` helper exposes the same logic in
+detail-returning form so the friction report can surface WHY a record
+was flagged (which word, which dimension, the value, the expected
+range, etc.).
 """
 
 from __future__ import annotations
 
 import re
-from typing import List, Set
+from typing import List, Optional, Set
 
 from compiler import PARAM_RANGES
 
@@ -97,7 +102,7 @@ def compute_signals(record) -> Set[str]:
         tags.add("decision_fired")
 
     if record.spec is not None and isinstance(record.spec, dict):
-        if _size_mismatch(record.request, record.spec):
+        if size_mismatch_detail(record.request, record.spec) is not None:
             tags.add("size_mismatch")
         if _material_mismatch(record.request, record.spec):
             tags.add("material_mismatch")
@@ -113,38 +118,62 @@ def decision_codes(record) -> List[str]:
     return [d.get("code", "?") for d in (record.decisions or [])]
 
 
-# ── Inner helpers ─────────────────────────────────────────────────────
+def size_mismatch_detail(request: str, spec: dict) -> Optional[dict]:
+    """Public, detail-returning twin of the internal size-mismatch check
+    used by ``compute_signals``.  Returns None when there is no size
+    mismatch; otherwise a flat dict so the friction report can render
+    a human-readable line.
 
-
-def _size_mismatch(request: str, spec: dict) -> bool:
-    """True when a size word in *request* expects one direction on a
-    dimension and the spec sits at the opposite end of PARAM_RANGES."""
+    Returned fields (per Task 4 design):
+        word:                 the matched size word (e.g. "tall")
+        expected_direction:   "high" or "low"  (the direction the user
+                              implied with the word)
+        dimension:            the spec param key that decided ("height")
+        value:                the actual value present in spec["params"]
+        range:                [lo, hi] from PARAM_RANGES[generator][key]
+        generator:            the spec's generator ("cabinet", ...)
+    """
+    if not isinstance(spec, dict):
+        return None
     params = spec.get("params") or {}
     generator = spec.get("generator")
 
     if generator is None:
-        return False
+        return None
 
     ranges_for_gen = PARAM_RANGES.get(generator, {})
 
     for word, (keys, expected_direction) in _SIZE_WORDS.items():
         if not _has_word(request or "", word):
             continue
-        # Among the keys this word cares about, find any that exist in
-        # the spec's params AND have a known range.
         for key in keys:
             if key not in params or key not in ranges_for_gen:
                 continue
             lo, hi = ranges_for_gen[key]
             val = params[key]
             if not isinstance(val, (int, float)):
-                # Defensive: non-numeric param — can't size-mismatch a non-value.
                 continue
             if expected_direction == "high" and _is_at_low_end(val, lo, hi):
-                return True
+                return _mismatch_detail(word, expected_direction, key, val,
+                                        [lo, hi], generator)
             if expected_direction == "low" and _is_at_high_end(val, lo, hi):
-                return True
-    return False
+                return _mismatch_detail(word, expected_direction, key, val,
+                                        [lo, hi], generator)
+    return None
+
+
+# ── Inner helpers ─────────────────────────────────────────────────────
+
+
+def _mismatch_detail(word, direction, key, value, rng, generator) -> dict:
+    return {
+        "word": word,
+        "expected_direction": direction,
+        "dimension": key,
+        "value": float(value),
+        "range": [float(rng[0]), float(rng[1])],
+        "generator": generator,
+    }
 
 
 def _is_at_low_end(value: float, lo: float, hi: float) -> bool:

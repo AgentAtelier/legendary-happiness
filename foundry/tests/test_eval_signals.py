@@ -292,3 +292,59 @@ def test_signals_full_table_layout_no_words_no_material():
     r = _make_record(request="a plain storage cabinet", spec=spec, gate_passed=True)
     tags = compute_signals(r)
     assert tags == {"clean"}
+
+
+# ── size_mismatch_detail (Task 4 helper) ──────────────────────────────
+
+
+def test_size_mismatch_detail_returns_none_for_clean_request():
+    """A request with no size word → detail is None."""
+    from eval.signals import size_mismatch_detail
+    spec = _cabinet_spec(height=1.3)
+    assert size_mismatch_detail("a plain cabinet", spec) is None
+
+
+def test_size_mismatch_detail_returns_dict_with_named_fields():
+    """When a mismatch fires, the dict has the named fields (per Task 4)."""
+    from compiler import PARAM_RANGES
+    from eval.signals import size_mismatch_detail
+    lo, hi = PARAM_RANGES["cabinet"]["height"]
+    low_height = lo + 0.05 * (hi - lo)
+    spec = _cabinet_spec(height=low_height)
+    detail = size_mismatch_detail("a tall cabinet", spec)
+    assert detail is not None
+    assert detail["word"] == "tall"
+    assert detail["expected_direction"] == "high"
+    assert detail["dimension"] == "height"
+    assert detail["generator"] == "cabinet"
+    assert detail["value"] == pytest.approx(low_height)
+    assert detail["range"] == [lo, hi]
+
+
+def test_size_mismatch_detail_low_word_at_top_returns_dict():
+    """A 'low' cabinet at the top extreme → detail with word='low'."""
+    from compiler import PARAM_RANGES
+    from eval.signals import size_mismatch_detail
+    lo, hi = PARAM_RANGES["cabinet"]["height"]
+    high_height = hi - 0.05 * (hi - lo)
+    spec = _cabinet_spec(height=high_height)
+    detail = size_mismatch_detail("a low cabinet", spec)
+    assert detail is not None
+    assert detail["word"] == "low"
+    assert detail["expected_direction"] == "low"
+    assert detail["dimension"] == "height"
+
+
+def test_size_mismatch_detail_returns_none_when_value_agrees():
+    """A 'tall' cabinet whose height sits at the high end → no mismatch."""
+    from compiler import PARAM_RANGES
+    from eval.signals import size_mismatch_detail
+    lo, hi = PARAM_RANGES["cabinet"]["height"]
+    high_height = hi - 0.05 * (hi - lo)
+    spec = _cabinet_spec(height=high_height)
+    assert size_mismatch_detail("a tall cabinet", spec) is None
+
+
+def test_size_mismatch_detail_no_spec_returns_none():
+    from eval.signals import size_mismatch_detail
+    assert size_mismatch_detail("a tall cabinet", None) is None
