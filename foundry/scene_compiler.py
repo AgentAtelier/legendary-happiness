@@ -222,15 +222,16 @@ def compile_scene(
         if path:
             used_tag_scripts[path] = f"s_{tag}"
 
-    # ── Identify interactable entities (FIX-1d) ──────────────────
-    # The target prop (pickup) and NPC (talk) need collision shapes
-    # so the camera raycast hits them.
-    interactable_ids: set[str] = {target_entity}
+    # ── Identify interactable entities (FIX-5) ──────────────────
+    # All props are now pickable with collision shapes so the
+    # camera raycast hits them. The quest target is identified
+    # by target_entity in quest_data.json (NPC checks carried_item).
+    interactable_ids: set[str] = {e["id"] for e in manifest}
 
-    # ── Compute sub_resource count (FIX-1) ──────────────────────
+    # ── Compute sub_resource count (FIX-1/FIX-5) ───────────────
     # floor BoxShape3D + player CapsuleShape3D + one BoxShape3D per
-    # interactable (target + NPC).
-    num_sub_resources = 2 + len(interactable_ids) + 1  # +1 for NPC
+    # prop (all pickable) + NPC.
+    num_sub_resources = 2 + len(manifest) + 1  # +1 for NPC
 
     # ── Write quest data as a JSON file alongside the .tscn ──────
     output_dir = str(Path(output_path).parent)
@@ -266,17 +267,15 @@ def compile_scene(
     player_sub_id = f"sub_{sub_res_idx}"
     sub_res_idx += 1
 
-    # Target prop collision
+    # All prop collisions (FIX-5: every prop is now pickable)
     for entry in manifest:
         eid = entry["id"]
-        if eid == target_entity:
-            cat = entry.get("category", "?")
-            collision_info[eid] = (
-                f"sub_{sub_res_idx}",
-                _COLLISION_SIZES.get(cat, _COLLISION_SIZES["?"]),
-            )
-            sub_res_idx += 1
-            break
+        cat = entry.get("category", "?")
+        collision_info[eid] = (
+            f"sub_{sub_res_idx}",
+            _COLLISION_SIZES.get(cat, _COLLISION_SIZES["?"]),
+        )
+        sub_res_idx += 1
 
     # NPC collision
     collision_info["NPC"] = (
@@ -326,7 +325,7 @@ def compile_scene(
     lines.append("height = 1.8")
     lines.append("")
 
-    # Interactable collision shapes (target prop + NPC)
+    # Interactable collision shapes (all props + NPC)
     for eid, (sub_id, (sx, sy, sz)) in sorted(collision_info.items()):
         lines.append(f'[sub_resource type="BoxShape3D" id="{sub_id}"]')
         lines.append(f"size = {_fmt_vec3(sx, sy, sz)}")
@@ -356,7 +355,7 @@ def compile_scene(
         x = entry.get("x", 0.0)
         y = entry.get("y", 0.0)
         z = entry.get("z", 0.0)
-        tag = "pickup" if eid == target_entity else "inert"
+        tag = "pickup"  # FIX-5: all props are now pickable
         glb_id = glb_ids.get((cat, mat), "1")
 
         # Guard: push away from player spawn (FIX-1e)

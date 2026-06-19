@@ -180,15 +180,13 @@ def test_target_prop_has_pickup_tag():
     )
 
 
-def test_other_props_have_inert_tag():
+def test_all_props_have_pickup_tag():
+    """FIX-5: All props (not just target) have pickup tag."""
     _, parsed, _ = _compile_and_parse()
-    target = _QUEST_SPEC["target_entity"]
     for entry in _MANIFEST:
-        if entry["id"] == target:
-            continue
         meta = parsed["metadata"].get(entry["id"], {})
-        assert meta.get("_forge_tag") == "inert", (
-            f"non-target {entry['id']!r} should have inert tag, got {meta}"
+        assert meta.get("_forge_tag") == "pickup", (
+            f"prop {entry['id']!r} should have pickup tag (FIX-5), got {meta}"
         )
 
 
@@ -220,16 +218,13 @@ def test_npc_has_talk_script():
     )
 
 
-def test_inert_props_have_no_script():
-    """Non-target props (tag=inert) get no component script."""
+def test_all_props_have_pickup_script():
+    """FIX-5: All props (not just target) get pickup.gd script."""
     _, parsed, _ = _compile_and_parse()
-    target = _QUEST_SPEC["target_entity"]
     for entry in _MANIFEST:
-        if entry["id"] == target:
-            continue
         node = next(n for n in parsed["nodes"] if n["name"] == entry["id"])
-        assert node.get("script") is None, (
-            f"inert prop {entry['id']!r} should have no script, got {node.get('script')!r}"
+        assert node.get("script") == "s_pickup", (
+            f"prop {entry['id']!r} should have script=s_pickup (FIX-5), got {node.get('script')!r}"
         )
 
 
@@ -386,12 +381,13 @@ def test_no_capsule_mesh_sub_resource():
 
 # ── Different target entity ──────────────────────────────────────
 
-def test_different_target_gets_pickup_tag():
+def test_different_target_still_has_pickup_tag():
+    """FIX-5: Changing target_entity doesn't affect tags — all props are pickup."""
     spec = dict(_QUEST_SPEC)
     spec["target_entity"] = "table_0"
     _, parsed, _ = _compile_and_parse(quest_spec=spec)
     assert parsed["metadata"]["table_0"]["_forge_tag"] == "pickup"
-    assert parsed["metadata"]["shelf_0"]["_forge_tag"] == "inert"
+    assert parsed["metadata"]["shelf_0"]["_forge_tag"] == "pickup"
 
 
 # ── Dialogue with special characters (JSON round-trip) ───────────
@@ -491,6 +487,23 @@ def test_target_prop_has_collision_shape():
     assert collision.get("shape") is not None
 
 
+def test_all_props_have_collision_shape():
+    """FIX-5: All props have a CollisionShape3D child."""
+    _, parsed, _ = _compile_and_parse()
+    for entry in _MANIFEST:
+        eid = entry["id"]
+        collision = next(
+            (n for n in parsed["nodes"] if n["name"] == f"{eid}_collision"), None
+        )
+        assert collision is not None, (
+            f"expected {eid}_collision node (FIX-5), got nodes: "
+            f"{[n['name'] for n in parsed['nodes']]}"
+        )
+        assert collision["parent"] == eid
+        assert collision["type"] == "CollisionShape3D"
+        assert collision.get("shape") is not None
+
+
 def test_npc_has_collision_shape():
     """FIX-1d: The NPC has a CollisionShape3D child."""
     _, parsed, _ = _compile_and_parse()
@@ -513,16 +526,13 @@ def test_target_prop_type_is_static_body():
     )
 
 
-def test_inert_props_remain_node3d():
-    """FIX-1: Non-interactable props stay as Node3D (no collision needed)."""
+def test_all_props_are_static_body():
+    """FIX-5: All props are StaticBody3D (pickable with collision)."""
     _, parsed, _ = _compile_and_parse()
-    target = _QUEST_SPEC["target_entity"]
     for entry in _MANIFEST:
-        if entry["id"] == target:
-            continue
         node = next(n for n in parsed["nodes"] if n["name"] == entry["id"])
-        assert node["type"] == "Node3D", (
-            f"inert prop {entry['id']!r} should be Node3D, got {node['type']}"
+        assert node["type"] == "StaticBody3D", (
+            f"prop {entry['id']!r} should be StaticBody3D (FIX-5), got {node['type']}"
         )
 
 

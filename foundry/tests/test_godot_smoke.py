@@ -223,6 +223,9 @@ def test_scripted_playthrough_talk_right_win():
     Simulates the interaction flow: talk to NPC (get quest), pick up
     the target prop, talk to NPC again (deliver item).  Asserts the
     WinScreen becomes visible after successful delivery.
+
+    FIX-5: This test now exercises the FULL loop through the updated
+    probe_playthrough.gd, which also tests the wrong-item path.
     """
     with tempfile.TemporaryDirectory() as td:
         result = _compile_and_probe(
@@ -233,6 +236,19 @@ def test_scripted_playthrough_talk_right_win():
     checks = result.get("checks", [])
     win_visible = result.get("win_visible", False)
     npc_state = result.get("npc_state", "?")
+    wrong_shown = result.get("wrong_shown", False)
+
+    # FIX-5: If there were enough props (target + distractor),
+    # assert the wrong-item path was exercised.
+    if not any("no distractor" in c for c in checks) and not any(
+        "WARNING: no distractor" in c for c in checks
+    ):
+        assert wrong_shown, (
+            f"Expected wrong line to be shown after picking distractor\n"
+            f"wrong_shown={wrong_shown}\n"
+            f"Checks: {checks}\n"
+            f"Stderr: {result.get('_stderr', '')}"
+        )
 
     assert win_visible, (
         f"Expected WinScreen to be visible after quest completion\n"
