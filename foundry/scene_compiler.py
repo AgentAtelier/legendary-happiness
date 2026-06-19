@@ -38,15 +38,27 @@ _TAG_TABLE: Dict[str, str | None] = {
     "inert": None,
 }
 
+# ── Shell scripts ──────────────────────────────────────────────
+# P4: reusable GDScript files the compiler always attaches.
+# Paths relative to res:// — these were authored once in rpg/scripts/.
+
+_SHELL_SCRIPTS: List[dict] = [
+    {"id": "s_player", "path": "res://scripts/player.gd"},
+    {"id": "s_interact", "path": "res://scripts/interaction.gd"},
+    {"id": "s_hud", "path": "res://scripts/hud.gd"},
+    {"id": "s_win", "path": "res://scripts/win_screen.gd"},
+]
+
 # ── Shell node definitions ───────────────────────────────────────
-# Placeholder nodes the compiler always emits.  P4 replaces them
-# with real templates.
+# The compiler always emits these nodes.  P4 attaches the shell
+# scripts; P5 wires pickup/talk/give components by tag.
 
 _SHELL_NODES: List[dict] = [
-    {"name": "Player", "type": "CharacterBody3D", "parent": "."},
+    {"name": "Player", "type": "CharacterBody3D", "parent": ".", "script": "s_player"},
     {"name": "Camera3D", "type": "Camera3D", "parent": "Player"},
-    {"name": "HUD", "type": "Control", "parent": "."},
-    {"name": "WinScreen", "type": "Control", "parent": "."},
+    {"name": "InteractionRaycast", "type": "Node3D", "parent": "Player/Camera3D", "script": "s_interact"},
+    {"name": "HUD", "type": "Control", "parent": ".", "script": "s_hud"},
+    {"name": "WinScreen", "type": "Control", "parent": ".", "script": "s_win"},
 ]
 
 # ── NPC body primitive marker ────────────────────────────────────
@@ -58,6 +70,17 @@ _NPC_PRIMITIVE = {
     "height": 1.8,
     "radius": 0.3,
 }
+
+
+def _emit_control_layout(lines: list[str], fill: bool = False) -> None:
+    """Emit Godot 4 Control layout properties for a full-window fill."""
+    lines.append("layout_mode = 3")
+    lines.append("anchors_preset = 15")
+    if fill:
+        lines.append("anchor_right = 1.0")
+        lines.append("anchor_bottom = 1.0")
+        lines.append("grow_horizontal = 2")
+        lines.append("grow_vertical = 2")
 
 
 def _glb_res_path(category: str, material: str, assets_subdir: str = "assets") -> str:
@@ -142,10 +165,6 @@ def compile_scene(
     tscn_stem = Path(output_path).stem  # e.g. "slice1_fetch"
     data_filename = f"{tscn_stem}_quest_data.json"
     data_path = str(Path(output_dir) / data_filename)
-    # Derive the res:// path from the directory name the .tscn lives in
-    dir_name = Path(output_path).parent.name or "scenes"
-    data_res_path = f"res://{dir_name}/{data_filename}"
-
     quest_data: dict = {
         "npc_role": npc_role,
         "target_entity": target_entity,
@@ -161,8 +180,8 @@ def compile_scene(
     lines: list[str] = []
 
     # Header
-    # load_steps = ext_resources (GLBs + quest_data JSON) + sub_resources (npc_mesh + npc_mat)
-    total_load_steps = len(unique_glbs) + 1 + 2  # GLBs + JSON + 2 subs
+    # load_steps = GLBs + 4 shell scripts + 2 sub_resources (NPC mesh + mat)
+    total_load_steps = len(unique_glbs) + 4 + 2
     header = f'[gd_scene load_steps={total_load_steps} format=3]'
     if scene_uid:
         header = f'[gd_scene load_steps={total_load_steps} format=3 uid="{scene_uid}"]'
@@ -173,11 +192,11 @@ def compile_scene(
     ext_block = _ext_resource_block(unique_glbs, assets_subdir)
     if ext_block:
         lines.append(ext_block)
-    # ExtResource: quest data JSON (id is after GLB ids)
-    data_ext_id = str(len(unique_glbs) + 1)
-    lines.append(
-        f'[ext_resource type="Resource" path="{data_res_path}" id="{data_ext_id}"]'
-    )
+    # ExtResources: shell scripts (P4)
+    for entry in _SHELL_SCRIPTS:
+        lines.append(
+            f'[ext_resource type="Script" path="{entry["path"]}" id="{entry["id"]}"]'
+        )
     lines.append("")
 
     # Sub-resources for NPC body
@@ -193,7 +212,7 @@ def compile_scene(
     lines.append('albedo_color = Color(0.4, 0.5, 0.7, 1)')
     lines.append("")
 
-    # Root
+    # Root (no parent attribute — Godot 4 convention)
     lines.append('[node name="Root" type="Node3D"]')
     lines.append("")
 
@@ -211,8 +230,7 @@ def compile_scene(
         z = entry.get("z", 0.0)
         tag = "pickup" if eid == target_entity else "inert"
         glb_id = glb_ids.get((cat, mat), "1")
-
-        lines.append(f'[node name="{eid}" type="Node3D" parent="Root"]')
+        lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
         lines.append(
             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
             f"{_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
@@ -228,7 +246,7 @@ def compile_scene(
 
     # NPC node
     npc_x, npc_y, npc_z = 0.0, 0.0, -2.0
-    lines.append('[node name="NPC" type="Node3D" parent="Root"]')
+    lines.append('[node name="NPC" type="Node3D" parent="."]')
     lines.append(
         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
         f"{_fmt_pos(npc_x)}, {_fmt_pos(npc_y)}, {_fmt_pos(npc_z)})"
@@ -241,24 +259,52 @@ def compile_scene(
     lines.append('material_override = SubResource("npc_mat")')
     lines.append("")
 
-    # Shell nodes (placeholders)
+    # Shell nodes (P4: with scripts attached + proper UI layout)
     for shell in _SHELL_NODES:
+        parent = shell["parent"]
         lines.append(
             f'[node name="{shell["name"]}" type="{shell["type"]}" '
-            f'parent="{shell["parent"]}"]'
+            f'parent="{parent}"]'
         )
+        if shell.get("script"):
+            lines.append(f'script = ExtResource("{shell["script"]}")')
         if shell["name"] == "Camera3D":
             lines.append(
                 "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)"
             )
             lines.append("current = true")
+        if shell["name"] == "HUD":
+            _emit_control_layout(lines, fill=True)
         if shell["name"] == "WinScreen":
             lines.append("visible = false")
+            _emit_control_layout(lines, fill=True)
         lines.append("")
 
-    # QuestData node (references the JSON resource)
-    lines.append('[node name="QuestData" type="Node" parent="Root"]')
-    lines.append(f'script = ExtResource("{data_ext_id}")')
+    # HUD child labels
+    lines.append('[node name="ObjectiveLabel" type="Label" parent="HUD"]')
+    lines.append("layout_mode = 0")
+    lines.append("offset_left = 20.0")
+    lines.append("offset_top = 20.0")
+    lines.append("offset_right = 600.0")
+    lines.append("offset_bottom = 50.0")
+    lines.append("text = \"\"")
+    lines.append("")
+
+    lines.append('[node name="InteractLabel" type="Label" parent="HUD"]')
+    lines.append("layout_mode = 1")
+    lines.append("anchors_preset = 8")
+    lines.append("anchor_left = 0.5")
+    lines.append("anchor_top = 0.5")
+    lines.append("anchor_right = 0.5")
+    lines.append("anchor_bottom = 0.5")
+    lines.append("grow_horizontal = 2")
+    lines.append("grow_vertical = 2")
+    lines.append("text = \"\"")
+    lines.append("horizontal_alignment = 1")
+    lines.append("")
+
+    # QuestData node (no script — P5 reads the JSON resource directly)
+    lines.append('[node name="QuestData" type="Node" parent="."]')
     lines.append("")
 
     content = "\n".join(lines)
@@ -314,7 +360,9 @@ def _parse_scene_text(tscn_text: str) -> dict:
             stripped.startswith(("instance ", "transform ", "metadata/",
                                  "mesh ", "material_override ", "script ",
                                  "current ", "visible ", "height ", "radius ",
-                                 "albedo_color "))
+                                 "albedo_color ", "layout_mode ", "anchors_preset ",
+                                 "anchor_", "offset_", "grow_", "text ",
+                                 "horizontal_alignment "))
         ):
             # Property line for the current node
             if stripped.startswith("instance = ExtResource"):
@@ -323,6 +371,12 @@ def _parse_scene_text(tscn_text: str) -> dict:
                 )
                 if m:
                     current_node["instance"] = m.group(1)
+            elif stripped.startswith("script = ExtResource"):
+                m = re.search(
+                    r'script\s*=\s*ExtResource\("([^"]+)"\)', stripped
+                )
+                if m:
+                    current_node["script"] = m.group(1)
             elif stripped.startswith("metadata/"):
                 key_val = stripped[len("metadata/"):]
                 eq = key_val.find(" = ")
