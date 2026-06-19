@@ -33,8 +33,9 @@ class PlacedEntity(TypedDict, total=False):
 
 _TAG_TABLE: Dict[str, str | None] = {
     "pickup": "res://scripts/pickup.gd",
-    "talk": "res://scripts/talk.gd",
-    "give": "res://scripts/give.gd",
+    "talk": "res://scripts/npc.gd",
+    # "give" is handled by npc.gd (state machine checks carried_item)
+    "give": "res://scripts/npc.gd",
     "inert": None,
 }
 
@@ -160,6 +161,18 @@ def compile_scene(
 
     unique_glbs = _resolve_unique_glbs(manifest)
 
+    # ── Compute unique tag→script mappings (P5) ──────────────────
+    # Which component scripts does this scene need?  The compiler
+    # invariants are: one target prop tagged "pickup", one NPC tagged
+    # "talk".  Both are non-optional, so their scripts are always
+    # added as ext_resources.
+    used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
+    used_tags = {"pickup", "talk"}
+    for tag in sorted(used_tags):
+        path = _TAG_TABLE.get(tag)
+        if path:
+            used_tag_scripts[path] = f"s_{tag}"
+
     # ── Write quest data as a JSON file alongside the .tscn ──────
     output_dir = str(Path(output_path).parent)
     tscn_stem = Path(output_path).stem  # e.g. "slice1_fetch"
@@ -180,8 +193,8 @@ def compile_scene(
     lines: list[str] = []
 
     # Header
-    # load_steps = GLBs + 4 shell scripts + 2 sub_resources (NPC mesh + mat)
-    total_load_steps = len(unique_glbs) + 4 + 2
+    # load_steps = GLBs + 4 shell scripts + tag scripts + 2 sub_resources
+    total_load_steps = len(unique_glbs) + 4 + len(used_tag_scripts) + 2
     header = f'[gd_scene load_steps={total_load_steps} format=3]'
     if scene_uid:
         header = f'[gd_scene load_steps={total_load_steps} format=3 uid="{scene_uid}"]'
@@ -196,6 +209,11 @@ def compile_scene(
     for entry in _SHELL_SCRIPTS:
         lines.append(
             f'[ext_resource type="Script" path="{entry["path"]}" id="{entry["id"]}"]'
+        )
+    # ExtResources: tag-based component scripts (P5)
+    for path, script_id in sorted(used_tag_scripts.items()):
+        lines.append(
+            f'[ext_resource type="Script" path="{path}" id="{script_id}"]'
         )
     lines.append("")
 
@@ -236,6 +254,12 @@ def compile_scene(
             f"{_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
         )
         lines.append(f'metadata/_forge_tag = "{tag}"')
+        # P5: attach component script by tag
+        component_path = _TAG_TABLE.get(tag)
+        if component_path and component_path in used_tag_scripts:
+            lines.append(
+                f'script = ExtResource("{used_tag_scripts[component_path]}")'
+            )
         lines.append("")
 
         lines.append(
@@ -253,6 +277,12 @@ def compile_scene(
     )
     lines.append('metadata/_forge_tag = "talk"')
     lines.append('metadata/_forge_tag_give = "give"')
+    # P5: attach npc.gd via the talk tag
+    npc_script_path = _TAG_TABLE.get("talk")
+    if npc_script_path and npc_script_path in used_tag_scripts:
+        lines.append(
+            f'script = ExtResource("{used_tag_scripts[npc_script_path]}")'
+        )
     lines.append("")
     lines.append('[node name="Body" type="MeshInstance3D" parent="NPC"]')
     lines.append('mesh = SubResource("npc_mesh")')

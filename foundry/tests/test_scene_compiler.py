@@ -199,6 +199,64 @@ def test_npc_has_talk_and_give_tags():
     assert meta.get("_forge_tag_give") == "give"
 
 
+# ── P5: component script attachment (tag→script wiring) ──────────
+
+def test_target_prop_has_pickup_script():
+    """The target prop node gets pickup.gd attached via script=."""
+    _, parsed, _ = _compile_and_parse()
+    target = _QUEST_SPEC["target_entity"]
+    node = next(n for n in parsed["nodes"] if n["name"] == target)
+    assert node.get("script") == "s_pickup", (
+        f"target prop {target!r} should have script=s_pickup, got {node.get('script')!r}"
+    )
+
+
+def test_npc_has_talk_script():
+    """The NPC node gets npc.gd attached via the talk tag."""
+    _, parsed, _ = _compile_and_parse()
+    npc = next(n for n in parsed["nodes"] if n["name"] == "NPC")
+    assert npc.get("script") == "s_talk", (
+        f"NPC should have script=s_talk, got {npc.get('script')!r}"
+    )
+
+
+def test_inert_props_have_no_script():
+    """Non-target props (tag=inert) get no component script."""
+    _, parsed, _ = _compile_and_parse()
+    target = _QUEST_SPEC["target_entity"]
+    for entry in _MANIFEST:
+        if entry["id"] == target:
+            continue
+        node = next(n for n in parsed["nodes"] if n["name"] == entry["id"])
+        assert node.get("script") is None, (
+            f"inert prop {entry['id']!r} should have no script, got {node.get('script')!r}"
+        )
+
+
+def test_ext_resources_include_component_scripts():
+    """ext_resources block includes pickup.gd and npc.gd."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/pickup.gd" in paths
+    assert "res://scripts/npc.gd" in paths
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_pickup" in ids
+    assert "s_talk" in ids
+
+
+def test_shell_nodes_have_shell_scripts():
+    """P4 shell scripts are still attached after P5 changes."""
+    _, parsed, _ = _compile_and_parse()
+    player = next(n for n in parsed["nodes"] if n["name"] == "Player")
+    assert player.get("script") == "s_player"
+    interact = next(n for n in parsed["nodes"] if n["name"] == "InteractionRaycast")
+    assert interact.get("script") == "s_interact"
+    hud = next(n for n in parsed["nodes"] if n["name"] == "HUD")
+    assert hud.get("script") == "s_hud"
+    win = next(n for n in parsed["nodes"] if n["name"] == "WinScreen")
+    assert win.get("script") == "s_win"
+
+
 # ── Quest data JSON round-trip ───────────────────────────────────
 
 def test_quest_data_json_written():
