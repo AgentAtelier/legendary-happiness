@@ -3,3 +3,6 @@ pytest
 pygltflib
 requests
 jsonschema
+fastapi
+uvicorn
+httpx
