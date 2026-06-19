@@ -1,7 +1,10 @@
 """The foundry spine: spec → compile → Blender build → gate → register.
 Offline, serial, single-asset. Live-scene instancing is a later slice.
 
-Slice 5: forge_from_request integrates the AssetPlanner LLM."""
+Slice 5: forge_from_request integrates the AssetPlanner LLM.
+Slice 11: ForgeResult carries Decision Points (resolver output); the
+planner path populates them, the explicit-spec path keeps them empty.
+"""
 
 from __future__ import annotations
 
@@ -9,11 +12,12 @@ import json
 import os
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from compiler import compile_spec, load_spec
+from decisions import DecisionPoint
 from gate import GateResult, gate_asset
 from library import read_envelope, register_asset
 from sidecar import build_sidecar, write_sidecar
@@ -26,6 +30,10 @@ class ForgeResult:
     glb_path: str
     gate: GateResult
     registered: bool
+    # Decision Points emitted during the pipeline (resolver output for
+    # forge_from_request; empty for the explicit-spec forge() path).
+    # repr=False so logging a ForgeResult doesn't dump a wall of dicts.
+    decisions: List[DecisionPoint] = field(default_factory=list, repr=False)
 
 
 def _build(spec_path: str, out_glb: str, blender: str) -> None:
@@ -83,7 +91,7 @@ def forge_from_request(
         llm = FoundryLLM()
 
     planner = AssetPlanner()
-    spec = planner.plan(request, llm)
+    spec, decisions = planner.plan(request, llm)
 
     # Write the spec to a temp file so _build can read it
     with tempfile.NamedTemporaryFile(
@@ -104,7 +112,7 @@ def forge_from_request(
         result = gate_asset(out_glb, footprint, height)
 
         # Emit sidecar alongside the GLB (after build+gate, per C-07).
-        sidecar = build_sidecar(sp, Path(out_glb).name)
+        sidecar = build_sidecar(sp, Path(out_glb).name, decisions=decisions)
         write_sidecar(library_dir, basename, sidecar)
 
         registered = False
@@ -112,6 +120,11 @@ def forge_from_request(
             register_asset(lexicon_path, sp["asset_id"], out_glb)
             registered = True
 
-        return ForgeResult(glb_path=out_glb, gate=result, registered=registered)
+        return ForgeResult(
+            glb_path=out_glb,
+            gate=result,
+            registered=registered,
+            decisions=decisions,
+        )
     finally:
         os.unlink(spec_path)

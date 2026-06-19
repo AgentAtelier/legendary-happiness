@@ -18,6 +18,7 @@ _foundry_dir = str(Path(__file__).resolve().parent)
 if _foundry_dir not in sys.path:
     sys.path.insert(0, _foundry_dir)
 
+from decisions import render_cli as _render_decisions_cli
 from runner import forge, forge_from_request
 
 
@@ -45,6 +46,12 @@ def main() -> int:
         print(f"[{status}] {result.glb_path}  registered={result.registered}")
         for reason in result.gate.reasons:
             print(f"  - {reason}")
+        # Surface any Decision Points the material resolver emitted
+        # (multi-member family, no material keyword, ambiguity).
+        # render_cli suppresses `info` decisions and is a no-op for [].
+        rendered = _render_decisions_cli(result.decisions)
+        if rendered.strip():
+            print(rendered)
         return 0 if result.gate.passed else 1
 
     if len(sys.argv) != 4:

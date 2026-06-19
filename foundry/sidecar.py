@@ -7,6 +7,9 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional, Sequence
+
+from decisions import DecisionPoint, to_dict as _decision_to_dict
 
 
 # Resolved at module load: sidecar.py lives in foundry/ → parents[1] is repo root.
@@ -35,7 +38,11 @@ def validate_sidecar(sidecar: dict) -> None:
     jsonschema.validate(instance=sidecar, schema=schema)
 
 
-def build_sidecar(spec: dict, glb_filename: str = "") -> dict:
+def build_sidecar(
+    spec: dict,
+    glb_filename: str = "",
+    decisions: Optional[Sequence[DecisionPoint]] = None,
+) -> dict:
     """Produce a sidecar dict VALID against the ``procedural`` branch of the
     asset-metadata schema.
 
@@ -46,8 +53,13 @@ def build_sidecar(spec: dict, glb_filename: str = "") -> dict:
     glb_filename:
         Reserved for future use (e.g. hashing the GLB); not currently written
         into the sidecar.
+    decisions:
+        Optional list of Decision Points to persist under the top-level
+        ``"decisions"`` key (via ``decisions.to_dict``).  Falsy / empty
+        means the key is OMITTED from the sidecar (the schema doesn't
+        require it; future readers treat absence as "no decisions").
     """
-    return {
+    sidecar: dict = {
         "asset_id": spec["asset_id"],
         "pipeline_type": "procedural",
         "creation_date": datetime.now(timezone.utc).isoformat(),
@@ -67,6 +79,9 @@ def build_sidecar(spec: dict, glb_filename: str = "") -> dict:
             "biome_tags": [],
         },
     }
+    if decisions:
+        sidecar["decisions"] = [_decision_to_dict(d) for d in decisions]
+    return sidecar
 
 
 def write_sidecar(out_dir: str, asset_basename: str, sidecar: dict) -> str:

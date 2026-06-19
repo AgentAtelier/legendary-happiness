@@ -232,3 +232,52 @@ def test_render_cli_empty_list_is_safe():
     from decisions import render_cli
     # No decisions → still a string (empty or whitespace)
     assert isinstance(render_cli([]), str)
+
+
+# ── Slice 11: ForgeResult.decisions dataclass wiring ────────────────
+
+
+def test_forge_result_default_decisions_is_empty_list():
+    """ForgeResult.decisions defaults to an empty list — runs anywhere,
+    no blender dependency (lives here instead of test_runner.py to avoid
+    the BLENDER pytestmark skipif on a pure dataclass test)."""
+    from runner import ForgeResult
+    from gate import GateResult
+
+    result = ForgeResult(
+        glb_path="/tmp/fake.glb",
+        gate=GateResult(passed=True, reasons=()),
+        registered=False,
+    )
+    assert result.decisions == [], (
+        "explicit-spec forge() should leave decisions empty by default"
+    )
+    # repr=False should keep decisions out of __repr__ for log clarity
+    repr_str = repr(result)
+    assert "decisions" not in repr_str, (
+        "decisions should be repr=False to keep logs compact"
+    )
+
+
+def test_forge_result_accepts_decisions_in_constructor():
+    """The planner path populates ForgeResult(decisions=...) with the
+    resolver's output."""
+    from runner import ForgeResult
+    from gate import GateResult
+    from decisions import Choice, make_decision
+
+    dp = make_decision(
+        code="material.family_defaulted",
+        stage="planner",
+        severity="assumption",
+        context={"family": "wood", "resolved": "worn_oak"},
+        choices=(),
+    )
+    result = ForgeResult(
+        glb_path="/tmp/fake.glb",
+        gate=GateResult(passed=True, reasons=()),
+        registered=False,
+        decisions=[dp],
+    )
+    assert len(result.decisions) == 1
+    assert result.decisions[0].code == "material.family_defaulted"

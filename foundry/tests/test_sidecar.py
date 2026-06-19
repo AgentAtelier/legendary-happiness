@@ -116,3 +116,82 @@ def test_chair_spec_sidecar_validates():
     sidecar = build_sidecar(spec)
     jsonschema.validate(instance=sidecar, schema=schema)
     assert sidecar["procedural"]["geometry_template_id"] == "chair"
+
+
+# ── Slice 11: decisions threading through the sidecar ───────────────
+
+
+def _sample_decision():
+    from decisions import Choice, make_decision
+
+    return make_decision(
+        code="material.family_defaulted",
+        stage="planner",
+        severity="assumption",
+        context={"family": "wood", "resolved": "worn_oak"},
+        choices=(
+            Choice(label="Dark Walnut", plain="dark brown wood",
+                   apply={"field": "material", "value": "dark_walnut"}),
+        ),
+    )
+
+
+def test_build_sidecar_with_no_decisions_omits_the_key(table_spec):
+    """Forge()'s explicit-spec path: no decisions emitted, key omitted."""
+    import jsonschema
+    from sidecar import build_sidecar
+
+    schema = json.loads(Path(_SCHEMA_PATH).read_text(encoding="utf-8"))
+    sidecar = build_sidecar(table_spec)  # no decisions
+    assert "decisions" not in sidecar
+    # Still schema-valid (key is optional, additionalProperties:false allows it)
+    jsonschema.validate(instance=sidecar, schema=schema)
+
+
+def test_build_sidecar_with_decisions_persists_them_under_top_level_key(table_spec):
+    """forge_from_request: decisions reach the sidecar under top-level
+    'decisions' via decisions.to_dict."""
+    import jsonschema
+    from sidecar import build_sidecar
+
+    schema = json.loads(Path(_SCHEMA_PATH).read_text(encoding="utf-8"))
+    dp = _sample_decision()
+    sidecar = build_sidecar(table_spec, decisions=[dp])
+    assert "decisions" in sidecar
+    assert isinstance(sidecar["decisions"], list)
+    assert len(sidecar["decisions"]) == 1
+    saved = sidecar["decisions"][0]
+    assert saved["code"] == "material.family_defaulted"
+    assert saved["stage"] == "planner"
+    assert saved["severity"] == "assumption"
+    assert saved["technical"].startswith("material family=wood")
+    assert saved["plain"].startswith("You asked for wood")
+    assert isinstance(saved["context"], dict)
+    assert isinstance(saved["choices"], list)
+    assert saved["choices"][0]["label"] == "Dark Walnut"
+    # Still validates against the schema (array of objects is allowed)
+    jsonschema.validate(instance=sidecar, schema=schema)
+
+
+def test_build_sidecar_with_empty_decisions_omits_the_key(table_spec):
+    """Empty list is treated the same as None -- key omitted."""
+    from sidecar import build_sidecar
+
+    sidecar = build_sidecar(table_spec, decisions=[])
+    assert "decisions" not in sidecar
+
+
+def test_write_sidecar_round_trips_decisions(tmp_path, table_spec):
+    """A sidecar with decisions written to disk and read back still has them."""
+    from sidecar import build_sidecar, write_sidecar
+
+    dp = _sample_decision()
+    sidecar = build_sidecar(table_spec, decisions=[dp])
+    out = write_sidecar(str(tmp_path), "table_worn_oak", sidecar)
+
+    data = json.loads(Path(out).read_text(encoding="utf-8"))
+    assert "decisions" in data
+    assert data["decisions"][0]["code"] == "material.family_defaulted"
+    assert data["decisions"][0]["choices"][0]["apply"] == {
+        "field": "material", "value": "dark_walnut"
+    }
