@@ -22,7 +22,13 @@ from typing import List, Tuple
 
 from eval.harness import RunRecord
 from eval.sampler import SampleResult
-from eval.signals import compute_signals, decision_codes, size_mismatch_detail
+from eval.signals import (
+    age_mismatch_detail,
+    compute_signals,
+    decision_codes,
+    material_conflict_detail,
+    size_mismatch_detail,
+)
 
 
 # ── Public entry points ───────────────────────────────────────────────
@@ -109,6 +115,32 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
             **detail,
         })
 
+    # ── age_mismatches (slice 2): per-record detail from signals helper
+    age_mismatches: List[dict] = []
+    for idx, rec in enumerate(records):
+        if rec.spec is None:
+            continue
+        detail = age_mismatch_detail(rec.request, rec.spec)
+        if detail is None:
+            continue
+        age_mismatches.append({
+            "index": idx,
+            "request": rec.request,
+            **detail,
+        })
+
+    # ── material_conflicts (slice 2): per-record detail from signals
+    #    helper.  Pure request-level — no spec gating required.
+    material_conflicts: List[dict] = []
+    for idx, rec in enumerate(records):
+        detail = material_conflict_detail(rec.request)
+        if detail is None:
+            continue
+        material_conflicts.append({
+            "index": idx,
+            **detail,
+        })
+
     # ── probes: enrich the SampleResult's probe objects with the
     #      actual request text so the digest is self-contained.
     probes = []
@@ -127,6 +159,8 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
         "gate_reason_freq":    dict(reason_counter),
         "build_errors":        build_errors,
         "size_mismatches":     size_mismatches,
+        "age_mismatches":      age_mismatches,
+        "material_conflicts":  material_conflicts,
         "probes":              probes,
         "stratum_sizes":       dict(sample.stratum_sizes),
         "seed":                sample.seed,
@@ -203,6 +237,33 @@ def _build_digest(d: dict) -> str:
                 f"`{sm['expected_direction'].upper()}` on `{sm['dimension']}` "
                 f"(generator={sm['generator']}), but got {sm['value']:.3f} "
                 f"(range [{lo:.2f}, {hi:.2f}])."
+            )
+    lines.append("")
+
+    # Age mismatches (slice 2) — paired request + wear-class + age.
+    lines.append("## Age mismatches")
+    ams = d.get("age_mismatches") or []
+    if not ams:
+        lines.append("_(none)_")
+    else:
+        for am in ams:
+            lines.append(
+                f"- `\"{am['request']}\"` — wear={am['wear_class']}, "
+                f"but age={am['age']:.3f}."
+            )
+    lines.append("")
+
+    # Material conflicts (slice 2) — competing cues + planner's resolution.
+    lines.append("## Material conflicts")
+    mcs = d.get("material_conflicts") or []
+    if not mcs:
+        lines.append("_(none)_")
+    else:
+        for mc in mcs:
+            cue_str = ", ".join(f"{kw}→{fam}" for kw, fam in mc["cues"])
+            lines.append(
+                f"- `\"{mc['request']}\"` — competing cues ({cue_str}); "
+                f"resolved to {mc['resolved']}."
             )
     lines.append("")
 

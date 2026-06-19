@@ -47,7 +47,7 @@ import re
 from typing import List, Optional, Set
 
 from compiler import PARAM_RANGES
-from material_resolver import material_cues
+from material_resolver import material_cues, resolve_material
 
 
 # ── Size words ────────────────────────────────────────────────────────
@@ -357,3 +357,30 @@ def record_tier(tags) -> str:
         if SIGNAL_SEVERITY.get(tag) == "high":
             return "high"
     return "low"
+
+
+def material_conflict_detail(request: str):
+    """Public, detail-returning twin of the material_conflict signal so
+    the friction report can surface WHY a record was flagged (the
+    competing cues + the planner's single resolved material).
+
+    Returns ``None`` when there's no family conflict; otherwise::
+
+        {
+            "request":  <str>,
+            "cues":     [(keyword, family), ...]   # all matched cues
+            "resolved": <material_id>              # from resolve_material
+        }
+
+    No spec dependency: this signal is purely request-level.
+    """
+    cues = material_cues(request or "")
+    families = {fam for _, fam in cues}
+    if len(families) <= 1:
+        return None
+    resolved, _ = resolve_material(request or "")
+    return {
+        "request": request,
+        "cues": list(cues),
+        "resolved": resolved,
+    }

@@ -403,3 +403,112 @@ def test_build_friction_report_smoke_run_through_synthetic_records():
     assert "Eyeball these" in digest
     # The probe list contains exactly 5 problem probes + 2 clean baseline
     assert len(d["probes"]) == 7
+
+
+# ── age_mismatches & material_conflicts surfacing (slice 2) ──────────
+# build_friction_report adds dedicated detail lists alongside
+# size_mismatches: age_mismatches (request, wear_class, age) and
+# material_conflicts (request, cues, resolved). Both lists AND both
+# digest sections are populated when the source records contain these
+# signals.
+
+from materials import MATERIAL_PALETTE
+from compiler import PARAM_RANGES
+
+
+def _conflict_record(i: int) -> RunRecord:
+    """A record whose request spans two material families — exercise the
+    material_conflict signal AND its detail list."""
+    lo, hi = PARAM_RANGES["table"]["top_width"]
+    width = (lo + hi) / 2.0
+    lo, hi = PARAM_RANGES["table"]["leg_height"]
+    leg_h = (lo + hi) / 2.0
+    spec = {
+        "asset_id": "table", "generator": "table",
+        "material": "rough_granite", "age": 0.2,
+        "params": {
+            "top_width": width, "top_depth": 0.8, "top_thickness": 0.06,
+            "leg_height": leg_h, "leg_radius": 0.05, "leg_inset": 0.1,
+        },
+    }
+    return _make_record(
+        request=f"a stone-look wooden table {i}",
+        spec=spec, gate_passed=True, built=True, index=i,
+    )
+
+
+def _old_cabinet_record(i: int) -> RunRecord:
+    """A record with an AGED wear word at LOW age → age_mismatch fires."""
+    spec = {
+        "asset_id": "cabinet", "generator": "cabinet", "material": "worn_oak",
+        "age": 0.15,
+        "params": {
+            "width": 0.8, "depth": 0.5, "height": 1.3,
+            "panel_thickness": 0.04, "base_height": 0.08,
+        },
+    }
+    return _make_record(
+        request=f"an old cabinet {i}", spec=spec,
+        gate_passed=True, built=True, index=i,
+    )
+
+
+def test_build_friction_report_dict_surfaces_age_mismatches_list():
+    """Synthetic age_mismatch record → dict has non-empty age_mismatches."""
+    records = [_old_cabinet_record(0), _clean_record(1)]
+    sample = stratify_and_sample(records, seed=1, clean_baseline_n=1)
+    d, _ = build_friction_report(records, sample)
+    assert isinstance(d.get("age_mismatches"), list)
+    assert len(d["age_mismatches"]) >= 1
+    am = d["age_mismatches"][0]
+    assert am["request"].startswith("an old cabinet")
+    assert am["wear_class"] == "aged"
+    assert am["age"] == pytest.approx(0.15)
+
+
+def test_build_friction_report_dict_surfaces_material_conflicts_list():
+    """Synthetic material_conflict record → dict has non-empty
+    material_conflicts with cues + resolved."""
+    records = [_conflict_record(0), _clean_record(1)]
+    sample = stratify_and_sample(records, seed=1, clean_baseline_n=1)
+    d, _ = build_friction_report(records, sample)
+    assert isinstance(d.get("material_conflicts"), list)
+    assert len(d["material_conflicts"]) >= 1
+    mc = d["material_conflicts"][0]
+    assert mc["request"].startswith("a stone-look wooden table")
+    assert isinstance(mc["cues"], list)
+    families = {fam for _, fam in mc["cues"]}
+    assert families == {"stone", "wood"}
+    assert mc["resolved"] in MATERIAL_PALETTE  # resolved to a real material
+
+
+def test_build_friction_report_digest_surfaces_both_new_sections():
+    """The text digest contains BOTH the new sections when the source
+    records include one age_mismatch + one material_conflict."""
+    records = [_old_cabinet_record(0), _conflict_record(1), _clean_record(2)]
+    sample = stratify_and_sample(records, seed=1, clean_baseline_n=1)
+    _, digest = build_friction_report(records, sample)
+    assert "## Age mismatches" in digest
+    assert "## Material conflicts" in digest
+    # Spot-check that the actual request text appears under each section.
+    assert "an old cabinet" in digest
+    assert "a stone-look wooden table" in digest
+
+
+def test_build_friction_report_no_age_material_signals_yields_empty_sections():
+    """Pipeline of only clean records → age_mismatches and
+    material_conflicts are both empty (no spurious entries)."""
+    records = [_clean_record(i) for i in range(3)]
+    sample = stratify_and_sample(records, seed=1, clean_baseline_n=2)
+    d, digest = build_friction_report(records, sample)
+    assert d["age_mismatches"] == []
+    assert d["material_conflicts"] == []
+    # Digest still renders both sections, just as (none).
+    assert "## Age mismatches" in digest
+    assert "## Material conflicts" in digest
+    # And they're followed by the "(none)" line — verify with the digest.
+    sections = digest.split("## ")
+    age_section = next(s for s in sections if s.startswith("Age mismatches"))
+    mat_section = next(s for s in sections if s.startswith("Material conflicts"))
+    assert "_(none)_" in age_section
+    assert "_(none)_" in mat_section
