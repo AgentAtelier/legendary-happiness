@@ -36,6 +36,30 @@ if _foundry_dir not in sys.path:
 # ── Subcommand: `run <corpus> <lexicon> <out_dir> ────────────────────
 
 
+def _cmd_augment(args: argparse.Namespace) -> int:
+    from eval.augment import augment_corpus
+
+    print(f"[augment] target={args.target}  seed={args.seed}  "
+          f"dry_run={args.dry_run}")
+
+    requests, stats = augment_corpus(
+        args.out_file,
+        target=args.target,
+        seed=args.seed,
+        dry_run=args.dry_run,
+    )
+
+    print(f"[augment] generated {stats['raw_generated']} raw, "
+          f"{stats['unique_after_dedup']} unique, "
+          f"{stats['valid']} valid ({stats['rejected_by_validity']} rejected)")
+    print(f"[augment] decision firers: {stats['decision_firers']}")
+    print(f"[augment] dedup rate: {stats['dedup_rate']:.1%}")
+    print(f"[augment] generator counts: {stats['generator_counts']}")
+    if not args.dry_run:
+        print(f"[augment] wrote {args.out_file}")
+    return 0
+
+
 def _cmd_stability(args: argparse.Namespace) -> int:
     from eval.report import load_corpus
     from eval.stability import run_stability, build_report_dict, build_report_md
@@ -213,6 +237,15 @@ def _build_parser() -> argparse.ArgumentParser:
     stab.add_argument("--live", action="store_true",
                        help="use FoundryLLM (default: stub — always-stable)")
     stab.set_defaults(func=_cmd_stability)
+    aug = sub.add_parser("augment", help="generate augmented corpus via slot-filling")
+    aug.add_argument("out_file", help="path to write the augmented corpus .txt")
+    aug.add_argument("--target", type=int, default=250,
+                     help="max requests to produce (default 250)")
+    aug.add_argument("--seed", type=int, default=1337,
+                     help="RNG seed (default 1337)")
+    aug.add_argument("--dry-run", action="store_true",
+                     help="print stats without writing")
+    aug.set_defaults(func=_cmd_augment)
     return p
 
 
