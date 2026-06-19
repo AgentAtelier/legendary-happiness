@@ -9,7 +9,7 @@ import json
 
 from materials import MATERIAL_PALETTE
 
-GENERATORS = {"table", "chair", "shelf", "cabinet"}
+GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -46,6 +46,16 @@ PARAM_RANGES = {
         "height": (0.8, 1.84),
         "panel_thickness": (0.02, 0.06),
         "base_height": (0.03, 0.12),
+    },
+    # P7: stylized low-poly humanoid from box primitives.
+    # total_height controls overall scale; the builder derives
+    # per-part dimensions from fixed ratios (head ~0.2×, torso ~0.35×,
+    # arms ~0.35×, legs ~0.45× of total_height).
+    "humanoid": {
+        "total_height": (1.2, 2.2),
+        "body_width": (0.3, 0.7),
+        "limb_thickness": (0.08, 0.2),
+        "head_size": (0.15, 0.35),
     },
 }
 

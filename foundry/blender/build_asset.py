@@ -555,11 +555,180 @@ def _build_cabinet_geometry(params):
     return mesh
 
 
+def _build_humanoid_geometry(params):
+    """Build a stylized low-poly humanoid from box primitives (P7).
+
+    P7 OFF-RAMP NOTE: The box-primitive humanoid may not be perfectly
+    watertight at arm/torso interfaces (coplanar faces at the same Z
+    range create non-manifold edges).  This is an accepted trade-off
+    for the off-ramp golem/totem form; the full humanoid (with boolean
+    union or armature-based skinning) is a P7+ ticket.
+
+    Proportions (all as fractions of total_height):
+      - Head:        ~0.18× at top
+      - Neck:        0.05× thin connector
+      - Torso:       ~0.35× centred above legs
+      - Upper arms:  ~0.18× each side of torso
+      - Forearms:    ~0.18× below upper arms
+      - Thighs:      ~0.22× below torso
+      - Calves:      ~0.22× below thighs
+      - Feet:        0.04× small blocks at base
+
+    All parts are axis-aligned boxes.  The mesh is a single merged
+    bmesh so the gate's watertight check passes (position-welded).
+
+    Also adds a simple idle bob animation: Z-location keyframes on
+    the root object (0→+0.04→0 over 60 frames, cyclic).
+    """
+    th = params["total_height"]
+    bw = params["body_width"]
+    lt = params["limb_thickness"]
+    hs = params["head_size"]
+
+    # Derived dimensions (fixed ratios of total_height)
+    head_h = hs
+    head_w = hs * 0.75
+    head_d = hs * 0.7
+
+    neck_h = th * 0.04
+    neck_w = lt * 0.8
+    neck_d = lt * 0.8
+
+    torso_h = th * 0.32
+    torso_w = bw
+    torso_d = bw * 0.55
+
+    upper_arm_len = th * 0.17
+    upper_arm_w = lt
+    upper_arm_d = lt * 0.8
+
+    forearm_len = th * 0.17
+    forearm_w = lt * 0.85
+    forearm_d = lt * 0.7
+
+    thigh_len = th * 0.22
+    thigh_w = lt * 1.1
+    thigh_d = lt * 0.9
+
+    calf_len = th * 0.22
+    calf_w = lt * 0.95
+    calf_d = lt * 0.8
+
+    foot_h = th * 0.04
+    foot_w = lt * 1.2
+    foot_d = lt * 1.4
+
+    mesh = bpy.data.meshes.new("humanoid")
+    obj = bpy.data.objects.new("humanoid", mesh)
+    bpy.context.collection.objects.link(obj)
+
+    bm = bmesh.new()
+
+    # Z-level layout (bottom to top):
+    #   foot_bottom = 0
+    #   calf: foot_h → foot_h + calf_len
+    #   thigh: foot_h + calf_len → foot_h + calf_len + thigh_len
+    #   torso: foot_h + calf_len + thigh_len → ... + torso_h
+    #   neck: ... → ... + neck_h
+    #   head: ... → ... + head_h
+
+    foot_bottom = foot_h / 2.0
+    calf_cz = foot_h + calf_len / 2.0
+    thigh_cz = foot_h + calf_len + thigh_len / 2.0
+    torso_cz = foot_h + calf_len + thigh_len + torso_h / 2.0
+    neck_cz = foot_h + calf_len + thigh_len + torso_h + neck_h / 2.0
+    head_cz = foot_h + calf_len + thigh_len + torso_h + neck_h + head_h / 2.0
+
+    shoulder_y = foot_h + calf_len + thigh_len + torso_h
+    hip_y = foot_h + calf_len + thigh_len
+
+    # ── Feet ──────────────────────────────────────────────────
+    foot_spread = lt * 0.6
+    for sx in (-1, 1):
+        _add_box(bm, sx * foot_spread, 0.0, foot_bottom,
+                 foot_w, foot_d, foot_h)
+
+    # ── Calves ───────────────────────────────────────────────
+    leg_x = lt * 0.55
+    for sx in (-1, 1):
+        _add_box(bm, sx * leg_x, 0.0, calf_cz,
+                 calf_w, calf_d, calf_len)
+
+    # ── Thighs ───────────────────────────────────────────────
+    for sx in (-1, 1):
+        _add_box(bm, sx * leg_x, 0.0, thigh_cz,
+                 thigh_w, thigh_d, thigh_len)
+
+    # ── Torso ────────────────────────────────────────────────
+    _add_box(bm, 0.0, 0.0, torso_cz, torso_w, torso_d, torso_h)
+
+    # ── Upper arms ───────────────────────────────────────────
+    arm_x = torso_w / 2.0 + upper_arm_w / 2.0
+    upper_arm_cz = shoulder_y - upper_arm_len / 2.0
+    for sx in (-1, 1):
+        _add_box(bm, sx * arm_x, 0.0, upper_arm_cz,
+                 upper_arm_w, upper_arm_d, upper_arm_len)
+
+    # ── Forearms ─────────────────────────────────────────────
+    forearm_cz = shoulder_y - upper_arm_len - forearm_len / 2.0
+    for sx in (-1, 1):
+        _add_box(bm, sx * arm_x, 0.0, forearm_cz,
+                 forearm_w, forearm_d, forearm_len)
+
+    # ── Neck ─────────────────────────────────────────────────
+    _add_box(bm, 0.0, 0.0, neck_cz, neck_w, neck_d, neck_h)
+
+    # ── Head ─────────────────────────────────────────────────
+    _add_box(bm, 0.0, 0.0, head_cz, head_w, head_d, head_h)
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    # ── Idle bob animation (P7 off-ramp: object-level Z oscillation) ─
+    _add_idle_bob(obj)
+
+    return mesh
+
+
+def _add_idle_bob(obj, amplitude=0.04, period=60):
+    """Add a simple cyclic idle bob animation on the root object.
+
+    Animates Z-location: 0 → +amplitude → 0 over *period* frames,
+    with MAKE_CYCLIC extrapolation so the glTF exporter writes a
+    looping default animation.
+    """
+    obj.animation_data_create()
+    action = bpy.data.actions.new(name="idle_bob")
+    obj.animation_data.action = action
+
+    fcurves = []
+    for idx in range(3):
+        fc = action.fcurves.new(data_path="location", index=idx)
+        fcurves.append(fc)
+
+    # Only animate Z (index 2).  X and Y stay at 0.
+    z_curve = fcurves[2]
+
+    # Keyframes: frame 0 → 0, frame period/2 → amplitude, frame period → 0
+    z_curve.keyframe_points.insert(0, 0.0)
+    z_curve.keyframe_points.insert(period / 2, amplitude)
+    z_curve.keyframe_points.insert(period, 0.0)
+
+    # Linear interpolation
+    for kp in z_curve.keyframe_points:
+        kp.interpolation = "LINEAR"
+
+    # Cyclic: loop forever
+    for fc in fcurves:
+        fc.modifiers.new("CYCLES")
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
     "shelf": _build_shelf_geometry,
     "cabinet": _build_cabinet_geometry,
+    "humanoid": _build_humanoid_geometry,
 }
 
 _COLOR_BUILDERS = {

@@ -343,15 +343,40 @@ def test_default_position_zero():
     assert expected in text
 
 
-# ── NPC body primitive marker ────────────────────────────────────
+# ── NPC body (P7: generated humanoid GLB) ───────────────────────
 
-def test_npc_has_primitive_body():
-    """NPC Body node uses CapsuleMesh (generated, not imported)."""
+def test_npc_has_glb_body():
+    """NPC Body node instances a GLB (generated humanoid, not primitive)."""
     _, parsed, _ = _compile_and_parse()
     body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
     assert len(body_nodes) == 1
     assert body_nodes[0]["parent"] == "NPC"
-    assert body_nodes[0]["type"] == "MeshInstance3D"
+    assert body_nodes[0]["type"] == "Node3D"
+    assert body_nodes[0].get("instance") is not None, (
+        "Body node should instance a GLB via ExtResource"
+    )
+
+
+def test_ext_resources_include_npc_body_glb():
+    """ext_resources includes the humanoid GLB for the NPC body."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://assets/humanoid_rough_granite.glb" in paths, (
+        f"expected humanoid GLB in ext_resources, got {paths}"
+    )
+
+
+def test_no_capsule_mesh_sub_resource():
+    """P7 removes the CapsuleMesh sub_resource — NPC body is now a GLB."""
+    text, _, _ = _compile_and_parse()
+    assert "CapsuleMesh" not in text, (
+        "CapsuleMesh sub_resource should be removed (P7 replaces with GLB)"
+    )
+    assert "StandardMaterial3D" not in text, (
+        "StandardMaterial3D sub_resource should be removed (P7 replaces with GLB)"
+    )
+    assert "npc_mesh" not in text
+    assert "npc_mat" not in text
 
 
 # ── Different target entity ──────────────────────────────────────
