@@ -192,3 +192,150 @@ def test_run_corpus_writes_jsonl_with_one_line_per_record():
     for line, r in zip(lines, records):
         loaded = json.loads(line)
         assert loaded["request"] == r.request
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  P6: QuestRecord + run_quest_corpus
+# ═══════════════════════════════════════════════════════════════════════
+
+_MANIFEST = [
+    {"id": "table_0", "category": "table", "material": "worn_oak",
+     "x": 1.0, "y": 0.0, "z": -1.5},
+    {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+     "x": -2.0, "y": 0.0, "z": -3.0},
+    {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron",
+     "x": 2.5, "y": 0.0, "z": -2.0},
+]
+
+
+def _fake_quest_llm(_prompt: str, _grammar=None) -> str:
+    """Stub LLM returning a valid quest spec JSON."""
+    return json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "shelf_0",
+        "dialogue": {
+            "greet": "Ah, a visitor! Welcome.",
+            "ask": "Find my lost book on the shelf.",
+            "wrong": "No, that is not my book.",
+            "thank": "You found it! Thank you.",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "shelf_0",
+            "giver": "npc",
+        },
+    })
+
+
+def test_quest_record_dataclass_has_named_fields():
+    """QuestRecord has all named fields."""
+    from eval.harness import QuestRecord
+    qr = QuestRecord(
+        room_theme="a hermit's shack",
+        quest_spec={"npc_role": "hermit"},
+        decisions=[],
+        compiled=True,
+        scene_path="/tmp/test.tscn",
+        manifest=_MANIFEST,
+        error=None,
+        seconds=0.42,
+    )
+    assert qr.room_theme == "a hermit's shack"
+    assert qr.quest_spec == {"npc_role": "hermit"}
+    assert qr.compiled is True
+    assert qr.scene_path == "/tmp/test.tscn"
+    assert qr.manifest == _MANIFEST
+    assert qr.error is None
+    assert qr.seconds == pytest.approx(0.42)
+
+
+def test_run_quest_corpus_yields_one_record_per_theme(tmp_path):
+    """With a fake LLM, one QuestRecord per room theme."""
+    from eval.harness import run_quest_corpus
+
+    themes = [
+        "a hermit's shack",
+        "a dusty workshop",
+        "a wizard's study",
+    ]
+    records = run_quest_corpus(
+        room_themes=themes,
+        manifest=_MANIFEST,
+        llm=_fake_quest_llm,
+        scene_output_dir=str(tmp_path),
+    )
+    assert len(records) == 3
+    for r, theme in zip(records, themes):
+        assert r.room_theme == theme
+        assert r.quest_spec is not None
+        assert r.compiled is True
+        assert r.scene_path is not None
+        assert r.error is None
+        assert r.seconds >= 0.0
+
+
+def test_run_quest_corpus_failure_in_plan_captures_error(tmp_path):
+    """A plan fn that raises → error captured, other records succeed."""
+    from eval.harness import run_quest_corpus
+
+    bad_theme = "this will explode"
+
+    def flaky_plan(theme, manifest, llm):
+        if theme == bad_theme:
+            raise RuntimeError("simulated quest planner failure")
+        from behaviour_gen import QuestBehaviourPlanner
+        return QuestBehaviourPlanner().plan(theme, manifest, llm)
+
+    themes = ["a hermit's shack", bad_theme, "a dusty workshop"]
+    records = run_quest_corpus(
+        room_themes=themes,
+        manifest=_MANIFEST,
+        llm=_fake_quest_llm,
+        scene_output_dir=str(tmp_path),
+        plan_quest=flaky_plan,
+    )
+    assert len(records) == 3
+    assert records[0].error is None and records[0].compiled is True
+    assert records[1].error is not None
+    assert "simulated quest planner failure" in records[1].error
+    assert records[1].compiled is False
+    assert records[2].error is None and records[2].compiled is True
+
+
+def test_quest_record_to_dict_returns_a_dict():
+    from eval.harness import QuestRecord, quest_record_to_dict
+    qr = QuestRecord(
+        room_theme="a hermit's shack",
+        quest_spec={"npc_role": "hermit"},
+        decisions=[],
+        compiled=True,
+        scene_path="/tmp/test.tscn",
+        manifest=_MANIFEST,
+        error=None,
+        seconds=0.01,
+    )
+    d = quest_record_to_dict(qr)
+    assert isinstance(d, dict)
+    assert d["room_theme"] == "a hermit's shack"
+    assert d["compiled"] is True
+    assert d["scene_path"] == "/tmp/test.tscn"
+
+
+def test_quest_records_to_jsonl_round_trips(tmp_path):
+    """quest_records_to_jsonl emits one JSON object per line."""
+    from eval.harness import QuestRecord, quest_records_to_jsonl
+    qrs = [
+        QuestRecord(room_theme="a shack", quest_spec={"k": "v"},
+                    decisions=[], compiled=True, scene_path="/tmp/a.tscn",
+                    manifest=_MANIFEST, error=None, seconds=0.1),
+        QuestRecord(room_theme="a study", quest_spec=None,
+                    decisions=[], compiled=False, scene_path=None,
+                    manifest=_MANIFEST, error="boom", seconds=0.2),
+    ]
+    out = quest_records_to_jsonl(qrs)
+    lines = out.splitlines()
+    assert len(lines) == 2
+    for line, qr in zip(lines, qrs):
+        loaded = json.loads(line)
+        assert loaded["room_theme"] == qr.room_theme
+        assert loaded["compiled"] == qr.compiled

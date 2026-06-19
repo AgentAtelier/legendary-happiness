@@ -38,6 +38,21 @@ class RunRecord:
     seconds: float
 
 
+@dataclass
+class QuestRecord:
+    """The structured outcome of one room theme through the quest pipeline
+    (behaviour-gen → scene-compile).  Mirrors RunRecord for the quest layer."""
+
+    room_theme: str
+    quest_spec: Optional[dict]
+    decisions: List[dict]
+    compiled: bool
+    scene_path: Optional[str]
+    manifest: List[dict]
+    error: Optional[str]
+    seconds: float
+
+
 # ── JSON serialisation helpers ─────────────────────────────────────────
 
 
@@ -46,9 +61,19 @@ def record_to_dict(r: RunRecord) -> dict:
     return asdict(r)
 
 
+def quest_record_to_dict(qr: QuestRecord) -> dict:
+    """JSON-friendly dict view of a QuestRecord."""
+    return asdict(qr)
+
+
 def records_to_jsonl(records: List[RunRecord]) -> str:
     """One JSON object per line, newline-terminated, no trailing commas."""
     return "\n".join(json.dumps(record_to_dict(r)) for r in records) + "\n"
+
+
+def quest_records_to_jsonl(records: List[QuestRecord]) -> str:
+    """One JSON object per line for QuestRecords."""
+    return "\n".join(json.dumps(quest_record_to_dict(qr)) for qr in records) + "\n"
 
 
 # ── Defaults (lazy: not imported at module load) ───────────────────────
@@ -162,6 +187,81 @@ def run_corpus(
 
         except Exception as exc:
             # Wrap per-request failure into the record; never raise out.
+            record.error = repr(exc)
+
+        record.seconds = time.perf_counter() - t0
+        records.append(record)
+
+    return records
+
+
+# ── Quest pipeline entry point (P6) ───────────────────────────────────
+
+def run_quest_corpus(
+    room_themes: List[str],
+    manifest: List[dict],
+    llm: Callable[[str, Optional[str]], str],
+    scene_output_dir: str,
+    *,
+    plan_quest: Optional[Callable[..., Tuple[dict, List]]] = None,
+    compile_scene_fn: Optional[Callable[..., str]] = None,
+) -> List[QuestRecord]:
+    """Run *room_themes* through the quest pipeline, capturing structured
+    records.  NEVER raises out of the per-request loop.
+
+    Args:
+        room_themes: NL room descriptions (e.g. "a hermit's shack").
+        manifest: Placed-entity manifest (list of dicts with id, category,
+                  material, x/y/z).  Shared across all room themes.
+        llm: Callable (prompt, grammar) -> str — injected for tests.
+        scene_output_dir: Directory for compiled .tscn files.
+        plan_quest: Optional override for QuestBehaviourPlanner().plan.
+        compile_scene_fn: Optional override for compile_scene.
+
+    Returns:
+        One ``QuestRecord`` per room theme (same order).  An exception
+        for one theme lands in that record's ``error`` field and the
+        loop continues.
+    """
+    if plan_quest is None:
+        from behaviour_gen import QuestBehaviourPlanner
+        _planner = QuestBehaviourPlanner()
+        plan_quest = _planner.plan
+    if compile_scene_fn is None:
+        from scene_compiler import compile_scene as _compile_scene
+        compile_scene_fn = _compile_scene
+
+    try:
+        from decisions import to_dict as _decision_to_dict
+        _serialize_decision = _decision_to_dict
+    except ImportError:
+        _serialize_decision = lambda d: {"repr": repr(d)}
+
+    records: List[QuestRecord] = []
+    for idx, theme in enumerate(room_themes):
+        t0 = time.perf_counter()
+        record = QuestRecord(
+            room_theme=theme,
+            quest_spec=None,
+            decisions=[],
+            compiled=False,
+            scene_path=None,
+            manifest=manifest,
+            error=None,
+            seconds=0.0,
+        )
+
+        try:
+            spec, decisions = plan_quest(theme, manifest, llm)
+            record.quest_spec = spec
+            record.decisions = [_serialize_decision(d) for d in decisions]
+
+            scene_path = str(Path(scene_output_dir) / f"quest_{idx}.tscn")
+            compile_scene_fn(spec, manifest, scene_path)
+            record.compiled = True
+            record.scene_path = scene_path
+
+        except Exception as exc:
             record.error = repr(exc)
 
         record.seconds = time.perf_counter() - t0

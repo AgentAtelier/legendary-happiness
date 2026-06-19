@@ -378,3 +378,280 @@ def augment_corpus(
         out.write_text("\n".join(valid) + "\n", encoding="utf-8")
 
     return valid, stats
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  P6: fetch-quest corpus augmentation (room-themed prompts)
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Room-themed lexicons ────────────────────────────────────────
+
+_NPC_ROLES: List[str] = [
+    "hermit", "blacksmith", "wizard", "innkeeper", "alchemist",
+    "shopkeeper", "tinker", "woodcutter", "sage", "miner",
+    "fisherman", "potter", "weaver", "carpenter", "hunter",
+]
+
+_ROOM_TYPES: List[str] = [
+    "shack", "study", "workshop", "back room", "chamber", "hut",
+    "cellar", "attic", "cabin", "forge", "laboratory", "storeroom",
+    "cottage", "den", "loft",
+]
+
+_ROOM_MOODS: List[str] = [
+    "cluttered", "dusty", "dim", "cozy", "worn", "ancient",
+    "cramped", "forgotten", "shadowy", "musty",
+]
+
+_FURNITURE_ITEMS: List[str] = [
+    "worn furniture", "wooden shelves", "old tables", "scattered chairs",
+    "a heavy cabinet", "stacked crates", "dusty bookshelves",
+    "a rickety table", "iron-bound chests", "a potion-stained workbench",
+    "towering bookcases", "a weathered desk", "stone-topped counters",
+]
+
+# ── Room prompt templates ───────────────────────────────────────
+
+_QUEST_SYSTEMATIC_TEMPLATES: List[str] = [
+    "a {role}'s {room}",
+    "a {mood} {room} with {furniture}",
+    "a {role}'s {room} with {furniture}",
+    "a {mood} {role}'s {room}",
+    "a {role}'s {mood} {room} with {furniture}",
+]
+
+_QUEST_ADVERSARIAL_TEMPLATES: List[str] = [
+    # Empty room
+    "an empty {room}",
+    # Ambiguous / underspecified
+    "a room",
+    "a {mood} room with something in it",
+    # Minimal
+    "a {room}",
+]
+
+
+# ── Quest-slot combo generation ─────────────────────────────────
+
+def _quest_slot_combos(rng: random.Random) -> List[dict]:
+    """Generate slot-fill dicts from room-themed lexicons."""
+    combos: List[dict] = []
+
+    for role in _NPC_ROLES:
+        for room in _ROOM_TYPES:
+            # Base: role + room
+            combos.append({"role": role, "room": room})
+            # With mood
+            for mood in rng.sample(_ROOM_MOODS, min(3, len(_ROOM_MOODS))):
+                combos.append({"role": role, "room": room, "mood": mood})
+            # With furniture
+            for furn in rng.sample(_FURNITURE_ITEMS, min(2, len(_FURNITURE_ITEMS))):
+                combos.append({"role": role, "room": room, "furniture": furn})
+                # With mood + furniture
+                for mood in rng.sample(_ROOM_MOODS, min(2, len(_ROOM_MOODS))):
+                    combos.append({
+                        "role": role, "room": room,
+                        "mood": mood, "furniture": furn,
+                    })
+
+    return combos
+
+
+def _quest_adversarial_combos(rng: random.Random) -> List[dict]:
+    """Generate adversarial quest combos."""
+    combos: List[dict] = []
+
+    for room in rng.sample(_ROOM_TYPES, min(6, len(_ROOM_TYPES))):
+        combos.append({"room": room})
+        for mood in rng.sample(_ROOM_MOODS, min(3, len(_ROOM_MOODS))):
+            combos.append({"room": room, "mood": mood})
+
+    return combos
+
+
+# ── Quest validity filter (stub for tests) ──────────────────────
+
+def _stub_quest_llm():
+    """A stub LLM that returns a valid quest spec JSON.
+
+    Used by the validity filter so augment_quest_corpus is fully
+    deterministic when no live LLM is injected.
+    """
+    import json as _json
+    spec = _json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "shelf_0",
+        "dialogue": {
+            "greet": "Ah, a visitor! Welcome.",
+            "ask": "Find my lost book on the shelf.",
+            "wrong": "No, that is not my book.",
+            "thank": "You found it! Thank you.",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "shelf_0",
+            "giver": "npc",
+        },
+    })
+
+    def _stub(prompt: str, grammar) -> str:
+        return spec
+
+    return _stub
+
+
+def _quest_is_valid(room_theme: str, manifest: list[dict], llm=None) -> bool:
+    """Return True if *room_theme* produces a valid quest spec.
+
+    Runs QuestBehaviourPlanner.plan() + compile_scene() in a temp dir.
+    Uses a FAKE llm by default (deterministic).
+    """
+    if llm is None:
+        llm = _stub_quest_llm()
+    try:
+        import tempfile
+        from behaviour_gen import QuestBehaviourPlanner
+        from scene_compiler import compile_scene
+
+        planner = QuestBehaviourPlanner()
+        spec, _decisions = planner.plan(room_theme, manifest, llm)
+        with tempfile.TemporaryDirectory() as td:
+            compile_scene(spec, manifest, f"{td}/test.tscn")
+        return True
+    except Exception:
+        return False
+
+
+def _quest_fires_decision(room_theme: str, manifest: list[dict], llm=None) -> bool:
+    """Return True if *room_theme* causes QuestBehaviourPlanner to emit
+    at least one Decision Point."""
+    if llm is None:
+        llm = _stub_quest_llm()
+    try:
+        from behaviour_gen import QuestBehaviourPlanner
+        planner = QuestBehaviourPlanner()
+        _spec, decisions = planner.plan(room_theme, manifest, llm)
+        return len(decisions) > 0
+    except Exception:
+        return False
+
+
+# ── Public entry point (quest) ──────────────────────────────────
+
+def augment_quest_corpus(
+    out_path: str,
+    *,
+    manifest: list[dict],
+    target: int = 60,
+    seed: int = 1337,
+    dry_run: bool = False,
+    llm: Optional[Callable] = None,
+    paraphrase: Optional[Callable] = None,
+) -> Tuple[List[str], dict]:
+    """Generate a fetch-quest corpus via room-themed slot-filling.
+
+    Produces room prompts (like "a hermit's shack", "a dusty workshop
+    with old tables") that are test cases for the full quest pipeline
+    (asset-gen → quest-spec → scene-compile).
+
+    Args:
+        out_path: Where to write the .txt corpus (ignored when dry_run=True).
+        manifest: A placed-entity manifest (list of dicts with id, category,
+                  material, x/y/z).  Shared by all generated prompts — the
+                  prompts describe the ROOM, not individual props.
+        target: Maximum number of requests to produce (default 60).
+        seed: RNG seed for reproducibility.
+        dry_run: When True, print stats but don't write.
+        llm: Injectable LLM for the quest validity filter.
+        paraphrase: Injectable paraphraser — defaults to _fake_paraphrase.
+
+    Returns:
+        ``(room_themes, stats_dict)``.
+    """
+    rng = random.Random(seed)
+    if paraphrase is None:
+        paraphrase = _fake_paraphrase
+
+    # 1. Generate systematic quest combos
+    slot_combos = _quest_slot_combos(rng)
+    rng.shuffle(slot_combos)
+
+    # 2. Generate adversarial quest combos
+    adv_combos = _quest_adversarial_combos(rng)
+
+    # 3. Fill templates → raw room themes
+    raw_themes: List[str] = []
+
+    for combo in slot_combos:
+        tmpl = rng.choice(_QUEST_SYSTEMATIC_TEMPLATES)
+        try:
+            raw_themes.append(paraphrase(tmpl, **combo))
+        except KeyError:
+            continue
+
+    adv_themes: List[str] = []
+    for combo in adv_combos:
+        tmpl = rng.choice(_QUEST_ADVERSARIAL_TEMPLATES)
+        try:
+            adv_themes.append(paraphrase(tmpl, **combo))
+        except KeyError:
+            continue
+
+    # 4. Dedup
+    seen: Set[str] = set()
+    unique: List[str] = []
+    for req in adv_themes + raw_themes:
+        key = _request_key(req)
+        if key not in seen:
+            seen.add(key)
+            unique.append(req)
+
+    dedup_rate = 1.0 - (len(unique) / max(len(adv_themes) + len(raw_themes), 1))
+
+    # 5. Quest validity filter
+    valid: List[str] = []
+    rejected: int = 0
+    for req in unique:
+        if _quest_is_valid(req, manifest, llm):
+            valid.append(req)
+        else:
+            rejected += 1
+
+    # 6. Cap to target
+    if len(valid) > target:
+        valid = valid[:target]
+
+    # 7. Count decision firers
+    decision_firers: int = 0
+    for req in valid:
+        if _quest_fires_decision(req, manifest, llm):
+            decision_firers += 1
+
+    # 8. Compute stats
+    role_counts: Dict[str, int] = {}
+    for req in valid:
+        for role in _NPC_ROLES:
+            if role in req.lower():
+                role_counts[role] = role_counts.get(role, 0) + 1
+                break
+
+    stats = {
+        "target": target,
+        "seed": seed,
+        "raw_generated": len(raw_themes) + len(adv_themes),
+        "unique_after_dedup": len(unique),
+        "dedup_rate": round(dedup_rate, 4),
+        "valid": len(valid),
+        "rejected_by_validity": rejected,
+        "decision_firers": decision_firers,
+        "adversarial_count": len(adv_themes),
+        "role_counts": role_counts,
+    }
+
+    # 9. Output
+    if not dry_run:
+        out = Path(out_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text("\n".join(valid) + "\n", encoding="utf-8")
+
+    return valid, stats

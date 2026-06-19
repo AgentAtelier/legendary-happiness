@@ -231,3 +231,168 @@ def test_request_key_same_for_normalized_duplicate():
     assert _request_key("A Table") == _request_key("a table")
     assert _request_key("a table, old") == _request_key("A TABLE OLD")
     assert _request_key("a table") != _request_key("a chair")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  P6: augment_quest_corpus — fetch-quest corpus generation
+# ═══════════════════════════════════════════════════════════════════════
+
+_QUEST_MANIFEST = [
+    {"id": "table_0", "category": "table", "material": "worn_oak",
+     "x": 1.0, "y": 0.0, "z": -1.5},
+    {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+     "x": -2.0, "y": 0.0, "z": -3.0},
+    {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron",
+     "x": 2.5, "y": 0.0, "z": -2.0},
+]
+
+
+def test_augment_quest_corpus_dedup(tmp_path):
+    """The quest corpus is dedup'd — no duplicate normalized room themes."""
+    from eval.augment import augment_quest_corpus, _request_key
+    out = tmp_path / "quest_corpus.txt"
+
+    themes, stats = augment_quest_corpus(
+        str(out),
+        manifest=_QUEST_MANIFEST,
+        target=30,
+        seed=42,
+    )
+
+    keys = [_request_key(t) for t in themes]
+    assert len(keys) == len(set(keys)), (
+        f"duplicate keys: {len(keys)} vs {len(set(keys))}"
+    )
+    assert stats["dedup_rate"] >= 0, "dedup_rate should be non-negative"
+
+
+def test_augment_quest_corpus_output_capped(tmp_path):
+    """Output size never exceeds --target."""
+    from eval.augment import augment_quest_corpus
+    out = tmp_path / "quest_corpus.txt"
+
+    for target in [10, 30, 60]:
+        themes, stats = augment_quest_corpus(
+            str(out),
+            manifest=_QUEST_MANIFEST,
+            target=target,
+            seed=42,
+        )
+        assert len(themes) <= target, (
+            f"expected <= {target} but got {len(themes)}"
+        )
+        assert stats["valid"] <= target
+
+
+def test_augment_quest_corpus_adversarial_included(tmp_path):
+    """Adversarial quest prompts are prepended to the output."""
+    from eval.augment import augment_quest_corpus
+    out = tmp_path / "quest_corpus.txt"
+
+    themes, stats = augment_quest_corpus(
+        str(out),
+        manifest=_QUEST_MANIFEST,
+        target=60,
+        seed=42,
+    )
+
+    assert stats["adversarial_count"] > 0
+    assert len(themes) > 0
+
+
+def test_augment_quest_corpus_role_coverage(tmp_path):
+    """Generated corpus covers multiple NPC roles."""
+    from eval.augment import augment_quest_corpus
+    out = tmp_path / "quest_corpus.txt"
+
+    themes, stats = augment_quest_corpus(
+        str(out),
+        manifest=_QUEST_MANIFEST,
+        target=60,
+        seed=42,
+    )
+
+    rc = stats["role_counts"]
+    assert len(rc) >= 6, (
+        f"expected at least 6 roles represented, got {rc}"
+    )
+
+
+def test_augment_quest_corpus_dry_run(tmp_path):
+    """--dry-run prints stats but doesn't write the output file."""
+    from eval.augment import augment_quest_corpus
+    out = tmp_path / "quest_corpus.txt"
+
+    themes, stats = augment_quest_corpus(
+        str(out),
+        manifest=_QUEST_MANIFEST,
+        target=20,
+        seed=42,
+        dry_run=True,
+    )
+
+    assert not out.exists(), f"dry-run should not write {out}"
+    assert stats["valid"] > 0
+    assert len(themes) > 0
+
+
+def test_augment_quest_corpus_determinism(tmp_path):
+    """Same seed + same params → same output."""
+    from eval.augment import augment_quest_corpus
+    out1 = tmp_path / "corpus1.txt"
+    out2 = tmp_path / "corpus2.txt"
+
+    r1, s1 = augment_quest_corpus(
+        str(out1), manifest=_QUEST_MANIFEST, target=20, seed=42,
+    )
+    r2, s2 = augment_quest_corpus(
+        str(out2), manifest=_QUEST_MANIFEST, target=20, seed=42,
+    )
+
+    assert r1 == r2, f"request lists differ: {len(r1)} vs {len(r2)}"
+    assert s1 == s2
+
+
+def test_augment_quest_corpus_stats_keys(tmp_path):
+    """Stats dict has expected keys."""
+    from eval.augment import augment_quest_corpus
+    out = tmp_path / "quest_corpus.txt"
+
+    _themes, stats = augment_quest_corpus(
+        str(out),
+        manifest=_QUEST_MANIFEST,
+        target=10,
+        seed=42,
+    )
+
+    expected_keys = {
+        "target", "seed", "raw_generated", "unique_after_dedup",
+        "dedup_rate", "valid", "rejected_by_validity",
+        "decision_firers", "adversarial_count", "role_counts",
+    }
+    for key in expected_keys:
+        assert key in stats, f"missing key: {key}"
+
+
+def test_augment_quest_corpus_room_themes_have_expected_format(tmp_path):
+    """Generated themes are natural-language room descriptions."""
+    from eval.augment import augment_quest_corpus, _NPC_ROLES, _ROOM_TYPES
+    out = tmp_path / "quest_corpus.txt"
+
+    themes, _stats = augment_quest_corpus(
+        str(out),
+        manifest=_QUEST_MANIFEST,
+        target=30,
+        seed=42,
+    )
+
+    # At least one theme should contain a known role
+    has_role = any(
+        any(role in t.lower() for role in _NPC_ROLES)
+        for t in themes
+    )
+    assert has_role, f"no themes reference known NPC roles: {themes[:5]}"
+
+    # Themes are non-empty strings
+    for t in themes:
+        assert isinstance(t, str) and len(t) > 0

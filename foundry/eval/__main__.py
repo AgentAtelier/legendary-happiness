@@ -53,6 +53,46 @@ def _cmd_augment(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_augment_quest(args: argparse.Namespace) -> int:
+    """Generate a fetch-quest corpus — room-themed prompts for the full
+    quest pipeline (P6)."""
+    from eval.augment import augment_quest_corpus, _NPC_ROLES
+
+    print(f"[augment-quest] target={args.target}  seed={args.seed}  "
+          f"dry_run={args.dry_run}")
+
+    # Build a default manifest from the existing test fixture so the CLI
+    # works standalone without a live asset-gen run.
+    manifest = [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "x": 1.0, "y": 0.0, "z": -1.5},
+        {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+         "x": -2.0, "y": 0.0, "z": -3.0},
+        {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron",
+         "x": 2.5, "y": 0.0, "z": -2.0},
+        {"id": "table_1", "category": "table", "material": "worn_oak",
+         "x": -1.0, "y": 0.0, "z": -0.5},
+    ]
+
+    requests, stats = augment_quest_corpus(
+        args.out_file,
+        manifest=manifest,
+        target=args.target,
+        seed=args.seed,
+        dry_run=args.dry_run,
+    )
+
+    print(f"[augment-quest] generated {stats['raw_generated']} raw, "
+          f"{stats['unique_after_dedup']} unique, "
+          f"{stats['valid']} valid ({stats['rejected_by_validity']} rejected)")
+    print(f"[augment-quest] decision firers: {stats['decision_firers']}")
+    print(f"[augment-quest] dedup rate: {stats['dedup_rate']:.1%}")
+    print(f"[augment-quest] role coverage: {len(stats['role_counts'])}/{len(_NPC_ROLES)} roles")
+    if not args.dry_run:
+        print(f"[augment-quest] wrote {args.out_file}")
+    return 0
+
+
 def _cmd_stability(args: argparse.Namespace) -> int:
     from eval.report import load_corpus
     from eval.stability import run_stability, build_report_dict, build_report_md
@@ -300,6 +340,18 @@ def _build_parser() -> argparse.ArgumentParser:
     aug.add_argument("--dry-run", action="store_true",
                      help="print stats without writing")
     aug.set_defaults(func=_cmd_augment)
+
+    aug_quest = sub.add_parser("augment-quest",
+                               help="generate fetch-quest corpus (room-themed prompts)")
+    aug_quest.add_argument("out_file",
+                           help="path to write the quest corpus .txt")
+    aug_quest.add_argument("--target", type=int, default=60,
+                           help="max room themes to produce (default 60)")
+    aug_quest.add_argument("--seed", type=int, default=1337,
+                           help="RNG seed (default 1337)")
+    aug_quest.add_argument("--dry-run", action="store_true",
+                           help="print stats without writing")
+    aug_quest.set_defaults(func=_cmd_augment_quest)
 
     return p
 
