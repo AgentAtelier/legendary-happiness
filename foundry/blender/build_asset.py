@@ -102,6 +102,70 @@ def _build_chair_geometry(params):
     return mesh
 
 
+def _stone_color_nodes(nodes, links, mat_info, seed):
+    """Build a stone-specific colour subgraph: object-space coords with
+    Voronoi+Noise → 3-stop ColorRamp for mottled-grey granite look.
+
+    Returns the ColorRamp's Color output socket."""
+    base = mat_info["base_rgb"]
+    mottle = mat_info["mottle_rgb"]
+
+    # Object-space coordinate chain (same as wood for shared grounding)
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    tex_coord.location = (-1000, 300)
+
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = (-800, 300)
+    mapping.vector_type = "TEXTURE"
+    mapping.inputs["Scale"].default_value = (2.0, 2.0, 2.0)
+    mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+
+    # ── Voronoi for stone mottling ───────────────────────────
+    voronoi = nodes.new("ShaderNodeTexVoronoi")
+    voronoi.location = (-600, 300)
+    voronoi.inputs["Scale"].default_value = 8.0
+
+    # ── Noise overlay for secondary variation ────────────────
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.location = (-600, 0)
+    noise.inputs["Scale"].default_value = 12.0
+    noise.inputs["Detail"].default_value = 4.0
+    noise.inputs["Roughness"].default_value = 0.6
+
+    # Mix Voronoi + Noise 50/50 for a composite fac
+    mix_textures = nodes.new("ShaderNodeMixRGB")
+    mix_textures.blend_type = "MIX"
+    mix_textures.location = (-300, 300)
+    mix_textures.inputs["Fac"].default_value = 0.5
+
+    # ── Wire the coordinate chain ────────────────────────────
+    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], voronoi.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], noise.inputs["Vector"])
+    links.new(voronoi.outputs["Color"], mix_textures.inputs["Color1"])
+    links.new(noise.outputs["Color"], mix_textures.inputs["Color2"])
+
+    # ColorRamp: 3-stop mottled-grey → base → mottle → base
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.location = (200, 300)
+    ramp.color_ramp.interpolation = "LINEAR"
+    stops = ramp.color_ramp.elements
+    stops[0].position = 0.0
+    stops[0].color = (*base, 1.0)
+    stops[1].position = 0.5
+    stops[1].color = (*mottle, 1.0)
+    s2 = stops.new(1.0)
+    s2.color = (*base, 1.0)
+
+    # Wire mix → ramp (using combined texture colour as fac)
+    # Convert colour to greyscale fac via luminance proxy: use Fac of mix
+    # We'll use the voronoi Fac output as a single-channel driver.
+    # Actually, wire the voronoi Fac as the ramp driver (single channel).
+    links.new(voronoi.outputs["Fac"], ramp.inputs["Fac"])
+
+    return ramp.outputs["Color"]
+
+
 def _wood_color_nodes(nodes, links, mat_info, seed):
     """Build the wood-specific colour subgraph: object-space coords with
     noise warp → Wave Texture (bands) → CONSTANT ColorRamp of wood tones.
@@ -180,7 +244,10 @@ _BUILDERS = {
     "chair": _build_chair_geometry,
 }
 
-_COLOR_BUILDERS = {"wood": _wood_color_nodes}
+_COLOR_BUILDERS = {
+    "wood": _wood_color_nodes,
+    "stone": _stone_color_nodes,
+}
 
 
 def build_geometry(spec):

@@ -467,6 +467,27 @@ def test_plan_chair_missing_params_filled():
     compile_spec(spec)
 
 
+def _fake_llm_rough_granite(prompt: str, grammar: str | None) -> str:
+    """Fake LLM returning a spec with material=rough_granite."""
+    return json.dumps({
+        "asset_id": "table",
+        "generator": "table",
+        "material": "rough_granite",
+        "params": {
+            "top_width": 1.5, "top_depth": 0.8, "top_thickness": 0.06,
+            "leg_height": 0.65, "leg_radius": 0.05, "leg_inset": 0.1,
+        },
+    })
+
+
+def test_plan_with_rough_granite_material():
+    """plan() preserves rough_granite from the LLM."""
+    planner = AssetPlanner()
+    spec = planner.plan("a granite table", _fake_llm_rough_granite)
+    assert spec["material"] == "rough_granite"
+    compile_spec(spec)
+
+
 def test_plan_live_chair_produces_buildable_spec():
     """Integration: real LLM produces a chair spec from 'a simple wooden chair'."""
     if not _llama_server_reachable():

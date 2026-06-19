@@ -115,3 +115,12 @@ def test_chair_missing_param_rejected():
     s = _chair_spec(); del s["params"]["back_height"]
     with pytest.raises(SpecError):
         compile_spec(s)
+
+
+# ── Slice 10: stone + metal materials ────────────────────────────
+
+def test_rough_granite_compiles():
+    """rough_granite is a valid material."""
+    s = _spec(); s["material"] = "rough_granite"
+    out = compile_spec(s)
+    assert out["material"] == "rough_granite"

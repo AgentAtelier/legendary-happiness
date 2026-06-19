@@ -23,4 +23,11 @@ MATERIAL_PALETTE = {
         "grain_dark_rgb": (0.45, 0.38, 0.28),
         "roughness": 0.75,
     },
+    "rough_granite": {
+        "family": "stone",
+        "base_rgb": (0.45, 0.45, 0.47),
+        "mottle_rgb": (0.30, 0.30, 0.32),
+        "roughness": 0.85,
+        "metallic": 0.0,
+    },
 }

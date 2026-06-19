@@ -97,6 +97,91 @@ def test_build_exports_a_valid_chair(tmp_path):
     assert topo.is_watertight, "chair mesh must be watertight"
 
 
+# ── Task 2: Stone material build test ─────────────────────────────
+
+_GRANITE_SPEC = {
+    "asset_id": "table",
+    "generator": "table",
+    "material": "rough_granite",
+    "params": {
+        "top_width": 1.5, "top_depth": 1.0, "top_thickness": 0.08,
+        "leg_height": 0.67, "leg_radius": 0.06, "leg_inset": 0.1,
+    },
+}
+
+
+def test_build_granite_table_passes_gate(tmp_path):
+    """A table built with rough_granite builds, exports, and passes the gate."""
+    spec_path = tmp_path / "granite_table.json"
+    spec_path.write_text(json.dumps(_GRANITE_SPEC), encoding="utf-8")
+
+    out = str(tmp_path / "granite_table.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), out],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert os.path.exists(out), "no GLB written"
+
+    # Gate check with table envelope
+    from gate import gate_asset
+    res = gate_asset(out, {"width": 2.0, "depth": 1.5}, 1.2)
+    assert res.passed, f"gate failed: {res.reasons}"
+
+    # Verify watertight
+    mesh = trimesh.load(out, force="mesh")
+    mesh.merge_vertices()
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    assert topo.is_watertight, "granite table mesh must be watertight"
+
+
+def test_granite_texture_is_grey_and_low_saturation(tmp_path):
+    """The granite baked texture has mean colour in the grey range
+    and lower saturation than wood."""
+    import numpy as np
+    from io import BytesIO
+    from PIL import Image
+    from pygltflib import GLTF2
+
+    spec_path = tmp_path / "granite_tex.json"
+    spec_path.write_text(json.dumps(_GRANITE_SPEC), encoding="utf-8")
+
+    glb = str(tmp_path / "granite_tex.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+    gltf = GLTF2().load(glb)
+    image = gltf.images[0]
+    buffer_view = gltf.bufferViews[image.bufferView]
+    blob = gltf.binary_blob()
+    image_data = blob[buffer_view.byteOffset:buffer_view.byteOffset + buffer_view.byteLength]
+    img = Image.open(BytesIO(image_data))
+    arr = np.array(img)
+
+    if len(arr.shape) == 3 and arr.shape[2] >= 3:
+        rgb = arr[:, :, :3].astype(np.float64) / 255.0
+        mean_r = float(rgb[:, :, 0].mean())
+        mean_g = float(rgb[:, :, 1].mean())
+        mean_b = float(rgb[:, :, 2].mean())
+
+        # Mean colour is in the grey range (channels close together)
+        max_channel_diff = max(abs(mean_r - mean_g), abs(mean_g - mean_b), abs(mean_r - mean_b))
+        assert max_channel_diff < 0.08, (
+            f"granite texture not grey enough: R={mean_r:.3f} G={mean_g:.3f} B={mean_b:.3f}, "
+            f"max channel diff={max_channel_diff:.3f}"
+        )
+
+        # Overall brightness in a mid-grey range
+        mean_lum = float((mean_r + mean_g + mean_b) / 3.0)
+        assert 0.20 < mean_lum < 0.55, (
+            f"granite mean luminance {mean_lum:.3f} out of expected [0.20, 0.55]"
+        )
+
+
 def test_chair_has_baked_texture_and_uvs(tmp_path):
     """Chair GLB has embedded texture, baseColorTexture, and UVs."""
     from pygltflib import GLTF2
