@@ -65,7 +65,7 @@ def _godot_available() -> bool:
     return os.path.exists(_GODOT_BIN) and os.path.isdir(_RPG_PROJECT_DIR)
 
 
-def _compile_and_probe(quest_spec, manifest, tmp_dir: str) -> dict:
+def _compile_and_probe(quest_spec, manifest, tmp_dir: str, probe_script: str = "probe_smoke.gd") -> dict:
     """Compile a scene, run the Godot probe, return the parsed JSON result."""
     scene_path = str(Path(tmp_dir) / "smoke_test.tscn")
     compile_scene(quest_spec, manifest, scene_path, assets_subdir="assets")
@@ -75,7 +75,7 @@ def _compile_and_probe(quest_spec, manifest, tmp_dir: str) -> dict:
     cmd = [
         _GODOT_BIN, "--headless",
         "--path", _RPG_PROJECT_DIR,
-        "-s", "probe_smoke.gd",
+        "-s", probe_script,
         scene_path,
     ]
 
@@ -211,4 +211,36 @@ def test_target_reachable_by_raycast():
         f"Expected target prop to be reachable by raycast\n"
         f"Checks: {result.get('checks', [])}\n"
         f"Stderr: {result.get('_stderr', '')}"
+    )
+
+
+# ── FIX-4: Scripted playthrough ──────────────────────────────────────
+
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found at /usr/bin/godot or rpg project missing")
+def test_scripted_playthrough_talk_right_win():
+    """FIX-4: Scripted playthrough — talk → pickup → deliver → win.
+
+    Simulates the interaction flow: talk to NPC (get quest), pick up
+    the target prop, talk to NPC again (deliver item).  Asserts the
+    WinScreen becomes visible after successful delivery.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        result = _compile_and_probe(
+            _SYNTHETIC_QUEST_SPEC, _SYNTHETIC_MANIFEST, td,
+            probe_script="probe_playthrough.gd",
+        )
+
+    checks = result.get("checks", [])
+    win_visible = result.get("win_visible", False)
+    npc_state = result.get("npc_state", "?")
+
+    assert win_visible, (
+        f"Expected WinScreen to be visible after quest completion\n"
+        f"win_visible={win_visible}  npc_state={npc_state}\n"
+        f"Checks: {checks}\n"
+        f"Stderr: {result.get('_stderr', '')}"
+    )
+    assert result.get("ok", False), (
+        f"Scripted playthrough should succeed (ok=true)\n"
+        f"Checks: {checks}"
     )

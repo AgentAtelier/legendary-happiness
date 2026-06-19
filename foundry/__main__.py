@@ -6,6 +6,9 @@
 Subcommands:
     publish <library_dir> <project_dir> <lexicon_path> [assets_subdir]
         Publish forged .glb assets into a Godot project.
+    quest --request "<prompt>" --scene <name> [--model <name>] [--port <port>]
+        Full prompt→scene entrypoint: behaviour-gen → compile_scene →
+        write .tscn + _quest_data.json to rpg/scenes/.
 """
 
 import sys
@@ -29,6 +32,9 @@ def main() -> int:
         # Shift argv so publish._main sees only its own args
         sys.argv = [sys.argv[0]] + sys.argv[2:]
         return publish_main()
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "quest":
+        return _cmd_quest(sys.argv[2:])
 
     if "--request" in sys.argv:
         # --request "<text>" <lexicon.json> <library_dir>
@@ -65,6 +71,115 @@ def main() -> int:
     for reason in result.gate.reasons:
         print(f"  - {reason}")
     return 0 if result.gate.passed else 1
+
+
+def _cmd_quest(args: list[str]) -> int:
+    """Handle ``quest`` subcommand.
+
+    Usage::
+        python -m foundry quest --request "<prompt>" --scene <name>
+            [--model <name>] [--port <port>]
+            [--lexicon <path>]
+            [--rpg-dir <path>]
+
+    Runs the full prompt→scene path:
+        1. QuestBehaviourPlanner generates a quest spec from the prompt
+           + a default placed-entity manifest.
+        2. compile_scene writes the .tscn + _quest_data.json to
+           <rpg-dir>/scenes/<name>.tscn.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="python -m foundry quest",
+        description="Generate a playable fetch-quest scene from a room prompt.",
+    )
+    parser.add_argument(
+        "--request", required=True,
+        help="Room prompt (e.g. 'a hermit's shack with worn furniture')"
+    )
+    parser.add_argument(
+        "--scene", required=True,
+        help="Output scene name (written to rpg/scenes/<name>.tscn)"
+    )
+    parser.add_argument(
+        "--model", default=None,
+        help="LLM model name for the behaviour-gen call (default: from env)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=None,
+        help="LLM server port (default: 8002)"
+    )
+    parser.add_argument(
+        "--lexicon",
+        default="engine/devforge/spatial/asset_lexicon.json",
+        help="Path to asset lexicon JSON"
+    )
+    parser.add_argument(
+        "--rpg-dir",
+        default="/home/mrg/dev/games/rpg",
+        help="Path to rpg Godot project"
+    )
+    parsed = parser.parse_args(args)
+
+    # ── Default manifest (shared across all quest prompts) ────
+    manifest = [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 1.5, "y": 0.0, "z": -2.0},
+        {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+         "wear": 0.3, "x": -2.0, "y": 0.0, "z": -3.0},
+        {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron",
+         "wear": 0.7, "x": 2.5, "y": 0.0, "z": -1.5},
+        {"id": "table_1", "category": "table", "material": "worn_oak",
+         "wear": 0.2, "x": -1.0, "y": 0.0, "z": -1.0},
+    ]
+
+    # ── Build the LLM ─────────────────────────────────────────
+    from llm import FoundryLLM
+    llm_kwargs = {}
+    if parsed.model:
+        llm_kwargs["model"] = parsed.model
+    if parsed.port:
+        llm_kwargs["port"] = parsed.port
+    llm = FoundryLLM(**llm_kwargs)
+
+    # ── Step 1: Behaviour-gen ─────────────────────────────────
+    from behaviour_gen import QuestBehaviourPlanner
+    planner = QuestBehaviourPlanner()
+
+    print(f"[quest] Planning quest for: {parsed.request!r}")
+    spec, decisions = planner.plan(parsed.request, manifest, llm)
+
+    target = spec.get("target_entity", "?")
+    npc_role = spec.get("npc_role", "villager")
+    print(f"[quest] NPC role: {npc_role}")
+    print(f"[quest] Target entity: {target}")
+    print(f"[quest] Dialogue:")
+    dialogue = spec.get("dialogue", {})
+    for key in ("greet", "ask", "wrong", "thank"):
+        print(f"  {key}: {dialogue.get(key, '')}")
+
+    # ── Step 2: Compile scene ─────────────────────────────────
+    from scene_compiler import compile_scene
+    scene_path = str(
+        Path(parsed.rpg_dir) / "scenes" / f"{parsed.scene}.tscn"
+    )
+    compile_scene(spec, manifest, scene_path)
+    print(f"[quest] Scene compiled: {scene_path}")
+
+    # Show quest data path
+    data_path = str(
+        Path(parsed.rpg_dir) / "scenes" / f"{parsed.scene}_quest_data.json"
+    )
+    print(f"[quest] Quest data: {data_path}")
+
+    # ── Surface any Decision Points ───────────────────────────
+    rendered = _render_decisions_cli(decisions)
+    if rendered.strip():
+        print(rendered)
+
+    print(f"[quest] Done. Scene ready at rpg/scenes/{parsed.scene}.tscn")
+    return 0
 
 
 sys.exit(main())
