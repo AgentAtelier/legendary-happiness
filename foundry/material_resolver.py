@@ -132,54 +132,97 @@ def resolve_material(request: str) -> Tuple[str, List[DecisionPoint]]:
 
     Outcomes:
         - specific keyword matched → confident, no decision
+          (unless competing-family cues exist → ``material.conflict``)
         - family keyword matched a SINGLE-member family → confident,
-          no decision
+          no decision (unless competing-family cues exist)
         - family keyword matched a MULTI-member family → emits
           ``material.family_defaulted`` (severity=assumption); resolved
           is the family default; choices are the OTHER members
         - no keyword matched → emits ``material.unspecified_defaulted``
           (severity=assumption); resolved is the global default;
           choices are ALL palette materials
+        - cues span more than one family → also emits
+          ``material.conflict`` (severity=ambiguous) with one Choice
+          per competing family's default material, so the user can
+          recover by switching families.
     """
+    resolved: str
+    decisions: List[DecisionPoint] = []
+
     # 1. Specific keywords win (most specific).
     for kw, mat_id in _SPECIFIC_KW.items():
         if _word_in(request, kw):
-            return mat_id, []
+            resolved = mat_id
+            break
+    else:
+        resolved = ""  # sentinel
 
-    # 2. Family keywords.
-    for kw, family in _FAMILY_KW.items():
-        if _word_in(request, kw):
-            members = _family_members(family)
-            if not members:
-                # Defensive: the family exists in the spec but somehow
-                # has no members in the palette. Fall through to default
-                # like an unmatched request.
+    # 2. Family keywords (only when no specific keyword matched).
+    if not resolved:
+        for kw, family in _FAMILY_KW.items():
+            if _word_in(request, kw):
+                members = _family_members(family)
+                if not members:
+                    break
+                default = members[0]
+                resolved = default
+                if len(members) > 1:
+                    others = [m for m in members if m != default]
+                    choices = tuple(_choice(m) for m in others)
+                    decisions.append(
+                        make_decision(
+                            code="material.family_defaulted",
+                            stage="planner",
+                            severity="assumption",
+                            context={"family": family, "resolved": default},
+                            choices=choices,
+                        )
+                    )
                 break
-            default = members[0]
-            if len(members) == 1:
-                return default, []
-            others = [m for m in members if m != default]
-            choices = tuple(_choice(m) for m in others)
-            return default, [
-                make_decision(
-                    code="material.family_defaulted",
-                    stage="planner",
-                    severity="assumption",
-                    context={"family": family, "resolved": default},
-                    choices=choices,
-                )
-            ]
 
     # 3. No match → global default + unspecified_defaulted.
-    resolved = _DEFAULT_MATERIAL
-    all_materials = list(MATERIAL_PALETTE.keys())
-    choices = tuple(_choice(m) for m in all_materials)
-    return resolved, [
-        make_decision(
-            code="material.unspecified_defaulted",
-            stage="planner",
-            severity="assumption",
-            context={"resolved": resolved},
-            choices=choices,
+    if not resolved:
+        resolved = _DEFAULT_MATERIAL
+        all_materials = list(MATERIAL_PALETTE.keys())
+        choices = tuple(_choice(m) for m in all_materials)
+        decisions.append(
+            make_decision(
+                code="material.unspecified_defaulted",
+                stage="planner",
+                severity="assumption",
+                context={"resolved": resolved},
+                choices=choices,
+            )
         )
-    ]
+
+    # 4. Multi-family conflict detection (NEW — prompt 2).
+    #    After the winner is chosen, check whether the request's
+    #    material cues span more than one family.  If so, emit a
+    #    recoverable material.conflict DecisionPoint so the user
+    #    can switch families.
+    cues = material_cues(request)
+    families = {fam for _, fam in cues}
+    if len(families) > 1:
+        winning_family = MATERIAL_PALETTE.get(resolved, {}).get("family", resolved)
+        competing_families = families - {winning_family}
+        if competing_families:
+            conflict_choices = []
+            for fam in sorted(competing_families):
+                members = _family_members(fam)
+                if members:
+                    conflict_choices.append(_choice(members[0]))
+            decisions.append(
+                make_decision(
+                    code="material.conflict",
+                    stage="planner",
+                    severity="ambiguous",
+                    context={
+                        "families": ", ".join(sorted(families)),
+                        "resolved": resolved,
+                        "cues": ", ".join(f"{kw}→{fam}" for kw, fam in cues),
+                    },
+                    choices=tuple(conflict_choices),
+                )
+            )
+
+    return resolved, decisions

@@ -80,6 +80,12 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "You mentioned both worn and new words — I went with aged ({resolved}). You can change it.",
     ),
+    "material.conflict": (
+        # technical
+        "conflicting material families detected: {families}; resolved to {resolved} (cues: {cues}).",
+        # plain
+        "Your request mentions {families} — I went with {resolved}. You can switch.",
+    ),
 }
 
 
