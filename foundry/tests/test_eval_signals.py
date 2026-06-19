@@ -444,3 +444,183 @@ def test_signals_material_conflict_two_specific_keywords_two_families():
     )
     tags = compute_signals(rec)
     assert "material_conflict" in tags
+
+
+# ── age_mismatch (slice 2) ────────────────────────────────────────
+# Age-appropriateness: deterministic wear lexicons split **at age 0.4**:
+#   - request has AGED word but spec age < 0.4          → age_mismatch
+#   - request has NEW  word but spec age >= 0.4         → age_mismatch
+#   - request has NO   wear word but spec age >= 0.4    → age_mismatch
+#
+# "vintage" is AGED — so "a vintage cabinet" at age 0.75 must NOT flag
+# (the live-run case that prompted the signal).
+
+
+def test_signals_age_mismatch_old_chair_at_low_age_fires():
+    """'an old chair' age=0.15 (AGER + low age) → age_mismatch."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="an old chair",
+        spec={
+            "asset_id": "chair", "generator": "chair", "material": "worn_oak",
+            "age": 0.15,
+            "params": {"seat_width": 0.45},
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" in tags
+
+
+def test_signals_age_mismatch_new_chair_at_high_age_fires():
+    """'a new chair' age=0.8 (NEW + high age) → age_mismatch."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a new chair",
+        spec={
+            "asset_id": "chair", "generator": "chair", "material": "worn_oak",
+            "age": 0.8,
+            "params": {"seat_width": 0.45},
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" in tags
+
+
+def test_signals_age_mismatch_vintage_cabinet_at_0_75_does_NOT_fire():
+    """Live-run case: vintage (AGED) at age 0.75 must NOT flag (consistent)."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a vintage cabinet",
+        spec={
+            "asset_id": "cabinet", "generator": "cabinet", "material": "worn_oak",
+            "age": 0.75,
+            "params": {
+                "width": 0.8, "depth": 0.5, "height": 1.3,
+                "panel_thickness": 0.04, "base_height": 0.08,
+            },
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" not in tags
+
+
+def test_signals_age_mismatch_old_chair_at_high_age_does_NOT_fire():
+    """'an old chair' age=0.85 → consistent (AGED + high age). No flag."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="an old chair",
+        spec={
+            "asset_id": "chair", "generator": "chair", "material": "worn_oak",
+            "age": 0.85,
+            "params": {"seat_width": 0.45},
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" not in tags
+
+
+def test_signals_age_mismatch_neutral_request_at_high_age_fires():
+    """No wear word in request, but spec age=0.7 ≥ 0.4 → age_mismatch
+    (regression guard for the few-shot age fix)."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a plain table",
+        spec={
+            "asset_id": "table", "generator": "table", "material": "worn_oak",
+            "age": 0.7,
+            "params": {
+                "top_width": 1.2, "top_depth": 0.8, "top_thickness": 0.06,
+                "leg_height": 0.65, "leg_radius": 0.05, "leg_inset": 0.1,
+            },
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" in tags
+
+
+def test_signals_age_mismatch_neutral_request_at_low_age_does_NOT_fire():
+    """Aged implied by low age when no wear word is present — that IS the
+    intent of the few-shot fix; a low age with neutral request is
+    consistent (no flag)."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a plain table",
+        spec=_table_spec_ok(age=0.15),
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" not in tags
+
+
+def test_signals_age_mismatch_brand_new_with_hyphen_at_high_age_fires():
+    """'brand-new' hyphen form — NEW at age=0.8 → age_mismatch."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a brand-new cabinet",
+        spec={
+            "asset_id": "cabinet", "generator": "cabinet", "material": "worn_oak",
+            "age": 0.8,
+            "params": {
+                "width": 0.8, "depth": 0.5, "height": 1.3,
+                "panel_thickness": 0.04, "base_height": 0.08,
+            },
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" in tags
+
+
+def test_signals_age_mismatch_brand_new_with_space_at_high_age_fires():
+    """'brand new' space form — same as hyphen form per spec."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a brand new cabinet",
+        spec={
+            "asset_id": "cabinet", "generator": "cabinet", "material": "worn_oak",
+            "age": 0.8,
+            "params": {
+                "width": 0.8, "depth": 0.5, "height": 1.3,
+                "panel_thickness": 0.04, "base_height": 0.08,
+            },
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" in tags
+
+
+def test_signals_age_mismatch_weathered_word_at_low_age_fires():
+    """'weathered' is AGED; 'weathered cabinet' age=0.2 → flag."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="a weathered cabinet",
+        spec={
+            "asset_id": "cabinet", "generator": "cabinet", "material": "worn_oak",
+            "age": 0.2,
+            "params": {
+                "width": 0.8, "depth": 0.5, "height": 1.3,
+                "panel_thickness": 0.04, "base_height": 0.08,
+            },
+        },
+        gate_passed=True,
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" in tags
+
+
+def test_signals_no_age_mismatch_without_spec():
+    """Wear word + no spec → no age_mismatch flag (nothing to compare)."""
+    from eval.signals import compute_signals
+    rec = _make_record(
+        request="an old chair",
+        spec=None,
+        error="planner crashed",
+    )
+    tags = compute_signals(rec)
+    assert "age_mismatch" not in tags

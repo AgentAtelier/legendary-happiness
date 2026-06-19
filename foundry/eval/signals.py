@@ -1,4 +1,4 @@
-"""foundry.eval.signals — objective signal layer (slice 1).
+"""foundry.eval.signals — objective signal layer.
 
 ``compute_signals(record)`` is a PURE function that returns a set of
 short, machine-readable tags describing the outcome of one RunRecord.
@@ -18,15 +18,27 @@ Rules (per spec):
                         request but spec["material"] disagrees (this
                         should never fire post-pre-pass; it's a
                         regression guard).
+    "material_conflict" (slice 2) - request's matched material cues span
+                        MORE THAN ONE distinct family (e.g. "stone-look
+                        wooden cabinet").  Same-family multi-cue (oak +
+                        walnut → both wood) does NOT fire.
+    "age_mismatch"    (slice 2) - request's wear intent (aged | new |
+                        neutral) disagrees with spec["age"] at the 0.4
+                        band split.  Specifically:
+                          AGED + age <  0.4  → mismatch
+                          NEW  + age >= 0.4  → mismatch
+                          neutral + age >= 0.4 → mismatch (the original
+                                                    high-lean regression
+                                                    guard for the few-shot
+                                                    age fix)
     "clean"           - the only tag set when none of the above apply.
 
 A record with multiple tags is normal: a build that errored AND would
 also be gated counts both.
 
-The ``size_mismatch_detail`` helper exposes the same logic in
-detail-returning form so the friction report can surface WHY a record
-was flagged (which word, which dimension, the value, the expected
-range, etc.).
+The ``size_mismatch_detail`` and ``age_mismatch_detail`` helpers
+expose the same logic in detail-returning form so the friction report
+can surface WHY a record was flagged.
 """
 
 from __future__ import annotations
@@ -82,6 +94,28 @@ _MATERIAL_KEYWORDS: tuple[tuple[str, str], ...] = (
 )
 
 
+# ── Wear lexicons (slice 2) ────────────────────────────────────────────
+# Deterministic, pre-LLM signal of the user's intent for THE AGE of the
+# asset.  Whole-word, case-insensitive match.  The split between AGED and
+# NEW is at age = 0.4: above is "weathered/old" by convention, below is
+# "fresh/new" by convention.
+#
+# NEW_WORDS contains both hyphen and space forms of "brand-new" — each
+# entry is matched with `\b` boundaries so the hyphen entry matches ONLY
+# the hyphen form and vice-versa.  This keeps the matcher a single
+# whole-word regex without per-phrase rules.
+AGED_WORDS: set[str] = {
+    "old", "aged", "ancient", "antique", "battered", "weathered",
+    "worn", "rustic", "vintage", "distressed",
+}
+NEW_WORDS: set[str] = {
+    "new", "brand-new", "brand new",
+    "pristine", "polished", "fresh", "mint", "unused",
+}
+
+_AGE_BAND_SPLIT = 0.4  # below = "fresh" intent, above = "weathered" intent
+
+
 def _has_word(text: str, kw: str) -> bool:
     """Whole-word case-insensitive match; hyphens are non-word boundaries
     so 'wrought-iron' still matches the keyword 'wrought'."""
@@ -114,6 +148,8 @@ def compute_signals(record) -> Set[str]:
             tags.add("size_mismatch")
         if _material_mismatch(record.request, record.spec):
             tags.add("material_mismatch")
+        if _age_mismatch(record.request, record.spec):
+            tags.add("age_mismatch")
 
     if not tags:
         tags.add("clean")
@@ -204,3 +240,78 @@ def _material_mismatch(request: str, spec: dict) -> bool:
         if _has_word(request or "", kw) and spec_material != expected:
             return True
     return False
+
+
+# ── Age-appropriateness (slice 2) ──────────────────────────────────────────
+#
+# The first live run couldn't measure whether the few-shot age-anchoring
+# fix had stuck for a given request; we had to hand-extract capture.jsonl
+# to learn it.  This signal closes that loop with deterministic rules:
+# classify the REQUEST's wear intent (aged | new | neutral) and compare
+# to the SPEC's ``age`` value at the 0.4 band split.
+
+
+def _wear_class_for(request: str) -> str:
+    """Return one of ``"aged"``, ``"new"``, ``"neutral"`` for *request*.
+
+    AGED wins over NEW when both fire (rare; the natural read is "the
+    wear word ages the new one").  Whole-word match via ``_has_word``.
+    ``NEW_WORDS`` contains both hyphen and space forms of "brand-new"
+    so each is matched under the same whole-word rule.
+    """
+    req = request or ""
+    for word in AGED_WORDS:
+        if _has_word(req, word):
+            return "aged"
+    for word in NEW_WORDS:
+        if _has_word(req, word):
+            return "new"
+    return "neutral"
+
+
+def _age_mismatch(request: str, spec: dict) -> bool:
+    """True when the request's wear-class disagrees with the spec's
+    ``age`` (band split at ``_AGE_BAND_SPLIT``); ALSO True when the
+    request has no wear word but ``age >= _AGE_BAND_SPLIT`` (the
+    regression guard for the few-shot age fix).
+
+    Rules:
+        - request AGED + age <  band  → mismatch
+        - request NEW  + age >= band  → mismatch
+        - request neutral + age >= band → mismatch (interpreted "weathered")
+        - request neutral + age <  band → OK (interpreted "fresh/new")
+    """
+    if not isinstance(spec, dict):
+        return False
+    age = spec.get("age")
+    if not isinstance(age, (int, float)):
+        return False
+    wear = _wear_class_for(request)
+    if wear == "aged":
+        return age < _AGE_BAND_SPLIT
+    if wear == "new":
+        return age >= _AGE_BAND_SPLIT
+    # wear == "neutral"
+    return age >= _AGE_BAND_SPLIT
+
+
+def age_mismatch_detail(request: str, spec: dict):
+    """Public, detail-returning twin of ``_age_mismatch`` so the friction
+    report can surface WHY a record was flagged (the wear class + age).
+
+    Returns ``None`` when there's no mismatch; otherwise a flat dict::
+
+        {
+            "wear_class": "aged" | "new" | "neutral",
+            "age":        <float>,
+        }
+    """
+    if not isinstance(spec, dict):
+        return None
+    age = spec.get("age")
+    if not isinstance(age, (int, float)):
+        return None
+    if not _age_mismatch(request, spec):
+        return None
+    wear = _wear_class_for(request)
+    return {"wear_class": wear, "age": float(age)}
