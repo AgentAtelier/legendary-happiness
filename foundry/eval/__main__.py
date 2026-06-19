@@ -36,6 +36,55 @@ if _foundry_dir not in sys.path:
 # ── Subcommand: `run <corpus> <lexicon> <out_dir> ────────────────────
 
 
+def _cmd_regression(args: argparse.Namespace) -> int:
+    from eval.report import load_corpus
+    from eval.regression import run_regression, build_report_dict, build_report_md
+
+    requests = load_corpus(args.corpus)
+    if not requests:
+        print(f"error: corpus {args.corpus!r} is empty (after skipping "
+              f"comments/blanks).", file=sys.stderr)
+        return 2
+
+    expectations_dir = args.expectations or str(Path(args.out_dir) / "expectations")
+
+    if args.live:
+        try:
+            from llm import FoundryLLM
+        except Exception as exc:
+            print(f"error: could not import FoundryLLM: {exc}", file=sys.stderr)
+            return 3
+        llm = FoundryLLM()
+    else:
+        llm = _stub_llm()
+
+    print(f"[regression] corpus={args.corpus}  requests={len(requests)}  "
+          f"expectations={expectations_dir}  update={args.update}")
+
+    results, score = run_regression(
+        requests,
+        expectations_dir,
+        llm=llm,
+        update=args.update,
+    )
+
+    report_dict = build_report_dict(results, score)
+    digest = build_report_md(report_dict)
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "report.json").write_text(
+        json.dumps(report_dict, indent=2) + "\n", encoding="utf-8"
+    )
+    (out_dir / "report.md").write_text(digest, encoding="utf-8")
+
+    print(f"[regression] score={score['score']:.1%}  "
+          f"hard_pass={score['hard_pass']}  hard_fail={score['hard_fail']}")
+    print(f"[regression] wrote {out_dir/'report.json'}")
+    print(f"[regression] wrote {out_dir/'report.md'}")
+    return 0
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     from eval.harness import run_corpus, records_to_jsonl
     from eval.signals import compute_signals
@@ -151,6 +200,17 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--library-dir", default="",
                      help="where forge writes .glb assets (default: <out_dir>/library)")
     run.set_defaults(func=_cmd_run)
+    reg = sub.add_parser("regression", help="compare planner output against golden expectations")
+    reg.add_argument("corpus", help="path to a corpus file (one request per line, '#' = comment)")
+    reg.add_argument("lexicon", help="path to the asset lexicon JSON (not used — consistency)")
+    reg.add_argument("out_dir", help="directory to write report.json and report.md")
+    reg.add_argument("--expectations", default=None,
+                     help="expectations directory (default: <out_dir>/expectations)")
+    reg.add_argument("--update", action="store_true",
+                     help="re-bless expectations from current planner output")
+    reg.add_argument("--live", action="store_true",
+                     help="use FoundryLLM (default: stub)")
+    reg.set_defaults(func=_cmd_regression)
     return p
 
 
