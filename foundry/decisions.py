@@ -104,6 +104,24 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "Every placement in zone '{zone}' uses {material} — consider variety.",
     ),
+    "quest.dangling_target": (
+        # technical
+        "target_entity {entity} not found in the placed-entity manifest.",
+        # plain
+        "The LLM picked an item ({entity}) that is not in the room.",
+    ),
+    "quest.dialogue_fallback": (
+        # technical
+        "dialogue field {field} failed validation (original: {original}); substituted canned line.",
+        # plain
+        "The model's '{field}' line was unusable, so I used a template instead.",
+    ),
+    "quest.no_eligible_target": (
+        # technical
+        "manifest has no eligible target props for a fetch quest.",
+        # plain
+        "The room has nothing to fetch — add a prop so there is something to find.",
+    ),
 }
 
 

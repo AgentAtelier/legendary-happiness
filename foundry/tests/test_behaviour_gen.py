@@ -1,0 +1,484 @@
+"""Tests for QuestBehaviourPlanner — quest-spec grammar + behaviour-gen call.
+
+The deterministic core needs NO live LLM.  All plan() tests pass a
+FAKE callable so the manifest validation, dialogue validation, and
+Decision Point emission can be exercised deterministically.
+
+Tests (per P1 TDD spec):
+  (a) manifest of 4 props → spec references a real id
+  (b) LLM returns a dangling id → rejected/Decision-Point
+  (c) junk dialogue → fallback fires
+  (d) good dialogue → passes through
+"""
+
+from __future__ import annotations
+
+import json
+import socket
+
+import pytest
+
+from behaviour_gen import QuestBehaviourPlanner
+from decisions import DecisionPoint
+from llm import normalize_gbnf, load_grammar
+
+
+# ── Test manifest (4 props) ──────────────────────────────────────
+
+_MANIFEST_4: list[dict] = [
+    {"id": "table_0", "category": "table", "material": "worn_oak", "wear": 0.8},
+    {"id": "shelf_0", "category": "shelf", "material": "rough_granite", "wear": 0.15},
+    {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron", "wear": 0.8},
+    {"id": "table_1", "category": "table", "material": "dark_walnut", "wear": 0.15},
+]
+
+_VALID_MANIFEST_IDS = {"table_0", "shelf_0", "cabinet_0", "table_1"}
+
+
+# ── Grammar normalisation tests ──────────────────────────────────
+
+def _load_quest_grammar() -> str:
+    from pathlib import Path as _Path
+    _grammar_path = str(_Path(__file__).resolve().parents[1] / "grammar" / "quest_spec.gbnf")
+    return load_grammar(_grammar_path)
+
+
+def test_quest_grammar_no_line_starts_with_pipe():
+    """No line of the normalized quest grammar starts with |."""
+    grammar = _load_quest_grammar()
+    for i, line in enumerate(grammar.split("\n")):
+        stripped = line.strip()
+        assert not stripped.startswith("|"), (
+            f"Line {i} starts with '|': {line!r}"
+        )
+
+
+def test_quest_grammar_contains_dialogue_keys():
+    """The quest grammar constrains the dialogue object keys."""
+    grammar = _load_quest_grammar()
+    assert "greet" in grammar
+    assert "ask" in grammar
+    assert "wrong" in grammar
+    assert "thank" in grammar
+
+
+def test_quest_grammar_is_single_line_root():
+    """After normalize_gbnf, the root rule is one line."""
+    grammar = _load_quest_grammar()
+    root_lines = [
+        l for l in grammar.split("\n")
+        if l.strip().startswith("root ") and "::=" in l
+    ]
+    assert len(root_lines) == 1, (
+        f"expected one root rule line, got {len(root_lines)}: {root_lines}"
+    )
+
+
+# ── Prompt tests ─────────────────────────────────────────────────
+
+def test_build_prompt_contains_room_theme_and_manifest():
+    planner = QuestBehaviourPlanner()
+    prompt = planner.build_prompt("a hermit's shack", _MANIFEST_4)
+    assert "a hermit's shack" in prompt
+    assert "table_0" in prompt
+    assert "shelf_0" in prompt
+    assert "cabinet_0" in prompt
+    assert "table_1" in prompt
+    assert "(table)" in prompt
+    assert "(shelf)" in prompt
+    assert "(cabinet)" in prompt
+
+
+def test_build_prompt_contains_example():
+    planner = QuestBehaviourPlanner()
+    prompt = planner.build_prompt("a test room", _MANIFEST_4)
+    assert "Example:" in prompt
+    assert '"npc_role"' in prompt
+    assert '"target_entity"' in prompt
+    assert '"dialogue"' in prompt
+    assert '"objective"' in prompt
+
+
+# ── Parse tests ──────────────────────────────────────────────────
+
+def test_parse_valid_quest_json():
+    planner = QuestBehaviourPlanner()
+    raw = json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "shelf_0",
+        "dialogue": {
+            "greet": "Hello!",
+            "ask": "Find my book on the shelf.",
+            "wrong": "That is not it.",
+            "thank": "You found it!",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "shelf_0",
+            "giver": "npc",
+        },
+    })
+    spec = planner.parse(raw)
+    assert spec["npc_role"] == "hermit"
+    assert spec["target_entity"] == "shelf_0"
+    assert spec["dialogue"]["greet"] == "Hello!"
+    assert spec["objective"]["type"] == "fetch"
+
+
+def test_parse_with_markdown_fences():
+    planner = QuestBehaviourPlanner()
+    raw = '```json\n{"npc_role":"hermit","target_entity":"table_0","dialogue":{"greet":"Hi","ask":"Find a book","wrong":"Not it","thank":"Thanks"},"objective":{"type":"fetch","target":"table_0","giver":"npc"}}\n```'
+    spec = planner.parse(raw)
+    assert spec["npc_role"] == "hermit"
+    assert spec["target_entity"] == "table_0"
+
+
+def test_parse_with_think_tags():
+    planner = QuestBehaviourPlanner()
+    raw = '<think>I should pick a hermit</think>\n{"npc_role":"hermit","target_entity":"table_0","dialogue":{"greet":"Hi","ask":"Find a book","wrong":"Not it","thank":"Thanks"},"objective":{"type":"fetch","target":"table_0","giver":"npc"}}'
+    spec = planner.parse(raw)
+    assert spec["npc_role"] == "hermit"
+
+
+def test_parse_empty_text_raises():
+    planner = QuestBehaviourPlanner()
+    with pytest.raises(ValueError, match="Empty"):
+        planner.parse("")
+
+
+def test_parse_no_json_raises():
+    planner = QuestBehaviourPlanner()
+    with pytest.raises(ValueError, match="No JSON"):
+        planner.parse("hello world")
+
+
+# ── Fake LLMs ────────────────────────────────────────────────────
+
+def _fake_llm_valid(prompt: str, grammar: str | None) -> str:
+    """Returns a valid quest spec with good dialogue referencing shelf_0."""
+    return json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "shelf_0",
+        "dialogue": {
+            "greet": "Ah, a visitor! Welcome.",
+            "ask": "I have lost something on the shelf. Can you find it?",
+            "wrong": "No, that is not the shelf item.",
+            "thank": "Yes, you found my shelf item! Thank you.",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "shelf_0",
+            "giver": "npc",
+        },
+    })
+
+
+def _fake_llm_dangling(prompt: str, grammar: str | None) -> str:
+    """Returns a quest spec with a target_entity NOT in the manifest."""
+    return json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "dragon_gold",
+        "dialogue": {
+            "greet": "Hello.",
+            "ask": "Find my gold.",
+            "wrong": "Not it.",
+            "thank": "Thanks!",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "dragon_gold",
+            "giver": "npc",
+        },
+    })
+
+
+def _fake_llm_junk_dialogue(prompt: str, grammar: str | None) -> str:
+    """Returns a quest spec with invalid dialogue lines."""
+    return json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "table_0",
+        "dialogue": {
+            "greet": "",                    # empty — too short
+            "ask": "<script>alert(1)</script>",  # code injection
+            "wrong": "```\ncode block\n```",      # markdown code fence
+            "thank": "x",                   # too short (< 3 chars)
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "table_0",
+            "giver": "npc",
+        },
+    })
+
+
+def _fake_llm_short_dialogue(prompt: str, grammar: str | None) -> str:
+    """Returns a quest spec with dialogue lines that pass length but
+    fail quest-relevance (no quest word, no category mention)."""
+    return json.dumps({
+        "npc_role": "hermit",
+        "target_entity": "cabinet_0",
+        "dialogue": {
+            "greet": "Hello.",            # barely passes length, no quest word
+            "ask": "Where is it?",        # no quest word, no category
+            "wrong": "Hmm.",              # barely passes length
+            "thank": "Finally.",          # no quest word, no category
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "cabinet_0",
+            "giver": "npc",
+        },
+    })
+
+
+# ── plan() tests with FAKE llm ────────────────────────────────────
+
+# (a) Manifest of 4 props → spec references a real id
+
+def test_plan_with_valid_manifest_and_good_dialogue():
+    """A 4-prop manifest + valid LLM → quest spec with real target id,
+    good dialogue passes through, no decisions emitted."""
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a hermit's shack", _MANIFEST_4, _fake_llm_valid
+    )
+    assert spec["target_entity"] == "shelf_0"
+    assert spec["target_entity"] in _VALID_MANIFEST_IDS
+    assert spec["npc_role"] == "hermit"
+    assert spec["dialogue"]["greet"] == "Ah, a visitor! Welcome."
+    assert spec["dialogue"]["ask"] == "I have lost something on the shelf. Can you find it?"
+    assert spec["objective"]["type"] == "fetch"
+    assert spec["objective"]["target"] == "shelf_0"
+    assert spec["objective"]["giver"] == "npc"
+    assert decisions == []  # no issues
+
+
+# (b) LLM returns a dangling id → rejected/Decision-Point
+
+def test_plan_dangling_target_raises():
+    """LLM picks an id not in manifest → ValueError raised with the
+    dangling id in the error message.  The DP template itself is tested
+    separately in test_quest_dangling_target_decision_emitted."""
+    planner = QuestBehaviourPlanner()
+    with pytest.raises(ValueError, match="dragon_gold"):
+        planner.plan("a test room", _MANIFEST_4, _fake_llm_dangling)
+
+
+def test_quest_dangling_target_decision_emitted():
+    """Verify that quest.dangling_target DP is built correctly via
+    make_decision."""
+    from decisions import make_decision as md
+
+    dp = md(
+        code="quest.dangling_target",
+        stage="planner",
+        severity="error",
+        context={"entity": "dragon_gold"},
+        choices=(),
+    )
+    assert dp.code == "quest.dangling_target"
+    assert dp.severity == "error"
+    assert "dragon_gold" in dp.technical
+    assert "dragon_gold" in dp.plain
+
+
+# (c) Junk dialogue → fallback fires
+
+def test_plan_junk_dialogue_fallback_fires():
+    """Dialogue with empty lines, code injection, markdown → fallback
+    substituted for each bad line, and dialogue_fallback DPs emitted."""
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a test room", _MANIFEST_4, _fake_llm_junk_dialogue
+    )
+
+    # All four fields should have fallback values (since all were invalid)
+    assert spec["target_entity"] == "table_0"
+    from dialogue_validator import fallback_dialogue
+    fallback = fallback_dialogue("table")
+    for field in ("greet", "ask", "wrong", "thank"):
+        assert spec["dialogue"][field] == fallback[field], (
+            f"field {field}: expected fallback {fallback[field]!r}, "
+            f"got {spec['dialogue'][field]!r}"
+        )
+
+    # Should have 4 dialogue_fallback DPs (one per field)
+    fallback_dps = [d for d in decisions if d.code == "quest.dialogue_fallback"]
+    assert len(fallback_dps) == 4
+    fields = {d.context["field"] for d in fallback_dps}
+    assert fields == {"greet", "ask", "wrong", "thank"}
+
+
+# (d) Good dialogue → passes through
+
+def test_plan_good_dialogue_passes_through():
+    """Dialogue that passes all validations → no fallback, no DPs."""
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a hermit's shack", _MANIFEST_4, _fake_llm_valid
+    )
+
+    assert spec["dialogue"]["greet"] == "Ah, a visitor! Welcome."
+    assert spec["dialogue"]["ask"] == "I have lost something on the shelf. Can you find it?"
+    assert spec["dialogue"]["wrong"] == "No, that is not the shelf item."
+    assert spec["dialogue"]["thank"] == "Yes, you found my shelf item! Thank you."
+    # No decisions — good dialogue shouldn't emit anything
+    assert decisions == []
+
+
+def test_plan_short_irrelevant_dialogue_gets_fallback():
+    """Dialogue that passes length but fails quest-relevance → fallback
+    fires for those lines.  Short greetings like 'Hello.' now pass
+    (hello is a valid NPC opener, word-boundary match); truly irrelevant
+    lines ('Where is it?', 'Hmm.', 'Finally.') trigger fallback."""
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a test room", _MANIFEST_4, _fake_llm_short_dialogue
+    )
+
+    # target is cabinet_0 → category is "cabinet"
+    from dialogue_validator import fallback_dialogue
+    fallback = fallback_dialogue("cabinet")
+
+    # "Hello." → passes ("hello" is a valid NPC greeting word, \b match)
+    assert spec["dialogue"]["greet"] == "Hello."
+    # "Where is it?" → fails (no quest word on \b boundaries) → fallback
+    assert spec["dialogue"]["ask"] == fallback["ask"]
+    # "Hmm." → fails (no quest word) → fallback
+    assert spec["dialogue"]["wrong"] == fallback["wrong"]
+    # "Finally." → fails ("find" does not match inside "finally" on \b) → fallback
+    assert spec["dialogue"]["thank"] == fallback["thank"]
+
+    # 3 fallbacks: ask + wrong + thank
+    fallback_dps = [d for d in decisions if d.code == "quest.dialogue_fallback"]
+    assert len(fallback_dps) == 3
+    fields = {d.context["field"] for d in fallback_dps}
+    assert fields == {"ask", "wrong", "thank"}
+
+
+# ── Edge cases ────────────────────────────────────────────────────
+
+def test_plan_empty_manifest_raises():
+    """An empty manifest → no eligible targets → ValueError."""
+    planner = QuestBehaviourPlanner()
+    with pytest.raises(ValueError, match="no eligible"):
+        planner.plan("a room", [], _fake_llm_valid)
+
+
+def test_plan_manifest_ids():
+    planner = QuestBehaviourPlanner()
+    ids = planner._manifest_ids(_MANIFEST_4)
+    assert ids == _VALID_MANIFEST_IDS
+
+
+def test_plan_target_category():
+    planner = QuestBehaviourPlanner()
+    assert planner._target_category(_MANIFEST_4, "table_0") == "table"
+    assert planner._target_category(_MANIFEST_4, "shelf_0") == "shelf"
+    assert planner._target_category(_MANIFEST_4, "cabinet_0") == "cabinet"
+    assert planner._target_category(_MANIFEST_4, "nonexistent") == "thing"
+
+
+def test_plan_returns_correct_shape():
+    """The spec dict has all expected top-level keys."""
+    planner = QuestBehaviourPlanner()
+    spec, _ = planner.plan("a room", _MANIFEST_4, _fake_llm_valid)
+    assert set(spec.keys()) == {"npc_role", "target_entity", "dialogue", "objective"}
+    assert set(spec["dialogue"].keys()) == {"greet", "ask", "wrong", "thank"}
+    assert set(spec["objective"].keys()) == {"type", "target", "giver"}
+
+
+def test_plan_fake_llm_with_wrong_objective_shape_is_fixed():
+    """If the LLM returns a mangled objective, plan() fixes it to the
+    canonical shape (using the validated target_entity)."""
+    def fake_wrong_obj(prompt, grammar):
+        return json.dumps({
+            "npc_role": "hermit",
+            "target_entity": "table_1",
+            "dialogue": {
+                "greet": "Hello traveler, welcome.",
+                "ask": "Can you find the table item I need?",
+                "wrong": "No, that table is not right.",
+                "thank": "Yes, the table item! Thank you.",
+            },
+            "objective": {
+                "type": "kill",   # wrong type
+                "target": "goblin",  # wrong target
+                "giver": "quest_board",  # wrong giver
+            },
+        })
+
+    planner = QuestBehaviourPlanner()
+    spec, _ = planner.plan("a room", _MANIFEST_4, fake_wrong_obj)
+    assert spec["objective"] == {
+        "type": "fetch",
+        "target": "table_1",
+        "giver": "npc",
+    }
+
+
+def test_plan_fallback_dialogue_includes_category():
+    """The fallback dialogue ask line includes the target's category."""
+    planner = QuestBehaviourPlanner()
+    spec, _ = planner.plan(
+        "a room", _MANIFEST_4, _fake_llm_junk_dialogue
+    )
+    # target is table_0 → category "table"
+    assert "table" in spec["dialogue"]["ask"]
+
+
+# ── Live integration test ────────────────────────────────────────
+
+def _llama_server_reachable() -> bool:
+    """Check if the llama.cpp server is listening at 127.0.0.1:8002."""
+    try:
+        s = socket.create_connection(("127.0.0.1", 8002), timeout=2)
+        s.close()
+        return True
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return False
+
+
+def test_plan_live_produces_valid_quest_spec():
+    """Integration: real LLM produces a quest spec with a valid target_entity
+    and all required fields."""
+    if not _llama_server_reachable():
+        pytest.skip("llama.cpp server not reachable at 127.0.0.1:8002")
+
+    from llm import FoundryLLM
+
+    llm = FoundryLLM()
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a hermit's shack", _MANIFEST_4, llm
+    )
+
+    # Structural checks
+    assert spec["target_entity"] in _VALID_MANIFEST_IDS, (
+        f"target_entity {spec['target_entity']!r} not in manifest"
+    )
+    assert isinstance(spec["npc_role"], str)
+    assert len(spec["npc_role"]) > 0
+    assert set(spec["dialogue"].keys()) == {"greet", "ask", "wrong", "thank"}
+    assert spec["objective"]["type"] == "fetch"
+    assert spec["objective"]["target"] == spec["target_entity"]
+    assert spec["objective"]["giver"] == "npc"
+
+    # Dialogue lines should be non-empty (may or may not have fallback)
+    for field in ("greet", "ask", "wrong", "thank"):
+        line = spec["dialogue"][field]
+        assert len(line) >= 3, (
+            f"dialogue.{field} too short: {line!r}"
+        )
+
+    # Log decisions for the report
+    print(f"\n  npc_role: {spec['npc_role']}")
+    print(f"  target_entity: {spec['target_entity']}")
+    print(f"  dialogue.greet: {spec['dialogue']['greet']}")
+    print(f"  dialogue.ask: {spec['dialogue']['ask']}")
+    print(f"  dialogue.wrong: {spec['dialogue']['wrong']}")
+    print(f"  dialogue.thank: {spec['dialogue']['thank']}")
+    print(f"  decisions: {[d.code for d in decisions]}")
+    if decisions:
+        for d in decisions:
+            print(f"    [{d.severity}] {d.code}: {d.technical}")
