@@ -89,6 +89,43 @@ Cabinet defaults: width ~0.7-0.8, depth ~0.4-0.5, height ~1.2-1.5, panel_thickne
 0.15-0.3 = new / fine / polished / pristine.
 Default is 0.15.
 
+Examples:
+
+(note: schema is asset_id, generator, age, params — NONE of these examples include a "material" key; the pre-pass resolver chooses material from the request text above, not from this JSON)
+
+Request: "a low plain coffee table"
+{{
+  "asset_id": "table",
+  "generator": "table",
+  "age": 0.15,
+  "params": {{
+    "top_width": 1.1, "top_depth": 0.65, "top_thickness": 0.05,
+    "leg_height": 0.4, "leg_radius": 0.04, "leg_inset": 0.08
+  }}
+}}
+
+Request: "an old battered weathered oak workbench"
+{{
+  "asset_id": "table",
+  "generator": "table",
+  "age": 0.85,
+  "params": {{
+    "top_width": 1.7, "top_depth": 0.95, "top_thickness": 0.07,
+    "leg_height": 0.7, "leg_radius": 0.06, "leg_inset": 0.12
+  }}
+}}
+
+Request: "a wooden bookcase with a slightly worn look"
+{{
+  "asset_id": "shelf",
+  "generator": "shelf",
+  "age": 0.4,
+  "params": {{
+    "width": 0.9, "depth": 0.28, "height": 1.15,
+    "board_thickness": 0.035, "n_shelves": 3, "side_thickness": 0.03
+  }}
+}}
+
 Request: {request}
 
 Output JSON now:"""

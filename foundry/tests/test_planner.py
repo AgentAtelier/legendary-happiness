@@ -628,3 +628,176 @@ def test_normalized_grammar_is_single_line_root():
     assert len(root_lines) == 1, (
         f"expected one root rule line, got {len(root_lines)}: {root_lines}"
     )
+
+
+# ── Slice 12: Age-anchoring few-shot examples in the planner prompt ────
+
+
+def _slice_examples_section(prompt: str) -> str:
+    """Slice out the substring between the ``Examples:`` marker and the
+    *final* ``Request: {request}`` template literal. Robust to extra
+    ``Request:`` lines inside the examples block."""
+    if "Examples:" not in prompt:
+        return ""
+    tail = prompt.split("Examples:", 1)[1]
+    cut_at = tail.rfind("Request: {request}")
+    if cut_at == -1:
+        cut_at = tail.rfind("Output JSON now")
+        if cut_at == -1:
+            return tail
+    return tail[:cut_at]
+
+
+def _extract_example_blocks(examples_section: str) -> list[str]:
+    """Pull every top-level ``{...}`` JSON block out of *examples_section*."""
+    blocks: list[str] = []
+    depth = 0
+    start: int | None = None
+    for idx, c in enumerate(examples_section):
+        if c == "{":
+            if depth == 0:
+                start = idx
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                blocks.append(examples_section[start:idx + 1])
+                start = None
+    return blocks
+
+
+_PROMPT_TESTS_REQUEST = "a plain table"
+
+
+def test_prompt_has_examples_block():
+    """The planner prompt contains an ``Examples:`` block.
+
+    Live runs showed qwen leaning ``age`` high on neutral requests (e.g.
+    a plain 'tall cabinet' -> 0.7). The fix is few-shot examples — not a
+    model swap — anchoring low/mid/high age behaviour.
+    """
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    assert "Examples:" in prompt, "planner prompt must contain an Examples: block"
+
+
+def test_examples_cover_three_age_levels():
+    """The examples anchor low (~0.15-0.2), mid (~0.3-0.4), and high
+    (~0.75-0.9) age behaviour."""
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    blocks = _extract_example_blocks(_slice_examples_section(prompt))
+    assert len(blocks) >= 3, (
+        f"expected >=3 example blocks, got {len(blocks)}: {blocks}"
+    )
+
+    ages = []
+    for b in blocks:
+        parsed = json.loads(b)
+        ages.append(float(parsed["age"]))
+
+    assert any(0.13 <= a <= 0.22 for a in ages), (
+        f"expected a low-age (~0.15-0.2) example, got ages={ages}"
+    )
+    assert any(0.30 <= a <= 0.45 for a in ages), (
+        f"expected a mid-age (~0.3-0.4) example, got ages={ages}"
+    )
+    assert any(0.70 <= a <= 0.92 for a in ages), (
+        f"expected a high-age (~0.75-0.9) example, got ages={ages}"
+    )
+
+
+def test_examples_cover_at_least_two_generators():
+    """The few-shot examples span >=2 generators (table, chair, shelf,
+    cabinet) — qwen needs to see both shape variance AND age anchors."""
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    blocks = _extract_example_blocks(_slice_examples_section(prompt))
+    assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
+
+    gens = {json.loads(b)["generator"] for b in blocks}
+    assert len(gens) >= 2, f"examples must span >=2 generators, got {gens}"
+
+
+def test_examples_have_no_material_key():
+    """None of the example JSON blocks contains a ``material`` key —
+    material is the resolver's job (Slice 11), not the LLM's.
+
+    Regression guard: a previous prompt revision DID include a
+    ``material`` field in the schema; the resolver owns material now and
+    the few-shot examples must not give the model the wrong idea.
+    """
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    blocks = _extract_example_blocks(_slice_examples_section(prompt))
+    assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
+
+    for b in blocks:
+        parsed = json.loads(b)
+        assert "material" not in parsed, (
+            f"example block contains 'material' key (resolver owns it):\n{parsed}"
+        )
+
+
+def test_examples_use_only_schema_keys():
+    """Each example's JSON has exactly the four canonical keys:
+    asset_id, generator, age, params. No extra fields."""
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    blocks = _extract_example_blocks(_slice_examples_section(prompt))
+    assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
+
+    expected = {"asset_id", "generator", "age", "params"}
+    for b in blocks:
+        parsed = json.loads(b)
+        assert set(parsed.keys()) == expected, (
+            f"example keys={set(parsed.keys())} != expected {expected}: {parsed}"
+        )
+
+
+def test_examples_params_are_in_param_ranges():
+    """Every example's param values land inside PARAM_RANGES for its
+    declared generator — the examples must teach in-range shape, not
+    out-of-range garbage qwen would imitate."""
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    blocks = _extract_example_blocks(_slice_examples_section(prompt))
+    assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
+
+    for b in blocks:
+        parsed = json.loads(b)
+        gen = parsed["generator"]
+        ranges = PARAM_RANGES.get(gen, {})
+        assert ranges, f"unknown generator {gen!r}"
+        for k, v in parsed["params"].items():
+            lo, hi = ranges[k]
+            assert lo <= float(v) <= hi, (
+                f"example param {k}={v} out of [{lo}, {hi}] for {gen}: {parsed}"
+            )
+
+
+def test_examples_anchor_plan_still_parses_and_compiles():
+    """The example values in the prompt must be valid asset-specs:
+    AssetPlanner.plan() with a FAKE llm that mirrors the example shape
+    parses, clamps, and passes compile_spec.
+
+    This guards against an example whose params would fail compile_spec
+    (e.g. an example declaring a 4 m tall cabinet).
+    """
+    planner = AssetPlanner()
+    prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
+    blocks = _extract_example_blocks(_slice_examples_section(prompt))
+    assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
+
+    for b in blocks:
+        spec_like = json.loads(b)
+        # Hand-roll a FAKE llm that emits exactly the example JSON.
+        spec_payload = json.dumps(spec_like)
+
+        def fake(_prompt: str, _grammar: str | None, _payload: str = spec_payload) -> str:
+            return _payload
+
+        out_spec, _ = planner.plan("a plain table", fake)
+        # Material is mandatory for compile_spec — plan() fills it via the
+        # resolver (a generic request -> worn_oak + decision).
+        compile_spec(out_spec)
