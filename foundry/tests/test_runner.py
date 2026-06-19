@@ -166,15 +166,16 @@ def test_forge_from_request_writes_decisions_into_sidecar(tmp_path, monkeypatch)
         }),
     )
 
-    # Result carried the resolver's family_defaulted decision
-    assert len(result.decisions) == 1, (
-        f"expected 1 decision from resolver, got {result.decisions}"
+    # Result carries the resolver's family_defaulted decision (material)
+    # AND the age resolver's unspecified_defaulted (no wear word).
+    assert any(d.code == "material.family_defaulted" for d in result.decisions), (
+        f"expected material.family_defaulted in decisions, got {result.decisions}"
     )
-    dp = result.decisions[0]
-    assert dp.code == "material.family_defaulted"
+    dp = next(d for d in result.decisions if d.code == "material.family_defaulted")
     assert dp.severity == "assumption"
     assert dp.stage == "planner"
     assert isinstance(dp, DecisionPoint)
+    assert any(d.code == "age.unspecified_defaulted" for d in result.decisions)
 
     # Spec was driven by resolver (wood family default = worn_oak)
     assert result.glb_path.endswith("_worn_oak.glb"), (
@@ -188,9 +189,9 @@ def test_forge_from_request_writes_decisions_into_sidecar(tmp_path, monkeypatch)
     assert "decisions" in sidecar, (
         "forge_from_request sidecar must carry top-level 'decisions'"
     )
-    assert len(sidecar["decisions"]) == 1
-    saved = sidecar["decisions"][0]
-    assert saved["code"] == "material.family_defaulted"
+    assert len(sidecar["decisions"]) >= 1
+    # Find the material.family_defaulted entry
+    saved = next(d for d in sidecar["decisions"] if d["code"] == "material.family_defaulted")
     assert saved["context"]["family"] == "wood"
     assert saved["context"]["resolved"] == "worn_oak"
     assert isinstance(saved["choices"], list)
@@ -241,9 +242,14 @@ def test_forge_from_request_specific_keyword_carries_no_decision(tmp_path, monke
     )
 
     # Headline bug stays fixed: wrought_iron, not worn_oak
-    assert result.decisions == []  # confident match → no decision
+    # Material is confident, but age resolver adds unspecified_defaulted
+    # ("wrought-iron storage cabinet" has no wear word).
+    assert any(d.code == "age.unspecified_defaulted" for d in result.decisions)
+    assert all(d.code != "material.family_defaulted" for d in result.decisions)
     assert result.glb_path.endswith("_wrought_iron.glb")
 
     sidecar_path = Path(result.glb_path).with_suffix(".sidecar.json")
     sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
-    assert "decisions" not in sidecar  # empty → key omitted
+    # Decisions now exist (age.unspecified_defaulted); key is present
+    assert "decisions" in sidecar
+    assert len(sidecar["decisions"]) >= 1

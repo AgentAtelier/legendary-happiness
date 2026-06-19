@@ -334,12 +334,17 @@ def test_plan_uses_resolver_when_fake_llm_omits_material():
             },
         })
     planner = AssetPlanner()
-    # Request mentions "wrought-iron" — specific keyword matches wrought_iron.
+    # 'wooden' → material.family_defaulted; 'wrought-iron' → confident
+    # (no wear word) → age.unspecified_defaulted
     spec, decisions = planner.plan("a tall wrought-iron table", fake_no_material)
     assert spec["material"] == "wrought_iron", (
         "resolver should have set material to wrought_iron from the request text"
     )
-    assert decisions == []  # confident specific match
+    # Material is confident; age is unspecified_defaulted
+    assert all(d.code != "material.family_defaulted" for d in decisions), (
+        "material should be confident specific match"
+    )
+    assert any(d.code == "age.unspecified_defaulted" for d in decisions)
     compile_spec(spec)
 
 
@@ -348,7 +353,7 @@ def test_plan_wooden_table_emits_family_defaulted_with_choices():
     planner = AssetPlanner()
     spec, decisions = planner.plan("a wooden table", _fake_llm_valid)
     assert spec["material"] == "worn_oak"
-    assert len(decisions) == 1
+    assert len(decisions) >= 1
     dp = decisions[0]
     assert dp.code == "material.family_defaulted"
     assert dp.severity == "assumption"
@@ -374,10 +379,11 @@ def test_plan_resolver_overrides_llm_material_when_keywords_match():
             },
         })
     planner = AssetPlanner()
-    # Request mentions "iron" → wrought_iron via specific match.
+    # 'iron' → wrought_iron (confident); no wear word → age.unspecified_defaulted
     spec, decisions = planner.plan("an iron table", fake_with_wrong_material)
     assert spec["material"] == "wrought_iron"
-    assert decisions == []  # confident — no decision point
+    assert all(d.code != "material.family_defaulted" for d in decisions)
+    assert any(d.code == "age.unspecified_defaulted" for d in decisions)
 
 
 # ── Slice 6 / 7 / 10 fast tests with resolver-aware assertions ────────
@@ -551,8 +557,10 @@ def test_plan_shelf_with_fake_llm():
     assert spec["generator"] == "shelf"
     assert spec["asset_id"] == "shelf"
     assert spec["material"] == "worn_oak"
-    assert len(decisions) == 1
-    assert decisions[0].code == "material.family_defaulted"
+    # 'wooden' → material.family_defaulted; no wear word → age.unspecified_defaulted
+    assert len(decisions) >= 1
+    dp = decisions[0]
+    assert dp.code == "material.family_defaulted"
     compile_spec(spec)
 
 
@@ -630,6 +638,92 @@ def test_normalized_grammar_is_single_line_root():
     )
 
 
+# ── Age pre-pass integration (P1) ────────────────────────────────────
+
+
+def test_plan_old_chair_gets_age_0_8_from_resolver():
+    """'an old chair' → resolve_age → 0.8 (confident, no age decision)."""
+    planner = AssetPlanner()
+    spec, decisions = planner.plan("an old chair", _fake_llm_chair)
+    assert spec["age"] == 0.8
+    # 'old' is confident → no age DecisionPoint; but 'chair' has no
+    # material keyword → material.unspecified_defaulted
+    assert any(d.code == "material.unspecified_defaulted" for d in decisions)
+    assert all(d.code != "age.unspecified_defaulted" for d in decisions)
+    compile_spec(spec)
+
+
+def test_plan_new_table_gets_age_0_15_from_resolver():
+    """'a new table' → resolve_age → 0.15 (confident)."""
+    planner = AssetPlanner()
+    spec, decisions = planner.plan("a new table", _fake_llm_valid)
+    assert spec["age"] == 0.15
+    assert all(d.code != "age.unspecified_defaulted" for d in decisions)
+    compile_spec(spec)
+
+
+def test_plan_neutral_request_gets_age_0_15_with_decision():
+    """'a plain table' (no wear word) → age=0.15 + unspecified_defaulted."""
+    planner = AssetPlanner()
+    spec, decisions = planner.plan("a plain table", _fake_llm_valid)
+    assert spec["age"] == 0.15
+    assert any(d.code == "age.unspecified_defaulted" for d in decisions)
+    compile_spec(spec)
+
+
+def test_plan_vintage_cabinet_gets_age_0_8_from_resolver():
+    """'a vintage cabinet' → resolve_age → 0.8 (confident)."""
+    planner = AssetPlanner()
+    spec, decisions = planner.plan("a vintage cabinet", _fake_llm_cabinet)
+    assert spec["age"] == 0.8
+    assert all(d.code != "age.unspecified_defaulted" for d in decisions)
+    compile_spec(spec)
+
+
+def test_plan_old_new_conflict_gets_age_0_8_with_conflict_decision():
+    """'an old new cabinet' → age.conflict → 0.8 (aged wins tie)."""
+    planner = AssetPlanner()
+    spec, decisions = planner.plan("an old new cabinet", _fake_llm_cabinet)
+    assert spec["age"] == 0.8
+    assert any(d.code == "age.conflict" for d in decisions)
+    compile_spec(spec)
+
+
+def test_plan_fake_llm_with_no_age_field_yields_valid_spec():
+    """A fake LLM whose JSON has NO age field still yields a valid spec
+    whose age came from the age resolver."""
+    def fake_no_age(prompt, grammar):
+        return json.dumps({
+            "asset_id": "table",
+            "generator": "table",
+            # explicit: no age field
+            "params": {
+                "top_width": 1.5, "top_depth": 0.8, "top_thickness": 0.06,
+                "leg_height": 0.65, "leg_radius": 0.05, "leg_inset": 0.1,
+            },
+        })
+    planner = AssetPlanner()
+    spec, decisions = planner.plan("an old weathered table", fake_no_age)
+    assert spec["age"] == 0.8
+    assert all(d.code != "age.unspecified_defaulted" for d in decisions)
+    compile_spec(spec)
+
+
+def test_grammar_root_rule_no_longer_includes_age_field():
+    """The grammar's root rule must not include an 'age' field — qwen
+    no longer chooses age (the resolver does)."""
+    grammar = load_grammar()
+    root_lines = [
+        l for l in grammar.split("\n")
+        if l.strip().startswith("root ") and "::=" in l
+    ]
+    assert root_lines, "could not find root rule in normalized grammar"
+    root_line = root_lines[0]
+    assert "age" not in root_line, (
+        f"grammar root rule still contains 'age': {root_line!r}"
+    )
+
+
 # ── Slice 12: Age-anchoring few-shot examples in the planner prompt ────
 
 
@@ -681,30 +775,18 @@ def test_prompt_has_examples_block():
     assert "Examples:" in prompt, "planner prompt must contain an Examples: block"
 
 
-def test_examples_cover_three_age_levels():
-    """The examples anchor low (~0.15-0.2), mid (~0.3-0.4), and high
-    (~0.75-0.9) age behaviour."""
+def test_examples_do_not_include_age():
+    """Age is now deterministic (resolver), not qwen's job.  No example
+    JSON block should contain an ``age`` key."""
     planner = AssetPlanner()
     prompt = planner.build_prompt(_PROMPT_TESTS_REQUEST)
     blocks = _extract_example_blocks(_slice_examples_section(prompt))
-    assert len(blocks) >= 3, (
-        f"expected >=3 example blocks, got {len(blocks)}: {blocks}"
-    )
-
-    ages = []
+    assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
     for b in blocks:
         parsed = json.loads(b)
-        ages.append(float(parsed["age"]))
-
-    assert any(0.13 <= a <= 0.22 for a in ages), (
-        f"expected a low-age (~0.15-0.2) example, got ages={ages}"
-    )
-    assert any(0.30 <= a <= 0.45 for a in ages), (
-        f"expected a mid-age (~0.3-0.4) example, got ages={ages}"
-    )
-    assert any(0.70 <= a <= 0.92 for a in ages), (
-        f"expected a high-age (~0.75-0.9) example, got ages={ages}"
-    )
+        assert "age" not in parsed, (
+            f"example block contains 'age' key (resolver owns it):\n{parsed}"
+        )
 
 
 def test_examples_cover_at_least_two_generators():
@@ -747,7 +829,7 @@ def test_examples_use_only_schema_keys():
     blocks = _extract_example_blocks(_slice_examples_section(prompt))
     assert len(blocks) >= 3, f"expected >=3 example blocks, got {len(blocks)}"
 
-    expected = {"asset_id", "generator", "age", "params"}
+    expected = {"asset_id", "generator", "params"}
     for b in blocks:
         parsed = json.loads(b)
         assert set(parsed.keys()) == expected, (

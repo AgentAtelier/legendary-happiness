@@ -12,6 +12,7 @@ from typing import Callable, List, Optional, Tuple
 
 from compiler import PARAM_RANGES, compile_spec
 from decisions import DecisionPoint
+from age_resolver import resolve_age
 from material_resolver import resolve_material
 
 log = logging.getLogger(__name__)
@@ -83,21 +84,14 @@ Chair defaults: seat_width ~0.45-0.5, seat_depth ~0.45-0.5, seat_thickness ~0.05
 Shelf defaults: width ~0.8-1.0, depth ~0.25-0.3, height ~1.0-1.2, board_thickness ~0.03-0.04, n_shelves 3-4, side_thickness ~0.03-0.04.
 Cabinet defaults: width ~0.7-0.8, depth ~0.4-0.5, height ~1.2-1.5, panel_thickness ~0.03-0.04, base_height ~0.05-0.08.
 
-"age": <number between 0.15 and 1.0 — controls wear and imperfection.>
-0.15 = lightly imperfect (baseline, always slightly off from CAD-perfect).
-0.7-1.0 = old / battered / rustic / weathered.
-0.15-0.3 = new / fine / polished / pristine.
-Default is 0.15.
-
 Examples:
 
-(note: schema is asset_id, generator, age, params — NONE of these examples include a "material" key; the pre-pass resolver chooses material from the request text above, not from this JSON)
+(note: schema is asset_id, generator, params — NONE of these examples include "material" or "age" keys; the pre-pass resolvers choose those from the request text above, not from this JSON)
 
 Request: "a low plain coffee table"
 {{
   "asset_id": "table",
   "generator": "table",
-  "age": 0.15,
   "params": {{
     "top_width": 1.1, "top_depth": 0.65, "top_thickness": 0.05,
     "leg_height": 0.4, "leg_radius": 0.04, "leg_inset": 0.08
@@ -108,7 +102,6 @@ Request: "an old battered weathered oak workbench"
 {{
   "asset_id": "table",
   "generator": "table",
-  "age": 0.85,
   "params": {{
     "top_width": 1.7, "top_depth": 0.95, "top_thickness": 0.07,
     "leg_height": 0.7, "leg_radius": 0.06, "leg_inset": 0.12
@@ -119,7 +112,6 @@ Request: "a wooden bookcase with a slightly worn look"
 {{
   "asset_id": "shelf",
   "generator": "shelf",
-  "age": 0.4,
   "params": {{
     "width": 0.9, "depth": 0.28, "height": 1.15,
     "board_thickness": 0.035, "n_shelves": 3, "side_thickness": 0.03
@@ -180,14 +172,20 @@ class AssetPlanner:
         Returns:
             ``(spec, decisions)`` — ``spec`` is a dict guaranteed to pass
             ``compiler.compile_spec()``; ``decisions`` is the list of
-            Decision Points emitted by the material pre-pass
-            (lexical material matching is the resolver's job, not qwen's).
+            Decision Points emitted by the material and age pre-passes
+            (lexical matching is the resolvers' job, not qwen's).
         """
-        # ── Resolve material BEFORE the LLM call ────────────────────
-        # The prompt no longer asks qwen to pick a material; the resolver
-        # is authoritative. Returning its decisions lets the caller
-        # surface them (CLI, sidecar, future UI).
+        # ── Resolve material and age BEFORE the LLM call ─────────────
+        # The prompt no longer asks qwen to pick material or age; the
+        # resolvers are authoritative. Returning their decisions lets the
+        # caller surface them (CLI, sidecar, future UI).
         material, decisions = resolve_material(request)
+
+        # ── Resolve age BEFORE the LLM call ────────────────────────
+        # Like material, age is now deterministic — qwen no longer
+        # chooses it.  The resolver's verdict is authoritative.
+        age, age_decisions = resolve_age(request)
+        decisions.extend(age_decisions)
 
         # Build the prompt (no material lines — see _ASSET_PLANNER_PROMPT).
         prompt = self.build_prompt(request)
@@ -233,21 +231,15 @@ class AssetPlanner:
         # is authoritative (overrides any stale/hallucinated material the
         # LLM might have emitted while the grammar change rolls out).
         spec["material"] = material
+        spec["age"] = age
         if "asset_id" not in spec:
             spec["asset_id"] = spec.get("generator", "table")
 
-        # ── Clamp age ───────────────────────────────────────────
-        age = spec.get("age", 0.15)
-        if not isinstance(age, (int, float)):
-            log.info(f"age: non-numeric ({type(age).__name__}) → default 0.15")
-            age = 0.15
-        age = float(age)
-        if age < 0.15:
-            log.info(f"age={age} < 0.15 → 0.15")
-            age = 0.15
-        elif age > 1.0:
-            log.info(f"age={age} > 1.0 → 1.0")
-            age = 1.0
+        # ── Resolve age BEFORE the LLM call ────────────────────────
+        # Like material, age is now deterministic — qwen no longer
+        # chooses it.  The resolver's verdict is authoritative.
+        age, age_decisions = resolve_age(request)
+        decisions.extend(age_decisions)
         spec["age"] = age
 
         # Verify the final spec passes compile_spec

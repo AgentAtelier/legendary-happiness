@@ -68,6 +68,18 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "You didn't name a material, so I used {resolved}.",
     ),
+    "age.unspecified_defaulted": (
+        # technical
+        "no wear word matched; defaulted to age={resolved}.",
+        # plain
+        "You didn't describe the condition, so I assumed a fresh/new asset (age {resolved}).",
+    ),
+    "age.conflict": (
+        # technical
+        "both aged and new wear words present; resolved to age={resolved} (aged wins tie).",
+        # plain
+        "You mentioned both worn and new words — I went with aged ({resolved}). You can change it.",
+    ),
 }
 
 
