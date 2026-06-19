@@ -124,3 +124,10 @@ def test_rough_granite_compiles():
     s = _spec(); s["material"] = "rough_granite"
     out = compile_spec(s)
     assert out["material"] == "rough_granite"
+
+
+def test_wrought_iron_compiles():
+    """wrought_iron is a valid material."""
+    s = _spec(); s["material"] = "wrought_iron"
+    out = compile_spec(s)
+    assert out["material"] == "wrought_iron"

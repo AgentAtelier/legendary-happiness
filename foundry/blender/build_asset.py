@@ -102,6 +102,51 @@ def _build_chair_geometry(params):
     return mesh
 
 
+def _metal_color_nodes(nodes, links, mat_info, seed):
+    """Build a metal-specific colour subgraph: mostly flat dark tint with a
+    subtle noise streak for variation, 2-stop ramp between tint_rgb and base_rgb.
+
+    Returns the ColorRamp's Color output socket."""
+    tint = mat_info["tint_rgb"]
+    base = mat_info["base_rgb"]
+
+    # Object-space coordinate chain
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    tex_coord.location = (-1000, 300)
+
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = (-800, 300)
+    mapping.vector_type = "TEXTURE"
+    mapping.inputs["Scale"].default_value = (1.0, 1.0, 4.0)
+    mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+
+    # Subtle noise streak for surface variation
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.location = (-400, 300)
+    noise.inputs["Scale"].default_value = 20.0
+    noise.inputs["Detail"].default_value = 2.0
+    noise.inputs["Roughness"].default_value = 0.9
+
+    # Wire coordinates → noise
+    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], noise.inputs["Vector"])
+
+    # ColorRamp: 2-stop dark tint → slightly lighter base
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.location = (200, 300)
+    ramp.color_ramp.interpolation = "LINEAR"
+    stops = ramp.color_ramp.elements
+    stops[0].position = 0.0
+    stops[0].color = (*tint, 1.0)
+    stops[1].position = 1.0
+    stops[1].color = (*base, 1.0)
+
+    # Wire noise fac → ramp
+    links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+
+    return ramp.outputs["Color"]
+
+
 def _stone_color_nodes(nodes, links, mat_info, seed):
     """Build a stone-specific colour subgraph: object-space coords with
     Voronoi+Noise → 3-stop ColorRamp for mottled-grey granite look.
@@ -247,6 +292,7 @@ _BUILDERS = {
 _COLOR_BUILDERS = {
     "wood": _wood_color_nodes,
     "stone": _stone_color_nodes,
+    "metal": _metal_color_nodes,
 }
 
 

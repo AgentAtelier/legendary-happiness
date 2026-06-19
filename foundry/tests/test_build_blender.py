@@ -182,6 +182,70 @@ def test_granite_texture_is_grey_and_low_saturation(tmp_path):
         )
 
 
+# ── Task 3: Metal material build test ─────────────────────────────
+
+_IRON_SPEC = {
+    "asset_id": "table",
+    "generator": "table",
+    "material": "wrought_iron",
+    "params": {
+        "top_width": 1.5, "top_depth": 1.0, "top_thickness": 0.08,
+        "leg_height": 0.67, "leg_radius": 0.06, "leg_inset": 0.1,
+    },
+}
+
+
+def test_build_iron_table_passes_gate(tmp_path):
+    """A table built with wrought_iron builds, exports, and passes the gate."""
+    spec_path = tmp_path / "iron_table.json"
+    spec_path.write_text(json.dumps(_IRON_SPEC), encoding="utf-8")
+
+    out = str(tmp_path / "iron_table.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), out],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert os.path.exists(out), "no GLB written"
+
+    from gate import gate_asset
+    res = gate_asset(out, {"width": 2.0, "depth": 1.5}, 1.2)
+    assert res.passed, f"gate failed: {res.reasons}"
+
+    mesh = trimesh.load(out, force="mesh")
+    mesh.merge_vertices()
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    assert topo.is_watertight, "iron table mesh must be watertight"
+
+
+def test_iron_table_metallic_factor_is_one(tmp_path):
+    """A table built with wrought_iron has metallicFactor == 1.0 in the exported GLB."""
+    from pygltflib import GLTF2
+
+    spec_path = tmp_path / "iron_metallic.json"
+    spec_path.write_text(json.dumps(_IRON_SPEC), encoding="utf-8")
+
+    glb = str(tmp_path / "iron_metallic.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert os.path.exists(glb), "no GLB written"
+
+    gltf = GLTF2().load(glb)
+    mat = gltf.materials[0]
+    pbr = mat.pbrMetallicRoughness
+    assert abs(pbr.metallicFactor - 1.0) <= 0.01, (
+        f"expected metallicFactor ≈ 1.0, got {pbr.metallicFactor}"
+    )
+    # Roughness should be ~0.45
+    assert abs(pbr.roughnessFactor - 0.45) <= 0.05, (
+        f"expected roughnessFactor ≈ 0.45, got {pbr.roughnessFactor}"
+    )
+
+
 def test_chair_has_baked_texture_and_uvs(tmp_path):
     """Chair GLB has embedded texture, baseColorTexture, and UVs."""
     from pygltflib import GLTF2

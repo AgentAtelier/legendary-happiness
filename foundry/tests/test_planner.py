@@ -480,6 +480,27 @@ def _fake_llm_rough_granite(prompt: str, grammar: str | None) -> str:
     })
 
 
+def _fake_llm_wrought_iron(prompt: str, grammar: str | None) -> str:
+    """Fake LLM returning a spec with material=wrought_iron."""
+    return json.dumps({
+        "asset_id": "table",
+        "generator": "table",
+        "material": "wrought_iron",
+        "params": {
+            "top_width": 1.5, "top_depth": 0.8, "top_thickness": 0.06,
+            "leg_height": 0.65, "leg_radius": 0.05, "leg_inset": 0.1,
+        },
+    })
+
+
+def test_plan_with_wrought_iron_material():
+    """plan() preserves wrought_iron from the LLM."""
+    planner = AssetPlanner()
+    spec = planner.plan("an iron table", _fake_llm_wrought_iron)
+    assert spec["material"] == "wrought_iron"
+    compile_spec(spec)
+
+
 def test_plan_with_rough_granite_material():
     """plan() preserves rough_granite from the LLM."""
     planner = AssetPlanner()

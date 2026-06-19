@@ -30,4 +30,11 @@ MATERIAL_PALETTE = {
         "roughness": 0.85,
         "metallic": 0.0,
     },
+    "wrought_iron": {
+        "family": "metal",
+        "tint_rgb": (0.08, 0.08, 0.09),
+        "base_rgb": (0.18, 0.18, 0.20),
+        "roughness": 0.45,
+        "metallic": 1.0,
+    },
 }
