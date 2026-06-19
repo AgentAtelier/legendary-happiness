@@ -1,5 +1,6 @@
-"""Material palette for the Forge foundry — three wood-tone materials sharing a
-single procedural wood shader but with different colour/roughness parameters.
+"""Material palette for the Forge foundry — five materials across three
+families (wood, stone, metal), each with family-specific colour and
+roughness parameters.
 
 This is a plain data module, standalone (no engine/devforge imports).
 """

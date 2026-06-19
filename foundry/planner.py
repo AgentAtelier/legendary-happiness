@@ -74,8 +74,8 @@ Cabinet params (generator="cabinet"):
   "base_height": <number: height of the bottom plinth>
 }}
 
-Allowed material values: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated).
-Choose the one that best matches the request's wood tone.
+Allowed material values: one of "worn_oak" (light warm brown), "dark_walnut" (dark brown), "weathered_pine" (pale desaturated), "rough_granite" (mottled grey stone), "wrought_iron" (dark tinted metal).
+Choose the one that best matches the request's material need.
 All param values are positive floats (decimals).
 
 Table defaults: top_width ~1.2-1.5, top_depth ~0.6-1.0, top_thickness ~0.05-0.08, leg_height ~0.5-0.7, leg_radius ~0.04-0.06, leg_inset ~0.05-0.15.

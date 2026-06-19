@@ -202,11 +202,8 @@ def _stone_color_nodes(nodes, links, mat_info, seed):
     s2 = stops.new(1.0)
     s2.color = (*base, 1.0)
 
-    # Wire mix → ramp (using combined texture colour as fac)
-    # Convert colour to greyscale fac via luminance proxy: use Fac of mix
-    # We'll use the voronoi Fac output as a single-channel driver.
-    # Actually, wire the voronoi Fac as the ramp driver (single channel).
-    links.new(voronoi.outputs["Fac"], ramp.inputs["Fac"])
+    # Wire mix output → ramp (ColorRamp auto-converts colour to greyscale)
+    links.new(mix_textures.outputs["Color"], ramp.inputs["Fac"])
 
     return ramp.outputs["Color"]
 
@@ -355,6 +352,10 @@ def _build_cabinet_geometry(params):
     # Back wall
     wall_y = -(d / 2.0 - pt / 2.0)
     _add_box(bm, 0.0, wall_y, body_cz, w - 2 * pt, pt, body_h)
+
+    # Front wall (closed box)
+    front_y = +(d / 2.0 - pt / 2.0)
+    _add_box(bm, 0.0, front_y, body_cz, w - 2 * pt, pt, body_h)
 
     bm.to_mesh(mesh)
     bm.free()
