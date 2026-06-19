@@ -226,20 +226,21 @@ def apply_material(mesh, material_name, seed=0.0):
     mapping.vector_type = "TEXTURE"
     # Anisotropic scale: grain runs along the long axis (Z-up → stretch Z
     # so the wave compresses along height; bands run across the horizontal).
-    mapping.inputs["Scale"].default_value = (1.0, 1.0, 8.0)
+    mapping.inputs["Scale"].default_value = (1.0, 1.0, 3.0)
     # Per-asset seed offsets the location so two same-material assets differ.
     mapping.inputs["Location"].default_value = (seed, seed, 0.0)
 
     # ── Noise warp (breaks parallel stripe corduroy) ─────────
     noise = nodes.new("ShaderNodeTexNoise")
     noise.location = (-800, 0)
-    noise.inputs["Scale"].default_value = 5.0
-    noise.inputs["Detail"].default_value = 2.0
+    noise.inputs["Scale"].default_value = 3.0
+    noise.inputs["Detail"].default_value = 6.0
+    noise.inputs["Roughness"].default_value = 0.75
 
     noise_scale = nodes.new("ShaderNodeVectorMath")
     noise_scale.operation = "MULTIPLY"
     noise_scale.location = (-600, 0)
-    noise_scale.inputs[1].default_value = (0.05, 0.05, 0.05)
+    noise_scale.inputs[1].default_value = (0.35, 0.35, 0.35)
 
     warp_add = nodes.new("ShaderNodeVectorMath")
     warp_add.operation = "ADD"
@@ -249,9 +250,9 @@ def apply_material(mesh, material_name, seed=0.0):
     wave = nodes.new("ShaderNodeTexWave")
     wave.wave_type = "BANDS"
     wave.bands_direction = "X"
-    wave.inputs["Scale"].default_value = 12.0
-    wave.inputs["Distortion"].default_value = 2.5
-    wave.inputs["Detail"].default_value = 3.0
+    wave.inputs["Scale"].default_value = 9.0
+    wave.inputs["Distortion"].default_value = 4.0
+    wave.inputs["Detail"].default_value = 5.0
     wave.inputs["Detail Scale"].default_value = 3.0
     wave.location = (-200, 300)
 

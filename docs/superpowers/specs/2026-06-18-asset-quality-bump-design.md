@@ -127,6 +127,19 @@ cd foundry && .venv/bin/python -m pytest tests/ -q
 Live build/render tests additionally need llama on `:8002` and Blender (installed). Run `python -m foundry`
 from the **repo root**, never from inside `foundry/`.
 
+## Post-implementation note (2026-06-19): wood shader deferred to human art-direction
+
+Tasks 1–3 landed, verified green, and live-checked in Godot. **Entropy (`age`) and AO-into-baseColor
+read well.** The procedural **wood grain remains the weak point.** A v2 iteration (warp amplitude
+0.05→0.35, multi-octave noise, anisotropy (1,1,8)→(1,1,3)) is *better but still not good enough* — it
+still reads as too-regular stylized banding rather than convincing wood.
+
+**This is taste-heavy hand-authoring, not parametric tuning — owned by the user (artist), NOT to be
+blind-delegated or LLM-iterated further.** The pipeline plumbing is correct and in place (object-space
+coords, noise-warp-before-measure chain, CONSTANT ramp, per-asset seed, EMIT bake); only the shader
+node recipe/values need an artist's eye in Blender. Start point: `foundry/blender/build_asset.py`
+`apply_material()`.
+
 ## Out of scope (banked for later)
 
 Organic assets (Geometry-Nodes method brainstorm — the next slice), baked-lighting-into-albedo, `AreaLight3D`
