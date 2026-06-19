@@ -155,7 +155,18 @@ def test_granite_texture_is_grey_and_low_saturation(tmp_path):
     assert proc.returncode == 0, proc.stderr or proc.stdout
 
     gltf = GLTF2().load(glb)
-    image = gltf.images[0]
+    # Slice 4 invariant: walk the glTF texture chain to the baseColor image
+    # rather than reading gltf.images[0] directly — after the NORMAL bake
+    # the GLB carries two images and Blender's emission ordering isn't
+    # guaranteed, so the baseColor image may no longer be at index 0.
+    mat = gltf.materials[0]
+    pbr = mat.pbrMetallicRoughness
+    bct = pbr.baseColorTexture
+    assert bct is not None and bct.index is not None, (
+        "expected baseColorTexture to be present (slice 3 contract)"
+    )
+    tex_bc = gltf.textures[bct.index]
+    image = gltf.images[tex_bc.source]
     buffer_view = gltf.bufferViews[image.bufferView]
     blob = gltf.binary_blob()
     image_data = blob[buffer_view.byteOffset:buffer_view.byteOffset + buffer_view.byteLength]

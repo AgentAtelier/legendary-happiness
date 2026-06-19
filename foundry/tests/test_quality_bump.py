@@ -53,10 +53,25 @@ def _load_mesh(glb_path):
 
 
 def _extract_texture_array(glb_path):
-    """Load a GLB and return the first embedded image as a numpy array (RGB or L)."""
+    """Load a GLB and return the baseColor image (slice 4 invariant) as a
+    numpy array (RGB or L).
+
+    Slice 3 indexed ``gltf.images[0]`` directly; that worked when only one
+    bake pass existed.  Slice 4 adds a NORMAL bake so the GLB carries two
+    images whose index order is implementation-defined.  Walk the glTF
+    texture chain to always land on the baseColor image, regardless of
+    how Blender emitted the indexes.
+    """
     gltf = GLTF2().load(glb_path)
     assert gltf.images is not None and len(gltf.images) > 0, "no embedded images"
-    image = gltf.images[0]
+    mat = gltf.materials[0]
+    pbr = mat.pbrMetallicRoughness
+    bct = pbr.baseColorTexture
+    if bct is None or bct.index is None:
+        image = gltf.images[0]
+    else:
+        tex = gltf.textures[bct.index]
+        image = gltf.images[tex.source]
     buffer_view = gltf.bufferViews[image.bufferView]
     blob = gltf.binary_blob()
     image_data = blob[buffer_view.byteOffset:buffer_view.byteOffset + buffer_view.byteLength]

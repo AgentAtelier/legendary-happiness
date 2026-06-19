@@ -144,7 +144,8 @@ def _metal_color_nodes(nodes, links, mat_info, seed):
     # Wire noise fac → ramp
     links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
 
-    return ramp.outputs["Color"]
+    # Slice 4: also expose noise.Fac as the NORMAL-bake height source.
+    return ramp.outputs["Color"], noise.outputs["Fac"]
 
 
 def _stone_color_nodes(nodes, links, mat_info, seed):
@@ -205,7 +206,9 @@ def _stone_color_nodes(nodes, links, mat_info, seed):
     # Wire mix output → ramp (ColorRamp auto-converts colour to greyscale)
     links.new(mix_textures.outputs["Color"], ramp.inputs["Fac"])
 
-    return ramp.outputs["Color"]
+    # Slice 4: also expose voronoi.Distance as the NORMAL-bake height
+    # source — cells' edge-distance reads convincingly as mottled relief.
+    return ramp.outputs["Color"], voronoi.outputs["Distance"]
 
 
 def _wood_color_nodes(nodes, links, mat_info, seed):
@@ -278,7 +281,8 @@ def _wood_color_nodes(nodes, links, mat_info, seed):
     # Wire wave → ramp
     links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
 
-    return ramp.outputs["Color"]
+    # Slice 4: also expose wave.Fac as the NORMAL-bake height source.
+    return ramp.outputs["Color"], wave.outputs["Fac"]
 
 
 def _build_shelf_geometry(params):
@@ -439,6 +443,98 @@ def _lerp(a, b, t):
     return tuple(a[i] + (b[i] - a[i]) * t for i in range(3))
 
 
+def apply_normal_bake(obj, nodes, links, bsdf, height_socket, image_name="baked_normal"):
+    """Bake Cycles ``type="NORMAL"`` into a tangent-space normal image, then
+    replace the live Bump with ``ImageTexture → NormalMap → BSDF.Normal`` so
+    the glTF exporter writes a ``normalTexture``.
+
+    The ``height_socket`` is the SAME scalar the family colour builder
+    already computes to drive base colour:
+      - wood  : ``wave.tex.Fac``       (band-stepped wood tones)
+      - stone : ``voronoi.tex.Distance`` (cell-edge mottling)
+      - metal : ``noise.tex.Fac``      (subtle streak)
+
+    Slice 4 plumbing: live Bump while Cycles captures, then unwire and
+    swap to the baked image.  Subtle strength (0.4) + Distance (0.05) →
+    plausible first pass without dominating the look.  Non-Color
+    colorspace on the baked image is critical — gamma warping the
+    tangent vectors would make the surface look broken.
+    """
+    # Cycles CPU is required for baking; the helper is self-contained.
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 1
+
+    # 1 ── Live Bump wiring: feed the height scalar → Bump → BSDF.Normal.
+    # Subtle strength (0.2) + small Distance (0.05) → plausible first
+    # pass that reads as surface micro-relief on all three families.
+    bump = nodes.new("ShaderNodeBump")
+    bump.location = (1000, -100)
+    bump.inputs["Strength"].default_value = 0.2
+    bump.inputs["Distance"].default_value = 0.05
+    links.new(height_socket, bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    # 2 ── New image to bake into (tangent-space normal map).
+    normal_image = bpy.data.images.new(
+        image_name, width=1024, height=1024,
+        alpha=False, float_buffer=False,
+    )
+    normal_image.file_format = "PNG"
+    normal_image.colorspace_settings.name = "Non-Color"  # critical
+
+    # 3 ── Image Texture node; must be the only SELECTED+ACTIVE bake target.
+    normal_tex = nodes.new("ShaderNodeTexImage")
+    normal_tex.image = normal_image
+    normal_tex.location = (1000, -300)
+    saved_select = {n.name: n.select for n in nodes}
+    for n in nodes:
+        n.select = False
+    nodes.active = normal_tex
+    normal_tex.select = True
+
+    # 4 ── Make the target object active for the bake call.
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+    # 5 ── Bake.  Cycles emits the post-Bump tangent-space normal as RGB.
+    # normal_space="TANGENT" is explicit (default is also TANGENT in modern
+    # Blender, but pinning it removes a version-dependency foot-gun:
+    # glTF's normalTexture is always tangent-space, so a bake in any
+    # other space would silently produce a malformed asset).
+    bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT", use_clear=True)
+
+    # 6 ── Tear down the live Bump wiring.
+    for link in list(bump.inputs["Height"].links):
+        links.remove(link)
+    for link in list(bump.outputs["Normal"].links):
+        links.remove(link)
+    nodes.remove(bump)
+
+    # 7 ── Wire the baked image through a NormalMap node (required for
+    #       the glTF exporter to emit a normalTexture).
+    normal_map = nodes.new("ShaderNodeNormalMap")
+    normal_map.location = (1000, -300)
+    links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+    links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+
+    # 8 ── Pack so the GLB carries the image without writing to disk.
+    normal_image.pack()
+
+    # Restore prior selection state — apply_material's later steps
+    # re-set nodes.active to their own bake target.
+    for n in nodes:
+        n.select = False
+    for name, was in saved_select.items():
+        if was:
+            try:
+                nodes[name].select = True
+            except KeyError:
+                pass
+    nodes.active = None
+
+
 def apply_material(mesh, material_name, seed=0.0):
     """Create a procedural wood material with shader nodes, bake the base colour
     to an image texture with Cycles-CPU, then wire the baked texture into the
@@ -490,7 +586,8 @@ def apply_material(mesh, material_name, seed=0.0):
         raise ValueError(
             f"unknown material family: {family!r} (known: {sorted(_COLOR_BUILDERS)})"
         )
-    color_socket = builder(nodes, links, mat_info, seed)
+    # Slice 4: builders now also expose a scalar height for the NORMAL bake.
+    color_socket, height_socket = builder(nodes, links, mat_info, seed)
 
     # ── Ambient Occlusion (grounds the asset, baked INTO baseColor) ─
     ao = nodes.new("ShaderNodeAmbientOcclusion")
@@ -510,6 +607,11 @@ def apply_material(mesh, material_name, seed=0.0):
     # Wire shared: mix_ao → bsdf → material_output
     links.new(mix_ao.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
+
+    # ── Slice 4: Bake the NORMAL pass before the baseColor pass. ─
+    # See apply_normal_bake() for the rationale (Bump → bake → swap to
+    # image→NormalMap→BSDF.Normal so glTF writes a normalTexture).
+    apply_normal_bake(obj, nodes, links, bsdf, height_socket)
 
     # ── baking: capture the procedural colour into an image ───
     # Create the image to bake into.
