@@ -116,6 +116,28 @@ NEW_WORDS: set[str] = {
 _AGE_BAND_SPLIT = 0.4  # below = "fresh" intent, above = "weathered" intent
 
 
+# ── Severity classification (slice 2) ───────────────────────────────────────
+# Each objective-signal tag is bucketed into a severity tier so the
+# sampler can weight the probe set toward real friction and away from
+# benign assumptions.  High = must be included; low = sampled to a cap;
+# unlisted tags (e.g. "clean") are not a severity and handled separately.
+#
+# Deterministic; the sampler and the regression tests share this map.
+SIGNAL_SEVERITY: dict[str, str] = {
+    # High — the user's request lined up with the asset badly enough that
+    # we should ALWAYS look at it; the live-run reported benign assumptions
+    # because low-severity entries bloated the probe set.
+    "build_error":       "high",
+    "gate_rejected":     "high",
+    "size_mismatch":     "high",
+    "material_mismatch": "high",
+    "material_conflict": "high",
+    "age_mismatch":      "high",
+    # Low — mild assumptions / decisions; informative but not a fail.
+    "decision_fired":    "low",
+}
+
+
 def _has_word(text: str, kw: str) -> bool:
     """Whole-word case-insensitive match; hyphens are non-word boundaries
     so 'wrought-iron' still matches the keyword 'wrought'."""
@@ -315,3 +337,23 @@ def age_mismatch_detail(request: str, spec: dict):
         return None
     wear = _wear_class_for(request)
     return {"wear_class": wear, "age": float(age)}
+
+
+def record_tier(tags) -> str:
+    """Classify a record's signal set into a severity tier:
+
+      - "high" : any tag is SIGNAL_SEVERITY=high
+      - "low"  : no high tag, but at least one low tag (e.g. decision_fired)
+      - "clean": only "clean" (or no tags)
+
+    Used by the severity-weighted sampler (slice 2) to decide whether
+    a record goes in unconditionally (high), gets sampled to a cap
+    (low), or participates in the clean baseline.
+    """
+    tags = tags or set()
+    if not tags or tags == {"clean"}:
+        return "clean"
+    for tag in tags:
+        if SIGNAL_SEVERITY.get(tag) == "high":
+            return "high"
+    return "low"
