@@ -36,6 +36,57 @@ if _foundry_dir not in sys.path:
 # ── Subcommand: `run <corpus> <lexicon> <out_dir> ────────────────────
 
 
+def _cmd_stability(args: argparse.Namespace) -> int:
+    from eval.report import load_corpus
+    from eval.stability import run_stability, build_report_dict, build_report_md
+
+    requests = load_corpus(args.corpus)
+    if not requests:
+        print(f"error: corpus {args.corpus!r} is empty (after skipping "
+              f"comments/blanks).", file=sys.stderr)
+        return 2
+
+    print(f"[stability] corpus={args.corpus}  requests={len(requests)}  "
+          f"runs={args.runs}  seed={args.seed}")
+
+    # Use stub LLM by default; --live wires in FoundryLLM for real
+    # qwen variance measurement (the point of this lens).
+    if args.live:
+        try:
+            from llm import FoundryLLM
+        except Exception as exc:
+            print(f"error: could not import FoundryLLM: {exc}", file=sys.stderr)
+            return 3
+        llm = FoundryLLM()
+    else:
+        llm = _stub_llm()
+
+    per_request, score = run_stability(
+        requests,
+        runs=args.runs,
+        seed=args.seed,
+        llm=llm,
+    )
+
+    report_dict = build_report_dict(
+        per_request, score, args.runs, args.seed, len(requests)
+    )
+    digest = build_report_md(report_dict)
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "report.json").write_text(
+        json.dumps(report_dict, indent=2) + "\n", encoding="utf-8"
+    )
+    (out_dir / "report.md").write_text(digest, encoding="utf-8")
+
+    print(f"[stability] score={score:.1%}  "
+          f"stable={report_dict['stable_count']}/{report_dict['total']}")
+    print(f"[stability] wrote {out_dir/'report.json'}")
+    print(f"[stability] wrote {out_dir/'report.md'}")
+    return 0
+
+
 def _cmd_run(args: argparse.Namespace) -> int:
     from eval.harness import run_corpus, records_to_jsonl
     from eval.signals import compute_signals
@@ -151,6 +202,17 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--library-dir", default="",
                      help="where forge writes .glb assets (default: <out_dir>/library)")
     run.set_defaults(func=_cmd_run)
+    stab = sub.add_parser("stability", help="measure run-to-run planner variance")
+    stab.add_argument("corpus", help="path to a corpus file (one request per line, '#' = comment)")
+    stab.add_argument("lexicon", help="path to the asset lexicon JSON (not used — consistency with 'run')")
+    stab.add_argument("out_dir", help="directory to write report.json and report.md")
+    stab.add_argument("--runs", type=int, default=5,
+                       help="number of planner runs per request (default 5)")
+    stab.add_argument("--seed", type=int, default=1337,
+                       help="RNG seed echoed in report (default 1337)")
+    stab.add_argument("--live", action="store_true",
+                       help="use FoundryLLM (default: stub — always-stable)")
+    stab.set_defaults(func=_cmd_stability)
     return p
 
 
