@@ -148,6 +148,195 @@ def _metal_color_nodes(nodes, links, mat_info, seed):
     return ramp.outputs["Color"], noise.outputs["Fac"]
 
 
+def apply_roughness_bake(
+    obj, nodes, links, bsdf,
+    baseline_roughness, metallic_factor,
+    image_name="baked_metallic_roughness",
+):
+    """Bake a packed ``metallicRoughnessTexture`` image so the glTF
+    exporter emits a single ``metallicRoughnessTexture`` entry.
+
+    Channel convention (matches glTF 2.0 spec):
+      R = unused
+      G = roughness (per-material base ± small noise variation)
+      B = metallic_factor (per-material constant)
+      A = 1
+
+    Pipeline:
+      1. Build a procedural roughness subgraph with a fresh low-frequency
+         noise that modulates ``baseline_roughness`` by ±0.05 (small
+         amplitude; reusing the procedural-noise concept from slice 4).
+      2. Cycles EMIT bake a grayscale roughness image (R=G=B=roughness).
+      3. Python post-pack the pixels into the final layout
+         (R=0, G=roughness, B=metallic_factor, A=1).
+      4. Restore BSDF as the surface; wire ``TexImage → SepRGB →
+         {G → BSDF.Roughness, B → BSDF.Metallic}``.
+
+    Determinism: Cycles CPU + samples=1 + seeded mapping coords (same
+    chain as colour builders) + Python rounding -> byte-identical GLB
+    for identical spec.
+    """
+    # Cycles CPU is required for baking; idempotent with the
+    # EMIT-pass setup that already ran.
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 1
+
+    # 1 ── Roughness subgraph: baseline + ±0.05 noise variation.
+    #
+    # Blender 4.0+ Noise Texture ``Fac`` output is signed [-1, +1]; the
+    # classic ``[0,1]`` mapping from earlier versions is gone.  The
+    # chain below remaps that signed value through ``/2`` -> [-0.5,+0.5]
+    # -> ``*amp`` -> [-0.05,+0.05] -> ``+baseline`` so the per-pixel
+    # roughness is baseline ±0.05.  Two Math nodes are enough.
+    tex_coord_rr = nodes.new("ShaderNodeTexCoord")
+    tex_coord_rr.location = (-1000, -300)
+
+    mapping_rr = nodes.new("ShaderNodeMapping")
+    mapping_rr.location = (-800, -300)
+    mapping_rr.vector_type = "TEXTURE"
+    # Different scale than colour builders so roughness variation
+    # doesn't correlate with colour bands.
+    mapping_rr.inputs["Scale"].default_value = (3.0, 3.0, 3.0)
+    mapping_rr.inputs["Location"].default_value = (0.0, 0.0, 0.0)
+
+    noise_rr = nodes.new("ShaderNodeTexNoise")
+    noise_rr.location = (-600, -300)
+    noise_rr.inputs["Scale"].default_value = 8.0
+    noise_rr.inputs["Detail"].default_value = 2.0
+    noise_rr.inputs["Roughness"].default_value = 0.7
+
+    # Map signed [-1, +1] -> [-0.5, +0.5] -> [-0.05, +0.05] -> centred on baseline.
+    div2 = nodes.new("ShaderNodeMath")
+    div2.operation = "DIVIDE"
+    div2.inputs[1].default_value = 2.0
+    div2.location = (-400, -300)
+
+    scale_amp = nodes.new("ShaderNodeMath")
+    scale_amp.operation = "MULTIPLY"
+    scale_amp.inputs[1].default_value = 0.1  # total amplitude ±0.05
+    scale_amp.location = (-200, -300)
+
+    add_base = nodes.new("ShaderNodeMath")
+    add_base.operation = "ADD"
+    add_base.inputs[1].default_value = baseline_roughness
+    add_base.location = (0, -300)
+
+    links.new(tex_coord_rr.outputs["Object"], mapping_rr.inputs["Vector"])
+    links.new(mapping_rr.outputs["Vector"], noise_rr.inputs["Vector"])
+    links.new(noise_rr.outputs["Fac"], div2.inputs[0])
+    links.new(div2.outputs["Value"], scale_amp.inputs[0])
+    links.new(scale_amp.outputs["Value"], add_base.inputs[0])
+
+    roughness_socket = add_base.outputs["Value"]
+
+    # 2 ── Image to initially bake the scalar roughness into.
+    rough_image = bpy.data.images.new(
+        image_name, width=1024, height=1024,
+        alpha=False, float_buffer=False,
+    )
+    rough_image.file_format = "PNG"
+    rough_image.colorspace_settings.name = "Non-Color"
+
+    rough_tex = nodes.new("ShaderNodeTexImage")
+    rough_tex.image = rough_image
+    rough_tex.location = (200, -300)
+
+    # Cycles bakes only into the SELECTED + active TexImage; clear other
+    # selections so subsequent bakes don't bleed into this one.
+    saved_select = {n.name: n.select for n in nodes}
+    for n in nodes:
+        n.select = False
+    nodes.active = rough_tex
+    rough_tex.select = True
+
+    # 3 ── Object must be selected + active for the bake call.
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+    # 4 ── Swap Surface for an Emission that emits the scalar roughness
+    #       in RGB (grayscale, since R=G=B=roughness).
+    material_output = next(
+        (n for n in nodes if n.type == "OUTPUT_MATERIAL"), None
+    )
+    if material_output is None:
+        raise RuntimeError("expected an OUTPUT_MATERIAL node in the graph")
+    for link in list(material_output.inputs["Surface"].links):
+        links.remove(link)
+
+    combine = nodes.new("ShaderNodeCombineColor")
+    combine.location = (200, -500)
+    links.new(roughness_socket, combine.inputs["Red"])
+    links.new(roughness_socket, combine.inputs["Green"])
+    links.new(roughness_socket, combine.inputs["Blue"])
+
+    emit = nodes.new("ShaderNodeEmission")
+    emit.location = (400, -500)
+    links.new(combine.outputs["Color"], emit.inputs["Color"])
+    links.new(emit.outputs["Emission"], material_output.inputs["Surface"])
+
+    bpy.ops.object.bake(type="EMIT", use_clear=True)
+
+    # 5 ── Restore BSDF as the material output surface.
+    for link in list(material_output.inputs["Surface"].links):
+        links.remove(link)
+    for socket_name in ("Red", "Green", "Blue"):
+        for link in list(combine.inputs[socket_name].links):
+            links.remove(link)
+    for link in list(emit.inputs["Color"].links):
+        links.remove(link)
+    links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
+
+    # 6 ── Python post-pack: bake produced R=G=B=roughness; re-pack into
+    #       the glTF metallicRoughnessTexture channel convention
+    #       R=0, G=roughness_value, B=metallic_factor, A=1.
+    src_pixels = list(rough_image.pixels[:])
+    px_count = len(src_pixels) // 4
+    out = [0.0] * (px_count * 4)
+    for i in range(px_count):
+        # The bake wrote the scalar roughness value into all three RGB
+        # channels; pick the green channel since that maps to roughness.
+        g = src_pixels[4 * i + 1]
+        out[4 * i + 1] = g
+        out[4 * i + 2] = float(metallic_factor)
+        out[4 * i + 3] = 1.0
+    rough_image.pixels[:] = out
+
+    # 7 ── Wire: TexImage -> SeparateColor -> {BSDF.Roughness, BSDF.Metallic}.
+    sep = nodes.new("ShaderNodeSeparateColor")
+    sep.location = (600, -300)
+    links.new(rough_tex.outputs["Color"], sep.inputs["Color"])
+
+    # When BSDF.Roughness/Metallic sockets are image-driven, the
+    # default_value is irrelevant — but reset to 0.0 so any future
+    # deletion of the link leaves a benign fallback rather than the
+    # unexpected "baseline_roughness" the material palette reported.
+    bsdf.inputs["Roughness"].default_value = 0.0
+    bsdf.inputs["Metallic"].default_value = 0.0
+    links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+    links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+
+    # 8 ── Cleanup intermediate roughness-subgraph + bake nodes.
+    for n in (emit, combine, add_base, scale_amp, div2,
+              noise_rr, mapping_rr, tex_coord_rr):
+        nodes.remove(n)
+
+    # 9 ── Pack so the GLB carries the metallicRoughness image.
+    rough_image.pack()
+
+    # Restore prior selection state (apply_material does not bake again).
+    for n in nodes:
+        n.select = False
+    for name, was in saved_select.items():
+        if was:
+            try:
+                nodes[name].select = True
+            except KeyError:
+                pass
+    nodes.active = None
+
+
 def _stone_color_nodes(nodes, links, mat_info, seed):
     """Build a stone-specific colour subgraph: object-space coords with
     Voronoi+Noise → 3-stop ColorRamp for mottled-grey granite look.
@@ -656,6 +845,16 @@ def apply_material(mesh, material_name, seed=0.0):
 
     # Pack the image so the glTF exporter embeds it in the GLB.
     bake_image.pack()
+
+    # ── Slice 5: Bake the metallicRoughnessTexture pass. ────────────
+    # Packs (R=0, G=roughness_modulated, B=metallic_factor, A=1) so the
+    # glTF exporter emits a single metallicRoughnessTexture entry.
+    # See apply_roughness_bake() for the rationale.
+    apply_roughness_bake(
+        obj, nodes, links, bsdf,
+        baseline_roughness=roughness,
+        metallic_factor=float(mat_info.get("metallic", 0.0)),
+    )
 
 
 def _derive_entropy_seed(spec: dict) -> int:

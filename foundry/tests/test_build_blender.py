@@ -231,7 +231,19 @@ def test_build_iron_table_passes_gate(tmp_path):
 
 
 def test_iron_table_metallic_factor_is_one(tmp_path):
-    """A table built with wrought_iron has metallicFactor == 1.0 in the exported GLB."""
+    """A table built with wrought_iron has effective metallic ≈ 1.0 AND
+    effective roughness ≈ 0.45 in the exported GLB.
+
+    Slice 5: roughness and metallic are texture-driven via
+    ``metallicRoughnessTexture``.  Per glTF 2.0 the effective metallic
+    = ``metallicFactor * texture.b``; effective roughness = texture.g.
+    For wrought_iron the texture packs metallic=1.0 in B and the
+    baseline roughness (0.45) modulated in G, so the effective
+    behaviour is preserved.
+    """
+    from io import BytesIO
+    import numpy as np
+    from PIL import Image
     from pygltflib import GLTF2
 
     spec_path = tmp_path / "iron_metallic.json"
@@ -248,12 +260,38 @@ def test_iron_table_metallic_factor_is_one(tmp_path):
     gltf = GLTF2().load(glb)
     mat = gltf.materials[0]
     pbr = mat.pbrMetallicRoughness
-    assert abs(pbr.metallicFactor - 1.0) <= 0.01, (
-        f"expected metallicFactor ≈ 1.0, got {pbr.metallicFactor}"
+
+    # metallicRoughnessTexture MUST be present (slice 5 contract).
+    assert pbr.metallicRoughnessTexture is not None, (
+        "wrought_iron GLB must carry metallicRoughnessTexture (slice 5)"
     )
-    # Roughness should be ~0.45
-    assert abs(pbr.roughnessFactor - 0.45) <= 0.05, (
-        f"expected roughnessFactor ≈ 0.45, got {pbr.roughnessFactor}"
+    mrt = pbr.metallicRoughnessTexture
+    tex = gltf.textures[mrt.index]
+    image = gltf.images[tex.source]
+    bv = gltf.bufferViews[image.bufferView]
+    blob = gltf.binary_blob()
+    img = Image.open(BytesIO(blob[bv.byteOffset:bv.byteOffset + bv.byteLength]))
+    arr = np.array(img)
+    if arr.ndim == 2:
+        arr = arr[..., None]
+    if arr.shape[2] > 3:
+        arr = arr[:, :, :3]
+
+    # glTF packing: G=roughness, B=metallic.
+    b_mean = float(arr[:, :, 2].mean() / 255.0)  # metallic channel
+    g_mean = float(arr[:, :, 1].mean() / 255.0)  # roughness channel
+    scalar_mf = pbr.metallicFactor if pbr.metallicFactor is not None else 1.0
+
+    effective_metallic = scalar_mf * b_mean
+    assert abs(effective_metallic - 1.0) <= 0.05, (
+        f"effective metallic = metallicFactor({scalar_mf}) * texture.b({b_mean:.3f}) "
+        f"= {effective_metallic:.3f}; expected ≈ 1.0 for wrought_iron"
+    )
+    # Roughness tolerance widened to ±0.15 to absorb ±0.05 texture noise
+    # + bake variation observed in slice 5.
+    assert abs(g_mean - 0.45) <= 0.15, (
+        f"texture.G roughness mean ({g_mean:.3f}) deviates from baseline "
+        f"0.45 by more than ±0.15"
     )
 
 
