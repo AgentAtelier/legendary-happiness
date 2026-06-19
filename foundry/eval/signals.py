@@ -35,6 +35,7 @@ import re
 from typing import List, Optional, Set
 
 from compiler import PARAM_RANGES
+from material_resolver import material_cues
 
 
 # ── Size words ────────────────────────────────────────────────────────
@@ -100,6 +101,13 @@ def compute_signals(record) -> Set[str]:
         tags.add("gate_rejected")
     if record.decisions:
         tags.add("decision_fired")
+
+    # Conflicting material cues: pure request-level check — fires when
+    # the matched cues span MORE THAN ONE distinct family.  Same-family
+    # multi-cue (oak + walnut → both wood) does NOT fire.
+    cues = material_cues(record.request or "")
+    if len({fam for _, fam in cues}) > 1:
+        tags.add("material_conflict")
 
     if record.spec is not None and isinstance(record.spec, dict):
         if size_mismatch_detail(record.request, record.spec) is not None:
