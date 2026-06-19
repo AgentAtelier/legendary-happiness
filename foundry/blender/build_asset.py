@@ -102,10 +102,85 @@ def _build_chair_geometry(params):
     return mesh
 
 
+def _wood_color_nodes(nodes, links, mat_info, seed):
+    """Build the wood-specific colour subgraph: object-space coords with
+    noise warp → Wave Texture (bands) → CONSTANT ColorRamp of wood tones.
+
+    Returns the ColorRamp's Color output socket."""
+    dark = mat_info["grain_dark_rgb"]
+    light = mat_info["grain_light_rgb"]
+
+    # ── Object-space coordinate chain ───────────────────────
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    tex_coord.location = (-1000, 300)
+
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = (-800, 300)
+    mapping.vector_type = "TEXTURE"
+    mapping.inputs["Scale"].default_value = (1.0, 1.0, 3.0)
+    mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+
+    # ── Noise warp (breaks parallel stripe corduroy) ─────────
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.location = (-800, 0)
+    noise.inputs["Scale"].default_value = 3.0
+    noise.inputs["Detail"].default_value = 6.0
+    noise.inputs["Roughness"].default_value = 0.75
+
+    noise_scale = nodes.new("ShaderNodeVectorMath")
+    noise_scale.operation = "MULTIPLY"
+    noise_scale.location = (-600, 0)
+    noise_scale.inputs[1].default_value = (0.35, 0.35, 0.35)
+
+    warp_add = nodes.new("ShaderNodeVectorMath")
+    warp_add.operation = "ADD"
+    warp_add.location = (-400, 300)
+
+    # ── Wave Texture (bands) for wood grain ─────────────────
+    wave = nodes.new("ShaderNodeTexWave")
+    wave.wave_type = "BANDS"
+    wave.bands_direction = "X"
+    wave.inputs["Scale"].default_value = 9.0
+    wave.inputs["Distortion"].default_value = 4.0
+    wave.inputs["Detail"].default_value = 5.0
+    wave.inputs["Detail Scale"].default_value = 3.0
+    wave.location = (-200, 300)
+
+    # ── Wire the coordinate warp chain ──────────────────────
+    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], warp_add.inputs[0])
+    links.new(noise.outputs["Color"], noise_scale.inputs[0])
+    links.new(noise_scale.outputs["Vector"], warp_add.inputs[1])
+    links.new(warp_add.outputs["Vector"], wave.inputs["Vector"])
+
+    # ColorRamp: map wave fac to wood tones from the palette.
+    # CONSTANT interpolation → stepped, painted-band read.
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.location = (200, 300)
+    ramp.color_ramp.interpolation = "CONSTANT"
+    # 4-stop ramp: dark → mid → light → dark
+    stops = ramp.color_ramp.elements
+    stops[0].position = 0.0
+    stops[0].color = (*dark, 1.0)
+    stops[1].position = 0.4
+    stops[1].color = (*_lerp(dark, light, 0.5), 1.0)
+    s2 = stops.new(0.7)
+    s2.color = (*light, 1.0)
+    s3 = stops.new(1.0)
+    s3.color = (*dark, 1.0)
+
+    # Wire wave → ramp
+    links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
+
+    return ramp.outputs["Color"]
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
 }
+
+_COLOR_BUILDERS = {"wood": _wood_color_nodes}
 
 
 def build_geometry(spec):
@@ -194,9 +269,7 @@ def apply_material(mesh, material_name, seed=0.0):
 
     # ── Look up the material palette entry ────────────────────
     mat_info = MATERIAL_PALETTE.get(material_name, MATERIAL_PALETTE["worn_oak"])
-    dark = mat_info["grain_dark_rgb"]
-    light = mat_info["grain_light_rgb"]
-    roughness = mat_info["roughness"]
+    roughness = mat_info.get("roughness", 0.65)
 
     mat = bpy.data.materials.new(material_name)
     mat.use_nodes = True
@@ -208,76 +281,23 @@ def apply_material(mesh, material_name, seed=0.0):
     # Clear default nodes; we rebuild the shader tree.
     nodes.clear()
 
-    # ── procedural wood nodes ────────────────────────────────
+    # ── Shared tail: BSDF + material output ──────────────────
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.inputs["Roughness"].default_value = roughness
-    bsdf.inputs["Metallic"].default_value = 0.0
+    bsdf.inputs["Metallic"].default_value = mat_info.get("metallic", 0.0)
     bsdf.location = (800, 300)
 
     material_output = nodes.new("ShaderNodeOutputMaterial")
     material_output.location = (1200, 300)
 
-    # ── Object-space coordinate chain ───────────────────────
-    tex_coord = nodes.new("ShaderNodeTexCoord")
-    tex_coord.location = (-1000, 300)
-
-    mapping = nodes.new("ShaderNodeMapping")
-    mapping.location = (-800, 300)
-    mapping.vector_type = "TEXTURE"
-    # Anisotropic scale: grain runs along the long axis (Z-up → stretch Z
-    # so the wave compresses along height; bands run across the horizontal).
-    mapping.inputs["Scale"].default_value = (1.0, 1.0, 3.0)
-    # Per-asset seed offsets the location so two same-material assets differ.
-    mapping.inputs["Location"].default_value = (seed, seed, 0.0)
-
-    # ── Noise warp (breaks parallel stripe corduroy) ─────────
-    noise = nodes.new("ShaderNodeTexNoise")
-    noise.location = (-800, 0)
-    noise.inputs["Scale"].default_value = 3.0
-    noise.inputs["Detail"].default_value = 6.0
-    noise.inputs["Roughness"].default_value = 0.75
-
-    noise_scale = nodes.new("ShaderNodeVectorMath")
-    noise_scale.operation = "MULTIPLY"
-    noise_scale.location = (-600, 0)
-    noise_scale.inputs[1].default_value = (0.35, 0.35, 0.35)
-
-    warp_add = nodes.new("ShaderNodeVectorMath")
-    warp_add.operation = "ADD"
-    warp_add.location = (-400, 300)
-
-    # ── Wave Texture (bands) for wood grain ─────────────────
-    wave = nodes.new("ShaderNodeTexWave")
-    wave.wave_type = "BANDS"
-    wave.bands_direction = "X"
-    wave.inputs["Scale"].default_value = 9.0
-    wave.inputs["Distortion"].default_value = 4.0
-    wave.inputs["Detail"].default_value = 5.0
-    wave.inputs["Detail Scale"].default_value = 3.0
-    wave.location = (-200, 300)
-
-    # ── Wire the coordinate warp chain ──────────────────────
-    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
-    links.new(mapping.outputs["Vector"], warp_add.inputs[0])
-    links.new(noise.outputs["Color"], noise_scale.inputs[0])
-    links.new(noise_scale.outputs["Vector"], warp_add.inputs[1])
-    links.new(warp_add.outputs["Vector"], wave.inputs["Vector"])
-
-    # ColorRamp: map wave fac to wood tones from the palette.
-    # CONSTANT interpolation → stepped, painted-band read.
-    ramp = nodes.new("ShaderNodeValToRGB")
-    ramp.location = (200, 300)
-    ramp.color_ramp.interpolation = "CONSTANT"
-    # 4-stop ramp: dark → mid → light → dark
-    stops = ramp.color_ramp.elements
-    stops[0].position = 0.0
-    stops[0].color = (*dark, 1.0)
-    stops[1].position = 0.4
-    stops[1].color = (*_lerp(dark, light, 0.5), 1.0)
-    s2 = stops.new(0.7)
-    s2.color = (*light, 1.0)
-    s3 = stops.new(1.0)
-    s3.color = (*dark, 1.0)
+    # ── Dispatch to the family-specific colour subgraph ─────
+    family = mat_info.get("family", "wood")
+    builder = _COLOR_BUILDERS.get(family)
+    if builder is None:
+        raise ValueError(
+            f"unknown material family: {family!r} (known: {sorted(_COLOR_BUILDERS)})"
+        )
+    color_socket = builder(nodes, links, mat_info, seed)
 
     # ── Ambient Occlusion (grounds the asset, baked INTO baseColor) ─
     ao = nodes.new("ShaderNodeAmbientOcclusion")
@@ -290,12 +310,11 @@ def apply_material(mesh, material_name, seed=0.0):
     mix_ao.location = (500, 300)
     mix_ao.inputs["Fac"].default_value = 1.0  # full mix
 
-    # Wire: ramp → mix_ao(Color1), AO → mix_ao(Color2)
-    links.new(ramp.outputs["Color"], mix_ao.inputs["Color1"])
+    # Wire: color_socket → mix_ao(Color1), AO → mix_ao(Color2)
+    links.new(color_socket, mix_ao.inputs["Color1"])
     links.new(ao.outputs["Color"], mix_ao.inputs["Color2"])
 
-    # Wire procedural: wave → ramp → mix_ao → bsdf
-    links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
+    # Wire shared: mix_ao → bsdf → material_output
     links.new(mix_ao.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
 
