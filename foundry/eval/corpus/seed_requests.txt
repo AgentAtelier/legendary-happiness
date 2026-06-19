@@ -1,0 +1,85 @@
+# ────────────────────────────────────────────────────────────────────
+# foundry/eval/corpus/seed_requests.txt
+# ────────────────────────────────────────────────────────────────────
+# Hand-curated NL corpus, slice 1.
+#
+# Coverage:
+#   - 4 generators    × {no material, family ("wooden"/"stone"/"metal"),
+#                         specific ("oak"/"walnut"/.../granite/iron)}
+#   - wear words      × {none, old/battered/weathered, new/pristine/polished}
+#   - 6 adversarial / underspecified lines
+#
+# Comment lines starting with '#' are skipped by load_corpus().
+
+# ── tables / no material ──────────────────────────────────────────────
+a plain coffee table
+an old battered workbench
+a brand-new polished dinner table
+
+# ── tables / family keyword ──────────────────────────────────────────
+a wooden desk
+a stone bench
+a metal table
+
+# ── tables / specific material ───────────────────────────────────────
+an oak kitchen table
+a walnut side table, weathered
+a granite slab table, old
+a wrought-iron bistro table, pristine
+a marble-top dresser, new
+a pine farmhouse table, weathered
+
+# ── chairs / no material ─────────────────────────────────────────────
+a simple chair
+an old battered chair
+a brand-new comfortable chair
+
+# ── chairs / family keyword ──────────────────────────────────────────
+a wooden dining chair
+a stone seat bench
+a metal-framed chair, old
+
+# ── chairs / specific material ───────────────────────────────────────
+an oak chair, rustic
+a walnut armchair, polished
+a wrought-iron barstool, new
+a granite seat block
+
+# ── shelves / no material ────────────────────────────────────────────
+a tall storage shelf
+a battered old bookcase
+a brand-new pristine shelf unit
+
+# ── shelves / family keyword ─────────────────────────────────────────
+a wooden bookshelf
+a stone wall shelf
+a metal rack, weathered
+
+# ── shelves / specific material ──────────────────────────────────────
+an oak bookcase, weathered
+a walnut display shelf, new
+a pine wall shelf, rustic
+
+# ── cabinets / no material ───────────────────────────────────────────
+a kitchen cabinet
+a battered storage cabinet
+a brand-new tall cabinet
+
+# ── cabinets / family keyword ────────────────────────────────────────
+a wooden cabinet
+a stone cabinet, old
+a metal locker
+
+# ── cabinets / specific material ─────────────────────────────────────
+an oak cabinet, new
+a walnut cabinet, weathered
+a wrought-iron cabinet
+a granite-topped cabinet, vintage
+
+# ── adversarial / under-specified / ambiguous (6) ────────────────────
+a chair that thinks about things
+give me a thing on legs, heavy
+a stone-look wooden cabinet, weathered
+a marble-wooden table
+a battered battered table, mistake
+something to put books on, made of wood, old
