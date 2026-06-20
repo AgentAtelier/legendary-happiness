@@ -46,14 +46,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			var query := PhysicsRayQueryParameters3D.create(origin, end)
 			query.collide_with_areas = true
 			query.collide_with_bodies = true
-			var result: Dictionary = space_state.intersect_ray(query)		if not result.is_empty():
-			# intersect_ray returns the CollisionObject3D, start from it
-			var current: Node = result.collider as Node
-			while current:
-				if current.has_meta("_forge_tag"):
-					var tag: String = current.get_meta("_forge_tag")
-					if tag == "pickup" or tag == "talk":
-						if current.has_method("on_interact"):
-							current.on_interact(tag)
-						return
+			var result: Dictionary = space_state.intersect_ray(query)
+			if not result.is_empty():
+				# intersect_ray returns the CollisionObject3D, start from it
+				var current: Node = result.collider as Node
+				while current:
+					if current.has_meta("_forge_tag"):
+						var tag: String = current.get_meta("_forge_tag")
+						if tag == "pickup" or tag == "talk":
+							if current.has_method("on_interact"):
+								current.on_interact(tag)
+							return
 					current = current.get_parent()
