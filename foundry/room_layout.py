@@ -95,7 +95,7 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
 
     # ── Paintings: hung on walls, facing inward ──────────────
     # Distribute along the back wall (z = -d/2), then side walls.
-    walls = [("back", 0.0, -d / 2.0 + 0.05, 0.0),
+    walls = [("back", 0.0, -d / 2.0 + 0.05, 1.5708),
              ("left", -w / 2.0 + 0.05, 0.0, 1.5708),
              ("right", w / 2.0 - 0.05, 0.0, -1.5708)]
     for i, e in enumerate(paintings):

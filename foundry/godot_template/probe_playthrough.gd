@@ -31,6 +31,10 @@ var _distractor_prop = null
 var _player = null
 var _target_entity = ""
 var _done = false
+# V-1: track original positions for swap restore verification
+var _distractor_original_pos: Vector3 = Vector3.ZERO
+var _distractor_restored_ok: bool = false
+var _drop_ok: bool = false
 
 
 func _init():
@@ -97,11 +101,13 @@ func _run_phase():
 			_phase = 2
 			_phase_timer = 0.0
 
-	# Phase 2: Pick up distractor
+	# Phase 2: Pick up distractor (record original position)
 	if _phase == 2:
 		if _phase_timer > 0.2:
 			if _distractor_prop != null:
-				_result["checks"].append("ACTION: pick up DISTRACTOR prop")
+				# V-1: record original position before picking up
+				_distractor_original_pos = _distractor_prop.global_position
+				_result["checks"].append("ACTION: pick up DISTRACTOR prop (original pos recorded)")
 				_interact_with(_distractor_prop)
 		if _phase_timer > 0.4:
 			if _distractor_prop != null:
@@ -136,10 +142,10 @@ func _run_phase():
 			_phase = 4
 			_phase_timer = 0.0
 
-	# Phase 4: Pick up target prop
+	# Phase 4: Pick up target prop → verify distractor restored to original position
 	if _phase == 4:
 		if _phase_timer > 0.2:
-			_result["checks"].append("ACTION: pick up TARGET prop")
+			_result["checks"].append("ACTION: pick up TARGET prop (should restore distractor)")
 			_interact_with(_target_prop)
 		if _phase_timer > 0.4:
 			var carried = str(_player.carried_item)
@@ -147,11 +153,61 @@ func _run_phase():
 				_result["checks"].append("PASS: player carries target=" + carried)
 			else:
 				_result["checks"].append("FAIL: expected carried=" + _target_prop.name + " got=" + carried)
-			_phase = 5
+		# V-1: Verify distractor was restored to its original position (not floating)
+		if _distractor_prop != null and is_instance_valid(_distractor_prop):
+			var new_pos = _distractor_prop.global_position
+			var dist = new_pos.distance_to(_distractor_original_pos)
+			if dist < 0.1:
+				_result["checks"].append("PASS: distractor restored to original position (dist=%.3f)" % dist)
+				_distractor_restored_ok = true
+			else:
+				_result["checks"].append("FAIL: distractor FLOATING — moved %.3f from original" % dist)
+		else:
+			_result["checks"].append("SKIP: cannot verify distractor restore (no distractor)")
+			_distractor_restored_ok = true  # no distractor to fail
+		_phase = 5
+		_phase_timer = 0.0
+
+	# Phase 5: Drop the carried target and verify it's on the floor
+	if _phase == 5:
+		if _phase_timer > 0.2:
+			_result["checks"].append("ACTION: drop carried item (G key)")
+			if _player.has_method("_drop_item"):
+				_player._drop_item()
+		if _phase_timer > 0.4:
+			if _player.carried_item == "":
+				_result["checks"].append("PASS: carried_item cleared after drop")
+			else:
+				_result["checks"].append("FAIL: still carrying " + str(_player.carried_item))
+			# V-1: Verify dropped item is on the floor (y close to its original y)
+			if _target_prop != null and is_instance_valid(_target_prop):
+				var drop_y = _target_prop.global_position.y
+				if drop_y < 1.0:
+					_result["checks"].append("PASS: dropped item on floor (y=%.3f)" % drop_y)
+					_drop_ok = true
+				else:
+					_result["checks"].append("FAIL: dropped item FLOATING (y=%.3f)" % drop_y)
+			else:
+				_result["checks"].append("FAIL: target prop invalid after drop")
+			_phase = 6
 			_phase_timer = 0.0
 
-	# Phase 5: Deliver to NPC
-	if _phase == 5:
+	# Phase 6: Re-pick up target from the floor
+	if _phase == 6:
+		if _phase_timer > 0.2:
+			_result["checks"].append("ACTION: re-pick up target from floor")
+			_interact_with(_target_prop)
+		if _phase_timer > 0.4:
+			var carried = str(_player.carried_item)
+			if carried == _target_prop.name:
+				_result["checks"].append("PASS: re-picked target from floor=" + carried)
+			else:
+				_result["checks"].append("FAIL: expected carried=" + _target_prop.name + " got=" + carried)
+			_phase = 7
+			_phase_timer = 0.0
+
+	# Phase 7: Deliver to NPC (should win)
+	if _phase == 7:
 		if _phase_timer > 0.2:
 			_result["checks"].append("ACTION: talk to NPC (deliver item)")
 			_interact_with(_npc)
@@ -160,11 +216,11 @@ func _run_phase():
 				var nstate = int(_npc._state)
 				_result["npc_state"] = str(nstate)
 				_result["checks"].append("NPC final state=" + str(nstate))
-			_phase = 6
+			_phase = 8
 			_phase_timer = 0.0
 
-	# Phase 6: Check WinScreen
-	if _phase == 6:
+	# Phase 8: Check WinScreen
+	if _phase == 8:
 		if _phase_timer > 0.3:
 			_check_win_screen()
 			_done = true

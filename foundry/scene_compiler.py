@@ -84,7 +84,7 @@ _COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
     "shelf": (1.0, 1.2, 0.3),
     "cabinet": (0.8, 1.5, 0.5),
     "chair": (0.5, 0.9, 0.5),
-    "humanoid": (0.5, 1.8, 0.4),
+    "humanoid": (0.5, 2.8, 0.4),
     # P-E: carryables — small collision boxes
     "key": (0.12, 0.01, 0.06),
     "book": (0.25, 0.05, 0.2),
@@ -204,9 +204,9 @@ def _build_room_sub_resources(
     {"id": "floor_mat", "type": "StandardMaterial3D",
      "props": ["albedo_color = Color(0.35, 0.25, 0.15, 1)"]},
     {"id": "wall_mat", "type": "StandardMaterial3D",
-     "props": ["albedo_color = Color(0.6, 0.55, 0.5, 1)"]},
+     "props": ["albedo_color = Color(0.6, 0.55, 0.5, 1)", "cull_mode = 2"]},
     {"id": "ceiling_mat", "type": "StandardMaterial3D",
-     "props": ["albedo_color = Color(0.75, 0.7, 0.65, 1)"]},
+     "props": ["albedo_color = Color(0.75, 0.7, 0.65, 1)", "cull_mode = 2"]},
     # Player visible body (Item 4)
     {"id": "player_body_mesh", "type": "CapsuleMesh",
      "props": ["radius = 0.3", "height = 1.8"]},
@@ -658,7 +658,7 @@ def compile_scene(
     # NPC collision
     collision_info["NPC"] = (
         f"sub_{sub_res_idx}",
-        _COLLISION_SIZES.get("humanoid", (0.5, 1.8, 0.4)),
+        _COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4)),
     )
     sub_res_idx += 1
 

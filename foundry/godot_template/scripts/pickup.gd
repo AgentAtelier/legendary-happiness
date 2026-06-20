@@ -27,7 +27,7 @@ func on_interact(tag: String) -> void:
 	if carried_parent:
 		var model = get_node_or_null("%s_model" % name)
 		if model:
-			model.reparent(carried_parent)
+			model.reparent(carried_parent, false)
 			model.show()
 
 	# Disable collision so the prop doesn't block the player
@@ -50,7 +50,7 @@ func _restore_to_world(prop_name: String) -> void:
 		"/root/Root/Player/Camera3D/CarriedItem/%s_model" % prop_name
 	)
 	if model and is_instance_valid(model):
-		model.reparent(prop)
+		model.reparent(prop, false)
 	# Re-enable collision
 	prop.set("collision_layer", 1)
 	prop.set("collision_mask", 1)
