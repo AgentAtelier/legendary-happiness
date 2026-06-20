@@ -263,6 +263,31 @@ def apply_rules(
     # ── 5. Decor back on top ─────────────────────────────────
     clamped_props.extend(decor_props)
 
+    # ── 6. U-5: Material variety guard ───────────────────────
+    # If the room only uses 1 material, has ≥2 furniture/carryable
+    # props, and the palette has ≥2, inject a second material for
+    # ~half the props so rooms aren't monochrome.
+    furniture_props = [p for p in clamped_props if p["category"] not in _DECOR_CATEGORIES]
+    used_materials = {p["material"] for p in clamped_props}
+    if len(used_materials) == 1 and len(allowed_palette) >= 2 and len(furniture_props) >= 2:
+        current_mat = next(iter(used_materials))
+        alt = next(m for m in allowed_palette if m != current_mat)
+        varied = 0
+        for p in clamped_props:
+            if p["category"] not in _DECOR_CATEGORIES:
+                if varied > 0 and varied % 2 == 0:
+                    p["material"] = alt
+                varied += 1
+        if varied > 0:
+            decisions.append(DecisionPoint(
+                code="room.material_variety_injected",
+                technical=f"injected {alt} for material variety",
+                plain=f"Added {alt} variation (room was monochrome)",
+                stage="control", severity="assumption",
+                context={"original": current_mat, "injected": alt},
+                choices=[Choice(label="Accept", plain="Accept", apply={})],
+            ))
+
     return {"room_size": room_size, "props": clamped_props}, decisions
 
 

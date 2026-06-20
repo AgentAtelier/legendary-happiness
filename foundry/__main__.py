@@ -124,6 +124,10 @@ def _cmd_quest(args: list[str]) -> int:
         "--seed", type=int, default=None,
         help="Random seed for reproducible room generation"
     )
+    parser.add_argument(
+        "--camera", default="first", choices=["first", "third"],
+        help="Camera mode: first-person or third-person (default: first)"
+    )
     parsed = parser.parse_args(args)
 
     # ── Build the LLM ─────────────────────────────────────────
@@ -146,7 +150,10 @@ def _cmd_quest(args: list[str]) -> int:
     seed = parsed.seed
     if seed is not None:
         print(f"[quest] Seed: {seed}")
-    room_plan, room_decisions = RoomPlanner().plan(parsed.request, llm, seed=seed)
+    # T-1: retry-once parse-failure fallback
+    room_plan, room_decisions = _plan_room_with_fallback(
+        parsed.request, llm, seed
+    )
     # C-0: apply theme-based control rules + global guards
     from room_control import apply_rules
     room_plan, control_decisions = apply_rules(room_plan, parsed.request)
@@ -205,6 +212,7 @@ def _cmd_quest(args: list[str]) -> int:
         out_root=str(_Path2.cwd() / "builds"),
         room_size=room_size,
         theme=room_theme,
+        camera_mode=parsed.camera,
     )
     print(f"[quest] Build scaffolded: {build_path}")
 
@@ -219,6 +227,54 @@ def _cmd_quest(args: list[str]) -> int:
 
     print(f"[quest] Done. Launch: godot --path {build_path}")
     return 0
+
+
+def _plan_room_with_fallback(
+    request: str, llm, seed: int | None
+) -> tuple:
+    """T-1: Plan a room with retry-once + minimal-default fallback.
+
+    If the RoomPlanner's LLM output is unparseable, retry once.
+    If that also fails, return a minimal default room plan + a
+    Decision Point so the quest never crashes on junk output.
+    """
+    from room_planner import RoomPlanner
+    from decisions import make_decision, Choice
+
+    planner = RoomPlanner()
+
+    try:
+        return planner.plan(request, llm, seed=seed)
+    except ValueError as e:
+        print(f"[quest] RoomPlanner parse failure: {e}")
+        # T-1: Fall back to minimal default room plan
+        decisions = [
+            make_decision(
+                code="room.planner_parse_fallback",
+                stage="room", severity="error",
+                context={"error": str(e)[:200]},
+                choices=(
+                    Choice(label="Use default room",
+                           plain="Fall back to a minimal default room",
+                           apply={"field": "room"}),
+                    Choice(label="Retry",
+                           plain="Retry the RoomPlanner call",
+                           apply={"action": "retry"}),
+                ),
+            )
+        ]
+        default_plan = {
+            "room_size": {"w": 6.0, "d": 6.0},
+            "props": [
+                {"category": "table", "material": "worn_oak", "count": 1},
+                {"category": "chair", "material": "worn_oak", "count": 1},
+                {"category": "shelf", "material": "worn_oak", "count": 1},
+            ],
+        }
+        print("[quest] Falling back to default room plan")
+        return default_plan, decisions
+
+
 
 
 sys.exit(main())

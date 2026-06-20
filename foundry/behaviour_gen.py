@@ -147,6 +147,8 @@ Room theme: {room_theme}
 Placed props in the room:
 {manifest_text}
 
+T-2: Prefer a **pickable carryable item** (like key, book, cup, gem, bottle, scroll, coin-pouch, candle, dagger, ring) as the quest target — these items can actually be picked up by the player. Only fall back to furniture if no carryables are listed.
+
 Pick ONE of the props as the quest target. The NPC will ask the player to find it.
 
 Output ONLY a JSON object — no prose, no explanation. The JSON MUST have these exact fields:

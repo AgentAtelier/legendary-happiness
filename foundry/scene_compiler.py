@@ -463,6 +463,7 @@ def compile_scene(
     scene_uid: str | None = None,
     room_size: dict | None = None,
     theme: str | None = None,
+    camera_mode: str = "first",
 ) -> str:
     """Compile a quest spec + manifest into a Godot .tscn file.
 
@@ -839,9 +840,15 @@ def compile_scene(
         if shell.get("script"):
             lines.append(f'script = ExtResource("{shell["script"]}")')
         if shell["name"] == "Camera3D":
-            lines.append(
-                "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)"
-            )
+            # U-7: camera mode — first (eye-level) or third (behind player)
+            if camera_mode == "third":
+                lines.append(
+                    "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 3.0)"
+                )
+            else:
+                lines.append(
+                    "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)"
+                )
             lines.append("current = true")
         if shell["name"] == "CarriedItem":
             # Position in front of camera (0.4 m forward, 0.1 m right, -0.1 m down)
