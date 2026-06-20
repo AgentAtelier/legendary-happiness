@@ -48,6 +48,7 @@ from typing import List, Optional, Set
 
 from compiler import PARAM_RANGES
 from material_resolver import material_cues, resolve_material
+from category_registry import DECOR_CATEGORIES
 
 
 # ── Size words ────────────────────────────────────────────────────────
@@ -464,6 +465,24 @@ def compute_quest_signals(record) -> Set[str]:
         if multi_tag:
             tags.add(multi_tag)
 
+        # EB-7: multi-NPC distinct targets check (for multi-NPC records)
+        npc_count = getattr(record, "npc_count", 1)
+        if npc_count > 1:
+            distinct_tag = check_multi_npc_distinct_targets(record, npc_count)
+            if distinct_tag:
+                tags.add(distinct_tag)
+
+        # EB-7: room material variety check
+        variety_tag = check_room_not_monochrome(record)
+        if variety_tag:
+            tags.add(variety_tag)
+
+        # EB-7: fabric in fabric-themes check
+        room_theme = getattr(record, "room_theme", "")
+        fabric_tag = check_fabric_in_fabric_themes(record, room_theme)
+        if fabric_tag:
+            tags.add(fabric_tag)
+
     if not tags:
         tags.add("clean")
     return tags
@@ -571,6 +590,77 @@ def check_multi_item_possible(record) -> Optional[str]:
         return "multi_item_possible"
     return None
 
+# ═══════════════════════════════════════════════════════════════════════
+#  EB-7: Multi-NPC target integrity signals
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def check_multi_npc_distinct_targets(record, npc_count: int = 2) -> Optional[str]:
+    """EB-7: Return None if all NPC quest specs have distinct targets.
+    Returns 'multi_npc_distinct_targets' signal tag if any two NPCs
+    share the same target_entity (which should be impossible post-fix).
+
+    Also checks that carryable count ≥ npc_count — if not, returns
+    'insufficient_carryables_for_npcs'."""
+    specs = getattr(record, "quest_specs", None)
+    manifest = getattr(record, "manifest", None) or []
+
+    # Count carryables in manifest
+    carryable_count = sum(
+        1 for e in manifest
+        if e.get("category") in _CARRYABLE_CATEGORIES
+    )
+    if carryable_count < npc_count:
+        return "insufficient_carryables_for_npcs"
+
+    # Check distinct targets across NPC quest specs
+    if not specs or not isinstance(specs, (list, tuple)):
+        # Single spec or no specs — can't have duplicates
+        return None
+
+    targets = []
+    for spec in specs:
+        if isinstance(spec, dict):
+            targets.append(spec.get("target_entity", ""))
+
+    if len(set(targets)) < len(targets):
+        return "multi_npc_distinct_targets"
+
+    return None
+
+
+def check_room_not_monochrome(record) -> Optional[str]:
+    """EB-7: Return 'room_not_monochrome' signal if the manifest uses
+    ≥2 distinct materials (excluding decor). Low-severity — informative.
+    Returns None if monochrome."""
+    manifest = getattr(record, "manifest", None) or []
+    materials = {
+        e.get("material", "")
+        for e in manifest
+        if e.get("category") not in DECOR_CATEGORIES and e.get("material")
+    }
+    if len(materials) >= 2:
+        return "room_not_monochrome"
+    return None
+
+
+def check_fabric_in_fabric_themes(record, theme: str = "") -> Optional[str]:
+    """EB-7: Return 'fabric_in_fabric_themes' signal if the manifest
+    contains any fabric material (linen, wool, silk). Low-severity —
+    informative.  Fabric materials should appear in themes that allow
+    them; this signal confirms they actually surfaced in the build.
+
+    Returns None if no fabric material is used."""
+    manifest = getattr(record, "manifest", None) or []
+    _FABRIC_MATERIALS = {"linen", "wool", "silk"}
+
+    for e in manifest:
+        mat = e.get("material", "")
+        if mat in _FABRIC_MATERIALS:
+            return "fabric_in_fabric_themes"
+
+    return None
+
 
 def check_target_is_carryable(record) -> Optional[str]:
     """P-E: Return a signal tag if the quest target_entity is NOT a
@@ -655,3 +745,9 @@ SIGNAL_SEVERITY["painting_mode_honored"] = "low"
 SIGNAL_SEVERITY["lighting_not_theme_aware"] = "high"
 # C-2: multi-item inventory signal
 SIGNAL_SEVERITY["multi_item_possible"] = "low"
+# EB-7: multi-NPC target integrity
+SIGNAL_SEVERITY["multi_npc_distinct_targets"] = "high"
+SIGNAL_SEVERITY["insufficient_carryables_for_npcs"] = "high"
+# EB-7: material variety
+SIGNAL_SEVERITY["room_not_monochrome"] = "low"
+SIGNAL_SEVERITY["fabric_in_fabric_themes"] = "low"

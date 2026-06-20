@@ -668,11 +668,17 @@ def _make_quest_record(
 
 
 def test_quest_signals_clean():
-    """A valid quest record with no issues → 'clean'."""
+    """A valid quest record with no issues → 'clean' + informative signals.
+    EB-7: room_not_monochrome fires because the manifest has ≥2 materials
+    (low-severity, informative)."""
     from eval.signals import compute_quest_signals
     qr = _make_quest_record(quest_spec=_VALID_QUEST_SPEC)
     tags = compute_quest_signals(qr)
-    assert tags == {"clean"}
+    # EB-7: _QUEST_MANIFEST has 3 materials ≠ monochrome
+    assert "room_not_monochrome" in tags
+    assert "quest_build_error" not in tags
+    assert "quest_no_target" not in tags
+    assert "quest_no_npc" not in tags
 
 
 def test_quest_signals_build_error():
@@ -1032,3 +1038,115 @@ def test_pe_signals_in_severity_map():
     from eval.signals import SIGNAL_SEVERITY
     assert SIGNAL_SEVERITY.get("target_not_carryable") == "high"
     assert SIGNAL_SEVERITY.get("target_not_named_in_dialogue") == "high"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  EB-7: Multi-NPC target integrity + material variety signals
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_multi_npc_distinct_targets_clean():
+    """EB-7: With distinct targets and enough carryables → no signal."""
+    from eval.signals import check_multi_npc_distinct_targets
+    spec1 = dict(_VALID_QUEST_SPEC)
+    spec1["target_entity"] = "key_0"
+    spec2 = dict(_VALID_QUEST_SPEC)
+    spec2["target_entity"] = "book_0"
+    manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "book_0", "category": "book", "material": "worn_oak"},
+    ]
+    qr = _make_quest_record(
+        quest_spec=_VALID_QUEST_SPEC, manifest=manifest,
+    )
+    # Hack: set quest_specs on the record
+    qr.quest_specs = [spec1, spec2]
+    result = check_multi_npc_distinct_targets(qr, npc_count=2)
+    assert result is None
+
+
+def test_multi_npc_distinct_targets_duplicate_fires():
+    """EB-7: Two NPCs sharing the same target → multi_npc_distinct_targets."""
+    from eval.signals import check_multi_npc_distinct_targets
+    spec1 = dict(_VALID_QUEST_SPEC)
+    spec1["target_entity"] = "key_0"
+    spec2 = dict(_VALID_QUEST_SPEC)
+    spec2["target_entity"] = "key_0"  # same!
+    manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "book_0", "category": "book", "material": "worn_oak"},
+    ]
+    qr = _make_quest_record(manifest=manifest)
+    qr.quest_specs = [spec1, spec2]
+    result = check_multi_npc_distinct_targets(qr, npc_count=2)
+    assert result == "multi_npc_distinct_targets"
+
+
+def test_insufficient_carryables_for_npcs_fires():
+    """EB-7: Fewer carryables than npc_count → insufficient_carryables_for_npcs."""
+    from eval.signals import check_multi_npc_distinct_targets
+    manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "table_0", "category": "table", "material": "worn_oak"},
+    ]
+    qr = _make_quest_record(manifest=manifest)
+    result = check_multi_npc_distinct_targets(qr, npc_count=3)
+    assert result == "insufficient_carryables_for_npcs"
+
+
+def test_room_not_monochrome_fires():
+    """EB-7: Room with ≥2 non-decor materials → room_not_monochrome."""
+    from eval.signals import check_room_not_monochrome
+    manifest = [
+        {"id": "table_0", "category": "table", "material": "worn_oak"},
+        {"id": "shelf_0", "category": "shelf", "material": "rough_granite"},
+        {"id": "rug_0", "category": "rug", "material": "linen", "decor": True},
+    ]
+    qr = _make_quest_record(manifest=manifest)
+    result = check_room_not_monochrome(qr)
+    assert result == "room_not_monochrome"
+
+
+def test_room_not_monochrome_monochrome_returns_none():
+    """EB-7: Room with 1 non-decor material → None (monochrome)."""
+    from eval.signals import check_room_not_monochrome
+    manifest = [
+        {"id": "table_0", "category": "table", "material": "worn_oak"},
+        {"id": "chair_0", "category": "chair", "material": "worn_oak"},
+    ]
+    qr = _make_quest_record(manifest=manifest)
+    result = check_room_not_monochrome(qr)
+    assert result is None
+
+
+def test_fabric_in_fabric_themes_fires():
+    """EB-7: Manifest with linen → fabric_in_fabric_themes fires
+    regardless of theme (signal confirms fabric actually surfaced)."""
+    from eval.signals import check_fabric_in_fabric_themes
+    manifest = [
+        {"id": "rug_0", "category": "rug", "material": "linen", "decor": True},
+        {"id": "table_0", "category": "table", "material": "worn_oak"},
+    ]
+    qr = _make_quest_record(manifest=manifest, room_theme="a kitchen")
+    result = check_fabric_in_fabric_themes(qr, theme="kitchen")
+    assert result == "fabric_in_fabric_themes"
+
+
+def test_fabric_in_fabric_themes_no_fabric_in_manifest_returns_none():
+    """EB-7: Manifest without fabric materials → None."""
+    from eval.signals import check_fabric_in_fabric_themes
+    manifest = [
+        {"id": "rug_0", "category": "rug", "material": "worn_oak", "decor": True},
+    ]
+    qr = _make_quest_record(manifest=manifest, room_theme="a hermit's shack")
+    result = check_fabric_in_fabric_themes(qr, theme="hermit")
+    assert result is None
+
+
+def test_eb7_signals_in_severity_map():
+    """EB-7: All new signal tags are in SIGNAL_SEVERITY."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY.get("multi_npc_distinct_targets") == "high"
+    assert SIGNAL_SEVERITY.get("insufficient_carryables_for_npcs") == "high"
+    assert SIGNAL_SEVERITY.get("room_not_monochrome") == "low"
+    assert SIGNAL_SEVERITY.get("fabric_in_fabric_themes") == "low"

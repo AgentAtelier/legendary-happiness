@@ -13,8 +13,17 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-from category_registry import BASE_FURNITURE, DECOR_CATEGORIES
+from category_registry import BASE_FURNITURE, CARRYABLES, DECOR_CATEGORIES
 from decisions import Choice, DecisionPoint
+
+# ── Fabric family materials ─────────────────────────────────────────
+# These are soft materials that should only be applied to chairs,
+# rugs, and other soft-goods categories — never to hard furniture
+# like tables or shelves.
+_FABRIC_MATERIALS = frozenset({"linen", "wool", "silk"})
+
+# ── Hard furniture categories (should never get fabric) ────────────
+_FABRIC_SAFE_CATEGORIES = frozenset({"chair", "rug", "stool", "bench"})
 
 # ── Theme tables ───────────────────────────────────────────────────
 # Each row: required props (furniture only), allowed palette,
@@ -118,13 +127,17 @@ def _match_theme(request: str) -> dict:
 
 
 def apply_rules(
-    plan: dict, request: str
+    plan: dict, request: str,
+    npc_count: int = 1,
 ) -> Tuple[dict, List[DecisionPoint]]:
     """Post-process an LLM-generated room plan against theme rules and
     global guards.  Returns (clamped_plan, decisions).
 
     Decor categories (rug, painting) always pass through unchanged.
     Guards clamp counts AND emit Decision Points.
+
+    EB-7: *npc_count* drives the carryable-injection guard — a
+    multi-NPC room must have at least that many distinct carryables.
     """
     decisions: List[DecisionPoint] = []
     row = _match_theme(request)
@@ -189,6 +202,41 @@ def apply_rules(
         clamped_props.append(
             {"category": cat, "material": mat, "count": clamped_cnt}
         )
+
+    # EB-7: Drop fabric from non-fabric-safe furniture
+    # Fabric should only appear on chairs, rugs, stools, benches —
+    # never on hard furniture like tables, shelves, or cabinets.
+    fabric_dropped_count = 0
+    for p in clamped_props:
+        cat = p.get("category", "")
+        mat = p.get("material", "")
+        if mat in _FABRIC_MATERIALS and cat not in _FABRIC_SAFE_CATEGORIES:
+            # Swap to first non-fabric palette material
+            alt = next((m for m in allowed_palette if m not in _FABRIC_MATERIALS), allowed_palette[0])
+            p["material"] = alt
+            fabric_dropped_count += 1
+    if fabric_dropped_count > 0:
+        decisions.append(DecisionPoint(
+            code="room.fabric_on_hard_furniture",
+            technical=f"swapped fabric→non-fabric on {fabric_dropped_count} hard-furniture props",
+            plain=f"Replaced fabric with appropriate material on {fabric_dropped_count} props",
+            stage="control", severity="assumption",
+            context={"count": fabric_dropped_count},
+            choices=[Choice(label="Accept", plain="Accept", apply={})],
+        ))
+
+    # EB-7: Clamp decor materials to theme palette
+    # Rugs and paintings currently bypass the palette — but rugs
+    # should use fabric where the theme allows it.
+    for p in decor_props:
+        mat = p.get("material", "")
+        if mat not in allowed_palette:
+            # Try to pick a fabric if available (suitable for rugs)
+            fabric_opts = [m for m in allowed_palette if m in _FABRIC_MATERIALS]
+            if fabric_opts:
+                p["material"] = fabric_opts[0]
+            else:
+                p["material"] = allowed_palette[0]
 
     if dropped_cats:
         decisions.append(DecisionPoint(
@@ -260,31 +308,91 @@ def apply_rules(
                 choices=[Choice(label="Accept", plain="Accept", apply={})],
             ))
 
+    # ── EB-7: Carryable guard for multi-NPC rooms ─────────────
+    # When npc_count > 1, the room must have at least npc_count
+    # distinct carryable items so each NPC can get a unique target.
+    if npc_count > 1:
+        carryable_in_plan = sum(
+            p["count"] for p in clamped_props
+            if p["category"] in CARRYABLES
+        )
+        if carryable_in_plan < npc_count:
+            needed = npc_count - carryable_in_plan
+            # Inject distinct carryable categories from the registry
+            avail_carryables = [c for c in CARRYABLES if c not in {
+                p["category"] for p in clamped_props
+            }]
+            # Prefer carryables not already in the plan
+            # Use first non-fabric palette material for carryables
+            mat = next((m for m in allowed_palette if m not in _FABRIC_MATERIALS), allowed_palette[0])
+            for i in range(min(needed, len(avail_carryables))):
+                clamped_props.append({
+                    "category": avail_carryables[i],
+                    "material": mat,
+                    "count": 1,
+                })
+            remaining = needed - min(needed, len(avail_carryables))
+            if remaining > 0:
+                # Reuse existing carryable categories with different mat
+                alt_mat = next((m for m in allowed_palette if m != mat and m not in _FABRIC_MATERIALS), mat)
+                for i in range(remaining):
+                    cat = CARRYABLES[i % len(CARRYABLES)]
+                    clamped_props.append({
+                        "category": cat,
+                        "material": alt_mat if i % 2 == 0 else mat,
+                        "count": 1,
+                    })
+            decisions.append(DecisionPoint(
+                code="room.carryables_injected",
+                technical=f"injected {needed} carryables for {npc_count} NPCs",
+                plain=f"Added {needed} pickable items (multi-NPC room needs distinct targets)",
+                stage="control", severity="assumption",
+                context={"npc_count": npc_count, "injected": needed},
+                choices=[Choice(label="Accept", plain="Accept", apply={})],
+            ))
+
     # ── 5. Decor back on top ─────────────────────────────────
     clamped_props.extend(decor_props)
 
-    # ── 6. U-5: Material variety guard ───────────────────────
+    # ── 6. U-5 / EB-7: Material variety guard ─────────────────
     # If the room only uses 1 material, has ≥2 furniture/carryable
     # props, and the palette has ≥2, inject a second material for
     # ~half the props so rooms aren't monochrome.
+    # EB-7: Fabric materials are only applied to fabric-safe
+    # categories (chairs, rugs, stools, benches), not hard furniture.
     furniture_props = [p for p in clamped_props if p["category"] not in _DECOR_CATEGORIES]
     used_materials = {p["material"] for p in clamped_props}
     if len(used_materials) == 1 and len(allowed_palette) >= 2 and len(furniture_props) >= 2:
         current_mat = next(iter(used_materials))
-        alt = next(m for m in allowed_palette if m != current_mat)
+        # EB-7: prefer non-fabric alternates; only pick fabric for
+        # fabric-safe categories
+        non_fabric_alts = [m for m in allowed_palette if m != current_mat and m not in _FABRIC_MATERIALS]
+        fabric_alts = [m for m in allowed_palette if m != current_mat and m in _FABRIC_MATERIALS]
         varied = 0
         for p in clamped_props:
             if p["category"] not in _DECOR_CATEGORIES:
                 if varied > 0 and varied % 2 == 0:
-                    p["material"] = alt
+                    # Pick alt: prefer fabric for fabric-safe cats
+                    cat = p["category"]
+                    if cat in _FABRIC_SAFE_CATEGORIES and fabric_alts:
+                        p["material"] = fabric_alts[0]
+                    elif non_fabric_alts:
+                        p["material"] = non_fabric_alts[0]
+                    else:
+                        p["material"] = next(m for m in allowed_palette if m != current_mat)
                 varied += 1
         if varied > 0:
+            alt_used = next(
+                (p["material"] for p in clamped_props
+                 if p["category"] not in _DECOR_CATEGORIES and p["material"] != current_mat),
+                "<none>"
+            )
             decisions.append(DecisionPoint(
                 code="room.material_variety_injected",
-                technical=f"injected {alt} for material variety",
-                plain=f"Added {alt} variation (room was monochrome)",
+                technical=f"injected {alt_used} for material variety",
+                plain=f"Added {alt_used} variation (room was monochrome)",
                 stage="control", severity="assumption",
-                context={"original": current_mat, "injected": alt},
+                context={"original": current_mat, "injected": alt_used},
                 choices=[Choice(label="Accept", plain="Accept", apply={})],
             ))
 

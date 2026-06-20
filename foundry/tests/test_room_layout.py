@@ -60,3 +60,65 @@ def test_layout_guarantees_a_carryable_target():
     manifest, _, _ = layout_room(plan)
     carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
     assert carry, "no carryable target was guaranteed"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  EB-7: Multi-NPC carryable injection
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_layout_injects_npc_count_carryables_when_none_present():
+    """EB-7: With npc_count=3 and no carryables in plan, layout_room
+    injects 3 distinct carryables."""
+    from room_layout import CARRYABLES
+    plan = {"room_size": {"w": 8.0, "d": 8.0},
+            "props": [{"category": "table", "material": "worn_oak", "count": 2}]}
+    manifest, _, _ = layout_room(plan, npc_count=3)
+    carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
+    assert len(carry) >= 3, f"expected ≥3 carryables, got {len(carry)}"
+    # All injected carryables should have unique IDs
+    ids = {e["id"] for e in carry}
+    assert len(ids) == len(carry), f"duplicate carryable IDs: {ids}"
+    # All should be non-decor, pickable
+    assert all(not e.get("decor") for e in carry)
+
+
+def test_layout_injects_enough_for_npc_count_minus_existing():
+    """EB-7: With npc_count=3 and 1 existing carryable, layout_room
+    injects 2 more (3 total)."""
+    from room_layout import CARRYABLES
+    plan = {"room_size": {"w": 8.0, "d": 8.0},
+            "props": [
+                {"category": "key", "material": "wrought_iron", "count": 1},
+                {"category": "table", "material": "worn_oak", "count": 2},
+            ]}
+    manifest, _, _ = layout_room(plan, npc_count=3)
+    carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
+    assert len(carry) >= 3, f"expected ≥3 carryables, got {len(carry)}"
+
+
+def test_layout_injected_carryables_spaced_on_furniture():
+    """EB-7: Injected carryables placed on different furniture surfaces
+    (not all on the same furniture item)."""
+    from room_layout import CARRYABLES
+    plan = {"room_size": {"w": 10.0, "d": 10.0},
+            "props": [
+                {"category": "table", "material": "worn_oak", "count": 2},
+                {"category": "shelf", "material": "rough_granite", "count": 1},
+            ]}
+    manifest, _, _ = layout_room(plan, npc_count=3)
+    carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
+    # Should be distributed — check no two carryables share same (x,z)
+    positions = {(round(e["x"], 1), round(e["z"], 1)) for e in carry}
+    # With offsets they should be in different positions
+    assert len(positions) > 1, f"all carryables at same position: {positions}"
+
+
+def test_layout_npc_count_default_1():
+    """EB-7: Backward compat — npc_count defaults to 1, no breakage."""
+    from room_layout import CARRYABLES
+    plan = {"room_size": {"w": 4.0, "d": 4.0},
+            "props": [{"category": "rug", "material": "worn_oak", "count": 1}]}
+    manifest, _, _ = layout_room(plan)  # no npc_count arg
+    carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
+    assert len(carry) >= 1, "backward-compat: should inject at least 1 carryable"

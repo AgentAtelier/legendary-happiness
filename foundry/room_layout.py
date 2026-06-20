@@ -54,7 +54,7 @@ def _grid_cells(w: float, d: float) -> List[Tuple[float, float]]:
     return cells
 
 
-def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, List[DecisionPoint]]:
+def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tuple[List[dict], dict, List[DecisionPoint]]:
     room_size = plan["room_size"]
     w, d = float(room_size["w"]), float(room_size["d"])
     entities = _expand(plan.get("props", []))
@@ -147,28 +147,54 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
                 "decor": False,
             })
 
-    # ── Guarantee a carryable fetch target ───────────────────
-    # A quest needs at least one pickable carryable. If the plan produced
-    # none (e.g. a sparse decor-only room), inject one so every room is
-    # winnable — on a furniture top if any, else on the floor clear of the
-    # player spawn (origin) and NPC slot.
-    has_carryable = any(
-        e["category"] in CARRYABLES and not e.get("decor") for e in manifest
+    # ── EB-7: Guarantee ≥npc_count distinct carryables ────────
+    # Multi-NPC rooms need at least npc_count pickable carryables
+    # so each NPC can have a unique quest target. If the plan didn't
+    # produce enough (or any), inject distinct items with different
+    # categories and spaced positions.
+    carryable_count = sum(
+        1 for e in manifest if e["category"] in CARRYABLES and not e.get("decor")
     )
-    if not has_carryable:
+    needed = max(0, npc_count - carryable_count)
+    if needed > 0:
         placed_furniture = [e for e in manifest if e["category"] in FURNITURE]
-        if placed_furniture:
-            p = placed_furniture[0]
-            ix = p["x"]
-            iy = round(_FURNITURE_TOP_Y.get(p["category"], 0.8) + 0.02, 3)
-            iz = p["z"]
-            surf = "on"
-        else:
-            ix, iy, iz, surf = 1.0, 0.02, 1.0, "floor"
-        manifest.append({
-            "id": "key_auto", "category": "key", "material": "worn_oak",
-            "x": ix, "y": iy, "z": iz, "yaw": 0.0, "surface": surf, "decor": False,
-        })
+        # Rotate through carryable categories for variety
+        avail_cats = [c for c in CARRYABLES if c not in {
+            e["category"] for e in manifest if e["category"] in CARRYABLES
+        }]
+        # Also vary materials from the palette
+        used_mats = {e["material"] for e in manifest}
+        alt_mats = ["wrought_iron", "dark_walnut", "rough_granite",
+                     "weathered_pine", "worn_oak"]
+        avail_mats = [m for m in alt_mats if m not in used_mats]
+        if not avail_mats:
+            avail_mats = alt_mats
+        for i in range(needed):
+            cat = avail_cats[i % len(avail_cats)] if avail_cats else CARRYABLES[i % len(CARRYABLES)]
+            mat = avail_mats[i % len(avail_mats)]
+            # Position: distribute across furniture surfaces, or floor if none
+            if placed_furniture:
+                fi = i % len(placed_furniture)
+                p = placed_furniture[fi]
+                ox = (i % 3 - 1) * 0.15
+                oz = ((i // 3) % 3 - 1) * 0.15
+                ix = round(p["x"] + ox, 3)
+                iy = round(_FURNITURE_TOP_Y.get(p["category"], 0.8) + 0.02, 3)
+                iz = round(p["z"] + oz, 3)
+                surf = "on"
+            else:
+                # Spread along X at z=1.0, offset by index
+                ix = round((i - (needed - 1) / 2.0) * 0.4, 3)
+                iy = 0.02
+                iz = 1.0 + (i * 0.15)
+                surf = "floor"
+            # Unique ID: use category + auto + index to avoid collisions
+            eid = f"{cat}_auto_{i}"
+            manifest.append({
+                "id": eid, "category": cat, "material": mat,
+                "x": ix, "y": iy, "z": iz, "yaw": 0.0,
+                "surface": surf, "decor": False,
+            })
 
     # ── U-4: Chairs-around-tables relational placement ───────
     # After grid placement, if both chairs and tables are present,

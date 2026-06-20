@@ -543,6 +543,29 @@ class QuestBehaviourPlanner:
         else:
             valid_ids = (carryable_ids & all_manifest_ids) or non_decor_ids
 
+        # EB-7: Hard fail when carryables < npc_count — every NPC
+        # needs a distinct pickable target.  If the room doesn't have
+        # enough, it's a pipeline error (room_layout must guarantee this).
+        if len(valid_ids) < npc_count:
+            decisions.append(
+                make_decision(
+                    code="quest.insufficient_carryables",
+                    stage="planner",
+                    severity="error",
+                    context={"npc_count": npc_count, "carryable_count": len(valid_ids)},
+                    choices=(
+                        Choice(
+                            label="Add carryables",
+                            plain=f"Need at least {npc_count} pickable items (have {len(valid_ids)}).",
+                            apply={"action": "add_carryables"},
+                        ),
+                    ),
+                )
+            )
+            raise ValueError(
+                f"Room has {len(valid_ids)} carryables, need ≥ {npc_count}"
+            )
+
         used_targets: set[str] = set()
         specs: list[dict] = []
 

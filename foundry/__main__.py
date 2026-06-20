@@ -158,11 +158,15 @@ def _cmd_quest(args: list[str]) -> int:
     room_plan, room_decisions = _plan_room_with_fallback(
         parsed.request, llm, seed
     )
+    npc_count = parsed.npc_count
     # C-0: apply theme-based control rules + global guards
+    # EB-7: pass npc_count so the multi-NPC carryable guard fires
     from room_control import apply_rules
-    room_plan, control_decisions = apply_rules(room_plan, parsed.request)
+    room_plan, control_decisions = apply_rules(room_plan, parsed.request,
+                                                npc_count=npc_count)
     room_decisions.extend(control_decisions)
-    manifest, room_size, layout_decisions = layout_room(room_plan, seed=seed)
+    manifest, room_size, layout_decisions = layout_room(room_plan, seed=seed,
+                                                         npc_count=npc_count)
     print(f"[quest] Room: {room_size['w']}x{room_size['d']} m, "
           f"{len(manifest)} entities")
 
@@ -179,7 +183,6 @@ def _cmd_quest(args: list[str]) -> int:
         "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
         "candle", "dagger", "ring",
     )}
-    npc_count = parsed.npc_count
     print(f"[quest] Planning quests for {npc_count} NPCs: {parsed.request!r}")
     specs, quest_decisions = planner.plan_multi(
         parsed.request, manifest, llm,

@@ -132,3 +132,75 @@ def test_apply_rules_carryable_and_new_prop_pass_through():
     cats = {p["category"] for p in clamped["props"]}
     assert "key" in cats, "carryable was dropped by the control layer"
     assert "barrel" in cats, "new prop was dropped by the control layer"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  EB-7: Multi-NPC carryable injection guard
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_apply_rules_injects_carryables_for_multi_npc():
+    """EB-7: With npc_count=3 and no carryables in plan, apply_rules
+    injects carryable categories so layout_room has them."""
+    from room_control import apply_rules
+    from category_registry import CARRYABLES
+    plan = {"room_size": {"w": 8, "d": 8}, "props": [
+        {"category": "table", "material": "worn_oak", "count": 2},
+        {"category": "chair", "material": "worn_oak", "count": 1},
+    ]}
+    clamped, decisions = apply_rules(plan, "a hermit's shack", npc_count=3)
+    carryable_cats = [
+        p["category"] for p in clamped["props"]
+        if p["category"] in CARRYABLES
+    ]
+    assert len(carryable_cats) >= 3, f"expected ≥3 carryables, got {carryable_cats}"
+    assert any(d.code == "room.carryables_injected" for d in decisions)
+
+
+def test_apply_rules_no_injection_when_enough_carryables():
+    """EB-7: With npc_count=1 (default) and enough carryables, no injection."""
+    from room_control import apply_rules
+    from category_registry import CARRYABLES
+    plan = {"room_size": {"w": 6, "d": 6}, "props": [
+        {"category": "key", "material": "wrought_iron", "count": 2},
+        {"category": "table", "material": "worn_oak", "count": 1},
+    ]}
+    clamped, decisions = apply_rules(plan, "a hermit's shack", npc_count=2)
+    codes = {d.code for d in decisions}
+    assert "room.carryables_injected" not in codes
+
+
+def test_apply_rules_fabric_not_on_hard_furniture():
+    """EB-7: Fabric (linen/wool/silk) should never appear on hard furniture
+    like tables or shelves — only on chairs, stools, benches, rugs."""
+    from room_control import apply_rules
+    plan = {"room_size": {"w": 6, "d": 6}, "props": [
+        {"category": "table", "material": "linen", "count": 1},
+        {"category": "chair", "material": "wool", "count": 2},
+        {"category": "shelf", "material": "silk", "count": 1},
+    ]}
+    clamped, _ = apply_rules(plan, "a noble hall")
+    for p in clamped["props"]:
+        cat = p["category"]
+        mat = p["material"]
+        if cat in ("table", "shelf", "cabinet"):
+            assert mat not in ("linen", "wool", "silk"), \
+                f"fabric {mat} on hard furniture {cat}"
+
+
+def test_apply_rules_decor_clamped_to_palette():
+    """EB-7: Decor (rug) material should be clamped to theme palette,
+    preferring fabric when available."""
+    from room_control import apply_rules
+    plan = {"room_size": {"w": 6, "d": 6}, "props": [
+        {"category": "table", "material": "worn_oak", "count": 2},
+        {"category": "chair", "material": "worn_oak", "count": 2},
+        {"category": "rug", "material": "wrought_iron", "count": 1},
+    ]}
+    # Kitchen theme has linen in palette
+    clamped, _ = apply_rules(plan, "a kitchen")
+    rug = [p for p in clamped["props"] if p["category"] == "rug"]
+    assert rug, "rug should still be present"
+    # Rug should now have a palette-appropriate material (prefer fabric)
+    mat = rug[0]["material"]
+    kitchen_palette = ["worn_oak", "wrought_iron", "linen"]
+    assert mat in kitchen_palette, f"rug material {mat} not in kitchen palette"
