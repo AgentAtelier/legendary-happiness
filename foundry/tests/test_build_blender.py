@@ -539,3 +539,45 @@ def test_ring_builds_and_passes_gate(tmp_path):
     topo, result = _build_and_gate(spec, tmp_path)
     assert result.passed, result.reasons
     assert topo.is_watertight, "ring mesh must be watertight"
+
+
+# ── P-F batch 1: themed-useful generators ──────────────────────
+
+def test_barrel_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "barrel", "generator": "barrel", "material": "worn_oak",
+            "age": 0.2, "params": {"radius": 0.3, "height": 0.7}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "barrel mesh must be watertight"
+
+
+def test_crate_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "crate", "generator": "crate", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.5, "depth": 0.5, "height": 0.5}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "crate mesh must be watertight"
+
+
+def test_chest_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "chest", "generator": "chest", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.5, "depth": 0.3, "height": 0.35}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "chest mesh must be watertight"
+
+
+def test_stool_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "stool", "generator": "stool", "material": "worn_oak",
+            "age": 0.2, "params": {"radius": 0.2, "height": 0.45}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "stool mesh must be watertight"
+
+
+def test_bench_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "bench", "generator": "bench", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 1.5, "depth": 0.3, "height": 0.45}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "bench mesh must be watertight"

@@ -15,7 +15,8 @@ CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
                       # AND than the non-overlap proxy in the tests (1.6 m), so
                       # adjacent cells are robustly clear (no FP-boundary clips).
 WALL_MARGIN = 0.8     # keep furniture this far from walls
-FURNITURE = ("table", "chair", "shelf", "cabinet")
+FURNITURE = ("table", "chair", "shelf", "cabinet", "barrel", "crate", "chest",
+             "stool", "bench")
 CARRYABLES = ("key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
               "candle", "dagger", "ring")
 NPC_Z_INSET = 0.6     # NPC sits this far in from the back wall
@@ -109,6 +110,11 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
         "shelf": 1.2,    # shelf height
         "cabinet": 1.55, # cabinet height ~1.5 + top
         "chair": 0.48,   # seat at ~0.45 + seat_thickness
+        "barrel": 1.05,
+        "crate": 0.85,
+        "chest": 0.55,
+        "stool": 0.6,
+        "bench": 0.55,
     }
     for i, e in enumerate(carryables):
         # Place on the i-th furniture item (wrap around)

@@ -11,7 +11,8 @@ from materials import MATERIAL_PALETTE
 
 GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid", "rug", "painting",
                "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
-               "candle", "dagger", "ring"}
+               "candle", "dagger", "ring",
+               "barrel", "crate", "chest", "stool", "bench"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -115,6 +116,30 @@ PARAM_RANGES = {
     },
     "ring": {
         "size": (0.03, 0.07),
+    },
+    # P-F batch 1: themed-useful stress-test generators
+    "barrel": {
+        "radius": (0.2, 0.5),
+        "height": (0.4, 1.0),
+    },
+    "crate": {
+        "width": (0.3, 0.8),
+        "depth": (0.3, 0.8),
+        "height": (0.3, 0.8),
+    },
+    "chest": {
+        "width": (0.3, 0.7),
+        "depth": (0.2, 0.5),
+        "height": (0.2, 0.5),
+    },
+    "stool": {
+        "radius": (0.15, 0.3),
+        "height": (0.3, 0.6),
+    },
+    "bench": {
+        "width": (0.8, 2.0),
+        "depth": (0.2, 0.4),
+        "height": (0.3, 0.55),
     },
 }
 

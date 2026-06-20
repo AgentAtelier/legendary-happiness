@@ -8,7 +8,7 @@ size-object ::= "{" ws "\"w\"" ws ":" ws number ws "," ws "\"d\"" ws ":" ws numb
 props-array ::= "[" ws (prop (ws "," ws prop)*)? ws "]"
 prop ::= "{" ws "\"category\"" ws ":" ws category-val ws "," ws "\"material\"" ws ":" ws material-val ws "," ws "\"count\"" ws ":" ws number ws "}"
 
-category-val ::= "\"table\"" | "\"chair\"" | "\"shelf\"" | "\"cabinet\"" | "\"rug\"" | "\"painting\"" | "\"key\"" | "\"book\"" | "\"cup\"" | "\"gem\"" | "\"bottle\"" | "\"scroll\"" | "\"coin-pouch\"" | "\"candle\"" | "\"dagger\"" | "\"ring\""
+category-val ::= "\"table\"" | "\"chair\"" | "\"shelf\"" | "\"cabinet\"" | "\"rug\"" | "\"painting\"" | "\"key\"" | "\"book\"" | "\"cup\"" | "\"gem\"" | "\"bottle\"" | "\"scroll\"" | "\"coin-pouch\"" | "\"candle\"" | "\"dagger\"" | "\"ring\"" | "\"barrel\"" | "\"crate\"" | "\"chest\"" | "\"stool\"" | "\"bench\""
 material-val ::= "\"worn_oak\"" | "\"rough_granite\"" | "\"wrought_iron\""
 
 number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?

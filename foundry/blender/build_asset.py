@@ -958,6 +958,96 @@ def _build_ring_geometry(params):
     return mesh
 
 
+# ── P-F: 20 stress-test prop generators ────────────────────────────
+
+def _build_barrel_geometry(params):
+    """A barrel: cylinder body + 3 ring bands."""
+    r, h = params["radius"], params["height"]
+    mesh = bpy.data.meshes.new("barrel")
+    obj = bpy.data.objects.new("barrel", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, h / 2.0, r, h, segments=16)
+    # Three ring bands: top, middle, bottom
+    br = r + 0.015
+    bt = 0.02
+    for frac in (0.15, 0.5, 0.85):
+        _add_cylinder(bm, 0.0, 0.0, h * frac, br, bt, segments=12)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_crate_geometry(params):
+    """A crate: simple box."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("crate")
+    obj = bpy.data.objects.new("crate", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, d, h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_chest_geometry(params):
+    """A chest: box body + slightly wider lid on top."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    body_h = h * 0.75
+    lid_h = h * 0.25
+    mesh = bpy.data.meshes.new("chest")
+    obj = bpy.data.objects.new("chest", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, body_h / 2.0, w, d, body_h)
+    _add_box(bm, 0.0, 0.0, body_h + lid_h / 2.0, w + 0.02, d + 0.02, lid_h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_stool_geometry(params):
+    """A stool: cylinder seat + 3 box legs."""
+    r, h = params["radius"], params["height"]
+    seat_t = 0.04
+    leg_h = h - seat_t
+    leg_r = 0.03
+    mesh = bpy.data.meshes.new("stool")
+    obj = bpy.data.objects.new("stool", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, leg_h + seat_t / 2.0, r, seat_t, segments=20)
+    for angle in (0.0, 2.094, 4.189):
+        lx = r * 0.7 * math.cos(angle)
+        ly = r * 0.7 * math.sin(angle)
+        _add_cylinder(bm, lx, ly, leg_h / 2.0, leg_r, leg_h, segments=12)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_bench_geometry(params):
+    """A bench: flat seat + 4 box legs."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    seat_t = 0.05
+    leg_h = h - seat_t
+    leg_s = 0.04
+    mesh = bpy.data.meshes.new("bench")
+    obj = bpy.data.objects.new("bench", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, leg_h + seat_t / 2.0, w, d, seat_t)
+    inset = 0.06
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            _add_box(bm, sx * (w / 2.0 - inset), sy * (d / 2.0 - inset),
+                     leg_h / 2.0, leg_s, leg_s, leg_h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
@@ -976,6 +1066,12 @@ _BUILDERS = {
     "candle": _build_candle_geometry,
     "dagger": _build_dagger_geometry,
     "ring": _build_ring_geometry,
+    # P-F batch 1: themed-useful stress-test generators
+    "barrel": _build_barrel_geometry,
+    "crate": _build_crate_geometry,
+    "chest": _build_chest_geometry,
+    "stool": _build_stool_geometry,
+    "bench": _build_bench_geometry,
 }
 
 _COLOR_BUILDERS = {

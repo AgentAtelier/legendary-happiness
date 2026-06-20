@@ -405,6 +405,46 @@
       "height": 0.03,
       "greybox": {"mesh": "box", "color": [0.75, 0.65, 0.2]},
       "label": "Ring"
+    },
+    "barrel": {
+      "path": "",
+      "category": ["furniture", "storage"],
+      "footprint": {"width": 0.55, "depth": 0.55},
+      "height": 1.05,
+      "greybox": {"mesh": "cylinder", "color": [0.5, 0.35, 0.2]},
+      "label": "Barrel"
+    },
+    "crate": {
+      "path": "",
+      "category": ["furniture", "storage"],
+      "footprint": {"width": 0.85, "depth": 0.85},
+      "height": 0.85,
+      "greybox": {"mesh": "box", "color": [0.55, 0.4, 0.25]},
+      "label": "Crate"
+    },
+    "chest": {
+      "path": "",
+      "category": ["furniture", "storage"],
+      "footprint": {"width": 0.75, "depth": 0.55},
+      "height": 0.55,
+      "greybox": {"mesh": "box", "color": [0.4, 0.25, 0.15]},
+      "label": "Chest"
+    },
+    "stool": {
+      "path": "",
+      "category": ["furniture", "seating"],
+      "footprint": {"width": 0.35, "depth": 0.35},
+      "height": 0.65,
+      "greybox": {"mesh": "cylinder", "color": [0.45, 0.3, 0.2]},
+      "label": "Stool"
+    },
+    "bench": {
+      "path": "",
+      "category": ["furniture", "seating"],
+      "footprint": {"width": 2.1, "depth": 0.45},
+      "height": 0.6,
+      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "label": "Bench"
     }
   }
 }
