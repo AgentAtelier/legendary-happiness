@@ -122,18 +122,6 @@ def _cmd_quest(args: list[str]) -> int:
     )
     parsed = parser.parse_args(args)
 
-    # ── Default manifest (shared across all quest prompts) ────
-    manifest = [
-        {"id": "table_0", "category": "table", "material": "worn_oak",
-         "wear": 0.5, "x": 1.5, "y": 0.0, "z": -2.0},
-        {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
-         "wear": 0.3, "x": -2.0, "y": 0.0, "z": -3.0},
-        {"id": "cabinet_0", "category": "cabinet", "material": "wrought_iron",
-         "wear": 0.7, "x": 2.5, "y": 0.0, "z": -1.5},
-        {"id": "table_1", "category": "table", "material": "worn_oak",
-         "wear": 0.2, "x": -1.0, "y": 0.0, "z": -1.0},
-    ]
-
     # ── Build the LLM ─────────────────────────────────────────
     from llm import FoundryLLM
     llm_kwargs = {}
@@ -143,12 +131,30 @@ def _cmd_quest(args: list[str]) -> int:
         llm_kwargs["port"] = parsed.port
     llm = FoundryLLM(**llm_kwargs)
 
+    # ── Step 0: Plan the room from the prompt (#6) ────────────
+    from room_planner import RoomPlanner
+    from room_layout import layout_room
+    from asset_ensure import ensure_assets
+
+    print(f"[quest] Planning room for: {parsed.request!r}")
+    room_plan, room_decisions = RoomPlanner().plan(parsed.request, llm)
+    manifest, room_size, layout_decisions = layout_room(room_plan)
+    print(f"[quest] Room: {room_size['w']}x{room_size['d']} m, "
+          f"{len(manifest)} entities")
+
+    # Build any (category, material) the room needs that isn't in the library.
+    ensure_decisions = ensure_assets(manifest, parsed.library_dir, parsed.lexicon)
+
     # ── Step 1: Behaviour-gen ─────────────────────────────────
+    # The fetch target must be a furniture prop the player can pick up —
+    # never decor (rug/painting). Plan against the furniture-only view.
     from behaviour_gen import QuestBehaviourPlanner
     planner = QuestBehaviourPlanner()
 
+    furniture_manifest = [e for e in manifest if not e.get("decor")]
     print(f"[quest] Planning quest for: {parsed.request!r}")
-    spec, decisions = planner.plan(parsed.request, manifest, llm)
+    spec, quest_decisions = planner.plan(parsed.request, furniture_manifest, llm)
+    decisions = room_decisions + layout_decisions + ensure_decisions + quest_decisions
 
     target = spec.get("target_entity", "?")
     npc_role = spec.get("npc_role", "villager")
@@ -170,6 +176,7 @@ def _cmd_quest(args: list[str]) -> int:
         template_dir=template_dir,
         library_dir=parsed.library_dir,
         out_root=str(_Path2.cwd() / "builds"),
+        room_size=room_size,
     )
     print(f"[quest] Build scaffolded: {build_path}")
 
