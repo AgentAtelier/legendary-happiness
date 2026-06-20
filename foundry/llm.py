@@ -57,12 +57,14 @@ class FoundryLLM:
         max_tokens: int = 512,
         timeout_s: int = 120,
         grammar_path: str = _GRAMMAR_PATH,
+        seed: int | None = None,
     ):
         self.endpoint = endpoint.rstrip("/")
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.timeout_s = timeout_s
         self._grammar = load_grammar(grammar_path)
+        self._seed = seed
 
     def __call__(self, prompt: str, grammar: Optional[str] = None) -> str:
         """Generate a response.  Callable signature: (prompt, grammar) -> str.
@@ -81,6 +83,8 @@ class FoundryLLM:
             "n_predict": self.max_tokens,
             "cache_prompt": True,
         }
+        if self._seed is not None:
+            payload["seed"] = self._seed
         if active_grammar:
             payload["grammar"] = active_grammar
 

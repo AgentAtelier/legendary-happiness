@@ -52,8 +52,12 @@ class RoomPlanner:
         return json.loads(text[start:])
 
     def plan(
-        self, request: str, llm: Callable[[str, Optional[str]], str]
+        self, request: str, llm: Callable[[str, Optional[str]], str],
+        seed: int | None = None,
     ) -> Tuple[dict, List[DecisionPoint]]:
+        """Plan a room from a request.  When *seed* is provided,
+        the LLM should use it for reproducible output (the caller
+        is responsible for configuring the LLM with the seed)."""
         raw = self.parse(llm(self.build_prompt(request), _GRAMMAR))
         decisions: List[DecisionPoint] = []
 

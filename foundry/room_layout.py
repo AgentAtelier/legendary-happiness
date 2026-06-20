@@ -47,7 +47,7 @@ def _grid_cells(w: float, d: float) -> List[Tuple[float, float]]:
     return cells
 
 
-def layout_room(plan: dict) -> Tuple[List[dict], dict, List[DecisionPoint]]:
+def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, List[DecisionPoint]]:
     room_size = plan["room_size"]
     w, d = float(room_size["w"]), float(room_size["d"])
     entities = _expand(plan.get("props", []))

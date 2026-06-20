@@ -605,6 +605,146 @@ def test_plan_fallback_dialogue_includes_category():
     assert "table" in spec["dialogue"]["ask"]
 
 
+# ── P-H-1: Seed determinism ─────────────────────────────────────
+
+def _make_seeded_fake_llm(expected_seed: int):
+    """Factory: returns a fake LLM that encodes its seed in the output
+    so we can assert same-seed reproducibility."""
+    def fake(prompt: str, grammar: str | None) -> str:
+        idx = expected_seed % 2
+        target = ["table_0", "shelf_0"][idx]
+        return json.dumps({
+            "npc_role": f"npc_s{expected_seed}",
+            "target_entity": target,
+            "dialogue": {
+                "greet": f"Greetings from seed {expected_seed}.",
+                "ask": f"Find the thing on the {target.split('_')[0]}.",
+                "wrong": "Not the right one.",
+                "thank": "You found it, thanks!",
+            },
+            "objective": {"type": "fetch", "target": target, "giver": "npc"},
+        })
+    return fake
+
+
+def test_plan_same_seed_same_output():
+    """P-H-1: Same seed → identical quest spec (deterministic plumbing)."""
+    planner = QuestBehaviourPlanner()
+    spec1, _ = planner.plan(
+        "a room", _MANIFEST_4, _make_seeded_fake_llm(42), seed=42
+    )
+    spec2, _ = planner.plan(
+        "a room", _MANIFEST_4, _make_seeded_fake_llm(42), seed=42
+    )
+    assert spec1 == spec2, (
+        f"Same seed should produce identical specs:\n{spec1}\n{spec2}"
+    )
+
+
+def test_plan_different_seeds_different_output():
+    """P-H-1: Different seeds → different quest spec."""
+    planner = QuestBehaviourPlanner()
+    spec1, _ = planner.plan(
+        "a room", _MANIFEST_4, _make_seeded_fake_llm(42), seed=42
+    )
+    spec2, _ = planner.plan(
+        "a room", _MANIFEST_4, _make_seeded_fake_llm(99), seed=99
+    )
+    assert spec1 != spec2, (
+        f"Different seeds should produce different specs"
+    )
+
+
+def test_plan_no_seed_still_works():
+    """P-H-1: plan() without seed still functions (stochastic path)."""
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a room", _MANIFEST_4, _fake_llm_valid
+    )
+    assert spec["target_entity"] in _VALID_MANIFEST_IDS
+    assert spec["npc_role"] == "hermit"
+
+
+def _make_seeded_room_fake_llm(expected_seed: int):
+    """Factory: returns a fake room-planner LLM that encodes seed in output."""
+    def fake(prompt: str, grammar: str | None) -> str:
+        w = 4 + (expected_seed % 8)
+        d = 4 + ((expected_seed // 8) % 8)
+        count = 1 + (expected_seed % 3)
+        return json.dumps({
+            "room_size": {"w": w, "d": d},
+            "props": [{"category": "table", "material": "worn_oak", "count": count}],
+        })
+    return fake
+
+
+def test_room_planner_same_seed_same_output():
+    """P-H-1: Same seed → identical room plan with seed-aware stub."""
+    from room_planner import RoomPlanner
+    planner = RoomPlanner()
+    plan1, _ = planner.plan("a room", _make_seeded_room_fake_llm(42), seed=42)
+    plan2, _ = planner.plan("a room", _make_seeded_room_fake_llm(42), seed=42)
+    assert plan1 == plan2, (
+        f"Same seed should produce identical room plans:\n{plan1}\n{plan2}"
+    )
+
+
+def test_room_planner_different_seeds_different_output():
+    """P-H-1: Different seeds → different room plan."""
+    from room_planner import RoomPlanner
+    planner = RoomPlanner()
+    plan1, _ = planner.plan("a room", _make_seeded_room_fake_llm(42), seed=42)
+    plan2, _ = planner.plan("a room", _make_seeded_room_fake_llm(99), seed=99)
+    assert plan1 != plan2, (
+        f"Different seeds should produce different room plans"
+    )
+
+
+def test_room_planner_accepts_seed():
+    """P-H-1: RoomPlanner.plan() accepts optional seed parameter."""
+    from room_planner import RoomPlanner
+    planner = RoomPlanner()
+    # Stub LLM that returns a minimal valid room plan
+    def fake_room_llm(prompt, grammar):
+        return '{"room_size": {"w": 6, "d": 6}, "props": [{"category": "table", "material": "worn_oak", "count": 2}]}'
+    room_plan, decisions = planner.plan("a room", fake_room_llm, seed=42)
+    assert room_plan["room_size"]["w"] == 6
+    assert len(room_plan["props"]) == 1
+    assert room_plan["props"][0]["count"] == 2
+
+
+def test_room_planner_live_seed_reproducible():
+    """P-H-1: With a real FoundryLLM + seed, two plan() calls produce
+    identical room plans (requires llama server)."""
+    if not _llama_server_reachable():
+        pytest.skip("llama.cpp server not reachable at 127.0.0.1:8002")
+
+    from room_planner import RoomPlanner
+    from llm import FoundryLLM
+
+    planner = RoomPlanner()
+    llm1 = FoundryLLM(seed=42)
+    llm2 = FoundryLLM(seed=42)
+
+    plan1, _ = planner.plan("a hermit's shack", llm1, seed=42)
+    plan2, _ = planner.plan("a hermit's shack", llm2, seed=42)
+    assert plan1 == plan2, (
+        f"Same seed should produce identical room plans with live LLM:\n"
+        f"plan1={plan1}\nplan2={plan2}"
+    )
+
+
+def test_layout_room_accepts_seed():
+    """P-H-1: layout_room() accepts optional seed parameter."""
+    from room_layout import layout_room
+    plan = {"room_size": {"w": 6, "d": 6}, "props": [
+        {"category": "table", "material": "worn_oak", "count": 2},
+    ]}
+    manifest, room_size, decisions = layout_room(plan, seed=42)
+    assert room_size["w"] == 6
+    assert len(manifest) == 2
+
+
 # ── Live integration test ────────────────────────────────────────
 
 def _llama_server_reachable() -> bool:

@@ -120,15 +120,21 @@ def _cmd_quest(args: list[str]) -> int:
         default="/home/mrg/dev/games/rpg/assets",
         help="Directory containing forged GLBs + their families"
     )
+    parser.add_argument(
+        "--seed", type=int, default=None,
+        help="Random seed for reproducible room generation"
+    )
     parsed = parser.parse_args(args)
 
     # ── Build the LLM ─────────────────────────────────────────
     from llm import FoundryLLM
-    llm_kwargs = {}
+    llm_kwargs: dict = {}
     if parsed.model:
         llm_kwargs["model"] = parsed.model
     if parsed.port:
         llm_kwargs["port"] = parsed.port
+    if parsed.seed is not None:
+        llm_kwargs["seed"] = parsed.seed
     llm = FoundryLLM(**llm_kwargs)
 
     # ── Step 0: Plan the room from the prompt (#6) ────────────
@@ -137,8 +143,11 @@ def _cmd_quest(args: list[str]) -> int:
     from asset_ensure import ensure_assets
 
     print(f"[quest] Planning room for: {parsed.request!r}")
-    room_plan, room_decisions = RoomPlanner().plan(parsed.request, llm)
-    manifest, room_size, layout_decisions = layout_room(room_plan)
+    seed = parsed.seed
+    if seed is not None:
+        print(f"[quest] Seed: {seed}")
+    room_plan, room_decisions = RoomPlanner().plan(parsed.request, llm, seed=seed)
+    manifest, room_size, layout_decisions = layout_room(room_plan, seed=seed)
     print(f"[quest] Room: {room_size['w']}x{room_size['d']} m, "
           f"{len(manifest)} entities")
 
@@ -153,7 +162,7 @@ def _cmd_quest(args: list[str]) -> int:
 
     furniture_manifest = [e for e in manifest if not e.get("decor")]
     print(f"[quest] Planning quest for: {parsed.request!r}")
-    spec, quest_decisions = planner.plan(parsed.request, furniture_manifest, llm)
+    spec, quest_decisions = planner.plan(parsed.request, furniture_manifest, llm, seed=seed)
     decisions = room_decisions + layout_decisions + ensure_decisions + quest_decisions
 
     target = spec.get("target_entity", "?")

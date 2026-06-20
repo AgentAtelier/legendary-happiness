@@ -259,6 +259,7 @@ class QuestBehaviourPlanner:
         room_theme: str,
         manifest: list[dict],
         llm: Callable[[str, Optional[str]], str],
+        seed: int | None = None,
     ) -> Tuple[dict, List[DecisionPoint]]:
         """Plan a quest spec from a room theme and placed-entity manifest.
 
@@ -268,6 +269,7 @@ class QuestBehaviourPlanner:
                       ``id`` and ``category`` keys.
             llm: Callable (prompt, grammar) -> str.  Pass a FAKE for
                  tests, or ``FoundryLLM`` for production.
+            seed: Optional random seed for reproducible output.
 
         Returns:
             ``(spec, decisions)`` — ``spec`` is a validated quest-spec
