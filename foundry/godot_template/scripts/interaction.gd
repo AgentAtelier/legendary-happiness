@@ -5,7 +5,7 @@
 # P-C-1: highlights the hovered interactable with emissive material overlay
 extends Node3D
 
-signal interact_prompt(visible: bool, prompt_text: String)
+signal interact_prompt(visible: bool, prompt_text: String, tag: String)
 signal object_interacted(target_node: Node3D, tag: String)
 
 var interact_range: float = 3.0
@@ -15,6 +15,8 @@ var interact_range: float = 3.0
 # P-C-1: hover highlight state
 var _hovered_node: Node = null
 var _highlight_material: StandardMaterial3D = null
+# B1: cached quest_data for target glow (avoid disk I/O every frame)
+var _cached_quest_data: Dictionary = {}
 
 
 func _ready() -> void:
@@ -25,6 +27,8 @@ func _ready() -> void:
 	_highlight_material.emission_energy_multiplier = 0.5
 	_highlight_material.transparency = BaseMaterial3D.Transparency.TRANSPARENCY_ALPHA
 	_highlight_material.albedo_color = Color(1, 1, 0, 0.0)
+	# B1: Cache quest_data once (avoid disk I/O every frame)
+	_cache_quest_data()
 
 
 func _process(_delta: float) -> void:
@@ -38,23 +42,33 @@ func _process(_delta: float) -> void:
 	var result: Dictionary = space_state.intersect_ray(query)
 
 	if not result.is_empty():
-		# intersect_ray returns the CollisionObject3D (e.g. StaticBody3D),
-		# not the CollisionShape3D child.  Start from the collider itself.
 		var current: Node = result.collider as Node
 		while current:
 			if current.has_meta("_forge_tag"):
 				var tag: String = current.get_meta("_forge_tag")
 				if tag == "pickup" or tag == "talk":
 					var prompt_text: String = _build_prompt(current, tag)
-					interact_prompt.emit(true, prompt_text)
+					interact_prompt.emit(true, prompt_text, tag)
 					# P-C-1: highlight the hovered node
 					_highlight(current)
+					# B1: Reticle color update
+					_update_reticle(tag)
+					# B1: Tooltip label
+					_show_tooltip(current, tag)
+					# B1: Persistent target glow for active quest targets
+					_update_target_glow()
 					return
 			current = current.get_parent()
 
-	interact_prompt.emit(false, "")
+	interact_prompt.emit(false, "", "")
 	# P-C-1: clear highlight when not looking at anything interactable
 	_clear_highlight()
+	# B1: Reset reticle to default
+	_update_reticle("")
+	# B1: Hide tooltip
+	_show_tooltip(null, "")
+	# B1: Still update target glow even when not hovering
+	_update_target_glow()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -120,3 +134,95 @@ func _clear_highlight() -> void:
 		if model is MeshInstance3D:
 			model.material_overlay = null
 		_hovered_node = null
+
+
+# ── B1: Reticle + tooltip + target glow ──────────────────────────
+
+func _update_reticle(tag: String) -> void:
+	"""Set crosshair color based on hovered tag."""
+	var hud = get_node_or_null("/root/Root/HUD")
+	if hud and hud.has_method("set_crosshair_style"):
+		hud.set_crosshair_style(tag)
+
+
+func _show_tooltip(node: Node, tag: String) -> void:
+	"""Show a floating tooltip for the hovered interactable."""
+	var hud = get_node_or_null("/root/Root/HUD")
+	if not hud or not hud.has_method("show_tooltip"):
+		return
+	if node == null or tag == "":
+		hud.show_tooltip("")
+		return
+	var text: String = ""
+	if tag == "pickup":
+		var cat: String = ""
+		if node.has_meta("_forge_category"):
+			cat = node.get_meta("_forge_category")
+		text = cat.capitalize().replace("_", " ")
+	elif tag == "talk":
+		var role: String = ""
+		if node.has_meta("_forge_role"):
+			role = node.get_meta("_forge_role")
+		text = role.capitalize()
+	if text != "":
+		hud.show_tooltip(text)
+
+
+func _update_target_glow() -> void:
+	"""Apply persistent emissive highlight to all active quest targets.
+
+	When an NPC is in QUEST_GIVEN state (state=1), their target_entity
+	prop should glow so the player can find it.
+	B1-fix: Uses cached quest_data (read once in _cache_quest_data)."""
+	var root = get_node_or_null("/root/Root")
+	if not root:
+		return
+	var npcs = _cached_quest_data.get("npcs", {})
+	if not npcs is Dictionary:
+		return
+
+	# Build set of target entity IDs that have active quests
+	var active_targets: Array[String] = []
+	var all_nodes: Array = []
+	_collect_all_nodes(root, all_nodes)
+	for n in all_nodes:
+		if n.has_meta("_forge_tag") and n.get_meta("_forge_tag") == "talk":
+			var npc_id = str(n.get_meta("_forge_npc_id", ""))
+			if npc_id != "" and int(n._state) == 1:  # QUEST_GIVEN
+				var npc_data = npcs.get(npc_id, {})
+				var tid = str(npc_data.get("target_entity", ""))
+				if tid != "" and not active_targets.has(tid):
+					active_targets.append(tid)
+
+	# Apply glow to active targets, remove from inactive
+	for n in all_nodes:
+		if n.has_meta("_forge_tag") and n.get_meta("_forge_tag") == "pickup":
+			var model = n.get_node_or_null("%s_model" % n.name)
+			if model is MeshInstance3D:
+				if n.name in active_targets:
+					# Only apply if not already highlighted as hovered
+					if n != _hovered_node and model.material_overlay == null:
+						model.material_overlay = _highlight_material
+				else:
+					# Only remove if it's our persistent glow (not hover)
+					if n != _hovered_node and model.material_overlay == _highlight_material:
+						model.material_overlay = null
+
+
+func _cache_quest_data() -> void:
+	"""B1: Read quest_data.json once and cache it."""
+	var scene_path: String = get_tree().current_scene.scene_file_path
+	if scene_path == "":
+		return
+	var data_path: String = scene_path.replace(".tscn", "_quest_data.json")
+	var file = FileAccess.open(data_path, FileAccess.READ)
+	if file:
+		var parsed = JSON.parse_string(file.get_as_text())
+		if parsed is Dictionary:
+			_cached_quest_data = parsed
+
+
+func _collect_all_nodes(node, out: Array) -> void:
+	out.append(node)
+	for child in node.get_children():
+		_collect_all_nodes(child, out)

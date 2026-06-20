@@ -3,6 +3,10 @@
 # WASD movement, mouse look, E for interaction, G to drop.
 # Scroll wheel / 1-8 to cycle active item.
 # ESC toggles mouse capture.
+# B1: Sprint (Shift) — faster movement, wider FOV, quicker footsteps.
+# B1: Crouch (Ctrl) — slower movement, lower camera.
+# B1: Head-bob — subtle camera Y oscillation when walking.
+# B1: Drop particle puff when dropping items.
 #
 # C-2: Multi-item inventory — carried_items array + active_item_index
 #       replaces the single carried_item string.
@@ -18,11 +22,31 @@ var gravity: float = 9.8
 # C-1: footstep timer (throttled to avoid rapid-fire)
 var _footstep_timer: float = 0.0
 
+# B1: sprint / crouch state
+var _is_sprinting: bool = false
+var _is_crouching: bool = false
+var _base_speed: float = 5.0
+var _sprint_mult: float = 1.6
+var _crouch_mult: float = 0.5
+var _base_fov: float = 75.0
+var _sprint_fov_add: float = 8.0
+var _crouch_fov_sub: float = 10.0
+var _camera_base_y: float = 0.7
+var _crouch_camera_y: float = 0.3
+
+# B1: head-bob
+var _head_bob_t: float = 0.0
+var _head_bob_amp: float = 0.03  # vertical oscillation amplitude
+var _head_bob_freq: float = 8.0   # frequency when walking
+
 @onready var _camera: Camera3D = $Camera3D
 
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_base_speed = speed
+	_base_fov = _camera.fov
+	_camera_base_y = _camera.position.y
 
 
 func get_active_item() -> String:
@@ -90,6 +114,31 @@ func _input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# B1: Sprint / crouch
+	_is_sprinting = Input.is_key_pressed(KEY_SHIFT) and not _is_crouching
+	_is_crouching = Input.is_key_pressed(KEY_CTRL)
+
+	if _is_sprinting:
+		speed = _base_speed * _sprint_mult
+	elif _is_crouching:
+		speed = _base_speed * _crouch_mult
+	else:
+		speed = _base_speed
+
+	# B1: Camera FOV
+	var target_fov: float = _base_fov
+	if _is_sprinting:
+		target_fov += _sprint_fov_add
+	elif _is_crouching:
+		target_fov -= _crouch_fov_sub
+	_camera.fov = lerpf(_camera.fov, target_fov, 8.0 * delta)
+
+	# B1: Camera Y (crouch lowers)
+	var target_cam_y: float = _camera_base_y
+	if _is_crouching:
+		target_cam_y = _crouch_camera_y
+	_camera.position.y = lerpf(_camera.position.y, target_cam_y, 10.0 * delta)
+
 	var input_dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
 		input_dir.y -= 1.0
@@ -110,11 +159,29 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0.0, speed)
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
+	# B1: Head-bob when grounded and moving
+	if direction and is_on_floor():
+		var bob_freq := _head_bob_freq
+		if _is_sprinting:
+			bob_freq *= 1.4
+		elif _is_crouching:
+			bob_freq *= 0.6
+		_head_bob_t += delta * bob_freq
+		var bob_offset: float = sin(_head_bob_t) * _head_bob_amp
+		_camera.position.y += bob_offset
+	else:
+		_head_bob_t = 0.0  # reset phase when not walking
+
 	# C-1: footstep audio (throttled, only when grounded and moving)
 	if direction and is_on_floor():
+		var footstep_interval: float = 0.5
+		if _is_sprinting:
+			footstep_interval = 0.3  # quicker
+		elif _is_crouching:
+			footstep_interval = 0.8  # slower
 		_footstep_timer -= delta
 		if _footstep_timer <= 0.0:
-			_footstep_timer = 0.5  # ~2 steps/second at normal speed
+			_footstep_timer = footstep_interval
 			if has_node("/root/Audio"):
 				get_node("/root/Audio").play_footstep()
 
@@ -170,10 +237,10 @@ func _hide_all_models() -> void:
 		child.hide()
 
 
-# ── Drop ─────────────────────────────────────────────────────────
+# ── Drop + particle puff (B1) ────────────────────────────────────
 
 func _drop_active_item() -> void:
-	"""C-2: Drop the active carried item on the floor."""
+	"""C-2: Drop the active carried item on the floor.  B1: particle puff."""
 	var active_id = get_active_item()
 	if active_id == "":
 		return
@@ -195,3 +262,30 @@ func _drop_active_item() -> void:
 	prop.set("collision_layer", 1)
 	prop.set("collision_mask", 1)
 	remove_item(active_id)
+	# B1: Drop particle puff
+	_spawn_drop_puff(drop_pos)
+
+
+func _spawn_drop_puff(pos: Vector3) -> void:
+	"""B1: Spawn a brief particle burst at the drop position."""
+	var particles := CPUParticles3D.new()
+	particles.emitting = false
+	particles.one_shot = true
+	particles.amount = 12
+	particles.lifetime = 0.6
+	particles.explosiveness = 1.0
+	particles.direction = Vector3(0, 1, 0)
+	particles.spread = 30.0
+	particles.gravity = Vector3(0, -2.0, 0)
+	particles.initial_velocity_min = 1.0
+	particles.initial_velocity_max = 2.5
+	particles.scale_amount_min = 0.05
+	particles.scale_amount_max = 0.12
+	particles.color = Color(0.7, 0.65, 0.55, 0.6)
+	particles.finish_color = Color(0.7, 0.65, 0.55, 0.0)
+	particles.position = pos
+	get_parent().add_child(particles)
+	particles.emitting = true
+	# Auto-cleanup after lifetime
+	await get_tree().create_timer(0.8).timeout
+	particles.queue_free()

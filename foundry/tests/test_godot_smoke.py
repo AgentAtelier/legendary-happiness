@@ -439,6 +439,16 @@ def test_multi_npc_playthrough():
         f"Stderr: {result.get('_stderr', '')}"
     )
 
+    # B1: Multi-quest win gate — WinScreen must NOT be visible after
+    # first NPC done (only after ALL NPCs done)
+    win_after_first = result.get("win_after_first_done", True)
+    assert not win_after_first, (
+        f"B1: WinScreen should NOT be visible after first NPC done "
+        f"(multi-quest win gate). win_after_first_done={win_after_first}\n"
+        f"Checks: {checks}\n"
+        f"Stderr: {result.get('_stderr', '')}"
+    )
+
     assert win_visible, (
         f"Expected WinScreen visible after both NPCs satisfied\n"
         f"win_visible={win_visible}\n"

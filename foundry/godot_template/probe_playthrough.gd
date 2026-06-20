@@ -26,7 +26,10 @@ var _result = {
 	"checks": [],
 	# B0: multi-NPC probe fields
 	"multi_npc": false,
-	"both_done": false
+	"both_done": false,
+	# B1: multi-quest win gate
+	"win_after_first_done": false,
+	"quest_log_populated": false
 }
 
 var _scene_path = ""
@@ -282,6 +285,13 @@ func _run_phase():
 	if _phase == 8:
 		if _phase_timer > 0.3:
 			_check_win_screen()
+			# B1: Multi-quest win gate — after first NPC done, WinScreen should NOT be visible
+			if _multi_npc:
+				_result["win_after_first_done"] = _result["win_visible"]
+				if _result["win_visible"]:
+					_result["checks"].append("WARNING: B1 WinScreen visible after first NPC (should be gated)")
+				else:
+					_result["checks"].append("PASS: B1 multi-quest win gate — WinScreen NOT visible after first NPC")
 			# C-2: Win shouldn't clear other inventory items
 			if _distractor_prop != null:
 				if _distractor_prop.name in _player.carried_items:

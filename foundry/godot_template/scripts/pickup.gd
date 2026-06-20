@@ -26,6 +26,8 @@ func on_interact(tag: String) -> void:
 	if carried_parent:
 		var model = get_node_or_null("%s_model" % name)
 		if model:
+			# B1: Tween bounce before reparenting
+			_do_pickup_bounce(model)
 			model.reparent(carried_parent, false)
 			# C-2: Don't show() here — player.add_item() calls _show_active_model()
 
@@ -42,3 +44,12 @@ func on_interact(tag: String) -> void:
 	# C-1: audio feedback
 	if has_node("/root/Audio"):
 		get_node("/root/Audio").play_pickup()
+
+
+# ── B1: Pickup juice ─────────────────────────────────────────────
+
+func _do_pickup_bounce(model: Node3D) -> void:
+	"""Play a quick scale-bounce tween on the model before reparenting."""
+	var tween = create_tween()
+	tween.tween_property(model, "scale", Vector3(1.2, 1.2, 1.2), 0.08)
+	tween.tween_property(model, "scale", Vector3(1.0, 1.0, 1.0), 0.08)
