@@ -30,18 +30,25 @@ def _expand(props: List[dict]) -> List[dict]:
 
 def _grid_cells(w: float, d: float) -> List[Tuple[float, float]]:
     """Cell centres inside the room, excluding the player spawn (origin)
-    and the NPC slot (back-centre)."""
-    n_cols = max(1, int((w - 2 * WALL_MARGIN) // CELL))
-    n_rows = max(1, int((d - 2 * WALL_MARGIN) // CELL))
+    and the NPC slot (back-centre).
+
+    T-5: For small rooms, scale CELL down so the grid still produces
+    ≥4 cells (enough for a minimal furnished room)."""
+    usable_w = w - 2 * WALL_MARGIN
+    usable_d = d - 2 * WALL_MARGIN
+    # T-5: scale CELL for small rooms so we always get ≥2 cols and ≥2 rows
+    scaled_cell = min(CELL, max(0.6, min(usable_w, usable_d) / 2.5))
+    n_cols = max(1, int(usable_w // scaled_cell))
+    n_rows = max(1, int(usable_d // scaled_cell))
     npc_z = -d / 2.0 + NPC_Z_INSET
     cells = []
     for r in range(n_rows):
         for c in range(n_cols):
-            x = -(n_cols - 1) * CELL / 2.0 + c * CELL
-            z = -(n_rows - 1) * CELL / 2.0 + r * CELL
-            if abs(x) < CELL / 2.0 and abs(z) < CELL / 2.0:
+            x = -(n_cols - 1) * scaled_cell / 2.0 + c * scaled_cell
+            z = -(n_rows - 1) * scaled_cell / 2.0 + r * scaled_cell
+            if abs(x) < scaled_cell / 2.0 and abs(z) < scaled_cell / 2.0:
                 continue                       # player spawn at origin
-            if abs(x) < CELL / 2.0 and abs(z - npc_z) < CELL / 2.0:
+            if abs(x) < scaled_cell / 2.0 and abs(z - npc_z) < scaled_cell / 2.0:
                 continue                       # NPC slot
             cells.append((x, z))
     return cells
@@ -162,5 +169,28 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
             "id": "key_auto", "category": "key", "material": "worn_oak",
             "x": ix, "y": iy, "z": iz, "yaw": 0.0, "surface": surf, "decor": False,
         })
+
+    # ── U-4: Chairs-around-tables relational placement ───────
+    # After grid placement, if both chairs and tables are present,
+    # cluster chairs around the nearest table, facing inward.
+    tables_in_manifest = [e for e in manifest if e["category"] == "table"]
+    if tables_in_manifest and any(e["category"] == "chair" for e in manifest):
+        for e in manifest:
+            if e["category"] == "chair":
+                nearest = min(tables_in_manifest,
+                              key=lambda t: (e["x"] - t["x"])**2 + (e["z"] - t["z"])**2)
+                tx, tz = nearest["x"], nearest["z"]
+                # Place chair near table edge, facing toward table
+                dx = e["x"] - tx
+                dz = e["z"] - tz
+                dist = (dx*dx + dz*dz) ** 0.5
+                if dist > 0.01:
+                    # Pull chair to table edge (0.7 m from centre)
+                    scale = 0.7 / dist
+                    e["x"] = round(tx + dx * scale, 3)
+                    e["z"] = round(tz + dz * scale, 3)
+                    # Chair faces table: yaw = atan2 toward table
+                    import math
+                    e["yaw"] = round(math.atan2(tz - e["z"], tx - e["x"]), 3)
 
     return manifest, {"w": w, "d": d}, decisions

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, TypedDict
 
 
-from category_registry import COLLISION_SIZES, FURNITURE_TOP_Y
+from category_registry import COLLISION_SIZES
 
 # ── Manifest entry shape ─────────────────────────────────────────
 

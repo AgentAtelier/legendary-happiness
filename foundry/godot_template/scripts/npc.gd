@@ -31,7 +31,7 @@ func on_interact(tag: String) -> void:
 	match _state:
 		State.IDLE:
 			_show_line(hud, "greet")
-			await get_tree().create_timer(2.0).timeout
+			await _wait_for_advance()
 			_show_line(hud, "ask")
 			_state = State.QUEST_GIVEN
 		State.QUEST_GIVEN:
@@ -44,8 +44,32 @@ func on_interact(tag: String) -> void:
 				_emit_win()
 			else:
 				_show_line(hud, "wrong")
+				await _wait_for_advance()
+				_show_line(hud, "ask")
 		State.DONE:
 			_show_line(hud, "thank")
+
+
+func _wait_for_advance() -> void:
+	"""Wait for Space/Enter key press, showing 'Space to continue' hint.
+
+	U-6: In headless mode (Godot smoke tests), skip the wait entirely
+	so the V-1 probe can drive the dialogue without keyboard input."""
+	if OS.has_feature("headless"):
+		return
+	var hud = get_node("/root/Root/HUD")
+	if hud.has_method("show_interact"):
+		hud.show_interact("Space to continue")
+	# Wait for Space or Enter key
+	while true:
+		await get_tree().process_frame
+		if Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER):
+			break
+	if hud.has_method("show_interact"):
+		hud.show_interact("")
+	# Debounce: wait until keys are released
+	while Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER):
+		await get_tree().process_frame
 
 
 func _show_line(hud: Node, key: String) -> void:

@@ -47,14 +47,14 @@ THEME_TABLE: List[dict] = [
     {
         "theme": "kitchen",
         "required_categories": ("table", "chair", "cabinet", "shelf"),
-        "allowed_palette": ("worn_oak", "wrought_iron"),
+        "allowed_palette": ("worn_oak", "wrought_iron", "linen"),
         "density": {"min": 5, "max": 15},
         "must_include": ("table", "chair"),
     },
     {
         "theme": "noble",
         "required_categories": ("table", "chair", "cabinet"),
-        "allowed_palette": ("worn_oak", "rough_granite"),
+        "allowed_palette": ("worn_oak", "rough_granite", "silk", "wool"),
         "density": {"min": 3, "max": 8},
         "must_include": ("table",),
     },
@@ -82,7 +82,7 @@ THEME_TABLE: List[dict] = [
     {
         "theme": "*",
         "required_categories": ("table", "chair", "shelf", "cabinet"),
-        "allowed_palette": ("worn_oak", "rough_granite", "wrought_iron"),
+        "allowed_palette": ("worn_oak", "rough_granite", "wrought_iron", "linen", "wool", "silk"),
         "density": {"min": 2, "max": 10},
         "must_include": (),
     },
