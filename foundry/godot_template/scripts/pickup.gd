@@ -18,6 +18,10 @@ func on_interact(tag: String) -> void:
 	if player.carried_item != "" and player.carried_item != name:
 		_restore_to_world(player.carried_item)
 
+	# P-C-1: clear hover highlight before reparenting model
+	var interaction = get_node_or_null("/root/Root/Player/Camera3D/InteractionRaycast")
+	if interaction and interaction.has_method("_clear_highlight"):
+		interaction._clear_highlight()
 	# Move the model to the CarriedItem node (in front of camera)
 	var carried_parent = get_node_or_null("/root/Root/Player/Camera3D/CarriedItem")
 	if carried_parent:
