@@ -80,7 +80,7 @@ def _headless_launch_stderr(tmp_dir: str) -> str:
 
     build_path = scaffold_project(
         name="headless_check",
-        quest_spec=_SYNTHETIC_QUEST_SPEC,
+        quest_specs=[_SYNTHETIC_QUEST_SPEC],
         manifest=_SYNTHETIC_MANIFEST,
         template_dir=_TEMPLATE_DIR,
         library_dir=_LIBRARY_DIR,
@@ -106,7 +106,7 @@ def _compile_and_probe(quest_spec, manifest, tmp_dir: str, probe_script: str = "
 
     build_path = scaffold_project(
         name="smoke_test",
-        quest_spec=quest_spec,
+        quest_specs=[quest_spec],
         manifest=manifest,
         template_dir=_TEMPLATE_DIR,
         library_dir=_LIBRARY_DIR,

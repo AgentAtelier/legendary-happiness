@@ -281,7 +281,15 @@ func _find_nodes():
 	if file:
 		var parsed = JSON.parse_string(file.get_as_text())
 		if parsed is Dictionary:
+			# C-3 single-NPC format had a top-level target_entity; C-4 moved it
+			# under "npcs"[npc_id]. Read whichever is present (first NPC for multi).
 			_target_entity = str(parsed.get("target_entity", ""))
+			if _target_entity == "" and parsed.has("npcs"):
+				var npcs = parsed["npcs"]
+				if npcs is Dictionary:
+					for k in npcs.keys():
+						_target_entity = str(npcs[k].get("target_entity", ""))
+						break
 
 	for n in all_nodes:
 		if n is Node3D and n.has_meta("_forge_tag"):

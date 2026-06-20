@@ -340,7 +340,7 @@ func _check_audio_synth(_all_nodes: Array[Node]):
 
 	var player = AudioStreamPlayer.new()
 	player.stream = generator
-	add_child(player)
+	get_root().add_child(player)
 	player.play()
 
 	var playback = player.get_stream_playback()
@@ -361,7 +361,7 @@ func _check_audio_synth(_all_nodes: Array[Node]):
 		playback.push_frame(Vector2(v, v))
 
 	# Give it a frame to start playing
-	await get_tree().process_frame
+	await process_frame
 
 	if player.playing:
 		_result["audio_synth"] = true
@@ -373,7 +373,7 @@ func _check_audio_synth(_all_nodes: Array[Node]):
 	player.queue_free()
 
 	# C-1: Also exercise the actual Audio autoload (end-to-end)
-	var audio_autoload = get_node_or_null("/root/Audio")
+	var audio_autoload = get_root().get_node_or_null("Audio")
 	if audio_autoload and audio_autoload.has_method("play_footstep"):
 		audio_autoload.play_footstep()
 		_result["checks"].append("PASS: Audio autoload play_footstep() called without error")
