@@ -825,3 +825,99 @@ def test_quest_signals_record_tier_with_quest_tags():
     assert record_tier({"quest_decision_fired"}) == "low"
     assert record_tier({"clean"}) == "clean"
     assert record_tier({"quest_dialogue_fallback", "quest_unwinnable"}) == "high"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  P-K: Eval oracle extensions — decor-never-target, room variety,
+#       headless-load-clean
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_decor_never_target_returns_tag():
+    """P-K: When target_entity is a decor item, check_decor_never_target
+    returns 'decor_never_target'."""
+    from eval.signals import check_decor_never_target
+    decor_manifest = [
+        {"id": "rug_0", "category": "rug", "material": "worn_oak",
+         "x": 0, "y": 0, "z": 0, "decor": True},
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "x": 1, "y": 0, "z": 1, "decor": False},
+    ]
+    decor_spec = dict(_VALID_QUEST_SPEC)
+    decor_spec["target_entity"] = "rug_0"
+    qr = _make_quest_record(quest_spec=decor_spec, manifest=decor_manifest)
+    assert check_decor_never_target(qr) == "decor_never_target"
+
+
+def test_decor_never_target_returns_none_for_furniture():
+    """P-K: Furniture targets don't trigger decor_never_target."""
+    from eval.signals import check_decor_never_target
+    qr = _make_quest_record(quest_spec=_VALID_QUEST_SPEC)
+    assert check_decor_never_target(qr) is None
+
+
+def test_decor_never_target_returns_none_without_manifest():
+    """P-K: No manifest → no decor check possible → None."""
+    from eval.signals import check_decor_never_target
+    qr = _make_quest_record(quest_spec=_VALID_QUEST_SPEC, manifest=[])
+    assert check_decor_never_target(qr) is None
+
+
+def test_room_variety_computes_spread():
+    """P-K: compute_room_variety returns size/prop-count spread and
+    material diversity."""
+    from eval.signals import compute_room_variety
+    m1 = [{"id": "table_0", "category": "table", "material": "worn_oak"}]
+    m2 = [
+        {"id": "table_0", "category": "table", "material": "worn_oak"},
+        {"id": "chair_0", "category": "chair", "material": "wrought_iron"},
+    ]
+    r1 = _make_quest_record(room_theme="a shack", manifest=m1)
+    r2 = _make_quest_record(room_theme="a shack", manifest=m2)
+    result = compute_room_variety([r1, r2])
+    assert result["count"] == 2
+    assert result["prop_count_spread"] == (1, 2)
+    assert result["material_diversity"] == 2
+    assert result["distinct"] is True
+
+
+def test_room_variety_empty_records():
+    """P-K: Empty record list → count=0, distinct=False."""
+    from eval.signals import compute_room_variety
+    result = compute_room_variety([])
+    assert result["count"] == 0
+    assert result["distinct"] is False
+
+
+def test_headless_load_clean_detects_script_error():
+    """P-K: Stderr with SCRIPT ERROR → False."""
+    from eval.signals import check_headless_load_clean
+    stderr = "SCRIPT ERROR: Parse Error: Invalid cast.\n  at: GDScript::reload"
+    assert check_headless_load_clean(stderr) is False
+
+
+def test_headless_load_clean_detects_parse_error():
+    """P-K: Stderr with Parse Error → False."""
+    from eval.signals import check_headless_load_clean
+    stderr = " Parse Error: Unexpected token\n"
+    assert check_headless_load_clean(stderr) is False
+
+
+def test_headless_load_clean_detects_failed_to_load():
+    """P-K: Stderr with 'Failed to load script' → False."""
+    from eval.signals import check_headless_load_clean
+    stderr = "ERROR: Failed to load script 'res://scripts/broken.gd'"
+    assert check_headless_load_clean(stderr) is False
+
+
+def test_headless_load_clean_returns_true_for_empty_stderr():
+    """P-K: Clean stderr → True."""
+    from eval.signals import check_headless_load_clean
+    assert check_headless_load_clean("") is True
+    assert check_headless_load_clean("Godot Engine v4.3\n") is True
+
+
+def test_decor_never_target_in_severity_map():
+    """P-K: decor_never_target is in SIGNAL_SEVERITY as 'high'."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY.get("decor_never_target") == "high"
+    assert SIGNAL_SEVERITY.get("headless_not_clean") == "high"

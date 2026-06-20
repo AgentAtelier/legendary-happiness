@@ -444,6 +444,11 @@ def compute_quest_signals(record) -> Set[str]:
             if obj.get("type") != "fetch":
                 tags.add("quest_unwinnable")
 
+        # P-K: decor-never-target invariant (decor items must not be targets)
+        decor_tag = check_decor_never_target(record)
+        if decor_tag:
+            tags.add(decor_tag)
+
     if not tags:
         tags.add("clean")
     return tags
@@ -452,27 +457,83 @@ def compute_quest_signals(record) -> Set[str]:
 def quest_decision_codes(record) -> List[str]:
     """Return the list of Decision-Point codes on a QuestRecord."""
     return [d.get("code", "?") for d in (record.decisions or [])]
-    """Public, detail-returning twin of the material_conflict signal so
-    the friction report can surface WHY a record was flagged (the
-    competing cues + the planner's single resolved material).
 
-    Returns ``None`` when there's no family conflict; otherwise::
 
-        {
-            "request":  <str>,
-            "cues":     [(keyword, family), ...]   # all matched cues
-            "resolved": <material_id>              # from resolve_material
-        }
+# P-K: decor-never-target invariant ───────────────────────────────────
 
-    No spec dependency: this signal is purely request-level.
+def check_decor_never_target(record) -> Optional[str]:
+    """P-K: Return a signal tag if the quest target_entity is a decor item.
+
+    Decor items (rugs, paintings) should never be fetch-quest targets
+    — they are wall/floor decorations, not pickup-able props.
+
+    Returns "decor_never_target" if violated, None if clean.
     """
-    cues = material_cues(request or "")
-    families = {fam for _, fam in cues}
-    if len(families) <= 1:
+    spec = getattr(record, "quest_spec", None)
+    manifest = getattr(record, "manifest", None) or []
+    if not isinstance(spec, dict) or not manifest:
         return None
-    resolved, _ = resolve_material(request or "")
-    return {
-        "request": request,
-        "cues": list(cues),
-        "resolved": resolved,
+    target_id = spec.get("target_entity", "")
+    for entry in manifest:
+        if entry.get("id") == target_id and entry.get("decor"):
+            return "decor_never_target"
+    return None
+
+
+# P-K: room variety scoring ───────────────────────────────────────────
+
+def compute_room_variety(records) -> dict:
+    """P-K: Score the variety across multiple QuestRecords for the same
+    room prompt (run with different seeds).
+
+    Returns a dict:
+      - prompt: the room theme
+      - count: number of records
+      - size_spread: (min_w, max_w, min_d, max_d) or None
+      - prop_count_spread: (min, max) or None
+      - material_diversity: number of unique materials across all rooms
+      - distinct: True if at least 2 records differ meaningfully
+    """
+    from collections import Counter
+
+    if not records:
+        return {"prompt": "", "count": 0, "distinct": False}
+
+    theme = getattr(records[0], "room_theme", "")
+    prop_counts: list[int] = []
+    materials: Counter = Counter()
+
+    for r in records:
+        manifest = getattr(r, "manifest", None) or []
+        prop_counts.append(len(manifest))
+        for entry in manifest:
+            mat = entry.get("material", "")
+            if mat:
+                materials[mat] += 1
+
+    result: dict = {
+        "prompt": theme,
+        "count": len(records),
+        "prop_count_spread": (min(prop_counts), max(prop_counts)) if prop_counts else None,
+        "material_diversity": len(materials),
+        "distinct": len(set(prop_counts)) > 1 or len(materials) > 1,
     }
+    return result
+
+
+# P-K: headless-load-clean signal ─────────────────────────────────────
+
+def check_headless_load_clean(stderr: str) -> bool:
+    """P-K: Return True if stderr from a headless Godot launch contains
+    0 lines matching SCRIPT ERROR|Parse Error|Failed to load script."""
+    patterns = ("SCRIPT ERROR", "Parse Error", "Failed to load script")
+    for line in stderr.splitlines():
+        for pat in patterns:
+            if pat.lower() in line.lower():
+                return False
+    return True
+
+
+# P-K: decor-never-target tag in SIGNAL_SEVERITY ──────────────────────
+SIGNAL_SEVERITY["decor_never_target"] = "high"
+SIGNAL_SEVERITY["headless_not_clean"] = "high"
