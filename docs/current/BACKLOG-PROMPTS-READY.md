@@ -138,3 +138,37 @@ R1 no fixed game → broadest coherent superset, each subsystem standalone/extra
 (spanning tree + loops, guaranteed start→exit), separate graph manager, dual win · R3 generated primitive
 "golem" enemy first (combat un-blocked from C-9), enemies optional obstacles · R4 5 data-driven seed themes
 (blacksmith, hermit_shack, tavern, storeroom, study). No open questions remain — the full pipeline is specced.
+
+---
+
+# FINDINGS — kitchen-sink run (2026-06-20, 4 qwen × 3 prompts)
+All 11 generated builds load clean in Godot (0 script errors); 620 tests green. Three integration
+bugs fixed first (commits f9d978c, f83389d, 9f0e5f7): theme filter dropped carryables+new props;
+behaviour-gen hard-failed w/o carryable; layout now guarantees a carryable; RoomPlanner no longer
+remaps new props→table. New tickets:
+
+## T-1 · RoomPlanner parse-failure fallback  [robustness · S]
+> 4B emitted ~1900 chars of malformed JSON for the dense "store" prompt → `RoomPlanner.parse()`
+> raised `JSONDecodeError` and crashed the whole quest (behaviour-gen recovers from bad output;
+> RoomPlanner doesn't). Add a fallback: on parse failure, retry once then fall back to a minimal
+> default room plan + a Decision Point. Eval signal: "planner never crashes on junk".
+
+## T-2 · Model-driven carryable target  [quality · S-M]
+> The quest target is almost always the injected `key_auto` — models rarely pick their own carryable.
+> Nudge the RoomPlanner/behaviour-gen prompt to include & target a themed carryable; prefer an
+> LLM-picked carryable over the injected fallback when present.
+
+## T-3 · Fabric materials never surface  [content · S]
+> P-G's linen/wool/silk are built but no theme `allowed_palette` includes them, so they're clamped
+> away. Add fabric to relevant themes' palettes (rugs/tavern/study) so the family actually appears.
+
+## T-4 · Single source of truth for the category set  [tech-debt · M]  ← root cause of the 3 bugs
+> A new generator must currently be registered in ~6 places (grammar, compiler GENERATORS/PARAM_RANGES,
+> lexicon, blender _BUILDERS, room_layout FURNITURE/CARRYABLES, room_planner CATEGORIES). The scatter
+> is exactly what let carryables/new-props get dropped & remapped. Consolidate into one registry
+> (category → {builder, params, envelope, kind: furniture|carryable|decor, collision}) that the other
+> modules derive from. Highest-leverage cleanup — prevents the whole class of bug.
+
+## T-5 · Tiny rooms place ~0 furniture  [layout · S]
+> 4×4 rooms (min clamp) fit 0–2 grid cells at CELL=1.8 → near-empty (saved by the carryable guarantee).
+> Scale CELL/WALL_MARGIN down for small rooms, or raise the min room size.
