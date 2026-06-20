@@ -640,3 +640,71 @@ def test_planter_builds_and_passes_gate(tmp_path):
     topo, result = _build_and_gate(spec, tmp_path)
     assert result.passed, result.reasons
     assert topo.is_watertight, "planter mesh must be watertight"
+
+
+# ── P-F batch 3: edge-case stress-test generators ──────────────
+
+def test_huge_table_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "huge_table", "generator": "huge_table", "material": "worn_oak",
+            "age": 0.2, "params": {"top_width": 3.0, "top_depth": 2.0, "top_thickness": 0.15,
+            "leg_height": 1.0, "leg_radius": 0.1, "leg_inset": 0.2}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "huge_table mesh must be watertight"
+
+
+def test_tiny_stool_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "tiny_stool", "generator": "tiny_stool", "material": "worn_oak",
+            "age": 0.2, "params": {"radius": 0.1, "height": 0.2}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "tiny_stool mesh must be watertight"
+
+
+def test_partition_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "partition", "generator": "partition", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 2.5, "depth": 0.05, "height": 2.5}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "partition mesh must be watertight"
+
+
+def test_tall_post_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "tall_post", "generator": "tall_post", "material": "worn_oak",
+            "age": 0.2, "params": {"radius": 0.05, "height": 3.0}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "tall_post mesh must be watertight"
+
+
+def test_wide_platform_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "wide_platform", "generator": "wide_platform", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 3.0, "depth": 3.0, "height": 0.06}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "wide_platform mesh must be watertight"
+
+
+def test_many_leg_table_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "many_leg_table", "generator": "many_leg_table", "material": "worn_oak",
+            "age": 0.2, "params": {"top_width": 1.5, "top_depth": 1.0, "top_thickness": 0.08,
+            "leg_height": 0.7, "leg_radius": 0.04}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "many_leg_table mesh must be watertight"
+
+
+def test_ladder_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "ladder", "generator": "ladder", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.5, "depth": 0.04, "height": 2.5, "n_rungs": 8}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "ladder mesh must be watertight"
+
+
+def test_l_bench_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "L_bench", "generator": "L_bench", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 1.5, "depth": 0.5, "height": 0.45}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "L_bench mesh must be watertight"

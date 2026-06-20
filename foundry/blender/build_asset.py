@@ -1132,6 +1132,125 @@ def _build_pillar_geometry(params):
     return mesh
 
 
+# ── P-F batch 3: edge-case stress-test generators ────────────────
+
+def _build_huge_table_geometry(params):
+    """Max-size table: same as table but pushes footprint/height limits."""
+    return _build_table_geometry(params)
+
+
+def _build_tiny_stool_geometry(params):
+    """Min-size stool: pushes the lower bound of stool parameters."""
+    return _build_stool_geometry(params)
+
+
+def _build_partition_geometry(params):
+    """A very thin, tall, wide partition wall."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("partition")
+    obj = bpy.data.objects.new("partition", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, d, h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_tall_post_geometry(params):
+    """A very tall, narrow post/column."""
+    r, h = params["radius"], params["height"]
+    mesh = bpy.data.meshes.new("tall_post")
+    obj = bpy.data.objects.new("tall_post", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, h / 2.0, r, h, segments=12)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_wide_platform_geometry(params):
+    """A very wide, flat platform."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("wide_platform")
+    obj = bpy.data.objects.new("wide_platform", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, d, h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_many_leg_table_geometry(params):
+    """A table with 8 legs (part-count stressor)."""
+    tw, td, tt = params["top_width"], params["top_depth"], params["top_thickness"]
+    lh, lr = params["leg_height"], params["leg_radius"]
+    leg = lr * 2.0
+    mesh = bpy.data.meshes.new("many_leg_table")
+    obj = bpy.data.objects.new("many_leg_table", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, lh + tt / 2.0, tw, td, tt)
+    # 8 legs in a circle
+    for i in range(8):
+        angle = i * math.pi / 4.0
+        lx = (tw / 2.0 - 0.08) * math.cos(angle)
+        ly = (td / 2.0 - 0.08) * math.sin(angle)
+        _add_box(bm, lx, ly, lh / 2.0, leg, leg, lh)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_ladder_geometry(params):
+    """A ladder: two tall rails + many thin rungs (part-count + thinness)."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    n = int(params["n_rungs"])
+    rt = 0.03
+    mesh = bpy.data.meshes.new("ladder")
+    obj = bpy.data.objects.new("ladder", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Two rails
+    for sx in (-1, 1):
+        _add_box(bm, sx * (w / 2.0 - rt / 2.0), 0.0, h / 2.0, rt, d, h)
+    # N rungs evenly distributed
+    for i in range(n):
+        t = (i + 0.5) / max(n, 1)
+        _add_box(bm, 0.0, 0.0, h * t, w, d, rt)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_l_bench_geometry(params):
+    """An L-shaped bench: two benches at 90° — asymmetric aspect stressor."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    seat_t = 0.05
+    leg_h = h - seat_t
+    leg_s = 0.04
+    mesh = bpy.data.meshes.new("L_bench")
+    obj = bpy.data.objects.new("L_bench", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Main bench along X
+    _add_box(bm, 0.0, -(d / 2.0 - d / 4.0), leg_h + seat_t / 2.0, w, d / 2.0, seat_t)
+    # L-extension along Y (from the left end)
+    ext_x = -(w / 2.0 - d / 4.0)
+    _add_box(bm, ext_x, 0.0, leg_h + seat_t / 2.0, d / 2.0, d, seat_t)
+    # Legs under main bench
+    for sx in (-1, 1):
+        _add_box(bm, sx * (w / 2.0 - 0.06), -(d / 2.0 - d / 4.0), leg_h / 2.0, leg_s, leg_s, leg_h)
+    # Legs under L-extension
+    for sy in (-1, 1):
+        _add_box(bm, -(w / 2.0 - d / 4.0), sy * (d / 2.0 - 0.06), leg_h / 2.0, leg_s, leg_s, leg_h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 def _build_planter_geometry(params):
     """A planter: box body + slightly inset top rim."""
     w, d, h = params["width"], params["depth"], params["height"]
@@ -1200,6 +1319,15 @@ _BUILDERS = {
     "weapon-rack": _build_weapon_rack_geometry,
     "pillar": _build_pillar_geometry,
     "planter": _build_planter_geometry,
+    # P-F batch 3: edge-case stress-test generators
+    "huge_table": _build_huge_table_geometry,
+    "tiny_stool": _build_tiny_stool_geometry,
+    "partition": _build_partition_geometry,
+    "tall_post": _build_tall_post_geometry,
+    "wide_platform": _build_wide_platform_geometry,
+    "many_leg_table": _build_many_leg_table_geometry,
+    "ladder": _build_ladder_geometry,
+    "L_bench": _build_l_bench_geometry,
 }
 
 _COLOR_BUILDERS = {

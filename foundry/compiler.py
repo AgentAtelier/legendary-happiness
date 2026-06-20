@@ -14,7 +14,9 @@ GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid", "rug", "painting
                "candle", "dagger", "ring",
                "barrel", "crate", "chest", "stool", "bench",
                "wardrobe", "desk", "lantern", "pot", "weapon-rack",
-               "pillar", "planter"}
+               "pillar", "planter",
+               "huge_table", "tiny_stool", "partition", "tall_post",
+               "wide_platform", "many_leg_table", "ladder", "L_bench"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -177,6 +179,51 @@ PARAM_RANGES = {
         "width": (0.3, 0.8),
         "depth": (0.3, 0.8),
         "height": (0.3, 0.7),
+    },
+    # P-F batch 3: edge-case stress-test generators
+    "huge_table": {
+        "top_width": (0.5, 3.0),
+        "top_depth": (0.4, 2.0),
+        "top_thickness": (0.03, 0.2),
+        "leg_height": (0.3, 1.1),
+        "leg_radius": (0.03, 0.12),
+        "leg_inset": (0.0, 0.3),
+    },
+    "tiny_stool": {
+        "radius": (0.08, 0.15),
+        "height": (0.15, 0.3),
+    },
+    "partition": {
+        "width": (1.0, 3.0),
+        "depth": (0.03, 0.08),
+        "height": (1.5, 3.0),
+    },
+    "tall_post": {
+        "radius": (0.03, 0.08),
+        "height": (2.0, 4.0),
+    },
+    "wide_platform": {
+        "width": (2.0, 4.0),
+        "depth": (2.0, 4.0),
+        "height": (0.04, 0.1),
+    },
+    "many_leg_table": {
+        "top_width": (0.5, 2.0),
+        "top_depth": (0.4, 1.5),
+        "top_thickness": (0.03, 0.15),
+        "leg_height": (0.3, 0.9),
+        "leg_radius": (0.02, 0.06),
+    },
+    "ladder": {
+        "width": (0.3, 0.6),
+        "depth": (0.03, 0.06),
+        "height": (1.5, 3.0),
+        "n_rungs": (4, 15),
+    },
+    "L_bench": {
+        "width": (0.8, 2.0),
+        "depth": (0.3, 0.6),
+        "height": (0.3, 0.55),
     },
 }
 

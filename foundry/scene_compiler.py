@@ -110,6 +110,15 @@ _COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
     "weapon-rack": (0.85, 2.3, 0.35),
     "pillar": (0.45, 3.15, 0.45),
     "planter": (0.85, 0.75, 0.85),
+    # P-F batch 3: edge-case generators
+    "huge_table": (3.15, 1.3, 2.1),
+    "tiny_stool": (0.2, 0.35, 0.2),
+    "partition": (3.15, 3.15, 0.12),
+    "tall_post": (0.1, 4.2, 0.1),
+    "wide_platform": (4.2, 0.15, 4.2),
+    "many_leg_table": (2.1, 0.95, 1.6),
+    "ladder": (0.65, 3.15, 0.1),
+    "L_bench": (2.3, 0.6, 2.3),
     # Default for unknown categories
     "?": (0.5, 0.5, 0.5),
 }
