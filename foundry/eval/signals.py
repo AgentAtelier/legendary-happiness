@@ -418,32 +418,40 @@ def compute_quest_signals(record) -> Set[str]:
     if record.decisions:
         tags.add("quest_decision_fired")
 
-    # 4. Target entity exists in manifest
-    spec = getattr(record, "quest_spec", None)
+    # 4. Target entity exists in manifest (check ALL NPC specs)
+    specs_to_check = getattr(record, "quest_specs", None)
+    if not specs_to_check:
+        single = getattr(record, "quest_spec", None)
+        if single and isinstance(single, dict):
+            specs_to_check = [single]
+
     manifest = getattr(record, "manifest", None) or []
 
-    if isinstance(spec, dict) and manifest:
-        target_id = spec.get("target_entity", "")
+    if specs_to_check and isinstance(specs_to_check, (list, tuple)) and manifest:
         manifest_ids = {e.get("id") for e in manifest if "id" in e}
+        for spec in specs_to_check:
+            if not isinstance(spec, dict):
+                continue
+            target_id = spec.get("target_entity", "")
 
-        if target_id not in manifest_ids:
-            tags.add("quest_no_target")
+            if target_id not in manifest_ids:
+                tags.add("quest_no_target")
 
-        # 5. NPC exists (npc_role present and non-empty)
-        npc_role = spec.get("npc_role", "")
-        if not npc_role or not str(npc_role).strip():
-            tags.add("quest_no_npc")
+            # 5. NPC exists (npc_role present and non-empty)
+            npc_role = spec.get("npc_role", "")
+            if not npc_role or not str(npc_role).strip():
+                tags.add("quest_no_npc")
 
-        # 6. Win reachability: target must have a known tag AND
-        #    NPC must exist.  The compiler maps target_entity → "pickup"
-        #    tag and NPC → "talk" tag.  If either is missing, the quest
-        #    is unwinnable.
-        if not tags.intersection({"quest_no_target", "quest_no_npc"}):
-            # NPC and target both structurally present → check if the
-            # quest_spec has the required objective shape
-            obj = spec.get("objective", {})
-            if obj.get("type") != "fetch":
-                tags.add("quest_unwinnable")
+            # 6. Win reachability: target must have a known tag AND
+            #    NPC must exist.  The compiler maps target_entity → "pickup"
+            #    tag and NPC → "talk" tag.  If either is missing, the quest
+            #    is unwinnable.
+            if target_id in manifest_ids and npc_role and str(npc_role).strip():
+                # NPC and target both structurally present → check if the
+                # quest_spec has the required objective shape
+                obj = spec.get("objective", {})
+                if obj.get("type") != "fetch":
+                    tags.add("quest_unwinnable")
 
         # P-K: decor-never-target invariant (decor items must not be targets)
         decor_tag = check_decor_never_target(record)
@@ -482,6 +490,11 @@ def compute_quest_signals(record) -> Set[str]:
         fabric_tag = check_fabric_in_fabric_themes(record, room_theme)
         if fabric_tag:
             tags.add(fabric_tag)
+
+        # B0: Winnable oracle — positive assertion (all NPCs gettable+deliverable)
+        winnable_tag = check_all_npcs_winnable(record)
+        if winnable_tag:
+            tags.add(winnable_tag)
 
     if not tags:
         tags.add("clean")
@@ -745,6 +758,70 @@ SIGNAL_SEVERITY["painting_mode_honored"] = "low"
 SIGNAL_SEVERITY["lighting_not_theme_aware"] = "high"
 # C-2: multi-item inventory signal
 SIGNAL_SEVERITY["multi_item_possible"] = "low"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  B0: Multi-NPC winnable/reachability oracle
+# ═══════════════════════════════════════════════════════════════════════
+
+def check_all_npcs_winnable(record) -> Optional[str]:
+    """B0: Return 'quest_all_npcs_winnable' if every NPC in the quest
+    specs has a target that is both gettable (exists in manifest AND is
+    a carryable category) and deliverable (NPC role present + objective
+    type is fetch).
+
+    This is a POSITIVE signal — it fires when the quest is structurally
+    winnable.  Its ABSENCE in a multi-NPC record flags a broken quest.
+    Low severity (informative / oracle-assertion).
+    """
+    # Get all quest specs for this record
+    specs = getattr(record, "quest_specs", None)
+    if not specs:
+        # Single spec fallback
+        single = getattr(record, "quest_spec", None)
+        if single and isinstance(single, dict):
+            specs = [single]
+
+    if not specs or not isinstance(specs, (list, tuple)):
+        return None
+
+    manifest = getattr(record, "manifest", None) or []
+    if not manifest:
+        return None
+
+    manifest_ids = {e.get("id") for e in manifest if "id" in e}
+    manifest_cats = {e.get("id"): e.get("category", "") for e in manifest if "id" in e}
+
+    for spec in specs:
+        if not isinstance(spec, dict):
+            return None  # malformed spec — can't assert winnable
+
+        target_id = spec.get("target_entity", "")
+        npc_role = spec.get("npc_role", "")
+        obj = spec.get("objective", {})
+
+        # Target must exist in manifest
+        if target_id not in manifest_ids:
+            return None
+
+        # Target must be carryable (gettable)
+        cat = manifest_cats.get(target_id, "")
+        if cat not in _CARRYABLE_CATEGORIES:
+            return None
+
+        # NPC must have a role (deliverable)
+        if not npc_role or not str(npc_role).strip():
+            return None
+
+        # Objective must be fetch (deliverable to NPC)
+        if obj.get("type") != "fetch":
+            return None
+
+    # All NPCs pass → quest is structurally winnable
+    return "quest_all_npcs_winnable"
+
+# B0: winnable oracle
+SIGNAL_SEVERITY["quest_all_npcs_winnable"] = "low"
 # EB-7: multi-NPC target integrity
 SIGNAL_SEVERITY["multi_npc_distinct_targets"] = "high"
 SIGNAL_SEVERITY["insufficient_carryables_for_npcs"] = "high"

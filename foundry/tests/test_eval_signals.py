@@ -1150,3 +1150,195 @@ def test_eb7_signals_in_severity_map():
     assert SIGNAL_SEVERITY.get("insufficient_carryables_for_npcs") == "high"
     assert SIGNAL_SEVERITY.get("room_not_monochrome") == "low"
     assert SIGNAL_SEVERITY.get("fabric_in_fabric_themes") == "low"
+
+
+# ── B0: Winnable oracle tests ────────────────────────────────────────
+
+class TestWinnableOracle:
+    """B0: Verify the winnable/reachability oracle correctly asserts
+    structural winnability and catches deliberately-broken quests."""
+
+    @staticmethod
+    def _mock_record(quest_specs, manifest, error=None, compiled=True):
+        """Create a minimal mock QuestRecord for oracle testing."""
+        class MockRecord:
+            pass
+        r = MockRecord()
+        r.error = error
+        r.compiled = compiled
+        r.quest_specs = quest_specs
+        r.quest_spec = quest_specs[0] if quest_specs else None
+        r.manifest = manifest
+        r.decisions = []
+        r.npc_count = len(quest_specs)
+        r.room_theme = "tavern"
+        return r
+
+    def test_winnable_oracle_passes_for_valid_quest(self):
+        """B0: Oracle returns 'quest_all_npcs_winnable' when every NPC
+        has a gettable + deliverable target."""
+        from eval.signals import compute_quest_signals
+
+        manifest = [
+            {"id": "key_0", "category": "key", "material": "wrought_iron"},
+            {"id": "gem_1", "category": "gem", "material": "rough_granite"},
+        ]
+        specs = [
+            {
+                "npc_role": "blacksmith",
+                "target_entity": "key_0",
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc_0"},
+                "npc_id": "npc_0",
+            },
+            {
+                "npc_role": "alchemist",
+                "target_entity": "gem_1",
+                "objective": {"type": "fetch", "target": "gem_1", "giver": "npc_1"},
+                "npc_id": "npc_1",
+            },
+        ]
+
+        record = self._mock_record(specs, manifest)
+        tags = compute_quest_signals(record)
+
+        assert "quest_all_npcs_winnable" in tags, (
+            f"Expected quest_all_npcs_winnable in tags for valid 2-NPC quest, got: {tags}"
+        )
+
+    def test_oracle_catches_target_not_in_manifest(self):
+        """B0: Oracle does NOT return winnable when a target is missing
+        from the manifest."""
+        from eval.signals import compute_quest_signals
+
+        manifest = [
+            {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        ]
+        specs = [
+            {
+                "npc_role": "blacksmith",
+                "target_entity": "key_0",
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc_0"},
+            },
+            {
+                "npc_role": "alchemist",
+                "target_entity": "gem_missing",  # NOT in manifest
+                "objective": {"type": "fetch", "target": "gem_missing", "giver": "npc_1"},
+            },
+        ]
+
+        record = self._mock_record(specs,manifest)
+        tags = compute_quest_signals(record)
+
+        assert "quest_all_npcs_winnable" not in tags, (
+            f"Expected quest_all_npcs_winnable to be ABSENT when target missing from manifest, got: {tags}"
+        )
+        assert "quest_no_target" in tags, (
+            f"Expected quest_no_target for missing gem_missing, got: {tags}"
+        )
+
+    def test_oracle_catches_target_not_carryable(self):
+        """B0: Oracle does NOT return winnable when a target is furniture
+        (not a carryable)."""
+        from eval.signals import compute_quest_signals
+
+        manifest = [
+            {"id": "key_0", "category": "key", "material": "wrought_iron"},
+            {"id": "table_0", "category": "table", "material": "worn_oak"},
+        ]
+        specs = [
+            {
+                "npc_role": "blacksmith",
+                "target_entity": "key_0",
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc_0"},
+            },
+            {
+                "npc_role": "alchemist",
+                "target_entity": "table_0",  # furniture, not carryable
+                "objective": {"type": "fetch", "target": "table_0", "giver": "npc_1"},
+            },
+        ]
+
+        record = self._mock_record(specs, manifest)
+        tags = compute_quest_signals(record)
+
+        assert "quest_all_npcs_winnable" not in tags, (
+            f"Expected quest_all_npcs_winnable to be ABSENT when target is furniture, got: {tags}"
+        )
+
+    def test_oracle_catches_missing_npc_role(self):
+        """B0: Oracle does NOT return winnable when an NPC has no role."""
+        from eval.signals import compute_quest_signals
+
+        manifest = [
+            {"id": "key_0", "category": "key", "material": "wrought_iron"},
+            {"id": "gem_1", "category": "gem", "material": "rough_granite"},
+        ]
+        specs = [
+            {
+                "npc_role": "blacksmith",
+                "target_entity": "key_0",
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc_0"},
+            },
+            {
+                "npc_role": "",  # empty role
+                "target_entity": "gem_1",
+                "objective": {"type": "fetch", "target": "gem_1", "giver": "npc_1"},
+            },
+        ]
+
+        record = self._mock_record(specs, manifest)
+        tags = compute_quest_signals(record)
+
+        assert "quest_all_npcs_winnable" not in tags, (
+            f"Expected quest_all_npcs_winnable to be ABSENT when NPC has no role, got: {tags}"
+        )
+    def test_oracle_catches_non_fetch_objective(self):
+        """B0: Oracle does NOT return winnable when objective is not fetch."""
+        from eval.signals import compute_quest_signals
+
+        manifest = [
+            {"id": "key_0", "category": "key", "material": "wrought_iron"},
+            {"id": "gem_1", "category": "gem", "material": "rough_granite"},
+        ]
+        specs = [
+            {
+                "npc_role": "blacksmith",
+                "target_entity": "key_0",
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc_0"},
+            },
+            {
+                "npc_role": "alchemist",
+                "target_entity": "gem_1",
+                "objective": {"type": "talk", "target": "gem_1", "giver": "npc_1"},
+            },
+        ]
+
+        record = self._mock_record(specs, manifest)
+        tags = compute_quest_signals(record)
+
+        assert "quest_all_npcs_winnable" not in tags, (
+            f"Expected quest_all_npcs_winnable to be ABSENT for non-fetch objective, got: {tags}"
+        )
+
+    def test_oracle_works_for_single_npc(self):
+        """B0: Oracle works for single-NPC quests (backward compat)."""
+        from eval.signals import compute_quest_signals
+
+        manifest = [
+            {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        ]
+        specs = [
+            {
+                "npc_role": "blacksmith",
+                "target_entity": "key_0",
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc_0"},
+            },
+        ]
+
+        record = self._mock_record(specs, manifest)
+        tags = compute_quest_signals(record)
+
+        assert "quest_all_npcs_winnable" in tags, (
+            f"Expected quest_all_npcs_winnable for valid single-NPC quest, got: {tags}"
+        )
+

@@ -23,7 +23,10 @@ var _result = {
 	"npc_state": "?",
 	"win_visible": false,
 	"wrong_shown": false,
-	"checks": []
+	"checks": [],
+	# B0: multi-NPC probe fields
+	"multi_npc": false,
+	"both_done": false
 }
 
 var _scene_path = ""
@@ -38,6 +41,12 @@ var _done = false
 # C-2: track inventory state (removed V-1 _distractor_original_pos —
 #      single-item restore is no longer the behaviour).
 var _drop_ok: bool = false
+# B0: multi-NPC support — second NPC + target for 2-NPC playthrough probe
+var _npc_1 = null
+var _target_1_prop = null
+var _npc_1_role: String = ""
+var _multi_npc: bool = false
+var _both_done: bool = false
 
 
 func _init():
@@ -76,10 +85,23 @@ func _run_phase():
 		if _phase_timer > 0.5:
 			_find_nodes()
 			if _npc != null and _target_prop != null and _player != null:
+				var found_parts := PackedStringArray()
+				found_parts.append("NPC")
+				found_parts.append("target")
 				if _distractor_prop != null:
-					_result["checks"].append("PASS: all key nodes found (NPC, target, distractor, Player)")
-				else:
-					_result["checks"].append("PASS: key nodes found (NPC, target, Player) - no distractor")
+					found_parts.append("distractor")
+				found_parts.append("Player")
+				# B0: check second NPC
+				if _multi_npc:
+					if _npc_1 != null:
+						found_parts.append("NPC1")
+					if _target_1_prop != null:
+						found_parts.append("target1")
+				_result["multi_npc"] = _multi_npc and _npc_1 != null and _target_1_prop != null
+				_result["checks"].append("PASS: all key nodes found (" + ", ".join(found_parts) + ")")
+				if _multi_npc and (_npc_1 == null or _target_1_prop == null):
+					_result["checks"].append("WARNING: multi-NPC quest_data but second NPC/target not found")
+				if _distractor_prop == null:
 					_result["checks"].append("WARNING: no distractor prop found")
 				_phase = 1
 				_phase_timer = 0.0
@@ -266,6 +288,75 @@ func _run_phase():
 					_result["checks"].append("PASS: C-2 distractor survived win (still in inventory)")
 				else:
 					_result["checks"].append("C-2: distractor not in inventory after win (may be intentional)")
+			# B0: If multi-NPC, continue to second NPC; otherwise done
+			if _multi_npc and _npc_1 != null and _target_1_prop != null:
+				_phase = 9
+				_phase_timer = 0.0
+			else:
+				_done = true
+				_print_and_quit(0 if _result["ok"] else 1)
+
+	# ── B0: Multi-NPC phases for second NPC ───────────────────────
+
+	# Phase 9: Talk to NPC 1
+	if _phase == 9:
+		if _phase_timer > 0.2:
+			_result["checks"].append("B0: ACTION interact with NPC 1 (" + _npc_1_role + ")")
+			_interact_with(_npc_1)
+			if is_instance_valid(_npc_1):
+				_npc_1._state = 1  # bypass await timer
+			_result["checks"].append("PASS: B0 NPC 1 state forced to QUEST_GIVEN")
+			_phase = 10
+			_phase_timer = 0.0
+
+	# Phase 10: Pick up NPC 1's target
+	if _phase == 10:
+		if _phase_timer > 0.2:
+			_result["checks"].append("B0: ACTION pick up NPC 1 target=" + _target_1_prop.name)
+			_interact_with(_target_1_prop)
+		if _phase_timer > 0.4:
+			var active = str(_player.get_active_item())
+			if active == _target_1_prop.name:
+				_result["checks"].append("PASS: B0 player carries NPC 1 target=" + active)
+			else:
+				_result["checks"].append("FAIL: B0 expected active=" + _target_1_prop.name + " got=" + active)
+			_phase = 11
+			_phase_timer = 0.0
+
+	# Phase 11: Deliver to NPC 1
+	if _phase == 11:
+		if _phase_timer > 0.2:
+			_result["checks"].append("B0: ACTION deliver to NPC 1")
+			_interact_with(_npc_1)
+		if _phase_timer > 0.4:
+			if is_instance_valid(_npc_1):
+				var n1state = int(_npc_1._state)
+				_result["checks"].append("B0: NPC 1 state=" + str(n1state))
+				if n1state == 2:  # DONE
+					_result["checks"].append("PASS: B0 NPC 1 reached DONE")
+				else:
+					_result["checks"].append("FAIL: B0 NPC 1 expected DONE(2) got=" + str(n1state))
+			_phase = 12
+			_phase_timer = 0.0
+
+	# Phase 12: Verify both NPCs DONE + WinScreen
+	if _phase == 12:
+		if _phase_timer > 0.3:
+			var n0_done := false
+			var n1_done := false
+			if is_instance_valid(_npc):
+				n0_done = int(_npc._state) == 2
+			if is_instance_valid(_npc_1):
+				n1_done = int(_npc_1._state) == 2
+			_both_done = n0_done and n1_done
+			_result["both_done"] = _both_done
+			if _both_done:
+				_result["checks"].append("PASS: B0 both NPCs DONE")
+			else:
+				_result["checks"].append("FAIL: B0 NPC0_done=" + str(n0_done) + " NPC1_done=" + str(n1_done))
+			_check_win_screen()
+			if _result["ok"]:
+				_result["checks"].append("PASS: B0 multi-NPC playthrough — WinScreen visible")
 			_done = true
 			_print_and_quit(0 if _result["ok"] else 1)
 
@@ -276,33 +367,72 @@ func _find_nodes():
 	var all_nodes = []
 	_collect_all(get_root(), all_nodes)
 
+	# B0: Read ALL NPC entries from quest_data (multi-NPC format)
+	var npc_targets: Dictionary = {}  # npc_id → target_entity
 	var data_path: String = _scene_path.replace(".tscn", "_quest_data.json")
 	var file = FileAccess.open(data_path, FileAccess.READ)
 	if file:
 		var parsed = JSON.parse_string(file.get_as_text())
 		if parsed is Dictionary:
 			# C-3 single-NPC format had a top-level target_entity; C-4 moved it
-			# under "npcs"[npc_id]. Read whichever is present (first NPC for multi).
+			# under "npcs"[npc_id]. Read whichever is present.
 			_target_entity = str(parsed.get("target_entity", ""))
-			if _target_entity == "" and parsed.has("npcs"):
+			if parsed.has("npcs"):
 				var npcs = parsed["npcs"]
 				if npcs is Dictionary:
+					var idx := 0
 					for k in npcs.keys():
-						_target_entity = str(npcs[k].get("target_entity", ""))
-						break
+						var td = str(npcs[k].get("target_entity", ""))
+						npc_targets[k] = td
+						if idx == 0:
+							_target_entity = td
+						idx += 1
+					if npcs.size() >= 2:
+						_multi_npc = true
 
+	# B0: Collect all NPC nodes mapped by _forge_npc_id
+	var talk_nodes: Array = []
+	var all_pickups: Array = []
 	for n in all_nodes:
 		if n is Node3D and n.has_meta("_forge_tag"):
 			var tag = n.get_meta("_forge_tag")
-			if tag == "talk" and _npc == null:
-				_npc = n
+			if tag == "talk":
+				talk_nodes.append(n)
 			elif tag == "pickup":
-				if n.name == _target_entity and _target_prop == null:
-					_target_prop = n
-				elif n.name != _target_entity and _distractor_prop == null:
-					_distractor_prop = n
+				all_pickups.append(n)
 		if n.name == "Player" and n is CharacterBody3D:
 			_player = n
+
+	# Assign NPC 0 (first talk node)
+	if talk_nodes.size() > 0:
+		_npc = talk_nodes[0]
+
+	# B0: Assign NPC 1 (second talk node) for multi-NPC
+	if talk_nodes.size() > 1:
+		_npc_1 = talk_nodes[1]
+		_npc_1_role = str(_npc_1.get_meta("_forge_role", ""))
+
+	# Map target_entities to pickup nodes — iterate npc_targets in order
+	var target_order: Array = []
+	for k in npc_targets.keys():
+		target_order.append({"npc_id": k, "target": npc_targets[k]})
+
+	var used_targets: Array = []
+	for entry in target_order:
+		var tid = entry["target"]
+		for p in all_pickups:
+			if p.name == tid and not used_targets.has(p):
+				if _target_prop == null:
+					_target_prop = p
+				elif _target_1_prop == null:
+					_target_1_prop = p
+				used_targets.append(p)
+				break
+
+	# Distractor = any pickup not assigned as a target
+	for p in all_pickups:
+		if not used_targets.has(p) and _distractor_prop == null:
+			_distractor_prop = p
 
 
 func _interact_with(target: Node3D):

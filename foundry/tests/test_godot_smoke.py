@@ -61,6 +61,42 @@ _SYNTHETIC_QUEST_SPEC = {
     },
 }
 
+# B0: Multi-NPC synthetic quest specs (2 NPCs with distinct targets)
+_SYNTHETIC_MULTI_QUEST_SPECS = [
+    {
+        "npc_role": "hermit",
+        "target_entity": "shelf_0",
+        "dialogue": {
+            "greet": "Ah, a visitor! Welcome.",
+            "ask": "Find my lost scroll on the shelf.",
+            "wrong": "No, that is not my scroll.",
+            "thank": "You found it! Thank you.",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "shelf_0",
+            "giver": "npc_0",
+        },
+        "npc_id": "npc_0",
+    },
+    {
+        "npc_role": "alchemist",
+        "target_entity": "cabinet_0",
+        "dialogue": {
+            "greet": "Greetings, traveler.",
+            "ask": "Bring me the bottle from the cabinet.",
+            "wrong": "That is not what I asked for.",
+            "thank": "Perfect! This is exactly what I needed.",
+        },
+        "objective": {
+            "type": "fetch",
+            "target": "cabinet_0",
+            "giver": "npc_1",
+        },
+        "npc_id": "npc_1",
+    },
+]
+
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -71,6 +107,70 @@ def _godot_available() -> bool:
         and os.path.isdir(_LIBRARY_DIR)
         and os.path.isdir(_TEMPLATE_DIR)
     )
+
+
+def _compile_and_probe_multi(quest_specs, manifest, tmp_dir: str, probe_script: str = "probe_smoke.gd") -> dict:
+    """B0: Scaffold a disposable project with multi-NPC quest specs,
+    run the Godot probe, return the parsed JSON result."""
+    from scaffold import scaffold_project
+
+    build_path = scaffold_project(
+        name="smoke_test_multi",
+        quest_specs=quest_specs,
+        manifest=manifest,
+        template_dir=_TEMPLATE_DIR,
+        library_dir=_LIBRARY_DIR,
+        out_root=tmp_dir,
+    )
+
+    scene_path = str(build_path / "scenes" / "main.tscn")
+    assert Path(scene_path).exists(), f"Scene not written: {scene_path}"
+
+    cmd = [
+        _GODOT_BIN, "--headless",
+        "--path", str(build_path),
+        "-s", probe_script,
+        scene_path,
+    ]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True, text=True, timeout=60,
+    )
+
+    # Parse the JSON from stdout
+    probe_json = None
+    marker = "PROBE_JSON_OUTPUT:"
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        idx = line.find(marker)
+        if idx != -1:
+            try:
+                probe_json = json.loads(line[idx + len(marker):])
+                break
+            except json.JSONDecodeError:
+                continue
+
+    if probe_json is None:
+        for line in reversed(result.stdout.splitlines()):
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    probe_json = json.loads(line)
+                    break
+                except json.JSONDecodeError:
+                    continue
+
+    if probe_json is None:
+        raise RuntimeError(
+            f"No JSON output from probe. stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+
+    probe_json["_stderr"] = result.stderr
+    probe_json["_returncode"] = result.returncode
+
+    return probe_json
 
 
 def _headless_launch_stderr(tmp_dir: str) -> str:
@@ -302,6 +402,52 @@ def test_scripted_playthrough_talk_right_win():
     )
     assert result.get("ok", False), (
         f"Scripted playthrough should succeed (ok=true)\n"
+        f"Checks: {checks}"
+    )
+
+
+# ── B0: Multi-NPC playthrough probe ──────────────────────────────────
+
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+def test_multi_npc_playthrough():
+    """B0: Scripted playthrough with 2 NPCs — each talks, gets their
+    item, delivers, and both reach DONE state.
+
+    Uses the updated probe_playthrough.gd which supports multi-NPC
+    via phases 9-12 for the second NPC.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        result = _compile_and_probe_multi(
+            _SYNTHETIC_MULTI_QUEST_SPECS, _SYNTHETIC_MANIFEST, td,
+            probe_script="probe_playthrough.gd",
+        )
+
+    checks = result.get("checks", [])
+    win_visible = result.get("win_visible", False)
+    both_done = result.get("both_done", False)
+    multi_npc = result.get("multi_npc", False)
+
+    assert multi_npc, (
+        f"Expected multi_npc=true in probe result\n"
+        f"Checks: {checks}"
+    )
+
+    assert both_done, (
+        f"Expected both NPCs to reach DONE state\n"
+        f"both_done={both_done}\n"
+        f"Checks: {checks}\n"
+        f"Stderr: {result.get('_stderr', '')}"
+    )
+
+    assert win_visible, (
+        f"Expected WinScreen visible after both NPCs satisfied\n"
+        f"win_visible={win_visible}\n"
+        f"Checks: {checks}\n"
+        f"Stderr: {result.get('_stderr', '')}"
+    )
+
+    assert result.get("ok", False), (
+        f"B0 multi-NPC playthrough should succeed (ok=true)\n"
         f"Checks: {checks}"
     )
 
