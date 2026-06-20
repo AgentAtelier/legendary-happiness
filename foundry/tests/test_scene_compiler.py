@@ -564,11 +564,13 @@ def test_floor_transform_is_at_y_neg_half():
 # ── FIX-1c: Player spawn transform ──────────────────────────────
 
 def test_player_spawn_at_y_1():
-    """FIX-1c: Player spawns at y=1 to be clear of floor and props."""
+    """FIX-1c: Player spawns at y=1.2 so capsule rests on floor.
+
+    Capsule total height = 1.8 + 2*0.3 = 2.4 → centre at 1.2 for bottom at y=0.
+    """
     text, _, _ = _compile_and_parse()
-    # Player should have a transform with y=1 (not the old default 0)
-    assert "0, 1, 0)" in text, (
-        f"Player spawn transform should include y=1\ntext:\n{text[:1000]}"
+    assert "0, 1.2, 0)" in text, (
+        f"Player spawn transform should include y=1.2\ntext:\n{text[:1000]}"
     )
 
 
@@ -809,4 +811,23 @@ def test_player_body_has_mesh_sub_resource():
     )
     assert "player_body_mat" in sub_ids, (
         f"expected player_body_mat sub_resource, got {sub_ids}"
+    )
+
+
+def test_player_capsule_radius():
+    """P-A: Player CapsuleShape3D and CapsuleMesh use radius=0.3 (was 0.5)."""
+    text, _, _ = _compile_and_parse()
+    assert "radius = 0.3" in text, (
+        f"expected capsule radius=0.3, text:\n{text[:500]}"
+    )
+    assert "radius = 0.5" not in text, (
+        "old radius=0.5 should not appear"
+    )
+
+
+def test_camera_local_y_is_eye_height():
+    """P-A: Camera3D local y=0.7 above player origin (world eye ≈ 1.9 m)."""
+    text, _, _ = _compile_and_parse()
+    assert "0, 0.7, 0)" in text, (
+        f"Camera3D local transform should have y=0.7\ntext:\n{text[:1000]}"
     )

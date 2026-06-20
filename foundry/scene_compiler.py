@@ -107,7 +107,7 @@ _BACKGROUND_COLOR = (0.05, 0.05, 0.1, 1.0)
 
 # Player spawn offset (FIX-1): player sits at (0, PLAYER_SPAWN_Y, 0)
 # to be clear of the floor (top at y=0) and props.
-_PLAYER_SPAWN_Y = 1.0
+_PLAYER_SPAWN_Y = 1.2  # capsule rests on floor (bottom at y≈0): centre = height/2 + radius = 0.9 + 0.3
 
 # Props within this radius of (0,0,0) on the XZ plane are pushed away
 # from the player spawn (FIX-1e).  1.0 m is enough to avoid sitting
@@ -167,7 +167,7 @@ def _build_room_sub_resources(
      "props": ["albedo_color = Color(0.75, 0.7, 0.65, 1)"]},
     # Player visible body (Item 4)
     {"id": "player_body_mesh", "type": "CapsuleMesh",
-     "props": ["radius = 0.5", "height = 1.8"]},
+     "props": ["radius = 0.3", "height = 1.8"]},
     {"id": "player_body_mat", "type": "StandardMaterial3D",
      "props": ["albedo_color = Color(0.2, 0.3, 0.5, 1)"]},
     # Collision shapes for walls
@@ -622,7 +622,7 @@ def compile_scene(
 
     # Player: CapsuleShape3D
     lines.append(f'[sub_resource type="CapsuleShape3D" id="{player_sub_id}"]')
-    lines.append("radius = 0.5")
+    lines.append("radius = 0.3")
     lines.append("height = 1.8")
     lines.append("")
 
@@ -789,7 +789,7 @@ def compile_scene(
             lines.append(f'script = ExtResource("{shell["script"]}")')
         if shell["name"] == "Camera3D":
             lines.append(
-                "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)"
+                "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)"
             )
             lines.append("current = true")
         if shell["name"] == "Player":
