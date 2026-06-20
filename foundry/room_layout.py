@@ -171,4 +171,27 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
                 "decor": False,
             })
 
+    # ── Guarantee a carryable fetch target ───────────────────
+    # A quest needs at least one pickable carryable. If the plan produced
+    # none (e.g. a sparse decor-only room), inject one so every room is
+    # winnable — on a furniture top if any, else on the floor clear of the
+    # player spawn (origin) and NPC slot.
+    has_carryable = any(
+        e["category"] in CARRYABLES and not e.get("decor") for e in manifest
+    )
+    if not has_carryable:
+        placed_furniture = [e for e in manifest if e["category"] in FURNITURE]
+        if placed_furniture:
+            p = placed_furniture[0]
+            ix = p["x"]
+            iy = round(_FURNITURE_TOP_Y.get(p["category"], 0.8) + 0.02, 3)
+            iz = p["z"]
+            surf = "on"
+        else:
+            ix, iy, iz, surf = 1.0, 0.02, 1.0, "floor"
+        manifest.append({
+            "id": "key_auto", "category": "key", "material": "worn_oak",
+            "x": ix, "y": iy, "z": iz, "yaw": 0.0, "surface": surf, "decor": False,
+        })
+
     return manifest, {"w": w, "d": d}, decisions

@@ -49,3 +49,14 @@ def test_over_capacity_emits_decision_and_caps_placement():
     assert len(furn) < 8                       # capped
     dp = [d for d in decisions if d.code == "room.over_capacity"]
     assert dp and dp[0].context["dropped"] == 8 - len(furn)
+
+
+def test_layout_guarantees_a_carryable_target():
+    """Every room must contain at least one pickable carryable fetch target,
+    even a sparse decor-only plan (else behaviour-gen has nothing to fetch)."""
+    from room_layout import CARRYABLES
+    plan = {"room_size": {"w": 4.0, "d": 4.0},
+            "props": [{"category": "rug", "material": "worn_oak", "count": 1}]}
+    manifest, _, _ = layout_room(plan)
+    carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
+    assert carry, "no carryable target was guaranteed"

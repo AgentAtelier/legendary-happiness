@@ -744,7 +744,10 @@ def test_layout_room_accepts_seed():
     ]}
     manifest, room_size, decisions = layout_room(plan, seed=42)
     assert room_size["w"] == 6
-    assert len(manifest) == 2
+    # 2 furniture + 1 auto-guaranteed carryable target (a room must be winnable).
+    furniture = [e for e in manifest if e["category"] in ("table", "chair", "shelf", "cabinet")]
+    assert len(furniture) == 2
+    assert any(e["category"] == "key" for e in manifest)
 
 
 # ── Live integration test ────────────────────────────────────────
