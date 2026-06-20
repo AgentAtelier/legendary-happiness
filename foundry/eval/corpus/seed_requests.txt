@@ -83,3 +83,25 @@ a stone-look wooden cabinet, weathered
 a marble-wooden table
 a battered battered table, mistake
 something to put books on, made of wood, old
+
+# ── P-F: 20 stress-test generator eval corpus ───────────────────────
+a large wooden barrel
+a sturdy wooden crate
+a small wooden chest
+a simple wooden stool
+a long wooden bench
+a tall wooden wardrobe
+a wide wooden desk
+a metal lantern
+a stone pot
+a wooden weapon rack
+a stone pillar
+a stone planter
+a huge wooden table
+a tiny wooden stool
+a thin wooden partition
+a tall wooden post
+a wide wooden platform
+a round table with many legs
+a wooden ladder
+an L-shaped wooden bench
