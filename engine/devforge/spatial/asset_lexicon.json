@@ -445,6 +445,62 @@
       "height": 0.6,
       "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
       "label": "Bench"
+    },
+    "wardrobe": {
+      "path": "",
+      "category": ["furniture", "storage"],
+      "footprint": {"width": 1.25, "depth": 0.75},
+      "height": 2.6,
+      "greybox": {"mesh": "box", "color": [0.45, 0.3, 0.2]},
+      "label": "Wardrobe"
+    },
+    "desk": {
+      "path": "",
+      "category": ["furniture", "surface"],
+      "footprint": {"width": 2.1, "depth": 0.85},
+      "height": 0.95,
+      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "label": "Desk"
+    },
+    "lantern": {
+      "path": "",
+      "category": ["furniture", "decor"],
+      "footprint": {"width": 0.28, "depth": 0.28},
+      "height": 0.85,
+      "greybox": {"mesh": "cylinder", "color": [0.7, 0.6, 0.3]},
+      "label": "Lantern"
+    },
+    "pot": {
+      "path": "",
+      "category": ["furniture", "storage"],
+      "footprint": {"width": 0.45, "depth": 0.45},
+      "height": 1.15,
+      "greybox": {"mesh": "cylinder", "color": [0.5, 0.4, 0.35]},
+      "label": "Pot"
+    },
+    "weapon-rack": {
+      "path": "",
+      "category": ["furniture", "storage"],
+      "footprint": {"width": 0.85, "depth": 0.35},
+      "height": 2.3,
+      "greybox": {"mesh": "box", "color": [0.4, 0.3, 0.2]},
+      "label": "Weapon Rack"
+    },
+    "pillar": {
+      "path": "",
+      "category": ["furniture", "structural"],
+      "footprint": {"width": 0.45, "depth": 0.45},
+      "height": 3.15,
+      "greybox": {"mesh": "cylinder", "color": [0.55, 0.5, 0.45]},
+      "label": "Pillar"
+    },
+    "planter": {
+      "path": "",
+      "category": ["furniture", "decor"],
+      "footprint": {"width": 0.85, "depth": 0.85},
+      "height": 0.75,
+      "greybox": {"mesh": "box", "color": [0.4, 0.35, 0.3]},
+      "label": "Planter"
     }
   }
 }

@@ -16,7 +16,8 @@ CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
                       # adjacent cells are robustly clear (no FP-boundary clips).
 WALL_MARGIN = 0.8     # keep furniture this far from walls
 FURNITURE = ("table", "chair", "shelf", "cabinet", "barrel", "crate", "chest",
-             "stool", "bench")
+             "stool", "bench", "wardrobe", "desk", "lantern", "pot",
+             "weapon-rack", "pillar", "planter")
 CARRYABLES = ("key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
               "candle", "dagger", "ring")
 NPC_Z_INSET = 0.6     # NPC sits this far in from the back wall
@@ -115,6 +116,13 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
         "chest": 0.55,
         "stool": 0.6,
         "bench": 0.55,
+        "wardrobe": 2.55,
+        "desk": 0.88,
+        "lantern": 0.82,
+        "pot": 1.12,
+        "weapon-rack": 2.25,
+        "pillar": 3.1,
+        "planter": 0.72,
     }
     for i, e in enumerate(carryables):
         # Place on the i-th furniture item (wrap around)

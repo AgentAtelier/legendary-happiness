@@ -581,3 +581,62 @@ def test_bench_builds_and_passes_gate(tmp_path):
     topo, result = _build_and_gate(spec, tmp_path)
     assert result.passed, result.reasons
     assert topo.is_watertight, "bench mesh must be watertight"
+
+
+# ── P-F batch 2: remaining themed-useful generators ────────────
+
+def test_wardrobe_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "wardrobe", "generator": "wardrobe", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.8, "depth": 0.5, "height": 2.0}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "wardrobe mesh must be watertight"
+
+
+def test_desk_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "desk", "generator": "desk", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 1.2, "depth": 0.6, "height": 0.75}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "desk mesh must be watertight"
+
+
+def test_lantern_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "lantern", "generator": "lantern", "material": "wrought_iron",
+            "age": 0.2, "params": {"radius": 0.12, "height": 0.5}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "lantern mesh must be watertight"
+
+
+def test_pot_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "pot", "generator": "pot", "material": "rough_granite",
+            "age": 0.2, "params": {"body_radius": 0.2, "body_height": 0.5,
+            "neck_radius": 0.12, "neck_height": 0.15}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "pot mesh must be watertight"
+
+
+def test_weapon_rack_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "weapon-rack", "generator": "weapon-rack", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.5, "depth": 0.2, "height": 1.8}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "weapon-rack mesh must be watertight"
+
+
+def test_pillar_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "pillar", "generator": "pillar", "material": "rough_granite",
+            "age": 0.2, "params": {"radius": 0.2, "height": 2.0}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "pillar mesh must be watertight"
+
+
+def test_planter_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "planter", "generator": "planter", "material": "rough_granite",
+            "age": 0.2, "params": {"width": 0.5, "depth": 0.5, "height": 0.5}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "planter mesh must be watertight"

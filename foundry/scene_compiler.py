@@ -102,6 +102,14 @@ _COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
     "chest": (0.75, 0.55, 0.55),
     "stool": (0.35, 0.65, 0.35),
     "bench": (2.1, 0.6, 0.45),
+    # P-F batch 2: themed-useful generators
+    "wardrobe": (1.25, 2.6, 0.75),
+    "desk": (2.1, 0.95, 0.85),
+    "lantern": (0.28, 0.85, 0.28),
+    "pot": (0.45, 1.15, 0.45),
+    "weapon-rack": (0.85, 2.3, 0.35),
+    "pillar": (0.45, 3.15, 0.45),
+    "planter": (0.85, 0.75, 0.85),
     # Default for unknown categories
     "?": (0.5, 0.5, 0.5),
 }

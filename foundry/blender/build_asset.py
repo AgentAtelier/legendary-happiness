@@ -1027,6 +1027,126 @@ def _build_stool_geometry(params):
     return mesh
 
 
+def _build_wardrobe_geometry(params):
+    """A wardrobe: tall closed cabinet."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("wardrobe")
+    obj = bpy.data.objects.new("wardrobe", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, d, h)
+    # Crown moulding: slightly wider box on top
+    _add_box(bm, 0.0, 0.0, h - 0.03, w + 0.04, d + 0.04, 0.05)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_desk_geometry(params):
+    """A desk: wider table with a back panel."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    tt = 0.05
+    lh = h - tt
+    lr = 0.04
+    leg = lr * 2.0
+    mesh = bpy.data.meshes.new("desk")
+    obj = bpy.data.objects.new("desk", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, lh + tt / 2.0, w, d, tt)
+    # 4 legs at corners
+    hx = w / 2.0 - 0.06 - leg / 2.0
+    hy = d / 2.0 - 0.06 - leg / 2.0
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            _add_box(bm, sx * hx, sy * hy, lh / 2.0, leg, leg, lh)
+    # Back panel
+    _add_box(bm, 0.0, -(d / 2.0 - 0.02), lh / 2.0 + 0.1, w, 0.03, lh * 0.6)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_lantern_geometry(params):
+    """A lantern: tall thin cylinder body + wider top section."""
+    r, h = params["radius"], params["height"]
+    top_h = h * 0.2
+    body_h = h - top_h
+    mesh = bpy.data.meshes.new("lantern")
+    obj = bpy.data.objects.new("lantern", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, body_h / 2.0, r, body_h, segments=16)
+    _add_cylinder(bm, 0.0, 0.0, body_h + top_h / 2.0, r + 0.03, top_h, segments=16)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_pot_geometry(params):
+    """A pot/urn: wider cylinder body + narrower neck."""
+    br, bh = params["body_radius"], params["body_height"]
+    nr, nh = params["neck_radius"], params["neck_height"]
+    mesh = bpy.data.meshes.new("pot")
+    obj = bpy.data.objects.new("pot", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, bh / 2.0, br, bh, segments=20)
+    _add_cylinder(bm, 0.0, 0.0, bh + nh / 2.0, nr, nh, segments=16)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_weapon_rack_geometry(params):
+    """A weapon rack: two tall posts + horizontal bars."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    t = 0.04
+    mesh = bpy.data.meshes.new("weapon_rack")
+    obj = bpy.data.objects.new("weapon_rack", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Two tall posts
+    for sx in (-1, 1):
+        _add_box(bm, sx * (w / 2.0 - t / 2.0), 0.0, h / 2.0, t, t, h)
+    # Three horizontal bars
+    for frac in (0.2, 0.5, 0.8):
+        _add_box(bm, 0.0, 0.0, h * frac, w - t, t, t)
+    # Base
+    _add_box(bm, 0.0, 0.0, t / 2.0, w + 0.04, d, t)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_pillar_geometry(params):
+    """A pillar: tall cylinder."""
+    r, h = params["radius"], params["height"]
+    mesh = bpy.data.meshes.new("pillar")
+    obj = bpy.data.objects.new("pillar", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, h / 2.0, r, h, segments=20)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_planter_geometry(params):
+    """A planter: box body + slightly inset top rim."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("planter")
+    obj = bpy.data.objects.new("planter", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, d, h)
+    # Rim: slightly wider box on top
+    _add_box(bm, 0.0, 0.0, h - 0.03, w + 0.04, d + 0.04, 0.05)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 def _build_bench_geometry(params):
     """A bench: flat seat + 4 box legs."""
     w, d, h = params["width"], params["depth"], params["height"]
@@ -1072,6 +1192,14 @@ _BUILDERS = {
     "chest": _build_chest_geometry,
     "stool": _build_stool_geometry,
     "bench": _build_bench_geometry,
+    # P-F batch 2: remaining themed-useful generators
+    "wardrobe": _build_wardrobe_geometry,
+    "desk": _build_desk_geometry,
+    "lantern": _build_lantern_geometry,
+    "pot": _build_pot_geometry,
+    "weapon-rack": _build_weapon_rack_geometry,
+    "pillar": _build_pillar_geometry,
+    "planter": _build_planter_geometry,
 }
 
 _COLOR_BUILDERS = {

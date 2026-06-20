@@ -12,7 +12,9 @@ from materials import MATERIAL_PALETTE
 GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid", "rug", "painting",
                "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
                "candle", "dagger", "ring",
-               "barrel", "crate", "chest", "stool", "bench"}
+               "barrel", "crate", "chest", "stool", "bench",
+               "wardrobe", "desk", "lantern", "pot", "weapon-rack",
+               "pillar", "planter"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -140,6 +142,41 @@ PARAM_RANGES = {
         "width": (0.8, 2.0),
         "depth": (0.2, 0.4),
         "height": (0.3, 0.55),
+    },
+    # P-F batch 2: themed-useful generators
+    "wardrobe": {
+        "width": (0.6, 1.2),
+        "depth": (0.4, 0.7),
+        "height": (1.5, 2.5),
+    },
+    "desk": {
+        "width": (0.8, 2.0),
+        "depth": (0.4, 0.8),
+        "height": (0.5, 0.9),
+    },
+    "lantern": {
+        "radius": (0.08, 0.2),
+        "height": (0.3, 0.8),
+    },
+    "pot": {
+        "body_radius": (0.15, 0.4),
+        "body_height": (0.3, 0.8),
+        "neck_radius": (0.08, 0.25),
+        "neck_height": (0.1, 0.3),
+    },
+    "weapon-rack": {
+        "width": (0.3, 0.8),
+        "depth": (0.15, 0.3),
+        "height": (1.0, 2.2),
+    },
+    "pillar": {
+        "radius": (0.15, 0.4),
+        "height": (1.0, 3.0),
+    },
+    "planter": {
+        "width": (0.3, 0.8),
+        "depth": (0.3, 0.8),
+        "height": (0.3, 0.7),
     },
 }
 
