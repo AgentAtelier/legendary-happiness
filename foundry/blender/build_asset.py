@@ -1330,10 +1330,188 @@ _BUILDERS = {
     "L_bench": _build_l_bench_geometry,
 }
 
+# ── P-G: fabric colour builder — woven cross-hatch pattern ──────
+
+def _fabric_color_nodes(nodes, links, mat_info, seed):
+    """Build a fabric-specific colour subgraph: a grid of woven threads
+    created by blending two scaled rotated noise textures, run through
+    a 3-stop ColorRamp for thread/base/thread bands.
+
+    Returns the ColorRamp's Color output socket."""
+    base = mat_info["base_rgb"]
+    thread = mat_info["thread_rgb"]
+
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    tex_coord.location = (-1000, 300)
+
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.location = (-800, 300)
+    mapping.vector_type = "TEXTURE"
+    mapping.inputs["Scale"].default_value = (4.0, 4.0, 1.0)
+    mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+
+    # Two noise textures at different scales/rotations for thread grid
+    noise1 = nodes.new("ShaderNodeTexNoise")
+    noise1.location = (-500, 300)
+    noise1.inputs["Scale"].default_value = 6.0
+    noise1.inputs["Detail"].default_value = 3.0
+    noise1.inputs["Roughness"].default_value = 0.8
+
+    noise2 = nodes.new("ShaderNodeTexNoise")
+    noise2.location = (-500, 0)
+    noise2.inputs["Scale"].default_value = 6.0
+    noise2.inputs["Detail"].default_value = 3.0
+    noise2.inputs["Roughness"].default_value = 0.8
+
+    # Rotate the second mapping by ~90° for warp/weft cross-hatch
+    mapping2 = nodes.new("ShaderNodeMapping")
+    mapping2.location = (-800, 0)
+    mapping2.vector_type = "TEXTURE"
+    mapping2.inputs["Scale"].default_value = (4.0, 4.0, 1.0)
+    mapping2.inputs["Location"].default_value = (seed + 5.0, seed + 5.0, 0.0)
+    mapping2.inputs["Rotation"].default_value = (0.0, 0.0, 1.5708)
+
+    # Mix the two noise textures for a woven look
+    mix_woven = nodes.new("ShaderNodeMixRGB")
+    mix_woven.blend_type = "OVERLAY"
+    mix_woven.location = (-100, 150)
+    mix_woven.inputs["Fac"].default_value = 0.5
+
+    links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+    links.new(tex_coord.outputs["Object"], mapping2.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], noise1.inputs["Vector"])
+    links.new(mapping2.outputs["Vector"], noise2.inputs["Vector"])
+    links.new(noise1.outputs["Color"], mix_woven.inputs["Color1"])
+    links.new(noise2.outputs["Color"], mix_woven.inputs["Color2"])
+
+    # 3-stop ColorRamp: thread → base → thread bands
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.location = (200, 150)
+    ramp.color_ramp.interpolation = "LINEAR"
+    stops = ramp.color_ramp.elements
+    stops[0].position = 0.0
+    stops[0].color = (*thread, 1.0)
+    stops[1].position = 0.5
+    stops[1].color = (*base, 1.0)
+    s2 = stops.new(1.0)
+    s2.color = (*thread, 1.0)
+
+    links.new(mix_woven.outputs["Color"], ramp.inputs["Fac"])
+
+    return ramp.outputs["Color"], noise1.outputs["Fac"]
+
+
+# ── P-G: painting-specific colour subgraph ────────────────────────
+
+def _build_painting_color_subgraph(nodes, links, spec, seed):
+    """Build a painting-specific colour subgraph based on the painting_mode.
+
+    Returns (color_socket, height_socket) like the family colour builders,
+    so the rest of apply_material (AO mix, EMIT bake, normal bake, roughness
+    bake) works unchanged.
+
+    Modes:
+      blank  — plain canvas (cream/off-white)
+      solid  — single deterministic saturated colour
+      pattern — procedural checkerboard (seeded)
+      image  — noise + voronoi organic abstract
+    """
+    mode = (spec or {}).get("painting_mode", "blank")
+
+    if mode == "blank":
+        rgb = nodes.new("ShaderNodeRGB")
+        rgb.location = (0, 300)
+        rgb.outputs["Color"].default_value = (0.92, 0.88, 0.78, 1.0)
+        return rgb.outputs["Color"], rgb.outputs["Color"]
+
+    elif mode == "solid":
+        import random as _rnd
+        _r = _rnd.Random(int(seed * 1000))
+        hue = _r.uniform(0.0, 1.0)
+        from colorsys import hls_to_rgb
+        sr, sg, sb = hls_to_rgb(hue, 0.45, 0.65)
+        rgb = nodes.new("ShaderNodeRGB")
+        rgb.location = (0, 300)
+        rgb.outputs["Color"].default_value = (sr, sg, sb, 1.0)
+        return rgb.outputs["Color"], rgb.outputs["Color"]
+
+    elif mode == "pattern":
+        tex_coord = nodes.new("ShaderNodeTexCoord")
+        tex_coord.location = (-800, 300)
+        mapping = nodes.new("ShaderNodeMapping")
+        mapping.location = (-600, 300)
+        mapping.vector_type = "TEXTURE"
+        mapping.inputs["Scale"].default_value = (3.0, 3.0, 1.0)
+        mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+        checker = nodes.new("ShaderNodeTexChecker")
+        checker.location = (-200, 300)
+        checker.inputs["Scale"].default_value = 4.0
+        ramp = nodes.new("ShaderNodeValToRGB")
+        ramp.location = (200, 300)
+        ramp.color_ramp.interpolation = "CONSTANT"
+        stops = ramp.color_ramp.elements
+        stops[0].position = 0.0
+        stops[0].color = (0.9, 0.85, 0.75, 1.0)
+        stops[1].position = 1.0
+        stops[1].color = (0.3, 0.2, 0.35, 1.0)
+        links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+        links.new(mapping.outputs["Vector"], checker.inputs["Vector"])
+        links.new(checker.outputs["Color"], ramp.inputs["Fac"])
+        return ramp.outputs["Color"], checker.outputs["Color"]
+
+    elif mode == "image":
+        tex_coord = nodes.new("ShaderNodeTexCoord")
+        tex_coord.location = (-1000, 300)
+        mapping = nodes.new("ShaderNodeMapping")
+        mapping.location = (-800, 300)
+        mapping.vector_type = "TEXTURE"
+        mapping.inputs["Scale"].default_value = (2.0, 2.0, 1.0)
+        mapping.inputs["Location"].default_value = (seed, seed, 0.0)
+        noise = nodes.new("ShaderNodeTexNoise")
+        noise.location = (-400, 300)
+        noise.inputs["Scale"].default_value = 5.0
+        noise.inputs["Detail"].default_value = 6.0
+        noise.inputs["Roughness"].default_value = 0.5
+        voronoi = nodes.new("ShaderNodeTexVoronoi")
+        voronoi.location = (-400, 0)
+        voronoi.inputs["Scale"].default_value = 3.0
+        mix_art = nodes.new("ShaderNodeMixRGB")
+        mix_art.blend_type = "OVERLAY"
+        mix_art.location = (0, 150)
+        mix_art.inputs["Fac"].default_value = 0.4
+        ramp = nodes.new("ShaderNodeValToRGB")
+        ramp.location = (300, 150)
+        ramp.color_ramp.interpolation = "LINEAR"
+        stops = ramp.color_ramp.elements
+        stops[0].position = 0.0
+        stops[0].color = (0.15, 0.1, 0.2, 1.0)
+        stops[1].position = 0.35
+        stops[1].color = (0.5, 0.3, 0.55, 1.0)
+        s2 = stops.new(0.7)
+        s2.color = (0.8, 0.6, 0.4, 1.0)
+        s3 = stops.new(1.0)
+        s3.color = (0.9, 0.85, 0.7, 1.0)
+        links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+        links.new(mapping.outputs["Vector"], noise.inputs["Vector"])
+        links.new(mapping.outputs["Vector"], voronoi.inputs["Vector"])
+        links.new(noise.outputs["Color"], mix_art.inputs["Color1"])
+        links.new(voronoi.outputs["Color"], mix_art.inputs["Color2"])
+        links.new(mix_art.outputs["Color"], ramp.inputs["Fac"])
+        return ramp.outputs["Color"], noise.outputs["Fac"]
+
+    else:
+        rgb = nodes.new("ShaderNodeRGB")
+        rgb.location = (0, 300)
+        rgb.outputs["Color"].default_value = (0.92, 0.88, 0.78, 1.0)
+        return rgb.outputs["Color"], rgb.outputs["Color"]
+
+
+
 _COLOR_BUILDERS = {
     "wood": _wood_color_nodes,
     "stone": _stone_color_nodes,
     "metal": _metal_color_nodes,
+    "fabric": _fabric_color_nodes,
 }
 
 
@@ -1502,12 +1680,16 @@ def apply_normal_bake(obj, nodes, links, bsdf, height_socket, image_name="baked_
     nodes.active = None
 
 
-def apply_material(mesh, material_name, seed=0.0):
-    """Create a procedural wood material with shader nodes, bake the base colour
+def apply_material(mesh, material_name, seed=0.0, spec=None):
+    """Create a procedural material with shader nodes, bake the base colour
     to an image texture with Cycles-CPU, then wire the baked texture into the
     Principled BSDF Base Color so the glTF exporter writes a baseColorTexture.
 
     Material colours and roughness are driven by foundry/materials.py.
+
+    P-G: When *spec* has generator='painting' and a painting_mode, the
+    colour subgraph is replaced with a painting-specific procedural
+    texture (blank / solid / pattern / image).
 
     Shader recipe (anti-procedural-tell):
       - Object-space coordinates through an anisotropic Mapping so grain runs
@@ -1547,14 +1729,21 @@ def apply_material(mesh, material_name, seed=0.0):
     material_output.location = (1200, 300)
 
     # ── Dispatch to the family-specific colour subgraph ─────
-    family = mat_info.get("family", "wood")
-    builder = _COLOR_BUILDERS.get(family)
-    if builder is None:
-        raise ValueError(
-            f"unknown material family: {family!r} (known: {sorted(_COLOR_BUILDERS)})"
+    # P-G: painting generator overrides family with mode-specific texture.
+    gen = (spec or {}).get("generator", "")
+    if gen == "painting":
+        color_socket, height_socket = _build_painting_color_subgraph(
+            nodes, links, spec, seed
         )
-    # Slice 4: builders now also expose a scalar height for the NORMAL bake.
-    color_socket, height_socket = builder(nodes, links, mat_info, seed)
+    else:
+        family = mat_info.get("family", "wood")
+        builder = _COLOR_BUILDERS.get(family)
+        if builder is None:
+            raise ValueError(
+                f"unknown material family: {family!r} (known: {sorted(_COLOR_BUILDERS)})"
+            )
+        # Slice 4: builders now also expose a scalar height for the NORMAL bake.
+        color_socket, height_socket = builder(nodes, links, mat_info, seed)
 
     # ── Ambient Occlusion (grounds the asset, baked INTO baseColor) ─
     ao = nodes.new("ShaderNodeAmbientOcclusion")
@@ -1766,7 +1955,7 @@ def main():
     apply_entropy(mesh, age, entropy_seed)
     apply_bevel(mesh)
     assign_uvs(mesh)
-    apply_material(mesh, spec.get("material", "default"), seed=material_offset)
+    apply_material(mesh, spec.get("material", "default"), seed=material_offset, spec=spec)
 
     bpy.ops.export_scene.gltf(
         filepath=out_glb, export_format="GLB", use_selection=False

@@ -23,6 +23,7 @@ def _forge_category(category: str, material: str, library_dir: str, lexicon_path
     """Build one asset deterministically from its category (no LLM).
 
     Midpoint of each PARAM_RANGES entry is a known-good, in-envelope value.
+    P-G: Paintings include painting_mode="blank" by default.
     """
     from compiler import PARAM_RANGES
     from runner import forge
@@ -30,6 +31,9 @@ def _forge_category(category: str, material: str, library_dir: str, lexicon_path
     params = {k: (lo + hi) / 2.0 for k, (lo, hi) in PARAM_RANGES[category].items()}
     spec = {"asset_id": category, "generator": category,
             "material": material, "age": 0.2, "params": params}
+    # P-G: paintings get a painting_mode for procedural canvas textures
+    if category == "painting":
+        spec["painting_mode"] = "blank"
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, encoding="utf-8"
     ) as f:

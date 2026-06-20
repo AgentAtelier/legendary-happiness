@@ -173,16 +173,23 @@ def _build_room_sub_resources(
     room_h: float = _ROOM_HEIGHT,
     wall_t: float = _ROOM_WALL_THICKNESS,
     floor_t: float = _ROOM_FLOOR_THICKNESS,
+    ambient: tuple | None = None,
+    background: tuple | None = None,
 ) -> List[dict]:
-    """Build the list of room sub-resources for the given dimensions."""
+    """Build the list of room sub-resources for the given dimensions.
+
+    P-G: *ambient* and *background* override the default environment
+    colours (per-theme lighting)."""
+    amb = ambient if ambient is not None else _AMBIENT_COLOR
+    bg = background if background is not None else _BACKGROUND_COLOR
     return [
     # Environment for WorldEnvironment (Item 1)
     {"id": "world_env", "type": "Environment",
      "props": [
          "background_mode = 1",
-         f"background_color = Color({_BACKGROUND_COLOR[0]}, {_BACKGROUND_COLOR[1]}, {_BACKGROUND_COLOR[2]}, {_BACKGROUND_COLOR[3]})",
+         f"background_color = Color({bg[0]}, {bg[1]}, {bg[2]}, {bg[3]})",
          "ambient_light_source = 1",
-         f"ambient_light_color = Color({_AMBIENT_COLOR[0]}, {_AMBIENT_COLOR[1]}, {_AMBIENT_COLOR[2]}, {_AMBIENT_COLOR[3]})",
+         f"ambient_light_color = Color({amb[0]}, {amb[1]}, {amb[2]}, {amb[3]})",
      ]},
     # BoxMeshes for visible room shell (sized by room_w, room_d)
     {"id": "floor_vis_mesh", "type": "BoxMesh",
@@ -218,18 +225,34 @@ def _build_room_sub_resources(
 def _build_room_nodes(
     room_w: float, room_d: float,
     room_h: float = _ROOM_HEIGHT,
+    directional_color: tuple | None = None,
+    directional_energy: float | None = None,
 ) -> List[dict]:
     """Build the list of room nodes (lights, meshes, walls) for the
-    given dimensions."""
-    return [
+    given dimensions.
+
+    P-G: *directional_color* and *directional_energy* override the
+    default DirectionalLight3D (per-theme lighting)."""
+    light_nodes: list[dict] = [
     # WorldEnvironment (Item 1)
     {"name": "WorldEnvironment", "type": "WorldEnvironment", "parent": ".",
      "props": ['environment = SubResource("world_env")']},
-    # DirectionalLight3D (Item 1)
-    {"name": "DirectionalLight3D", "type": "DirectionalLight3D", "parent": ".",
-     "props": [
-         f"transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, {_fmt_pos(_LIGHT_HEIGHT)}, 0)",
-     ]},
+    ]
+    # DirectionalLight3D (Item 1) — P-G: per-theme colour + energy
+    dl_props = [
+        f"transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, {_fmt_pos(_LIGHT_HEIGHT)}, 0)",
+    ]
+    if directional_color is not None:
+        dl_props.append(
+            f"light_color = Color({directional_color[0]}, {directional_color[1]}, {directional_color[2]}, 1)"
+        )
+    if directional_energy is not None:
+        dl_props.append(f"light_energy = {directional_energy}")
+    light_nodes.append(
+        {"name": "DirectionalLight3D", "type": "DirectionalLight3D", "parent": ".",
+         "props": dl_props}
+    )
+    return light_nodes + [
     # Visible floor mesh (child of existing Floor StaticBody3D)
     {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
      "props": [
@@ -486,6 +509,7 @@ def compile_scene(
     assets_subdir: str = "assets",
     scene_uid: str | None = None,
     room_size: dict | None = None,
+    theme: str | None = None,
 ) -> str:
     """Compile a quest spec + manifest into a Godot .tscn file.
 
@@ -516,6 +540,9 @@ def compile_scene(
 
     Returns:
         The *output_path* (so callers can assert the file was written).
+
+    P-G: When *theme* is provided, derives DirectionalLight + ambient
+    colours/energy from the per-theme LIGHTING_TABLE in room_control.
     """
     target_entity = quest_spec["target_entity"]
     npc_role = quest_spec.get("npc_role", "villager")
@@ -552,9 +579,30 @@ def compile_scene(
     num_interactable = len(interactable_ids)
     num_sub_resources = 2 + num_interactable + 1  # +1 for NPC
 
+    # ── P-G: Resolve per-theme lighting ─────────────────────
+    ambient_override = None
+    background_override = None
+    dir_color_override = None
+    dir_energy_override = None
+    if theme:
+        from room_control import get_lighting
+        lighting = get_lighting(theme)
+        ambient_override = tuple(lighting["ambient_color"])
+        background_override = tuple(lighting["background_color"])
+        dir_color_override = tuple(lighting["directional_color"])
+        dir_energy_override = float(lighting["directional_energy"])
+
     # ── Build room resources for resolved dimensions ───────────
-    room_sub_resources = _build_room_sub_resources(room_w, room_d)
-    room_nodes = _build_room_nodes(room_w, room_d)
+    room_sub_resources = _build_room_sub_resources(
+        room_w, room_d,
+        ambient=ambient_override,
+        background=background_override,
+    )
+    room_nodes = _build_room_nodes(
+        room_w, room_d,
+        directional_color=dir_color_override,
+        directional_energy=dir_energy_override,
+    )
 
     # ── No-clip placement pass (Item 3) ─────────────────────────
     # Deterministic AABB separation so props don't intersect each

@@ -260,6 +260,82 @@ def apply_rules(
     return {"room_size": room_size, "props": clamped_props}, decisions
 
 
+# ── P-G: Per-theme lighting table ──────────────────────────────────
+# Each theme maps to DirectionalLight colour+energy, ambient colour,
+# and background colour.  Used by scene_compiler to vary the look
+# per room theme.
+# Colours are (r, g, b) tuples in [0, 1]; energy in [0, 4].
+
+LIGHTING_TABLE: Dict[str, dict] = {
+    "hermit": {
+        "directional_color": (1.0, 0.9, 0.75),
+        "directional_energy": 2.5,
+        "ambient_color": (0.18, 0.16, 0.12, 1.0),
+        "background_color": (0.08, 0.06, 0.04, 1.0),
+    },
+    "blacksmith": {
+        "directional_color": (1.0, 0.7, 0.4),
+        "directional_energy": 3.5,
+        "ambient_color": (0.2, 0.12, 0.06, 1.0),
+        "background_color": (0.1, 0.05, 0.02, 1.0),
+    },
+    "wizard": {
+        "directional_color": (0.6, 0.7, 1.0),
+        "directional_energy": 2.0,
+        "ambient_color": (0.1, 0.1, 0.2, 1.0),
+        "background_color": (0.04, 0.04, 0.1, 1.0),
+    },
+    "kitchen": {
+        "directional_color": (1.0, 0.95, 0.8),
+        "directional_energy": 2.8,
+        "ambient_color": (0.2, 0.18, 0.14, 1.0),
+        "background_color": (0.08, 0.07, 0.05, 1.0),
+    },
+    "noble": {
+        "directional_color": (1.0, 0.85, 0.65),
+        "directional_energy": 3.0,
+        "ambient_color": (0.15, 0.12, 0.08, 1.0),
+        "background_color": (0.06, 0.04, 0.02, 1.0),
+    },
+    "dungeon": {
+        "directional_color": (0.5, 0.55, 0.7),
+        "directional_energy": 1.2,
+        "ambient_color": (0.06, 0.06, 0.1, 1.0),
+        "background_color": (0.02, 0.02, 0.04, 1.0),
+    },
+    "attic": {
+        "directional_color": (0.9, 0.85, 0.8),
+        "directional_energy": 1.8,
+        "ambient_color": (0.12, 0.11, 0.1, 1.0),
+        "background_color": (0.05, 0.04, 0.03, 1.0),
+    },
+    "ship": {
+        "directional_color": (0.7, 0.8, 1.0),
+        "directional_energy": 2.2,
+        "ambient_color": (0.1, 0.13, 0.18, 1.0),
+        "background_color": (0.04, 0.06, 0.1, 1.0),
+    },
+    "*": {
+        "directional_color": (1.0, 0.95, 0.85),
+        "directional_energy": 2.5,
+        "ambient_color": (0.15, 0.15, 0.2, 1.0),
+        "background_color": (0.05, 0.05, 0.1, 1.0),
+    },
+}
+
+
+def get_lighting(theme: str) -> dict:
+    """P-G: Return the (directional_color, directional_energy, ambient,
+    background) for *theme* (case-insensitive keyword match, '*' default)."""
+    theme_lower = theme.lower()
+    for key, entry in LIGHTING_TABLE.items():
+        if key == "*":
+            continue
+        if key in theme_lower:
+            return entry
+    return LIGHTING_TABLE["*"]
+
+
 def check_guards_violated(decisions: List[DecisionPoint]) -> bool:
     """C-0 eval: True if any guard emitted a Decision Point (i.e. the
     LLM output needed correction beyond theme-appropriate variation)."""

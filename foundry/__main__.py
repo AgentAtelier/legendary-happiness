@@ -189,8 +189,12 @@ def _cmd_quest(args: list[str]) -> int:
         print(f"  {key}: {dialogue.get(key, '')}")
 
     # ── Step 2: Compile scene into scaffolded project ──────────
+    # P-G: pass the theme to scene_compiler for per-theme lighting.
     from scaffold import scaffold_project
     from pathlib import Path as _Path2
+    from room_control import _match_theme
+    theme_row = _match_theme(parsed.request)
+    room_theme = theme_row.get("theme", "*")
     template_dir = str(_Path2(__file__).resolve().parent / "godot_template")
     build_path = scaffold_project(
         name=parsed.scene,
@@ -200,6 +204,7 @@ def _cmd_quest(args: list[str]) -> int:
         library_dir=parsed.library_dir,
         out_root=str(_Path2.cwd() / "builds"),
         room_size=room_size,
+        theme=room_theme,
     )
     print(f"[quest] Build scaffolded: {build_path}")
 

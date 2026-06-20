@@ -38,4 +38,26 @@ MATERIAL_PALETTE = {
         "roughness": 0.45,
         "metallic": 1.0,
     },
+    # P-G: fabric family — for rugs and soft goods
+    "linen": {
+        "family": "fabric",
+        "base_rgb": (0.82, 0.78, 0.68),
+        "thread_rgb": (0.72, 0.68, 0.58),
+        "roughness": 0.85,
+        "metallic": 0.0,
+    },
+    "wool": {
+        "family": "fabric",
+        "base_rgb": (0.45, 0.35, 0.25),
+        "thread_rgb": (0.35, 0.25, 0.18),
+        "roughness": 0.92,
+        "metallic": 0.0,
+    },
+    "silk": {
+        "family": "fabric",
+        "base_rgb": (0.65, 0.15, 0.15),
+        "thread_rgb": (0.55, 0.10, 0.10),
+        "roughness": 0.35,
+        "metallic": 0.08,
+    },
 }

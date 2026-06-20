@@ -94,6 +94,7 @@ def scaffold_project(
     out_root: str = "builds",
     godot_bin: str | None = None,
     room_size: dict | None = None,
+    theme: str | None = None,
 ) -> Path:
     """Scaffold a fresh, disposable Godot project.
 
@@ -130,7 +131,7 @@ def scaffold_project(
     scenes_dir.mkdir(exist_ok=True)
     scene_path = str(scenes_dir / "main.tscn")
     compile_scene(quest_spec, manifest, scene_path, assets_subdir="assets",
-                  room_size=room_size)
+                  room_size=room_size, theme=theme)
     print(f"[scaffold] Scene compiled → {scene_path}")
 
     # ── 3. Set main_scene ───────────────────────────────────────

@@ -630,3 +630,6 @@ SIGNAL_SEVERITY["target_not_named_in_dialogue"] = "high"
 # C-0: room control signals
 SIGNAL_SEVERITY["guards_violated"] = "high"
 SIGNAL_SEVERITY["theme_out_of_bounds"] = "high"
+# P-G: painting mode + per-theme lighting signals
+SIGNAL_SEVERITY["painting_mode_honored"] = "low"
+SIGNAL_SEVERITY["lighting_not_theme_aware"] = "high"

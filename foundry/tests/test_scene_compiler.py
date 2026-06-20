@@ -888,3 +888,87 @@ def test_npc_has_role_metadata():
     assert meta.get("_forge_role") == "hermit", (
         f"NPC should have _forge_role=hermit, got {meta}"
     )
+
+
+# ── P-G: Per-theme lighting determinism ─────────────────────────
+
+def test_per_theme_lighting_applied_when_theme_provided():
+    """P-G: When theme='hermit', DirectionalLight3D gets light_color + energy."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, theme="hermit")
+        text = Path(out).read_text(encoding="utf-8")
+        # Check DirectionalLight3D has light_color and light_energy props
+        assert "light_color = Color(1.0, 0.9, 0.75, 1)" in text, (
+            f"expected hermit light_color in tscn\ntext snippet:\n{text[:3000]}"
+        )
+        assert "light_energy = 2.5" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_theme_lighting_deterministic():
+    """P-G: Same theme → same lighting output (deterministic)."""
+    from room_control import get_lighting
+    l1 = get_lighting("hermit")
+    l2 = get_lighting("hermit")
+    assert l1 == l2, "same theme should produce identical lighting"
+    # Different theme → different lighting
+    l3 = get_lighting("blacksmith")
+    assert l1 != l3, "different themes should differ"
+
+
+def test_lighting_falls_back_to_default():
+    """P-G: Unknown theme returns the '*' default lighting."""
+    from room_control import get_lighting
+    l = get_lighting("nonexistent_theme_xyz")
+    assert l["directional_energy"] == 2.5  # default energy
+
+
+def test_ambient_background_overridden_by_theme():
+    """P-G: Theme changes ambient and background colors in the Environment."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, theme="dungeon")
+        text = Path(out).read_text(encoding="utf-8")
+        # Dungeon ambient is dark/cool
+        assert "ambient_light_color = Color(0.06, 0.06, 0.1, 1.0)" in text
+        assert "background_color = Color(0.02, 0.02, 0.04, 1.0)" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_no_theme_keeps_default_lighting():
+    """P-G: Without theme, default lighting constants are used."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)  # no theme arg
+        text = Path(out).read_text(encoding="utf-8")
+        # Default ambient should be present
+        assert "ambient_light_color = Color(0.15, 0.15, 0.2, 1.0)" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
