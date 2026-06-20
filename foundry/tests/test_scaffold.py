@@ -201,7 +201,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
     build = scaffold_project(
         name="test_scaffold",
-        quest_spec=_QUEST_SPEC,
+        quest_specs=_QUEST_SPEC,
         manifest=_MANIFEST,
         template_dir=str(template),
         library_dir=str(lib),
@@ -230,7 +230,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
     data = build_path / "scenes" / "main_quest_data.json"
     assert data.exists()
     qd = json.loads(data.read_text())
-    assert qd["target_entity"] == "table_0"
+    assert qd["npcs"]["npc_0"]["target_entity"] == "table_0"
 
     # Asset families should be copied
     assert (build_path / "assets" / "table_worn_oak.glb").exists()
@@ -259,7 +259,7 @@ def test_scaffold_project_preserves_gitignore(tmp_path):
 
     scaffold_project(
         name="test_gi",
-        quest_spec=_QUEST_SPEC,
+        quest_specs=_QUEST_SPEC,
         manifest=_MANIFEST,
         template_dir=str(template),
         library_dir=str(lib),

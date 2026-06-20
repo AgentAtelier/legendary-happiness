@@ -128,6 +128,10 @@ def _cmd_quest(args: list[str]) -> int:
         "--camera", default="first", choices=["first", "third"],
         help="Camera mode: first-person or third-person (default: first)"
     )
+    parser.add_argument(
+        "--npc-count", type=int, default=2,
+        help="Number of NPCs to generate quests for (default: 2)"
+    )
     parsed = parser.parse_args(args)
 
     # ── Build the LLM ─────────────────────────────────────────
@@ -166,9 +170,7 @@ def _cmd_quest(args: list[str]) -> int:
     ensure_decisions = ensure_assets(manifest, parsed.library_dir, parsed.lexicon)
 
     # ── Step 1: Behaviour-gen ─────────────────────────────────
-    # P-E: The quest target is a carryable. Pass the full manifest
-    # (including carryables) so the LLM can target them. Furniture
-    # stays pickable scenery.
+    # C-4: Generate quests for multiple NPCs in a single LLM call.
     from behaviour_gen import QuestBehaviourPlanner
     planner = QuestBehaviourPlanner()
 
@@ -177,23 +179,23 @@ def _cmd_quest(args: list[str]) -> int:
         "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
         "candle", "dagger", "ring",
     )}
-    # Pass the full manifest (behaviour_gen builds prompt from it;
-    # the LLM picks from carryables as targets).
-    print(f"[quest] Planning quest for: {parsed.request!r}")
-    spec, quest_decisions = planner.plan(
-        parsed.request, manifest, llm, seed=seed,
+    npc_count = parsed.npc_count
+    print(f"[quest] Planning quests for {npc_count} NPCs: {parsed.request!r}")
+    specs, quest_decisions = planner.plan_multi(
+        parsed.request, manifest, llm,
+        npc_count=npc_count, seed=seed,
         carryable_ids=carryable_ids,
     )
     decisions = room_decisions + layout_decisions + ensure_decisions + quest_decisions
 
-    target = spec.get("target_entity", "?")
-    npc_role = spec.get("npc_role", "villager")
-    print(f"[quest] NPC role: {npc_role}")
-    print(f"[quest] Target entity: {target}")
-    print(f"[quest] Dialogue:")
-    dialogue = spec.get("dialogue", {})
-    for key in ("greet", "ask", "wrong", "thank"):
-        print(f"  {key}: {dialogue.get(key, '')}")
+    for spec in specs:
+        target = spec.get("target_entity", "?")
+        npc_role = spec.get("npc_role", "villager")
+        npc_id = spec.get("npc_id", "?")
+        print(f"[quest] {npc_id} ({npc_role}): target={target}")
+        dialogue = spec.get("dialogue", {})
+        for key in ("greet", "ask"):
+            print(f"  {key}: {dialogue.get(key, '')}")
 
     # ── Step 2: Compile scene into scaffolded project ──────────
     # P-G: pass the theme to scene_compiler for per-theme lighting.
@@ -205,7 +207,7 @@ def _cmd_quest(args: list[str]) -> int:
     template_dir = str(_Path2(__file__).resolve().parent / "godot_template")
     build_path = scaffold_project(
         name=parsed.scene,
-        quest_spec=spec,
+        quest_specs=specs,
         manifest=manifest,
         template_dir=template_dir,
         library_dir=parsed.library_dir,

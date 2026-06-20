@@ -4,6 +4,10 @@ grammar-constrained quest spec (NPC role, target entity, dialogue, objective).
 Mirrors :class:`AssetPlanner` (``foundry/planner.py``): injectable LLM,
 build_prompt, parse, plan().  The LLM picks nouns + words; validation is
 deterministic post-processing.
+
+C-4: plan_multi() generates multiple quest specs (one per NPC) in a
+      single LLM call so the LLM picks distinct targets and complementary
+      NPC roles.
 """
 
 from __future__ import annotations
@@ -183,6 +187,71 @@ A room themed "hermit's shack" with props: [table_0 (table), shelf_0 (shelf), ca
 }}
 
 Room theme: {room_theme}
+
+Output JSON now:"""
+
+# C-4: Multi-NPC prompt — one LLM call generates N quests with distinct
+# roles and unique targets.  The LLM sees all NPC IDs so it can pick
+# non-overlapping targets.
+
+_MULTI_NPC_PROMPT = """You are a quest designer for a small RPG. This room has {npc_count} NPCs, each needing their own fetch quest. Create ONE quest per NPC.
+
+NPC IDs: {npc_ids}
+
+Room theme: {room_theme}
+
+Placed props in the room:
+{manifest_text}
+
+Important rules:
+- Each NPC must have a DISTINCT target entity — no two NPCs can ask for the same item.
+- Each NPC must have a DISTINCT role that fits the room theme.
+- Prefer **pickable carryable items** (key, book, cup, gem, bottle, scroll, coin-pouch, candle, dagger, ring) as quest targets.
+
+Output ONLY a JSON object — no prose, no explanation. The JSON MUST be keyed by NPC ID:
+{{
+  "npc_0": {{
+    "npc_role": "<role>",
+    "target_entity": "<prop_id>",
+    "dialogue": {{
+      "greet": "...",
+      "ask": "...",
+      "wrong": "...",
+      "thank": "..."
+    }},
+    "objective": {{"type": "fetch", "target": "<prop_id>", "giver": "npc"}}
+  }},
+  "npc_1": {{ ... }}
+}}
+
+Example with 2 NPCs in a blacksmith's forge:
+{{
+  "npc_0": {{
+    "npc_role": "blacksmith",
+    "target_entity": "key_0",
+    "dialogue": {{
+      "greet": "Hail, traveler! Welcome to my forge.",
+      "ask": "I've misplaced my brass key. Could you find it among these shelves?",
+      "wrong": "That's not my key. Keep looking.",
+      "thank": "Aha, my key! You have my thanks, friend."
+    }},
+    "objective": {{"type": "fetch", "target": "key_0", "giver": "npc"}}
+  }},
+  "npc_1": {{
+    "npc_role": "apprentice",
+    "target_entity": "gem_0",
+    "dialogue": {{
+      "greet": "Oh, a customer! The master is busy at the anvil.",
+      "ask": "I dropped a gem somewhere. Can you find it for me?",
+      "wrong": "No, that's not the gem I lost.",
+      "thank": "That's it! The master will be pleased."
+    }},
+    "objective": {{"type": "fetch", "target": "gem_0", "giver": "npc"}}
+  }}
+}}
+
+Room theme: {room_theme}
+NPC IDs: {npc_ids}
 
 Output JSON now:"""
 
@@ -400,3 +469,144 @@ class QuestBehaviourPlanner:
         }
 
         return validated_spec, decisions
+
+    # ── C-4: Multi-NPC plan ────────────────────────────────────
+
+    def plan_multi(
+        self,
+        room_theme: str,
+        manifest: list[dict],
+        llm: Callable[[str, Optional[str]], str],
+        *,
+        npc_count: int = 2,
+        seed: int | None = None,
+        carryable_ids: set[str] | None = None,
+    ) -> Tuple[list[dict], List[DecisionPoint]]:
+        """C-4: Generate *npc_count* quest specs for multiple NPCs in
+        a single LLM call so the LLM picks distinct targets and roles.
+
+        Args:
+            room_theme: Short description (e.g. "a blacksmith's forge").
+            manifest: List of placed-entity dicts.
+            llm: Callable (prompt, grammar) -> str.
+            npc_count: How many NPCs to generate quests for (default 2).
+            seed: Optional random seed.
+            carryable_ids: Optional set of entity IDs that are carryable.
+
+        Returns:
+            ``(specs, decisions)`` — *specs* is a list of validated
+            quest-spec dicts, one per NPC; *decisions* is the combined
+            Decision Points.
+        """
+        decisions: list[DecisionPoint] = []
+
+        # Generate NPC IDs
+        npc_ids = [f"npc_{i}" for i in range(npc_count)]
+        npc_id_list = ", ".join(npc_ids)
+
+        # Build manifest text
+        lines: list[str] = []
+        for entry in manifest:
+            eid = entry.get("id", "?")
+            cat = entry.get("category", "?")
+            mat = entry.get("material", "?")
+            adj = self._material_adjective(mat)
+            lines.append(f"  {eid} ({adj} {cat})")
+        manifest_text = "\n".join(lines)
+
+        # Build prompt
+        prompt = _MULTI_NPC_PROMPT.format(
+            npc_count=npc_count,
+            npc_ids=npc_id_list,
+            room_theme=room_theme,
+            manifest_text=manifest_text,
+        )
+
+        # Call LLM (no grammar for multi-NPC — the output is a dict-of-dicts
+        # which doesn't fit a single GBNF schema easily)
+        response = llm(prompt, None)
+
+        # Parse the response
+        data = self.parse(response)
+
+        # Validate each NPC's quest
+        all_manifest_ids = self._manifest_ids(manifest)
+        non_decor_ids = {e["id"] for e in manifest if "id" in e and not e.get("decor")}
+        if carryable_ids is None:
+            valid_ids = all_manifest_ids
+        else:
+            valid_ids = (carryable_ids & all_manifest_ids) or non_decor_ids
+
+        used_targets: set[str] = set()
+        specs: list[dict] = []
+
+        for npc_id in npc_ids:
+            raw = data.get(npc_id, {})
+            if not raw:
+                decisions.append(
+                    make_decision(
+                        code="quest.missing_npc",
+                        stage="planner",
+                        severity="error",
+                        context={"npc_id": npc_id},
+                        choices=(),
+                    )
+                )
+                continue
+
+            # Validate NPC role
+            raw_role = raw.get("npc_role", "")
+            npc_role, role_decisions = _validate_npc_role(raw_role)
+            decisions.extend(role_decisions)
+
+            # Validate target_entity
+            target_entity = raw.get("target_entity", "")
+            if target_entity not in valid_ids or target_entity in used_targets:
+                # Auto-pick an unused eligible target
+                available = sorted(valid_ids - used_targets)
+                if available:
+                    fallback_id = available[0]
+                else:
+                    fallback_id = sorted(valid_ids)[0]
+                cat = self._target_category(manifest, fallback_id)
+                decisions.append(
+                    make_decision(
+                        code="quest.dangling_target",
+                        stage="planner",
+                        severity="error",
+                        context={"entity": target_entity, "npc_id": npc_id},
+                        choices=(
+                            _target_choice(fallback_id, cat),
+                        ),
+                    )
+                )
+                target_entity = fallback_id
+            used_targets.add(target_entity)
+
+            # Validate dialogue
+            category = self._target_category(manifest, target_entity)
+            material = self._target_material(manifest, target_entity)
+            adjective = self._material_adjective(material)
+            raw_dialogue = raw.get("dialogue", {})
+            validated_dialogue, dialogue_decisions = validate_dialogue(
+                raw_dialogue, category, adjective=adjective
+            )
+            decisions.extend(dialogue_decisions)
+
+            # Build objective
+            objective = {
+                "type": "fetch",
+                "target": target_entity,
+                "giver": "npc",
+            }
+
+            spec: dict = {
+                "npc_id": npc_id,
+                "npc_role": npc_role,
+                "target_entity": target_entity,
+                "dialogue": validated_dialogue,
+                "objective": objective,
+            }
+            specs.append(spec)
+
+        return specs, decisions

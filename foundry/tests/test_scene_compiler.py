@@ -151,7 +151,7 @@ def test_scene_has_all_prop_nodes():
 
 def test_scene_has_npc_node():
     _, parsed, _ = _compile_and_parse()
-    npc_nodes = [n for n in parsed["nodes"] if n["name"] == "NPC"]
+    npc_nodes = [n for n in parsed["nodes"] if n["name"] == "npc_0"]
     assert len(npc_nodes) == 1
     assert npc_nodes[0]["type"] == "StaticBody3D"
 
@@ -194,7 +194,7 @@ def test_all_props_have_pickup_tag():
 
 def test_npc_has_talk_and_give_tags():
     _, parsed, _ = _compile_and_parse()
-    meta = parsed["metadata"].get("NPC", {})
+    meta = parsed["metadata"].get("npc_0", {})
     assert meta.get("_forge_tag") == "talk"
     assert meta.get("_forge_tag_give") == "give"
 
@@ -214,7 +214,7 @@ def test_target_prop_has_pickup_script():
 def test_npc_has_talk_script():
     """The NPC node gets npc.gd attached via the talk tag."""
     _, parsed, _ = _compile_and_parse()
-    npc = next(n for n in parsed["nodes"] if n["name"] == "NPC")
+    npc = next(n for n in parsed["nodes"] if n["name"] == "npc_0")
     assert npc.get("script") == "s_talk", (
         f"NPC should have script=s_talk, got {npc.get('script')!r}"
     )
@@ -260,37 +260,38 @@ def test_quest_data_json_written():
     """compile_scene writes a _quest_data.json alongside the .tscn."""
     _, _, data = _compile_and_parse()
     assert data is not None
-    assert data["npc_role"] == "hermit"
-    assert data["target_entity"] == "shelf_0"
+    assert "npcs" in data
+    assert data["npcs"]["npc_0"]["npc_role"] == "hermit"
+    assert data["npcs"]["npc_0"]["target_entity"] == "shelf_0"
 
 
 def test_dialogue_round_trips():
     _, _, data = _compile_and_parse()
-    assert data["dialogue"]["greet"] == "Ah, a visitor! Welcome."
-    assert data["dialogue"]["ask"] == "Find my lost book on the shelf."
-    assert data["dialogue"]["wrong"] == "No, that is not my book."
-    assert data["dialogue"]["thank"] == "You found it! Thank you."
+    assert data["npcs"]["npc_0"]["dialogue"]["greet"] == "Ah, a visitor! Welcome."
+    assert data["npcs"]["npc_0"]["dialogue"]["ask"] == "Find my lost book on the shelf."
+    assert data["npcs"]["npc_0"]["dialogue"]["wrong"] == "No, that is not my book."
+    assert data["npcs"]["npc_0"]["dialogue"]["thank"] == "You found it! Thank you."
 
 
 def test_objective_round_trips():
     _, _, data = _compile_and_parse()
-    assert data["objective"]["type"] == "fetch"
-    assert data["objective"]["target"] == "shelf_0"
-    assert data["objective"]["giver"] == "npc"
+    assert data["npcs"]["npc_0"]["objective"]["type"] == "fetch"
+    assert data["npcs"]["npc_0"]["objective"]["target"] == "shelf_0"
+    assert data["npcs"]["npc_0"]["objective"]["giver"] == "npc"
 
 
 def test_npc_role_in_quest_data():
     """NPC role is stored in quest_data.json, not in NPC node metadata."""
     _, parsed, data = _compile_and_parse()
-    assert data["npc_role"] == "hermit"
+    assert data["npcs"]["npc_0"]["npc_role"] == "hermit"
     # NPC node should NOT have npc_role metadata
-    npc_meta = parsed["metadata"].get("NPC", {})
+    npc_meta = parsed["metadata"].get("npc_0", {})
     assert "npc_role" not in npc_meta
 
 
 def test_target_entity_in_quest_data():
     _, _, data = _compile_and_parse()
-    assert data["target_entity"] == "shelf_0"
+    assert data["npcs"]["npc_0"]["target_entity"] == "shelf_0"
 
 
 # ── GLB instancing ──────────────────────────────────────────────
@@ -352,7 +353,7 @@ def test_npc_has_glb_body():
     _, parsed, _ = _compile_and_parse()
     body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
     assert len(body_nodes) == 1
-    assert body_nodes[0]["parent"] == "NPC"
+    assert body_nodes[0]["parent"] == "npc_0"
     # FIX-1a: type= is omitted when instance= is on the [node] header line
     assert body_nodes[0].get("instance") is not None, (
         "Body node should instance a GLB via ExtResource (on header line)"
@@ -402,8 +403,8 @@ def test_dialogue_with_special_chars():
         "thank": "Thanks!",
     }
     _, _, data = _compile_and_parse(quest_spec=spec)
-    assert data["dialogue"]["greet"] == 'He said "hello"'
-    assert data["dialogue"]["ask"] == "Find the book."
+    assert data["npcs"]["npc_0"]["dialogue"]["greet"] == 'He said "hello"'
+    assert data["npcs"]["npc_0"]["dialogue"]["ask"] == "Find the book."
 
 
 # ── Edge case: empty dialogue ────────────────────────────────────
@@ -412,7 +413,7 @@ def test_empty_dialogue_ok():
     spec = dict(_QUEST_SPEC)
     spec["dialogue"] = {"greet": "", "ask": "", "wrong": "", "thank": ""}
     _, _, data = _compile_and_parse(quest_spec=spec)
-    assert data["dialogue"]["greet"] == ""
+    assert data["npcs"]["npc_0"]["dialogue"]["greet"] == ""
 
 
 # ── FIX-1: Floor node ───────────────────────────────────────────
@@ -508,10 +509,10 @@ def test_npc_has_collision_shape():
     """FIX-1d: The NPC has a CollisionShape3D child."""
     _, parsed, _ = _compile_and_parse()
     collision = next(
-        (n for n in parsed["nodes"] if n["name"] == "NPC_collision"), None
+        (n for n in parsed["nodes"] if n["name"] == "npc_0_collision"), None
     )
     assert collision is not None, "NPC_collision node missing"
-    assert collision["parent"] == "NPC"
+    assert collision["parent"] == "npc_0"
     assert collision["type"] == "CollisionShape3D"
     assert collision.get("shape") is not None
 
@@ -868,7 +869,7 @@ def test_nameplate_node_exists():
     plates = [n for n in parsed["nodes"] if n["name"] == "Nameplate"]
     assert len(plates) == 1
     assert plates[0]["type"] == "Label3D"
-    assert plates[0]["parent"] == "NPC"
+    assert plates[0]["parent"] == "npc_0"
 
 
 def test_prop_has_category_metadata():
@@ -884,7 +885,7 @@ def test_prop_has_category_metadata():
 def test_npc_has_role_metadata():
     """P-B: NPC has _forge_role metadata for named prompts and nameplate."""
     _, parsed, _ = _compile_and_parse()
-    meta = parsed["metadata"].get("NPC", {})
+    meta = parsed["metadata"].get("npc_0", {})
     assert meta.get("_forge_role") == "hermit", (
         f"NPC should have _forge_role=hermit, got {meta}"
     )

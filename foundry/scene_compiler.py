@@ -456,7 +456,7 @@ def _resolve_prop_overlaps(
 
 
 def compile_scene(
-    quest_spec: dict,
+    quest_specs: list[dict],
     manifest: List[PlacedEntity],
     output_path: str,
     assets_subdir: str = "assets",
@@ -465,11 +465,14 @@ def compile_scene(
     theme: str | None = None,
     camera_mode: str = "first",
 ) -> str:
-    """Compile a quest spec + manifest into a Godot .tscn file.
+    """Compile quest specs + manifest into a Godot .tscn file.
 
     Also writes a ``_quest_data.json`` file alongside the .tscn
     containing dialogue, objective, and quest metadata so the
     scene loader (P5) can read it without parsing .tscn metadata.
+
+    C-4: Accepts a **list** of quest specs (one per NPC).  Emits N
+    NPC nodes with unique IDs and per-NPC quest data.
 
     FIX-1: Props are now StaticBody3D with CollisionShape3D children;
     GLBs are instanced via header-line ``instance=ExtResource(...)``
@@ -481,7 +484,8 @@ def compile_scene(
     with materials) so the scene isn't grey.
 
     Args:
-        quest_spec: Validated quest spec from ``QuestBehaviourPlanner.plan()``.
+        quest_specs: List of validated quest specs from
+                     ``QuestBehaviourPlanner.plan_multi()`` (C-4).
         manifest: List of placed entities with at least ``id``, ``category``,
                   ``material``, and optional ``x``, ``y``, ``z``.
         output_path: File path to write the .tscn to (e.g.
@@ -498,10 +502,9 @@ def compile_scene(
     P-G: When *theme* is provided, derives DirectionalLight + ambient
     colours/energy from the per-theme LIGHTING_TABLE in room_control.
     """
-    target_entity = quest_spec["target_entity"]
-    npc_role = quest_spec.get("npc_role", "villager")
-    objective = quest_spec.get("objective", {})
-    dialogue = quest_spec.get("dialogue", {})
+    # C-4 backward compat: wrap single dict in list
+    if isinstance(quest_specs, dict):
+        quest_specs = [quest_specs]
 
     unique_glbs = resolve_unique_glbs_with_npc(manifest)
 
@@ -572,39 +575,40 @@ def compile_scene(
     world_log_filename = f"{tscn_stem}_world_log.jsonl"
     world_log_path = str(Path(output_dir) / world_log_filename)
 
-    # C-3: NPC placement dict — the full representation so npc.gd can
-    # write complete "replace" intents to the world log on state change.
-    npc_placement: dict = {
-        "id": "NPC",
-        "asset_hash": f"{_NPC_BODY_CATEGORY}_{_NPC_BODY_MATERIAL}",
-        "attrs": {
-            "role": npc_role,
-            "npc_state": "idle",
-            "x": 0.0,
-            "y": 0.0,
-            "z": -2.0,
-        },
-    }
+    # C-4: Build per-NPC quest data and placements for the shared JSON.
+    npcs_data: dict = {}
+    for i, spec in enumerate(quest_specs):
+        npc_id = spec.get("npc_id", f"npc_{i}")
+        # NPC position: spread the NPCs along X at z=-2 (C-4)
+        npc_index = int(npc_id.split("_")[-1]) if "_" in npc_id else i
+        npc_pos_x = (npc_index - (len(quest_specs) - 1) / 2.0) * 2.5
+        npc_pos_z = -2.0
+        placement: dict = {
+            "id": npc_id,
+            "asset_hash": f"{_NPC_BODY_CATEGORY}_{_NPC_BODY_MATERIAL}",
+            "attrs": {
+                "role": spec.get("npc_role", "villager"),
+                "npc_state": "idle",
+                "x": npc_pos_x,
+                "y": 0.0,
+                "z": npc_pos_z,
+            },
+        }
+        npcs_data[npc_id] = {
+            **spec,
+            "npc_placement": placement,
+        }
+        # C-3: Initialise the world log with this NPC's starting state
+        _init_world_log(world_log_path, placement)
 
     quest_data: dict = {
-        "npc_role": npc_role,
-        "target_entity": target_entity,
-        "dialogue": dialogue,
-        "objective": objective,
-        # C-3: NPC quest-state persistence touchpoints
-        "npc_id": "NPC",
-        "npc_placement": npc_placement,
+        "npcs": npcs_data,
         "world_log_path": world_log_path,
     }
     Path(data_path).write_text(
         json.dumps(quest_data, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-
-    # C-3: Initialise the world log with the NPC's starting state.
-    # This is the first event in the append-only transaction log.
-    # npc.gd will replay this on scene load to restore state.
-    _init_world_log(world_log_path, npc_placement)
 
     # ── Build GLB id map ────────────────────────────────────────
     glb_ids: dict[Tuple[str, str], str] = {}
@@ -810,52 +814,59 @@ def compile_scene(
         )
         lines.append("")
 
-    # ── NPC node (FIX-1d) ───────────────────────────────────────
-    # StaticBody3D with collision so camera raycast + parent-walk works.
-    npc_x, npc_y, npc_z = 0.0, 0.0, -2.0
-    lines.append('[node name="NPC" type="StaticBody3D" parent="."]')
-    lines.append(
-        f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
-        f"{_fmt_pos(npc_x)}, {_fmt_pos(npc_y)}, {_fmt_pos(npc_z)})"
-    )
-    lines.append('metadata/_forge_tag = "talk"')
-    lines.append('metadata/_forge_tag_give = "give"')
-    # P-B: add NPC role metadata for nameplate and named prompts
-    lines.append(f'metadata/_forge_role = "{npc_role}"')
-    # P5: attach npc.gd via the talk tag
+    # ── C-4: NPC nodes — one per quest spec ─────────────────────
     npc_script_path = _TAG_TABLE.get("talk")
-    if npc_script_path and npc_script_path in used_tag_scripts:
-        lines.append(
-            f'script = ExtResource("{used_tag_scripts[npc_script_path]}")'
-        )
-    lines.append("")
+    npc_glb_id = glb_ids.get((_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL), "1")
+    npc_collision_sub_id = collision_info.get("NPC", ("sub_0",))[0]
+    
+    for idx, spec in enumerate(quest_specs):
+        npc_id = spec.get("npc_id", f"npc_{idx}")
+        npc_role = spec.get("npc_role", "villager")
+        # Spread NPCs along X at z=-2
+        npc_x = (idx - (len(quest_specs) - 1) / 2.0) * 2.5
+        npc_y = 0.0
+        npc_z = -2.0
 
-    # NPC collision shape (FIX-1d)
-    if "NPC" in collision_info:
-        npc_sub_id = collision_info["NPC"][0]
+        lines.append(f'[node name="{npc_id}" type="StaticBody3D" parent="."]')
         lines.append(
-            f'[node name="NPC_collision" type="CollisionShape3D" parent="NPC"]'
+            f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
+            f"{_fmt_pos(npc_x)}, {_fmt_pos(npc_y)}, {_fmt_pos(npc_z)})"
         )
-        lines.append(f'shape = SubResource("{npc_sub_id}")')
+        lines.append('metadata/_forge_tag = "talk"')
+        lines.append('metadata/_forge_tag_give = "give"')
+        lines.append(f'metadata/_forge_role = "{npc_role}"')
+        # C-4: NPC ID metadata for quest_data lookup
+        lines.append(f'metadata/_forge_npc_id = "{npc_id}"')
+        # P5: attach npc.gd via the talk tag
+        if npc_script_path and npc_script_path in used_tag_scripts:
+            lines.append(
+                f'script = ExtResource("{used_tag_scripts[npc_script_path]}")'
+            )
         lines.append("")
 
-    # NPC body GLB instance (P7 + FIX-1a: header-line instancing)
-    npc_glb_id = glb_ids.get((_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL), "1")
-    lines.append(
-        f'[node name="Body" parent="NPC" instance=ExtResource("{npc_glb_id}")]'
-    )
-    lines.append("")
+        # NPC collision shape
+        lines.append(
+            f'[node name="{npc_id}_collision" type="CollisionShape3D" parent="{npc_id}"]'
+        )
+        lines.append(f'shape = SubResource("{npc_collision_sub_id}")')
+        lines.append("")
 
-    # P-B: NPC nameplate — billboard Label3D showing npc_role
-    lines.append('[node name="Nameplate" type="Label3D" parent="NPC"]')
-    lines.append(f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)")
-    lines.append(f'text = "{npc_role}"')
-    lines.append("billboard = 1")
-    lines.append("horizontal_alignment = 1")
-    lines.append("font_size = 32")
-    lines.append("outline_size = 2")
-    lines.append("outline_modulate = Color(0, 0, 0, 1)")
-    lines.append("")
+        # NPC body GLB instance
+        lines.append(
+            f'[node name="Body" parent="{npc_id}" instance=ExtResource("{npc_glb_id}")]'
+        )
+        lines.append("")
+
+        # NPC nameplate
+        lines.append(f'[node name="Nameplate" type="Label3D" parent="{npc_id}"]')
+        lines.append(f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)")
+        lines.append(f'text = "{npc_role}"')
+        lines.append("billboard = 1")
+        lines.append("horizontal_alignment = 1")
+        lines.append("font_size = 32")
+        lines.append("outline_size = 2")
+        lines.append("outline_modulate = Color(0, 0, 0, 1)")
+        lines.append("")
 
     # ── Shell nodes (P4: with scripts attached + proper UI layout)
     for shell in _SHELL_NODES:
@@ -1150,7 +1161,9 @@ def _init_world_log(log_path: str, npc_placement: dict) -> None:
         "placement": npc_placement,
     }
     _Path(log_path).parent.mkdir(parents=True, exist_ok=True)
-    _Path(log_path).write_text(_json.dumps(event) + "\n", encoding="utf-8")
+    # C-4: Append (don't overwrite) so multiple NPC initial states accumulate
+    with open(log_path, "a", encoding="utf-8") as _f:
+        _f.write(_json.dumps(event) + "\n")
 
 
 def read_quest_data(tscn_path: str) -> dict | None:

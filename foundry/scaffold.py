@@ -86,7 +86,7 @@ def _pre_import(build_path: Path, godot_bin: str) -> None:
 
 def scaffold_project(
     name: str,
-    quest_spec: dict,
+    quest_specs: list[dict],
     manifest: List[dict],
     *,
     template_dir: str,
@@ -108,7 +108,9 @@ def scaffold_project(
 
     Args:
         name: Build directory name (e.g. ``"slice1_fetch"``).
-        quest_spec: Validated quest spec from ``QuestBehaviourPlanner.plan()``.
+        quest_specs: List of validated quest specs from
+                     ``QuestBehaviourPlanner.plan_multi()`` (C-4).
+                     For backward compat, a single dict is also accepted.
         manifest: Placed-entity manifest.
         template_dir: Path to ``foundry/godot_template/``.
         library_dir: Directory containing forged GLBs + their families.
@@ -131,7 +133,9 @@ def scaffold_project(
     scenes_dir = build_path / "scenes"
     scenes_dir.mkdir(exist_ok=True)
     scene_path = str(scenes_dir / "main.tscn")
-    compile_scene(quest_spec, manifest, scene_path, assets_subdir="assets",
+    # C-4: Handle both single dict (backward compat) and list
+    specs = quest_specs if isinstance(quest_specs, list) else [quest_specs]
+    compile_scene(specs, manifest, scene_path, assets_subdir="assets",
                   room_size=room_size, theme=theme, camera_mode=camera_mode)
     print(f"[scaffold] Scene compiled → {scene_path}")
 

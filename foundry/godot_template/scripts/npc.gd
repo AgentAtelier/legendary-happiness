@@ -30,11 +30,19 @@ func _load_quest_data() -> void:
 		var text: String = file.get_as_text()
 		var parsed = JSON.parse_string(text)
 		if parsed is Dictionary:
-			_quest_data = parsed
-			# C-3: Extract world-log persistence fields
-			_npc_id = parsed.get("npc_id", "NPC")
-			_world_log_path = parsed.get("world_log_path", "")
-			_base_placement = parsed.get("npc_placement", {})
+			# C-4: Read npc_id from this node's metadata (set by scene_compiler)
+			_npc_id = str(get_meta("_forge_npc_id", "NPC"))
+			_world_log_path = str(parsed.get("world_log_path", ""))
+			# C-4: Look up this NPC's data in the shared npcs dict
+			var npcs_data = parsed.get("npcs", {})
+			var my_data = npcs_data.get(_npc_id, {})
+			if my_data and not my_data.is_empty():
+				_quest_data = my_data
+				_base_placement = my_data.get("npc_placement", {})
+			else:
+				# Fallback: single-NPC format (C-3 backward compat)
+				_quest_data = parsed
+				_base_placement = parsed.get("npc_placement", {})
 
 
 func on_interact(tag: String) -> void:
@@ -165,6 +173,10 @@ func _state_from_string(state_name: String) -> int:
 
 func _show_line(hud: Node, key: String) -> void:
 	var line: String = _quest_data.get("dialogue", {}).get(key, "...")
+	# C-4: Prepend NPC role to the objective line for player context
+	var npc_role: String = _quest_data.get("npc_role", "")
+	if npc_role != "" and key in ["greet", "ask", "wrong", "thank"]:
+		line = npc_role.capitalize() + ": " + line
 	if hud.has_method("set_objective"):
 		hud.set_objective(line)
 
