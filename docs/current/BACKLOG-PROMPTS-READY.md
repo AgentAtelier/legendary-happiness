@@ -38,6 +38,9 @@ _Original brief kept for reference._
 > Furniture stays pickable scenery. **Eval:** "target-is-carryable + reachable + named-in-dialogue" signal.
 > **Verify:** headless playthrough — wrong carryable → wrong line; right → thank → win. Run-twice.
 
+## P-F · 20 stress-test prop generators — DONE ✅ (8a2dadb·3ee061e·cbd4682·76c6975; 611 py / 20 blender green)
+_Original brief kept for reference._
+
 ## P-F · 20 stress-test prop generators  [Q3, NQ2=C hybrid]
 > Add these 20 generators (≈12 themed-useful + ≈8 deliberate edge-cases). Per item: builder +
 > `_BUILDERS` + `GENERATORS`/`PARAM_RANGES` + grammar + lexicon envelope + **live gate-passing build test**.
@@ -63,6 +66,9 @@ _Original brief kept for reference._
 ---
 
 # DESIGN-FIRST SLICES (sequenced — spec+plan then implement)
+
+## C-0 · Room control rules / theme tables — DONE ✅ (81b8ce4; foundry/room_control.py — THEME_TABLE + global guards)
+> Note: door-clearance guard deferred to C-5 (where doors first exist). Themes + density guards landed.
 
 ## C-0 · Room control rules / theme tables  [Q6+Q13, NQ10=c, R4]  — DO FIRST
 > Build a deterministic **control layer** over RoomPlanner: a **data-driven theme table** (JSON, so new
