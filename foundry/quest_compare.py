@@ -202,25 +202,33 @@ def _run_quest(prompt: str, scene: str) -> Tuple[bool, str, dict]:
         print(f"  [quest] stderr: {result.stderr[:500]}")
         return False, stdout, {}
 
-    # ── Extract npc_role and target from quest output ──────────
+    spec = _parse_quest_output(stdout)
+    print(f"  [quest] spec captured: {spec}")
+    return True, stdout, spec
+
+
+def _parse_quest_output(stdout: str) -> dict:
+    """Extract npc_role, target, and the dialogue lines from quest stdout.
+
+    The ``quest`` command prints the dialogue indented by two spaces
+    (``  greet: ...``).  Each line here is stripped first, then matched on
+    the bare ``greet:``/``ask:``/``wrong:``/``thank:`` prefix — matching the
+    *indented* prefix after stripping never fired, so the dialogue was
+    silently dropped from the comparison table.
+    """
     spec: dict = {}
-    for line in stdout.splitlines():
-        line = line.strip()
+    for raw in stdout.splitlines():
+        line = raw.strip()
         if line.startswith("[quest] NPC role:"):
             spec["npc_role"] = line.split(":", 1)[1].strip()
         elif line.startswith("[quest] Target entity:"):
             spec["target"] = line.split(":", 1)[1].strip()
-        elif line.startswith("  greet:"):
-            spec["greet"] = line.split(":", 1)[1].strip()
-        elif line.startswith("  ask:"):
-            spec["ask"] = line.split(":", 1)[1].strip()
-        elif line.startswith("  wrong:"):
-            spec["wrong"] = line.split(":", 1)[1].strip()
-        elif line.startswith("  thank:"):
-            spec["thank"] = line.split(":", 1)[1].strip()
-
-    print(f"  [quest] spec captured: {spec}")
-    return True, stdout, spec
+        else:
+            for key in ("greet", "ask", "wrong", "thank"):
+                if line.startswith(f"{key}:"):
+                    spec[key] = line.split(":", 1)[1].strip()
+                    break
+    return spec
 
 
 def _check_model_fit(alias: str) -> dict:
@@ -432,7 +440,11 @@ def run_compare(
             all_ok = False
             continue
 
-        # 2b. Swap model
+        # 2b. Swap model.  Reset the service's failed/start-limit state
+        # FIRST: systemd allows only StartLimitBurst restarts per interval
+        # (3 / 2min on forge-llama), so the 4th rapid swap is otherwise
+        # refused with 'start-limit-hit' even when VRAM is fine.
+        _reset_failed_llama()
         if not _swap_model(fragment):
             result["error"] = "swap failed"
             results.append(result)
