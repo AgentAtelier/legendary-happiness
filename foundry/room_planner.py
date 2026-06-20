@@ -16,7 +16,12 @@ from llm import load_grammar as _load_grammar
 _GRAMMAR_PATH = str(Path(__file__).resolve().parent / "grammar" / "room_plan.gbnf")
 _GRAMMAR = _load_grammar(_GRAMMAR_PATH)
 
-CATEGORIES = ("table", "chair", "shelf", "cabinet", "rug", "painting")
+# Derive from the compiler's generator set so new generators (carryables P-E,
+# extended props P-F, …) are accepted automatically and never remapped to 'table'.
+# Excludes 'humanoid' (the NPC body, not a placeable room prop).
+from compiler import GENERATORS as _GENERATORS  # noqa: E402
+
+CATEGORIES = tuple(sorted(c for c in _GENERATORS if c != "humanoid"))
 MATERIALS = ("worn_oak", "rough_granite", "wrought_iron")
 SIZE_LO, SIZE_HI = 4.0, 12.0
 COUNT_LO, COUNT_HI = 1, 8

@@ -43,3 +43,16 @@ def test_empty_props_emits_decision():
     out, decisions = RoomPlanner().plan("x", _stub(plan))
     assert out["props"] == []
     assert any(d.code == "room.empty" for d in decisions)
+
+
+def test_planner_accepts_new_props_and_carryables_without_remap():
+    """P-E/P-F: carryables and extended props must NOT be remapped to 'table'
+    by the RoomPlanner validator (they're valid grammar categories)."""
+    plan = {"room_size": {"w": 8.0, "d": 8.0},
+            "props": [{"category": "crate", "material": "worn_oak", "count": 2},
+                      {"category": "key", "material": "wrought_iron", "count": 1}]}
+    out, decisions = RoomPlanner().plan("a storeroom", _stub(plan))
+    cats = [p["category"] for p in out["props"]]
+    assert "crate" in cats, "new prop was remapped"
+    assert "key" in cats, "carryable was remapped"
+    assert not any(d.code == "room.prop_clamped" for d in decisions)
