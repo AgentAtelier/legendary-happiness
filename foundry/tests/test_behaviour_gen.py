@@ -815,3 +815,15 @@ def test_plan_no_carryables_falls_back_to_furniture():
         "a hermit's shack", _MANIFEST_4, _fake_llm_valid, carryable_ids=set()
     )
     assert spec["target_entity"] in _VALID_MANIFEST_IDS
+
+
+def test_plan_multi_recovers_from_malformed_json():
+    """C-4 robustness: a weak model's malformed multi-NPC JSON must not crash —
+    every NPC still gets a winnable quest with a distinct target."""
+    planner = QuestBehaviourPlanner()
+    bad_llm = lambda prompt, grammar=None: "{not valid json at all"
+    specs, decisions = planner.plan_multi("a tavern", _MANIFEST_4, bad_llm, npc_count=2)
+    assert len(specs) == 2
+    targets = [s["target_entity"] for s in specs]
+    assert all(t in _VALID_MANIFEST_IDS for t in targets)
+    assert len(set(targets)) == 2  # distinct targets per NPC

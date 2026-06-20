@@ -134,6 +134,12 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model produced a garbled NPC role, so I cleaned it up to '{resolved}'.",
     ),
+    "quest.missing_npc": (
+        # technical
+        "no usable quest data for {npc_id}; built a default quest.",
+        # plain
+        "The model didn't return a quest for one NPC, so a simple default was used.",
+    ),
     "room.size_clamped": (
         # technical
         "room_size {axis}={raw} clamped to {clamped} (bounds [{lo}, {hi}]).",

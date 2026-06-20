@@ -526,8 +526,14 @@ class QuestBehaviourPlanner:
         # which doesn't fit a single GBNF schema easily)
         response = llm(prompt, None)
 
-        # Parse the response
-        data = self.parse(response)
+        # Parse the response. The multi-NPC call is ungrammared (dict-of-dicts
+        # doesn't fit one GBNF), so weak/stochastic models often emit malformed
+        # or truncated JSON. Recover instead of crashing: an empty dict routes
+        # every NPC through the per-NPC default-quest path below.
+        try:
+            data = self.parse(response)
+        except (ValueError, json.JSONDecodeError):
+            data = {}
 
         # Validate each NPC's quest
         all_manifest_ids = self._manifest_ids(manifest)
@@ -543,16 +549,19 @@ class QuestBehaviourPlanner:
         for npc_id in npc_ids:
             raw = data.get(npc_id, {})
             if not raw:
+                # No usable LLM data for this NPC — emit a DP but DON'T drop the
+                # NPC; fall through so role/target/dialogue validation below
+                # builds a winnable default quest (canned dialogue, unused target).
                 decisions.append(
                     make_decision(
                         code="quest.missing_npc",
                         stage="planner",
-                        severity="error",
+                        severity="assumption",
                         context={"npc_id": npc_id},
                         choices=(),
                     )
                 )
-                continue
+                raw = {}
 
             # Validate NPC role
             raw_role = raw.get("npc_role", "")
