@@ -921,3 +921,114 @@ def test_decor_never_target_in_severity_map():
     from eval.signals import SIGNAL_SEVERITY
     assert SIGNAL_SEVERITY.get("decor_never_target") == "high"
     assert SIGNAL_SEVERITY.get("headless_not_clean") == "high"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  P-E: target-is-carryable + named-in-dialogue signals
+# ═══════════════════════════════════════════════════════════════════════
+
+_PE_CARRYABLE_MANIFEST = [
+    {"id": "key_0", "category": "key", "material": "wrought_iron",
+     "x": 0.5, "y": 0.8, "z": -0.3, "decor": False},
+    {"id": "table_0", "category": "table", "material": "worn_oak",
+     "x": 1.0, "y": 0.0, "z": -1.5, "decor": False},
+]
+
+_PE_CARRYABLE_SPEC_NAMED = {
+    "npc_role": "hermit",
+    "target_entity": "key_0",
+    "dialogue": {
+        "greet": "Hello.",
+        "ask": "Find my brass key.",
+        "wrong": "Not my key.",
+        "thank": "You found the key!",
+    },
+    "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+}
+
+
+def test_target_is_carryable_clean_when_carryable_target():
+    """P-E: Target is a carryable → no signal."""
+    from eval.signals import check_target_is_carryable
+    qr = _make_quest_record(
+        quest_spec=_PE_CARRYABLE_SPEC_NAMED,
+        manifest=_PE_CARRYABLE_MANIFEST,
+    )
+    assert check_target_is_carryable(qr) is None
+
+
+def test_target_is_carryable_fires_when_furniture_target():
+    """P-E: Carryables exist but target is furniture → target_not_carryable."""
+    from eval.signals import check_target_is_carryable
+    furniture_spec = dict(_PE_CARRYABLE_SPEC_NAMED)
+    furniture_spec["target_entity"] = "table_0"
+    qr = _make_quest_record(
+        quest_spec=furniture_spec,
+        manifest=_PE_CARRYABLE_MANIFEST,
+    )
+    assert check_target_is_carryable(qr) == "target_not_carryable"
+
+
+def test_target_is_carryable_clean_when_no_carryables():
+    """P-E: No carryables in manifest → signal doesn't fire (pre-P-E room)."""
+    from eval.signals import check_target_is_carryable
+    qr = _make_quest_record(
+        quest_spec=_VALID_QUEST_SPEC,
+        manifest=_QUEST_MANIFEST,  # furniture-only manifest
+    )
+    assert check_target_is_carryable(qr) is None
+
+
+def test_target_named_in_dialogue_clean_when_category_mentioned():
+    """P-E: Dialogue mentions the target category ("key") → clean."""
+    from eval.signals import check_target_named_in_dialogue
+    qr = _make_quest_record(
+        quest_spec=_PE_CARRYABLE_SPEC_NAMED,
+        manifest=_PE_CARRYABLE_MANIFEST,
+    )
+    assert check_target_named_in_dialogue(qr) is None
+
+
+def test_target_named_in_dialogue_clean_when_adjective_mentioned():
+    """P-E: Dialogue mentions the material adjective ("brass") → clean."""
+    from eval.signals import check_target_named_in_dialogue
+    adj_spec = dict(_PE_CARRYABLE_SPEC_NAMED)
+    adj_spec["dialogue"] = {
+        "greet": "Hello.",
+        "ask": "Find the brass item.",
+        "wrong": "Not brass.",
+        "thank": "Thanks for the brass.",
+    }
+    qr = _make_quest_record(quest_spec=adj_spec, manifest=_PE_CARRYABLE_MANIFEST)
+    assert check_target_named_in_dialogue(qr) is None
+
+
+def test_target_named_in_dialogue_fires_when_not_mentioned():
+    """P-E: Dialogue never names category or adjective → target_not_named_in_dialogue."""
+    from eval.signals import check_target_named_in_dialogue
+    unnamed_spec = dict(_PE_CARRYABLE_SPEC_NAMED)
+    unnamed_spec["dialogue"] = {
+        "greet": "Hello.",
+        "ask": "Find my lost item.",
+        "wrong": "Not what I need.",
+        "thank": "You found it!",
+    }
+    qr = _make_quest_record(quest_spec=unnamed_spec, manifest=_PE_CARRYABLE_MANIFEST)
+    assert check_target_named_in_dialogue(qr) == "target_not_named_in_dialogue"
+
+
+def test_target_named_in_dialogue_clean_when_no_carryables():
+    """P-E: No carryables in manifest → signal doesn't fire."""
+    from eval.signals import check_target_named_in_dialogue
+    qr = _make_quest_record(
+        quest_spec=_VALID_QUEST_SPEC,
+        manifest=_QUEST_MANIFEST,
+    )
+    assert check_target_named_in_dialogue(qr) is None
+
+
+def test_pe_signals_in_severity_map():
+    """P-E: target_not_carryable and target_not_named_in_dialogue are in SIGNAL_SEVERITY."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY.get("target_not_carryable") == "high"
+    assert SIGNAL_SEVERITY.get("target_not_named_in_dialogue") == "high"

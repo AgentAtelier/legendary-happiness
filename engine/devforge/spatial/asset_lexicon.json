@@ -325,6 +325,86 @@
         ]
       },
       "label": "Painting"
+    },
+    "key": {
+      "path": "",
+      "category": ["carryable", "metal"],
+      "footprint": {"width": 0.15, "depth": 0.07},
+      "height": 0.07,
+      "greybox": {"mesh": "box", "color": [0.5, 0.45, 0.3]},
+      "label": "Key"
+    },
+    "book": {
+      "path": "",
+      "category": ["carryable", "wood"],
+      "footprint": {"width": 0.25, "depth": 0.2},
+      "height": 0.06,
+      "greybox": {"mesh": "box", "color": [0.4, 0.25, 0.15]},
+      "label": "Book"
+    },
+    "cup": {
+      "path": "",
+      "category": ["carryable", "metal"],
+      "footprint": {"width": 0.18, "depth": 0.18},
+      "height": 0.15,
+      "greybox": {"mesh": "cylinder", "color": [0.5, 0.45, 0.3]},
+      "label": "Cup"
+    },
+    "gem": {
+      "path": "",
+      "category": ["carryable", "stone"],
+      "footprint": {"width": 0.08, "depth": 0.08},
+      "height": 0.08,
+      "greybox": {"mesh": "box", "color": [0.3, 0.6, 0.9]},
+      "label": "Gem"
+    },
+    "bottle": {
+      "path": "",
+      "category": ["carryable", "stone"],
+      "footprint": {"width": 0.15, "depth": 0.15},
+      "height": 0.22,
+      "greybox": {"mesh": "cylinder", "color": [0.55, 0.7, 0.55]},
+      "label": "Bottle"
+    },
+    "scroll": {
+      "path": "",
+      "category": ["carryable", "wood"],
+      "footprint": {"width": 0.12, "depth": 0.3},
+      "height": 0.3,
+      "greybox": {"mesh": "cylinder", "color": [0.75, 0.7, 0.55]},
+      "label": "Scroll"
+    },
+    "coin-pouch": {
+      "path": "",
+      "category": ["carryable", "wood"],
+      "footprint": {"width": 0.15, "depth": 0.12},
+      "height": 0.1,
+      "greybox": {"mesh": "box", "color": [0.45, 0.3, 0.2]},
+      "label": "Coin Pouch"
+    },
+    "candle": {
+      "path": "",
+      "category": ["carryable", "wood"],
+      "footprint": {"width": 0.1, "depth": 0.1},
+      "height": 0.15,
+      "greybox": {"mesh": "cylinder", "color": [0.9, 0.85, 0.7]},
+      "label": "Candle"
+    },
+    "dagger": {
+      "path": "",
+      "category": ["carryable", "metal"],
+      "footprint": {"width": 0.25, "depth": 0.06},
+      "height": 0.04,
+      "greybox": {"mesh": "box", "color": [0.4, 0.4, 0.45]},
+      "label": "Dagger"
+    },
+    "ring": {
+      "path": "",
+      "category": ["carryable", "metal"],
+      "footprint": {"width": 0.07, "depth": 0.07},
+      "height": 0.03,
+      "greybox": {"mesh": "box", "color": [0.75, 0.65, 0.2]},
+      "label": "Ring"
     }
   }
 }

@@ -435,3 +435,107 @@ def test_painting_builds_and_passes_gate(tmp_path):
     fp, h = read_envelope(LIVE_LEXICON, "painting")
     result = gate_asset(str(out), fp, h)
     assert result.passed, result.reasons
+
+
+# ── P-E: 10 carryable generators — live gate-passing build tests ───
+
+def _build_and_gate(spec, tmp_path):
+    """Build a GLB from spec, gate it, return (mesh, gate_result)."""
+    from gate import gate_asset
+    aid = spec["asset_id"]
+    sp = tmp_path / f"{aid}.json"
+    sp.write_text(json.dumps(spec))
+    out = tmp_path / f"{aid}.glb"
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(sp), str(out)],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert out.exists(), f"{aid}: no GLB written. stderr: {proc.stderr[-2000:] or proc.stdout[-2000:]}"
+    fp, h = read_envelope(LIVE_LEXICON, aid)
+    result = gate_asset(str(out), fp, h)
+    mesh = trimesh.load(str(out), force="mesh")
+    mesh.merge_vertices()
+    topo = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces)
+    topo.merge_vertices()
+    return topo, result
+
+
+def test_key_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "key", "generator": "key", "material": "wrought_iron",
+            "age": 0.2, "params": {"head_w": 0.05, "head_h": 0.03, "shaft_l": 0.06}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "key mesh must be watertight"
+
+
+def test_book_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "book", "generator": "book", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.2, "depth": 0.14, "thickness": 0.03}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "book mesh must be watertight"
+
+
+def test_cup_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "cup", "generator": "cup", "material": "rough_granite",
+            "age": 0.2, "params": {"radius": 0.05, "height": 0.1}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "cup mesh must be watertight"
+
+
+def test_gem_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "gem", "generator": "gem", "material": "rough_granite",
+            "age": 0.2, "params": {"size": 0.05}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "gem mesh must be watertight"
+
+
+def test_bottle_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "bottle", "generator": "bottle", "material": "rough_granite",
+            "age": 0.2, "params": {"body_radius": 0.05, "body_height": 0.1,
+            "neck_radius": 0.02, "neck_height": 0.05}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "bottle mesh must be watertight"
+
+
+def test_scroll_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "scroll", "generator": "scroll", "material": "worn_oak",
+            "age": 0.2, "params": {"radius": 0.03, "length": 0.2}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "scroll mesh must be watertight"
+
+
+def test_coin_pouch_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "coin-pouch", "generator": "coin-pouch", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.1, "depth": 0.08, "height": 0.06}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "coin-pouch mesh must be watertight"
+
+
+def test_candle_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "candle", "generator": "candle", "material": "worn_oak",
+            "age": 0.2, "params": {"radius": 0.03, "height": 0.1}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "candle mesh must be watertight"
+
+
+def test_dagger_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "dagger", "generator": "dagger", "material": "wrought_iron",
+            "age": 0.2, "params": {"blade_l": 0.15, "blade_w": 0.02, "handle_l": 0.07}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "dagger mesh must be watertight"
+
+
+def test_ring_builds_and_passes_gate(tmp_path):
+    spec = {"asset_id": "ring", "generator": "ring", "material": "wrought_iron",
+            "age": 0.2, "params": {"size": 0.05}}
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, result.reasons
+    assert topo.is_watertight, "ring mesh must be watertight"

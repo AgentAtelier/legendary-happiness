@@ -39,6 +39,22 @@ def _add_box(bm, cx, cy, cz, sx, sy, sz):
         v.co.z = v.co.z * sz + cz
 
 
+def _add_cylinder(bm, cx, cy, cz, radius, height, segments=16):
+    """Add a cylinder (Z-up) centred at (cx, cy, cz) with given radius and height.
+
+    Uses bmesh.ops.create_cone with equal diameters for a straight cylinder.
+    The default cone has base at z=0, top at z=height; we shift to centre at cz.
+    """
+    res = bmesh.ops.create_cone(
+        bm, cap_ends=True, cap_tris=False, segments=segments,
+        radius1=radius, radius2=radius, depth=height,
+    )
+    for v in res["verts"]:
+        v.co.z += cz - height / 2.0
+        v.co.x += cx
+        v.co.y += cy
+
+
 def _build_table_geometry(params):
     """Build the table mesh from params. Returns a Blender mesh data block."""
     tw, td, tt = params["top_width"], params["top_depth"], params["top_thickness"]
@@ -788,6 +804,160 @@ def _build_painting_geometry(params):
     return mesh
 
 
+# ── P-E: 10 carryable generators (≤0.3 m) ────────────────────────
+
+def _build_key_geometry(params):
+    """A small flat key: rectangular head + thin shaft."""
+    hw, hh, sl = params["head_w"], params["head_h"], params["shaft_l"]
+    mesh = bpy.data.meshes.new("key")
+    obj = bpy.data.objects.new("key", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Head: flat box at origin (≥0.01 m all dims for gate pass)
+    ht = 0.012
+    _add_box(bm, 0.0, 0.0, 0.0, hw, hh, ht)
+    # Shaft: thin box extending from head
+    shaft_cx = hw / 2.0 + sl / 2.0
+    _add_box(bm, shaft_cx, 0.0, 0.0, sl, 0.012, ht)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_book_geometry(params):
+    """A flat rectangular book."""
+    w, d, t = params["width"], params["depth"], params["thickness"]
+    mesh = bpy.data.meshes.new("book")
+    obj = bpy.data.objects.new("book", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, t / 2.0, w, d, t)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_cup_geometry(params):
+    """A small cup: cylinder body + box handle."""
+    r, h = params["radius"], params["height"]
+    mesh = bpy.data.meshes.new("cup")
+    obj = bpy.data.objects.new("cup", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, h / 2.0, r, h)
+    # Handle: small box inset so it overlaps the cylinder body for watertightness
+    handle_r = r - 0.005
+    _add_box(bm, handle_r, 0.0, h * 0.55, 0.03, 0.01, h * 0.25)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_gem_geometry(params):
+    """A small faceted gem (box approximation)."""
+    s = params["size"]
+    mesh = bpy.data.meshes.new("gem")
+    obj = bpy.data.objects.new("gem", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, s * 0.6, s * 0.7, s * 0.5, s)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_bottle_geometry(params):
+    """A small bottle: cylinder body + narrower cylinder neck."""
+    br, bh = params["body_radius"], params["body_height"]
+    nr, nh = params["neck_radius"], params["neck_height"]
+    mesh = bpy.data.meshes.new("bottle")
+    obj = bpy.data.objects.new("bottle", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, bh / 2.0, br, bh)
+    _add_cylinder(bm, 0.0, 0.0, bh + nh / 2.0, nr, nh)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_scroll_geometry(params):
+    """A thin cylindrical scroll."""
+    r, length = params["radius"], params["length"]
+    mesh = bpy.data.meshes.new("scroll")
+    obj = bpy.data.objects.new("scroll", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, length / 2.0, r, length)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_coin_pouch_geometry(params):
+    """A small flattened pouch."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("coin_pouch")
+    obj = bpy.data.objects.new("coin_pouch", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, d, h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_candle_geometry(params):
+    """A small candle: cylinder body + tiny cylinder wick."""
+    r, h = params["radius"], params["height"]
+    mesh = bpy.data.meshes.new("candle")
+    obj = bpy.data.objects.new("candle", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, h / 2.0, r, h)
+    # Wick: tiny cylinder on top
+    _add_cylinder(bm, 0.0, 0.0, h + 0.015, 0.008, 0.03, segments=8)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_dagger_geometry(params):
+    """A small dagger: long thin blade box + handle box + crossguard nub."""
+    bl, bw = params["blade_l"], params["blade_w"]
+    hl = params["handle_l"]
+    bt = 0.015  # blade thickness
+    mesh = bpy.data.meshes.new("dagger")
+    obj = bpy.data.objects.new("dagger", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Blade: long thin box extending in +X
+    blade_cx = bl / 2.0
+    _add_box(bm, blade_cx, 0.0, 0.0, bl, bw, bt)
+    # Handle: shorter box behind the blade
+    handle_cx = -hl / 2.0
+    _add_box(bm, handle_cx, 0.0, 0.0, hl, bw * 0.7, bw * 0.7)
+    # Crossguard: thin box at blade/handle junction, offset in Y to avoid coplanar faces
+    _add_box(bm, 0.0, 0.001, 0.0, bw * 1.5, 0.008, bw * 0.6)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_ring_geometry(params):
+    """A small ring: thin flat disc (cylinder).  Reads as a ring at this scale."""
+    s = params["size"]  # outer diameter
+    ht = 0.012            # ring height (thin band)
+    mesh = bpy.data.meshes.new("ring")
+    obj = bpy.data.objects.new("ring", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_cylinder(bm, 0.0, 0.0, ht / 2.0, s / 2.0, ht, segments=24)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
@@ -796,6 +966,16 @@ _BUILDERS = {
     "humanoid": _build_humanoid_geometry,
     "rug": _build_rug_geometry,
     "painting": _build_painting_geometry,
+    "key": _build_key_geometry,
+    "book": _build_book_geometry,
+    "cup": _build_cup_geometry,
+    "gem": _build_gem_geometry,
+    "bottle": _build_bottle_geometry,
+    "scroll": _build_scroll_geometry,
+    "coin-pouch": _build_coin_pouch_geometry,
+    "candle": _build_candle_geometry,
+    "dagger": _build_dagger_geometry,
+    "ring": _build_ring_geometry,
 }
 
 _COLOR_BUILDERS = {

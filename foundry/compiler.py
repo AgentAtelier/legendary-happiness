@@ -9,7 +9,9 @@ import json
 
 from materials import MATERIAL_PALETTE
 
-GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid", "rug", "painting"}
+GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid", "rug", "painting",
+               "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
+               "candle", "dagger", "ring"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -68,6 +70,51 @@ PARAM_RANGES = {
         "width": (0.3, 1.2),
         "height": (0.3, 1.2),
         "thickness": (0.03, 0.08),
+    },
+    # P-E: 10 small carryable generators (≤0.3 m).
+    "key": {
+        "head_w": (0.03, 0.08),
+        "head_h": (0.02, 0.05),
+        "shaft_l": (0.04, 0.1),
+    },
+    "book": {
+        "width": (0.1, 0.25),
+        "depth": (0.08, 0.2),
+        "thickness": (0.01, 0.05),
+    },
+    "cup": {
+        "radius": (0.03, 0.08),
+        "height": (0.06, 0.15),
+    },
+    "gem": {
+        "size": (0.03, 0.08),
+    },
+    "bottle": {
+        "body_radius": (0.03, 0.07),
+        "body_height": (0.06, 0.15),
+        "neck_radius": (0.01, 0.03),
+        "neck_height": (0.03, 0.08),
+    },
+    "scroll": {
+        "radius": (0.02, 0.05),
+        "length": (0.1, 0.25),
+    },
+    "coin-pouch": {
+        "width": (0.06, 0.15),
+        "depth": (0.05, 0.12),
+        "height": (0.04, 0.1),
+    },
+    "candle": {
+        "radius": (0.02, 0.05),
+        "height": (0.06, 0.15),
+    },
+    "dagger": {
+        "blade_l": (0.1, 0.2),
+        "blade_w": (0.01, 0.03),
+        "handle_l": (0.05, 0.1),
+    },
+    "ring": {
+        "size": (0.03, 0.07),
     },
 }
 

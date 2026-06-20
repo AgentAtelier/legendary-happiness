@@ -16,6 +16,8 @@ CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
                       # adjacent cells are robustly clear (no FP-boundary clips).
 WALL_MARGIN = 0.8     # keep furniture this far from walls
 FURNITURE = ("table", "chair", "shelf", "cabinet")
+CARRYABLES = ("key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
+              "candle", "dagger", "ring")
 NPC_Z_INSET = 0.6     # NPC sits this far in from the back wall
 
 
@@ -57,6 +59,7 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
     furniture = [e for e in entities if e["category"] in FURNITURE]
     rugs = [e for e in entities if e["category"] == "rug"]
     paintings = [e for e in entities if e["category"] == "painting"]
+    carryables = [e for e in entities if e["category"] in CARRYABLES]
 
     # ── Floor furniture on the grid ──────────────────────────
     cells = _grid_cells(w, d)
@@ -97,5 +100,51 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
                          "material": e["material"], "x": round(wx, 3), "y": 1.5,
                          "z": round(wz, 3), "yaw": yaw, "surface": "wall",
                          "decor": True})
+
+    # ── P-E: Carryables placed on furniture surfaces ─────────
+    # Each carryable is placed on a furniture top if available,
+    # else on the floor.  surface="on" with y offset above the furniture top.
+    _FURNITURE_TOP_Y = {
+        "table": 0.78,   # leg_height ~0.67 + top_thickness ~0.08 + small margin
+        "shelf": 1.2,    # shelf height
+        "cabinet": 1.55, # cabinet height ~1.5 + top
+        "chair": 0.48,   # seat at ~0.45 + seat_thickness
+    }
+    for i, e in enumerate(carryables):
+        # Place on the i-th furniture item (wrap around)
+        if i < len(placed):
+            parent_entry = manifest[i]  # furniture was placed first
+            px, pz = parent_entry["x"], parent_entry["z"]
+            pcat = parent_entry["category"]
+            top_y = _FURNITURE_TOP_Y.get(pcat, 0.8)
+            # Small random offset on the surface (deterministic: use i as seed)
+            ox = (i % 3 - 1) * 0.1
+            oz = ((i // 3) % 3 - 1) * 0.1
+            manifest.append({
+                "id": f"{e['category']}_{i}",
+                "category": e["category"],
+                "material": e["material"],
+                "x": round(px + ox, 3),
+                "y": round(top_y + 0.02, 3),
+                "z": round(pz + oz, 3),
+                "yaw": 0.0,
+                "surface": "on",
+                "decor": False,
+            })
+        else:
+            # No furniture left — place on floor near origin
+            fx = (i * 0.15) % 1.0 - 0.5
+            fz = ((i * 0.15) // 1.0) * 0.15 - 0.3
+            manifest.append({
+                "id": f"{e['category']}_{i}",
+                "category": e["category"],
+                "material": e["material"],
+                "x": round(fx, 3),
+                "y": 0.02,
+                "z": round(fz, 3),
+                "yaw": 0.0,
+                "surface": "floor",
+                "decor": False,
+            })
 
     return manifest, {"w": w, "d": d}, decisions

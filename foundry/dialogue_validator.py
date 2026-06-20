@@ -51,9 +51,9 @@ _CODE_PATTERNS: list[str] = [
 
 _FALLBACK_TEMPLATES: dict[str, str] = {
     "greet": "Hello there, traveler.",
-    "ask": "I am looking for the {category}. Can you bring it to me?",
+    "ask": "I am looking for the {adj} {category}. Can you bring it to me?",
     "wrong": "That is not what I am looking for.",
-    "thank": "You found it! Thank you so much.",
+    "thank": "You found the {adj} {category}! Thank you so much.",
 }
 
 
@@ -96,14 +96,17 @@ def validate_line(line: str, category: str) -> bool:
     return True
 
 
-def fallback_dialogue(category: str) -> dict[str, str]:
+def fallback_dialogue(category: str, adjective: str = "") -> dict[str, str]:
     """Return the full canned dialogue for a target *category*."""
-    return {k: v.format(category=category) for k, v in _FALLBACK_TEMPLATES.items()}
+    adj = adjective + " " if adjective else ""
+    return {k: v.format(category=category, adj=adj).rstrip()
+            for k, v in _FALLBACK_TEMPLATES.items()}
 
 
 def validate_dialogue(
     dialogue: dict[str, str],
     category: str,
+    adjective: str = "",
 ) -> Tuple[dict[str, str], List[DecisionPoint]]:
     """Validate all four dialogue lines against *category*.
 
@@ -113,7 +116,7 @@ def validate_dialogue(
     """
     validated: dict[str, str] = {}
     decisions: list[DecisionPoint] = []
-    fallback = fallback_dialogue(category)
+    fallback = fallback_dialogue(category, adjective=adjective)
 
     for field in ("greet", "ask", "wrong", "thank"):
         line = dialogue.get(field, "")

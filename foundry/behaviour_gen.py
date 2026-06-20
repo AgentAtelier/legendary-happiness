@@ -197,15 +197,17 @@ class QuestBehaviourPlanner:
     def build_prompt(self, room_theme: str, manifest: list[dict]) -> str:
         """Build the quest-planner prompt for *room_theme* and *manifest*.
 
-        *manifest* is a list of dicts, each with at least ``id`` and
-        ``category`` keys.
+        *manifest* is a list of dicts, each with at least ``id``,
+        ``category``, and ``material`` keys.
         """
         # Build a compact manifest text: one line per prop
         lines: list[str] = []
         for entry in manifest:
             eid = entry.get("id", "?")
             cat = entry.get("category", "?")
-            lines.append(f"  {eid} ({cat})")
+            mat = entry.get("material", "?")
+            adj = self._material_adjective(mat)
+            lines.append(f"  {eid} ({adj} {cat})")
         manifest_text = "\n".join(lines)
 
         return _QUEST_PLANNER_PROMPT.format(
@@ -254,22 +256,45 @@ class QuestBehaviourPlanner:
                 return entry.get("category", "thing")
         return "thing"
 
+    @staticmethod
+    def _target_material(manifest: list[dict], target_id: str) -> str:
+        """Get the material of *target_id* from *manifest*."""
+        for entry in manifest:
+            if entry.get("id") == target_id:
+                return entry.get("material", "default")
+        return "default"
+
+    @staticmethod
+    def _material_adjective(material: str) -> str:
+        """Map a material id to a short descriptive adjective."""
+        return {
+            "worn_oak": "wooden",
+            "dark_walnut": "dark",
+            "weathered_pine": "pine",
+            "rough_granite": "stone",
+            "wrought_iron": "brass",
+        }.get(material, material)
+
     def plan(
         self,
         room_theme: str,
         manifest: list[dict],
         llm: Callable[[str, Optional[str]], str],
         seed: int | None = None,
+        carryable_ids: set[str] | None = None,
     ) -> Tuple[dict, List[DecisionPoint]]:
         """Plan a quest spec from a room theme and placed-entity manifest.
 
         Args:
             room_theme: Short description (e.g. "a hermit's shack").
             manifest: List of placed-entity dicts, each with at least
-                      ``id`` and ``category`` keys.
+                      ``id``, ``category``, and ``material`` keys.
             llm: Callable (prompt, grammar) -> str.  Pass a FAKE for
                  tests, or ``FoundryLLM`` for production.
             seed: Optional random seed for reproducible output.
+            carryable_ids: Optional set of entity IDs that are carryable
+                           (quest targets). If None, all non-decor entities
+                           are eligible.
 
         Returns:
             ``(spec, decisions)`` — ``spec`` is a validated quest-spec
@@ -282,7 +307,10 @@ class QuestBehaviourPlanner:
         decisions: list[DecisionPoint] = []
 
         # ── Guard: manifest must have eligible targets ────────────
-        valid_ids = self._manifest_ids(manifest)
+        # P-E: if carryable_ids provided, only carryables are eligible targets.
+        # Otherwise all manifest entities are eligible (backward compat).
+        all_manifest_ids = self._manifest_ids(manifest)
+        valid_ids = carryable_ids & all_manifest_ids if carryable_ids is not None else all_manifest_ids
         if not valid_ids:
             decisions.append(
                 make_decision(
@@ -340,10 +368,13 @@ class QuestBehaviourPlanner:
             target_entity = fallback_id
 
         # ── Validate / fallback dialogue ─────────────────────────
+        # P-E: use category + material adjective for dialogue item naming
         category = self._target_category(manifest, target_entity)
+        material = self._target_material(manifest, target_entity)
+        adjective = self._material_adjective(material)
         raw_dialogue = spec.get("dialogue", {})
         validated_dialogue, dialogue_decisions = validate_dialogue(
-            raw_dialogue, category
+            raw_dialogue, category, adjective=adjective
         )
         decisions.extend(dialogue_decisions)
 

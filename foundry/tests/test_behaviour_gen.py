@@ -328,7 +328,8 @@ def test_plan_junk_dialogue_fallback_fires():
     # All four fields should have fallback values (since all were invalid)
     assert spec["target_entity"] == "table_0"
     from dialogue_validator import fallback_dialogue
-    fallback = fallback_dialogue("table")
+    # P-E: fallback now includes the material adjective ("wooden table")
+    fallback = fallback_dialogue("table", adjective="wooden")
     for field in ("greet", "ask", "wrong", "thank"):
         assert spec["dialogue"][field] == fallback[field], (
             f"field {field}: expected fallback {fallback[field]!r}, "
@@ -369,9 +370,9 @@ def test_plan_short_irrelevant_dialogue_gets_fallback():
         "a test room", _MANIFEST_4, _fake_llm_short_dialogue
     )
 
-    # target is cabinet_0 → category is "cabinet"
+    # target is cabinet_0 → category is "cabinet", material "wrought_iron" → adjective "brass"
     from dialogue_validator import fallback_dialogue
-    fallback = fallback_dialogue("cabinet")
+    fallback = fallback_dialogue("cabinet", adjective="brass")
 
     # "Hello." → passes ("hello" is a valid NPC greeting word, \b match)
     assert spec["dialogue"]["greet"] == "Hello."
@@ -601,8 +602,9 @@ def test_plan_fallback_dialogue_includes_category():
     spec, _ = planner.plan(
         "a room", _MANIFEST_4, _fake_llm_junk_dialogue
     )
-    # target is table_0 → category "table"
-    assert "table" in spec["dialogue"]["ask"]
+    # target is table_0 → category "table", material "worn_oak" → adjective "wooden"
+    # P-E: ask line now includes adjective: "I am looking for the wooden table..."
+    assert "wooden" in spec["dialogue"]["ask"] or "table" in spec["dialogue"]["ask"]
 
 
 # ── P-H-1: Seed determinism ─────────────────────────────────────

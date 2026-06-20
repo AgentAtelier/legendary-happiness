@@ -159,14 +159,24 @@ def _cmd_quest(args: list[str]) -> int:
     ensure_decisions = ensure_assets(manifest, parsed.library_dir, parsed.lexicon)
 
     # ── Step 1: Behaviour-gen ─────────────────────────────────
-    # The fetch target must be a furniture prop the player can pick up —
-    # never decor (rug/painting). Plan against the furniture-only view.
+    # P-E: The quest target is a carryable. Pass the full manifest
+    # (including carryables) so the LLM can target them. Furniture
+    # stays pickable scenery.
     from behaviour_gen import QuestBehaviourPlanner
     planner = QuestBehaviourPlanner()
 
-    furniture_manifest = [e for e in manifest if not e.get("decor")]
+    # Carryables are the eligible quest targets.
+    carryable_ids = {e["id"] for e in manifest if e.get("category") in (
+        "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
+        "candle", "dagger", "ring",
+    )}
+    # Pass the full manifest (behaviour_gen builds prompt from it;
+    # the LLM picks from carryables as targets).
     print(f"[quest] Planning quest for: {parsed.request!r}")
-    spec, quest_decisions = planner.plan(parsed.request, furniture_manifest, llm, seed=seed)
+    spec, quest_decisions = planner.plan(
+        parsed.request, manifest, llm, seed=seed,
+        carryable_ids=carryable_ids,
+    )
     decisions = room_decisions + layout_decisions + ensure_decisions + quest_decisions
 
     target = spec.get("target_entity", "?")

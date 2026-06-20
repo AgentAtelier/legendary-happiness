@@ -449,6 +449,16 @@ def compute_quest_signals(record) -> Set[str]:
         if decor_tag:
             tags.add(decor_tag)
 
+        # P-E: target must be a carryable (not furniture)
+        carryable_tag = check_target_is_carryable(record)
+        if carryable_tag:
+            tags.add(carryable_tag)
+
+        # P-E: target must be named in dialogue
+        dialogue_tag = check_target_named_in_dialogue(record)
+        if dialogue_tag:
+            tags.add(dialogue_tag)
+
     if not tags:
         tags.add("clean")
     return tags
@@ -534,9 +544,89 @@ def check_headless_load_clean(stderr: str) -> bool:
     return True
 
 
+# P-E: target-is-carryable signal ───────────────────────────────────
+
+_CARRYABLE_CATEGORIES = {
+    "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
+    "candle", "dagger", "ring",
+}
+
+
+def check_target_is_carryable(record) -> Optional[str]:
+    """P-E: Return a signal tag if the quest target_entity is NOT a
+    carryable item (i.e. it's furniture or decor) AND carryables exist
+    in the manifest.  If there are no carryables at all, the room is
+    pre-P-E and furniture-targeting is fine.
+
+    Returns "target_not_carryable" if violated, None if clean."""
+    spec = getattr(record, "quest_spec", None)
+    manifest = getattr(record, "manifest", None) or []
+    if not isinstance(spec, dict) or not manifest:
+        return None
+    # Only fire when carryables exist in the manifest
+    has_carryable = any(
+        e.get("category") in _CARRYABLE_CATEGORIES for e in manifest
+    )
+    if not has_carryable:
+        return None
+    target_id = spec.get("target_entity", "")
+    for entry in manifest:
+        if entry.get("id") == target_id:
+            cat = entry.get("category", "")
+            if cat not in _CARRYABLE_CATEGORIES:
+                return "target_not_carryable"
+            return None
+    return None  # target not in manifest (handled by quest_no_target)
+
+
+def check_target_named_in_dialogue(record) -> Optional[str]:
+    """P-E: Return a signal tag if the quest target's category or material
+    adjective is not mentioned in any dialogue line, AND carryables exist.
+
+    Returns "target_not_named_in_dialogue" if violated, None if clean."""
+    spec = getattr(record, "quest_spec", None)
+    manifest = getattr(record, "manifest", None) or []
+    if not isinstance(spec, dict) or not manifest:
+        return None
+    # Only fire when carryables exist in the manifest
+    has_carryable = any(
+        e.get("category") in _CARRYABLE_CATEGORIES for e in manifest
+    )
+    if not has_carryable:
+        return None
+    target_id = spec.get("target_entity", "")
+    category = ""
+    material_adj = ""
+    for entry in manifest:
+        if entry.get("id") == target_id:
+            category = entry.get("category", "")
+            mat = entry.get("material", "")
+            # Map material to adjective (same mapping as behaviour_gen)
+            material_adj = {
+                "worn_oak": "wooden",
+                "dark_walnut": "dark",
+                "weathered_pine": "pine",
+                "rough_granite": "stone",
+                "wrought_iron": "brass",
+            }.get(mat, mat)
+            break
+    if not category:
+        return None
+
+    dialogue = spec.get("dialogue", {})
+    # Check if category OR adjective appears in any dialogue line
+    all_lines = " ".join(str(v) for v in dialogue.values() if v).lower()
+    if category.lower() in all_lines or material_adj.lower() in all_lines:
+        return None
+    return "target_not_named_in_dialogue"
+
+
 # P-K: decor-never-target tag in SIGNAL_SEVERITY ──────────────────────
 SIGNAL_SEVERITY["decor_never_target"] = "high"
 SIGNAL_SEVERITY["headless_not_clean"] = "high"
+# P-E: carryable targeting signals
+SIGNAL_SEVERITY["target_not_carryable"] = "high"
+SIGNAL_SEVERITY["target_not_named_in_dialogue"] = "high"
 # C-0: room control signals
 SIGNAL_SEVERITY["guards_violated"] = "high"
 SIGNAL_SEVERITY["theme_out_of_bounds"] = "high"

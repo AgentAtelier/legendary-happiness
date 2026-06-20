@@ -85,6 +85,17 @@ _COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
     "cabinet": (0.8, 1.5, 0.5),
     "chair": (0.5, 0.9, 0.5),
     "humanoid": (0.5, 1.8, 0.4),
+    # P-E: carryables — small collision boxes
+    "key": (0.12, 0.01, 0.06),
+    "book": (0.25, 0.05, 0.2),
+    "cup": (0.16, 0.15, 0.16),
+    "gem": (0.08, 0.08, 0.08),
+    "bottle": (0.14, 0.22, 0.14),
+    "scroll": (0.06, 0.05, 0.25),
+    "coin-pouch": (0.15, 0.1, 0.12),
+    "candle": (0.1, 0.15, 0.1),
+    "dagger": (0.25, 0.04, 0.06),
+    "ring": (0.07, 0.03, 0.07),
     # Default for unknown categories
     "?": (0.5, 0.5, 0.5),
 }
