@@ -134,6 +134,30 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model produced a garbled NPC role, so I cleaned it up to '{resolved}'.",
     ),
+    "room.size_clamped": (
+        # technical
+        "room_size {axis}={raw} clamped to {clamped} (bounds [{lo}, {hi}]).",
+        # plain
+        "The room was an unusual size, so it was nudged to a sensible {clamped} m.",
+    ),
+    "room.prop_clamped": (
+        # technical
+        "prop {field}={raw!r} invalid → {fixed!r}.",
+        # plain
+        "One furnishing choice ({field}) didn't fit the catalogue, so it was adjusted to {fixed}.",
+    ),
+    "room.empty": (
+        # technical
+        "room plan had no props.",
+        # plain
+        "The room came out empty, so there's nothing to furnish it with yet.",
+    ),
+    "room.over_capacity": (
+        # technical
+        "{placed} of {requested} floor props placed; {dropped} over capacity for {w}x{d} room.",
+        # plain
+        "The model asked for more furniture than the room holds; {placed} fit and {dropped} were left out.",
+    ),
 }
 
 
