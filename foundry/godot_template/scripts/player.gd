@@ -8,6 +8,8 @@ var carried_item: String = ""
 var speed: float = 5.0
 var mouse_sensitivity: float = 0.002
 var gravity: float = 9.8
+# C-1: footstep timer (throttled to avoid rapid-fire)
+var _footstep_timer: float = 0.0
 
 @onready var _camera: Camera3D = $Camera3D
 
@@ -52,6 +54,14 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, speed)
 		velocity.z = move_toward(velocity.z, 0.0, speed)
+
+	# C-1: footstep audio (throttled, only when grounded and moving)
+	if direction and is_on_floor():
+		_footstep_timer -= delta
+		if _footstep_timer <= 0.0:
+			_footstep_timer = 0.5  # ~2 steps/second at normal speed
+			if has_node("/root/Audio"):
+				get_node("/root/Audio").play_footstep()
 
 	if not is_on_floor():
 		velocity.y -= gravity * delta

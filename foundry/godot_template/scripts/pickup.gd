@@ -39,6 +39,9 @@ func on_interact(tag: String) -> void:
 
 	player.carried_item = name
 	picked_up.emit(name)
+	# C-1: audio feedback
+	if has_node("/root/Audio"):
+		get_node("/root/Audio").play_pickup()
 
 
 func _restore_to_world(prop_name: String) -> void:

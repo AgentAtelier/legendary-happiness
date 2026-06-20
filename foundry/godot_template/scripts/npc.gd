@@ -27,6 +27,9 @@ func _load_quest_data() -> void:
 func on_interact(tag: String) -> void:
 	if tag != "talk":
 		return
+	# C-1: audio feedback
+	if has_node("/root/Audio"):
+		get_node("/root/Audio").play_talk()
 	var hud = get_node("/root/Root/HUD")
 	match _state:
 		State.IDLE:
@@ -79,6 +82,9 @@ func _show_line(hud: Node, key: String) -> void:
 
 
 func _emit_win() -> void:
+	# C-1: audio feedback
+	if has_node("/root/Audio"):
+		get_node("/root/Audio").play_win()
 	var win = get_node("/root/Root/WinScreen")
 	if win.has_method("show_win"):
 		win.show_win()

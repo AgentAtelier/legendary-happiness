@@ -32,6 +32,7 @@ var _result := {
 	"room_shell_ok": false,
 	"player_body": false,
 	"player_grounded": false,
+	"audio_synth": false,
 	"checks": []
 }
 
@@ -83,6 +84,7 @@ func _run_checks():
 	_check_room_shell(all_nodes)
 	_check_player_body(all_nodes)
 	_check_player_grounded(all_nodes)
+	_check_audio_synth(all_nodes)
 
 	_result["ok"] = true
 	for check in _result["checks"]:
@@ -322,3 +324,58 @@ func _print_and_quit(exit_code: int):
 	var json_str = JSON.stringify(_result, "")
 	print("PROBE_JSON_OUTPUT:" + json_str)
 	quit(exit_code)
+
+
+# ── C-1: Audio synthesis check ───────────────────────────────────
+
+func _check_audio_synth(_all_nodes: Array[Node]):
+	"""Verify that AudioStreamGenerator can be created, filled, and
+	played without errors (no sound files required — pure synthesis)."""
+	var generator = AudioStreamGenerator.new()
+	if generator == null:
+		_result["checks"].append("FAIL: AudioStreamGenerator.new() returned null")
+		return
+	generator.mix_rate = 44100
+	generator.buffer_length = 0.05
+
+	var player = AudioStreamPlayer.new()
+	player.stream = generator
+	add_child(player)
+	player.play()
+
+	var playback = player.get_stream_playback()
+	if playback == null:
+		_result["checks"].append("FAIL: get_stream_playback() returned null")
+		player.queue_free()
+		return
+
+	# Push a short test waveform (sine at 440 Hz, 0.05s)
+	var can_push: bool = playback.can_push_buffer(256)
+	if not can_push:
+		_result["checks"].append("FAIL: can_push_buffer(256) returned false")
+		player.queue_free()
+		return
+
+	for _i in range(2205):  # 44100 * 0.05 ≈ 2205 frames
+		var v: float = sin(float(_i) / 44100.0 * 440.0 * TAU) * 0.3
+		playback.push_frame(Vector2(v, v))
+
+	# Give it a frame to start playing
+	await get_tree().process_frame
+
+	if player.playing:
+		_result["audio_synth"] = true
+		_result["checks"].append("PASS: AudioStreamGenerator plays synthesized audio")
+	else:
+		_result["checks"].append("FAIL: AudioStreamGenerator not playing after push")
+
+	player.stop()
+	player.queue_free()
+
+	# C-1: Also exercise the actual Audio autoload (end-to-end)
+	var audio_autoload = get_node_or_null("/root/Audio")
+	if audio_autoload and audio_autoload.has_method("play_footstep"):
+		audio_autoload.play_footstep()
+		_result["checks"].append("PASS: Audio autoload play_footstep() called without error")
+	else:
+		_result["checks"].append("WARNING: Audio autoload not found (may not be registered)")
