@@ -59,6 +59,7 @@ _SHELL_SCRIPTS: List[dict] = [
 _SHELL_NODES: List[dict] = [
     {"name": "Player", "type": "CharacterBody3D", "parent": ".", "script": "s_player"},
     {"name": "Camera3D", "type": "Camera3D", "parent": "Player"},
+    {"name": "CarriedItem", "type": "Node3D", "parent": "Player/Camera3D"},
     {"name": "InteractionRaycast", "type": "Node3D", "parent": "Player/Camera3D", "script": "s_interact"},
     {"name": "HUD", "type": "Control", "parent": ".", "script": "s_hud"},
     {"name": "WinScreen", "type": "Control", "parent": ".", "script": "s_win"},
@@ -721,6 +722,8 @@ def compile_scene(
         )
         if not is_decor:
             lines.append(f'metadata/_forge_tag = "{tag}"')
+            # P-B: add category metadata for named prompts
+            lines.append(f'metadata/_forge_category = "{cat}"')
             # P5: attach component script by tag
             component_path = _TAG_TABLE.get(tag)
             if component_path and component_path in used_tag_scripts:
@@ -754,6 +757,8 @@ def compile_scene(
     )
     lines.append('metadata/_forge_tag = "talk"')
     lines.append('metadata/_forge_tag_give = "give"')
+    # P-B: add NPC role metadata for nameplate and named prompts
+    lines.append(f'metadata/_forge_role = "{npc_role}"')
     # P5: attach npc.gd via the talk tag
     npc_script_path = _TAG_TABLE.get("talk")
     if npc_script_path and npc_script_path in used_tag_scripts:
@@ -778,6 +783,17 @@ def compile_scene(
     )
     lines.append("")
 
+    # P-B: NPC nameplate — billboard Label3D showing npc_role
+    lines.append('[node name="Nameplate" type="Label3D" parent="NPC"]')
+    lines.append(f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)")
+    lines.append(f'text = "{npc_role}"')
+    lines.append("billboard = 1")
+    lines.append("horizontal_alignment = 1")
+    lines.append("font_size = 32")
+    lines.append("outline_size = 2")
+    lines.append("outline_modulate = Color(0, 0, 0, 1)")
+    lines.append("")
+
     # ── Shell nodes (P4: with scripts attached + proper UI layout)
     for shell in _SHELL_NODES:
         parent = shell["parent"]
@@ -792,6 +808,11 @@ def compile_scene(
                 "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)"
             )
             lines.append("current = true")
+        if shell["name"] == "CarriedItem":
+            # Position in front of camera (0.4 m forward, 0.1 m right, -0.1 m down)
+            lines.append(
+                "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, -0.1, -0.45)"
+            )
         if shell["name"] == "Player":
             # Player spawn at y=1 to be clear of floor (FIX-1c)
             lines.append(
@@ -825,6 +846,20 @@ def compile_scene(
     lines.append("")
 
     # HUD child labels
+    lines.append('[node name="Crosshair" type="ColorRect" parent="HUD"]')
+    lines.append("layout_mode = 1")
+    lines.append("anchors_preset = 8")
+    lines.append("anchor_left = 0.5")
+    lines.append("anchor_top = 0.5")
+    lines.append("anchor_right = 0.5")
+    lines.append("anchor_bottom = 0.5")
+    lines.append("offset_left = -4.0")
+    lines.append("offset_top = -4.0")
+    lines.append("offset_right = 4.0")
+    lines.append("offset_bottom = 4.0")
+    lines.append("color = Color(0, 1, 0, 0.8)")
+    lines.append("")
+
     lines.append('[node name="ObjectiveLabel" type="Label" parent="HUD"]')
     lines.append("layout_mode = 0")
     lines.append("offset_left = 20.0")
@@ -844,7 +879,35 @@ def compile_scene(
     lines.append("grow_horizontal = 2")
     lines.append("grow_vertical = 2")
     lines.append("text = \"\"")
+    lines.append('horizontal_alignment = 1')
+    lines.append("")
+
+    # Win screen child labels (P-B)
+    lines.append('[node name="WinLabel" type="Label" parent="WinScreen"]')
+    lines.append("layout_mode = 1")
+    lines.append("anchors_preset = 8")
+    lines.append("anchor_left = 0.5")
+    lines.append("anchor_top = 0.4")
+    lines.append("anchor_right = 0.5")
+    lines.append("anchor_bottom = 0.4")
+    lines.append("grow_horizontal = 2")
+    lines.append("grow_vertical = 2")
+    lines.append('text = "You won!"')
     lines.append("horizontal_alignment = 1")
+    lines.append("vertical_alignment = 1")
+    lines.append("")
+    lines.append('[node name="WinSubLabel" type="Label" parent="WinScreen"]')
+    lines.append("layout_mode = 1")
+    lines.append("anchors_preset = 8")
+    lines.append("anchor_left = 0.5")
+    lines.append("anchor_top = 0.5")
+    lines.append("anchor_right = 0.5")
+    lines.append("anchor_bottom = 0.5")
+    lines.append("grow_horizontal = 2")
+    lines.append("grow_vertical = 2")
+    lines.append('text = "Press R to restart / Esc to quit"')
+    lines.append("horizontal_alignment = 1")
+    lines.append("vertical_alignment = 1")
     lines.append("")
 
     # QuestData node (no script — P5 reads the JSON resource directly)

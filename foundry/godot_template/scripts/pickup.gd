@@ -2,6 +2,8 @@
 # On interact, hides the prop and stores it in the player's inventory.
 # FIX-5: Supports switching carried items — picking up a different
 # prop restores the previously-carried prop's visibility.
+# P-B: Carry-in-view — reparents model to CarriedItem node on pickup.
+# Disables collision on pickup so the prop doesn't block the player.
 extends Node3D
 
 signal picked_up(item_id: String)
@@ -12,12 +14,40 @@ func on_interact(tag: String) -> void:
 		return
 	var player = get_node("/root/Root/Player")
 
-	# If player is already carrying a different item, restore its visibility
+	# If player is already carrying a different item, restore its model
 	if player.carried_item != "" and player.carried_item != name:
-		var old_prop = get_node_or_null("/root/Root/" + player.carried_item)
-		if old_prop:
-			old_prop.show()
+		_restore_to_world(player.carried_item)
+
+	# Move the model to the CarriedItem node (in front of camera)
+	var carried_parent = get_node_or_null("/root/Root/Player/Camera3D/CarriedItem")
+	if carried_parent:
+		var model = get_node_or_null("%s_model" % name)
+		if model:
+			model.reparent(carried_parent)
+			model.show()
+
+	# Disable collision so the prop doesn't block the player
+	# Use set() to bypass GDScript static analysis (script extends Node3D,
+	# but is attached to StaticBody3D nodes at runtime).
+	set("collision_layer", 0)
+	set("collision_mask", 0)
+	hide()
 
 	player.carried_item = name
-	hide()
 	picked_up.emit(name)
+
+
+func _restore_to_world(prop_name: String) -> void:
+	"""Restore a previously-carried prop's model to its original parent."""
+	var prop = get_node_or_null("/root/Root/" + prop_name)
+	if not prop:
+		return
+	var model = get_node_or_null(
+		"/root/Root/Player/Camera3D/CarriedItem/%s_model" % prop_name
+	)
+	if model and is_instance_valid(model):
+		model.reparent(prop)
+	# Re-enable collision
+	prop.set("collision_layer", 1)
+	prop.set("collision_mask", 1)
+	prop.show()

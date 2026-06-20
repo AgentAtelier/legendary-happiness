@@ -831,3 +831,60 @@ def test_camera_local_y_is_eye_height():
     assert "0, 0.7, 0)" in text, (
         f"Camera3D local transform should have y=0.7\ntext:\n{text[:1000]}"
     )
+
+
+# ── P-B: HUD & interaction UX pack ──────────────────────────────
+
+def test_crosshair_node_exists():
+    """P-B: HUD has a Crosshair ColorRect child."""
+    _, parsed, _ = _compile_and_parse()
+    crosshair = [n for n in parsed["nodes"] if n["name"] == "Crosshair"]
+    assert len(crosshair) == 1
+    assert crosshair[0]["type"] == "ColorRect"
+    assert crosshair[0]["parent"] == "HUD"
+
+
+def test_carried_item_node_exists():
+    """P-B: Camera3D has a CarriedItem Node3D child."""
+    _, parsed, _ = _compile_and_parse()
+    carried = [n for n in parsed["nodes"] if n["name"] == "CarriedItem"]
+    assert len(carried) == 1
+    assert carried[0]["type"] == "Node3D"
+    # parent path uses / separator in Godot 4 .tscn
+    assert "Camera3D" in carried[0]["parent"]
+
+
+def test_win_labels_exist():
+    """P-B: WinScreen has WinLabel and WinSubLabel children."""
+    _, parsed, _ = _compile_and_parse()
+    node_names = {n["name"] for n in parsed["nodes"]}
+    assert "WinLabel" in node_names
+    assert "WinSubLabel" in node_names
+
+
+def test_nameplate_node_exists():
+    """P-B: NPC has a Nameplate Label3D child."""
+    _, parsed, _ = _compile_and_parse()
+    plates = [n for n in parsed["nodes"] if n["name"] == "Nameplate"]
+    assert len(plates) == 1
+    assert plates[0]["type"] == "Label3D"
+    assert plates[0]["parent"] == "NPC"
+
+
+def test_prop_has_category_metadata():
+    """P-B: Props have _forge_category metadata for named prompts."""
+    _, parsed, _ = _compile_and_parse()
+    for entry in _MANIFEST:
+        meta = parsed["metadata"].get(entry["id"], {})
+        assert meta.get("_forge_category") == entry["category"], (
+            f"prop {entry['id']!r} should have _forge_category={entry['category']!r}, got {meta}"
+        )
+
+
+def test_npc_has_role_metadata():
+    """P-B: NPC has _forge_role metadata for named prompts and nameplate."""
+    _, parsed, _ = _compile_and_parse()
+    meta = parsed["metadata"].get("NPC", {})
+    assert meta.get("_forge_role") == "hermit", (
+        f"NPC should have _forge_role=hermit, got {meta}"
+    )

@@ -1,6 +1,6 @@
 # PlayerController — first-person CharacterBody3D player.
 # Works with Jolt Physics (configured in project.godot).
-# WASD movement, mouse look, E for interaction.
+# WASD movement, mouse look, E for interaction, G to drop.
 # ESC toggles mouse capture.
 extends CharacterBody3D
 
@@ -26,6 +26,10 @@ func _input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * mouse_sensitivity)
 		_camera.rotate_x(-event.relative.y * mouse_sensitivity)
 		_camera.rotation.x = clamp(_camera.rotation.x, -PI / 2.0, PI / 2.0)
+	# P-B: drop carried item with G key
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_G:
+			_drop_item()
 
 
 func _physics_process(delta: float) -> void:
@@ -53,3 +57,27 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= gravity * delta
 
 	move_and_slide()
+
+
+func _drop_item() -> void:
+	if carried_item == "":
+		return
+	var prop = get_node_or_null("/root/Root/" + carried_item)
+	if not prop:
+		carried_item = ""
+		return
+	# Restore the model to the prop
+	var carried = $Camera3D/CarriedItem
+	for child in carried.get_children():
+		child.reparent(prop)
+	# Make the prop visible again, place it in front of player
+	prop.show()
+	# Place the prop at the player's feet + a bit forward,
+	# preserving the prop's original y position
+	var drop_pos: Vector3 = global_position + (-global_transform.basis.z * 1.5)
+	drop_pos.y = prop.position.y
+	prop.global_position = drop_pos
+	# Re-enable collision
+	prop.set("collision_layer", 1)
+	prop.set("collision_mask", 1)
+	carried_item = ""

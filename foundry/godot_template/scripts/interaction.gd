@@ -1,6 +1,7 @@
 # InteractionRaycast — raycast from camera, detects interactable objects.
 # Reads _forge_tag metadata on collider nodes.
 # Uses _unhandled_input for one-shot E key detection.
+# P-B: named prompts (e.g. "Press E to pick up the table")
 extends Node3D
 
 signal interact_prompt(visible: bool, prompt_text: String)
@@ -29,7 +30,8 @@ func _process(_delta: float) -> void:
 			if current.has_meta("_forge_tag"):
 				var tag: String = current.get_meta("_forge_tag")
 				if tag == "pickup" or tag == "talk":
-					interact_prompt.emit(true, "Press E to " + tag)
+					var prompt_text: String = _build_prompt(current, tag)
+					interact_prompt.emit(true, prompt_text)
 					return
 			current = current.get_parent()
 
@@ -58,3 +60,22 @@ func _unhandled_input(event: InputEvent) -> void:
 								current.on_interact(tag)
 							return
 					current = current.get_parent()
+
+
+func _build_prompt(node: Node, tag: String) -> String:
+	"""Build a named interact prompt using node metadata."""
+	if tag == "pickup":
+		var category: String = ""
+		if node.has_meta("_forge_category"):
+			category = node.get_meta("_forge_category")
+		if category != "":
+			return "Press E to pick up the %s" % category
+		return "Press E to pick up"
+	if tag == "talk":
+		var role: String = ""
+		if node.has_meta("_forge_role"):
+			role = node.get_meta("_forge_role")
+		if role != "":
+			return "Press E to talk to the %s" % role
+		return "Press E to talk"
+	return "Press E"
