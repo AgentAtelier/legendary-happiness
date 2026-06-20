@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
+from category_registry import BASE_FURNITURE, DECOR_CATEGORIES
 from decisions import Choice, DecisionPoint
 
 # ── Theme tables ───────────────────────────────────────────────────
@@ -92,11 +93,11 @@ THEME_TABLE: List[dict] = [
 _GLOBAL_MIN_DENSITY = 1
 _GLOBAL_MAX_DENSITY = 20
 _COUNT_HI = 8           # per-category max (mirrors RoomPlanner.COUNT_HI)
-_DECOR_CATEGORIES = {"rug", "painting"}
+_DECOR_CATEGORIES = DECOR_CATEGORIES
 # Theme tables only gate the BASE furniture categories. Carryables (P-E) and the
 # extended prop set (P-F) pass through every theme — the theme still biases their
 # palette/density — so they actually appear in rooms (and a carryable target exists).
-_BASE_FURNITURE = {"table", "chair", "shelf", "cabinet"}
+_BASE_FURNITURE = BASE_FURNITURE
 _AT_LEAST_ONE_SEAT = True
 
 

@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, TypedDict
 
 
+from category_registry import COLLISION_SIZES, FURNITURE_TOP_Y
+
 # ── Manifest entry shape ─────────────────────────────────────────
 
 class PlacedEntity(TypedDict, total=False):
@@ -73,55 +75,6 @@ _SHELL_NODES: List[dict] = [
 
 _NPC_BODY_CATEGORY = "humanoid"
 _NPC_BODY_MATERIAL = "rough_granite"
-
-# ── Collision shape defaults (FIX-1) ────────────────────────────
-# Default BoxShape3D sizes per category for interactable props.
-# The GLB AABB isn't available at compile time, so we use sane
-# defaults based on the category's typical dimensions.
-
-_COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
-    "table": (1.2, 0.6, 0.8),
-    "shelf": (1.0, 1.2, 0.3),
-    "cabinet": (0.8, 1.5, 0.5),
-    "chair": (0.5, 0.9, 0.5),
-    "humanoid": (0.5, 2.8, 0.4),
-    # P-E: carryables — small collision boxes
-    "key": (0.12, 0.01, 0.06),
-    "book": (0.25, 0.05, 0.2),
-    "cup": (0.16, 0.15, 0.16),
-    "gem": (0.08, 0.08, 0.08),
-    "bottle": (0.14, 0.22, 0.14),
-    "scroll": (0.06, 0.05, 0.25),
-    "coin-pouch": (0.15, 0.1, 0.12),
-    "candle": (0.1, 0.15, 0.1),
-    "dagger": (0.25, 0.04, 0.06),
-    "ring": (0.07, 0.03, 0.07),
-    # P-F batch 1: themed-useful generators
-    "barrel": (0.55, 1.05, 0.55),
-    "crate": (0.85, 0.85, 0.85),
-    "chest": (0.75, 0.55, 0.55),
-    "stool": (0.35, 0.65, 0.35),
-    "bench": (2.1, 0.6, 0.45),
-    # P-F batch 2: themed-useful generators
-    "wardrobe": (1.25, 2.6, 0.75),
-    "desk": (2.1, 0.95, 0.85),
-    "lantern": (0.28, 0.85, 0.28),
-    "pot": (0.45, 1.15, 0.45),
-    "weapon-rack": (0.85, 2.3, 0.35),
-    "pillar": (0.45, 3.15, 0.45),
-    "planter": (0.85, 0.75, 0.85),
-    # P-F batch 3: edge-case generators
-    "huge_table": (3.15, 1.3, 2.1),
-    "tiny_stool": (0.2, 0.35, 0.2),
-    "partition": (3.15, 3.15, 0.12),
-    "tall_post": (0.1, 4.2, 0.1),
-    "wide_platform": (4.2, 0.15, 4.2),
-    "many_leg_table": (2.1, 0.95, 1.6),
-    "ladder": (0.65, 3.15, 0.1),
-    "L_bench": (2.3, 0.6, 2.3),
-    # Default for unknown categories
-    "?": (0.5, 0.5, 0.5),
-}
 
 # ── Room dimensions (Item 2) ─────────────────────────────────────
 # The visible room shell: floor, 4 walls, ceiling.
@@ -394,7 +347,7 @@ def _guard_player_spawn(x: float, z: float) -> Tuple[float, float]:
 
 def _prop_half_extents(category: str) -> Tuple[float, float, float]:
     """Return half-extents (hx, hy, hz) for a prop's AABB from its category."""
-    sx, sy, sz = _COLLISION_SIZES.get(category, _COLLISION_SIZES["?"])
+    sx, sy, sz = COLLISION_SIZES.get(category, COLLISION_SIZES["?"])
     return (sx / 2.0, sy / 2.0, sz / 2.0)
 
 
@@ -408,7 +361,7 @@ def _resolve_prop_overlaps(
 
     Pushes overlapping props apart so they don't intersect each other
     or the NPC.  Processes in sorted entity-id order for determinism.
-    Uses axis-aligned bounding boxes from ``_COLLISION_SIZES`` on the
+    Uses axis-aligned bounding boxes from ``COLLISION_SIZES`` on the
     XZ plane (ignoring Y).
 
     Returns a **new** list of manifest entries with updated x,z
@@ -651,14 +604,14 @@ def compile_scene(
         cat = entry.get("category", "?")
         collision_info[eid] = (
             f"sub_{sub_res_idx}",
-            _COLLISION_SIZES.get(cat, _COLLISION_SIZES["?"]),
+            COLLISION_SIZES.get(cat, COLLISION_SIZES["?"]),
         )
         sub_res_idx += 1
 
     # NPC collision
     collision_info["NPC"] = (
         f"sub_{sub_res_idx}",
-        _COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4)),
+        COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4)),
     )
     sub_res_idx += 1
 

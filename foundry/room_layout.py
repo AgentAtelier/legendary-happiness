@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
+from category_registry import FURNITURE, CARRYABLES, FURNITURE_TOP_Y
 from decisions import Choice, DecisionPoint, make_decision
 
 CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
@@ -15,13 +16,6 @@ CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
                       # AND than the non-overlap proxy in the tests (1.6 m), so
                       # adjacent cells are robustly clear (no FP-boundary clips).
 WALL_MARGIN = 0.8     # keep furniture this far from walls
-FURNITURE = ("table", "chair", "shelf", "cabinet", "barrel", "crate", "chest",
-             "stool", "bench", "wardrobe", "desk", "lantern", "pot",
-             "weapon-rack", "pillar", "planter", "huge_table", "tiny_stool",
-             "partition", "tall_post", "wide_platform", "many_leg_table",
-             "ladder", "L_bench")
-CARRYABLES = ("key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
-              "candle", "dagger", "ring")
 NPC_Z_INSET = 0.6     # NPC sits this far in from the back wall
 
 
@@ -108,32 +102,7 @@ def layout_room(plan: dict, seed: int | None = None) -> Tuple[List[dict], dict, 
     # ── P-E: Carryables placed on furniture surfaces ─────────
     # Each carryable is placed on a furniture top if available,
     # else on the floor.  surface="on" with y offset above the furniture top.
-    _FURNITURE_TOP_Y = {
-        "table": 0.78,   # leg_height ~0.67 + top_thickness ~0.08 + small margin
-        "shelf": 1.2,    # shelf height
-        "cabinet": 1.55, # cabinet height ~1.5 + top
-        "chair": 0.48,   # seat at ~0.45 + seat_thickness
-        "barrel": 1.05,
-        "crate": 0.85,
-        "chest": 0.55,
-        "stool": 0.6,
-        "bench": 0.55,
-        "wardrobe": 2.55,
-        "desk": 0.88,
-        "lantern": 0.82,
-        "pot": 1.12,
-        "weapon-rack": 2.25,
-        "pillar": 3.1,
-        "planter": 0.72,
-        "huge_table": 1.25,
-        "tiny_stool": 0.32,
-        "partition": 3.1,
-        "tall_post": 4.15,
-        "wide_platform": 0.12,
-        "many_leg_table": 0.92,
-        "ladder": 3.1,
-        "L_bench": 0.55,
-    }
+    _FURNITURE_TOP_Y = FURNITURE_TOP_Y
     for i, e in enumerate(carryables):
         # Place on the i-th furniture item (wrap around)
         if i < len(placed):
