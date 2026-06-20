@@ -191,3 +191,11 @@ def test_rug_spec_compiles():
             "age": 0.2, "params": {"width": 2.0, "depth": 1.4, "thickness": 0.02}}
     out = compile_spec(spec)
     assert out["generator"] == "rug" and out["params"]["thickness"] == 0.02
+
+
+def test_painting_spec_compiles():
+    from compiler import compile_spec
+    spec = {"asset_id": "painting", "generator": "painting", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.6, "height": 0.8, "thickness": 0.05}}
+    out = compile_spec(spec)
+    assert out["generator"] == "painting" and out["params"]["height"] == 0.8

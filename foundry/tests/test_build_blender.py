@@ -419,3 +419,19 @@ def test_rug_builds_and_passes_gate(tmp_path):
     fp, h = read_envelope(LIVE_LEXICON, "rug")
     result = gate_asset(str(out), fp, h)
     assert result.passed, result.reasons
+
+
+def test_painting_builds_and_passes_gate(tmp_path):
+    from gate import gate_asset
+    spec = {"asset_id": "painting", "generator": "painting", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 0.6, "height": 0.8, "thickness": 0.05}}
+    sp = tmp_path / "painting.json"; sp.write_text(json.dumps(spec))
+    out = tmp_path / "painting.glb"
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(sp), str(out)],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert out.exists(), proc.stderr[-2000:] or proc.stdout[-2000:]
+    fp, h = read_envelope(LIVE_LEXICON, "painting")
+    result = gate_asset(str(out), fp, h)
+    assert result.passed, result.reasons

@@ -773,6 +773,21 @@ def _build_rug_geometry(params):
     return mesh
 
 
+def _build_painting_geometry(params):
+    """A thin vertical watertight box — a framed painting to hang on a wall
+    (#6 decor). Thin axis is Y (Blender) → becomes depth in the Y-up GLB;
+    width=X, height=Z. The layout's yaw faces it into the room."""
+    w, h, t = params["width"], params["height"], params["thickness"]
+    mesh = bpy.data.meshes.new("painting")
+    obj = bpy.data.objects.new("painting", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, h / 2.0, w, t, h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
@@ -780,6 +795,7 @@ _BUILDERS = {
     "cabinet": _build_cabinet_geometry,
     "humanoid": _build_humanoid_geometry,
     "rug": _build_rug_geometry,
+    "painting": _build_painting_geometry,
 }
 
 _COLOR_BUILDERS = {

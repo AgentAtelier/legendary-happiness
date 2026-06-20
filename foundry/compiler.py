@@ -63,6 +63,12 @@ PARAM_RANGES = {
         "depth": (0.6, 2.5),
         "thickness": (0.01, 0.04),
     },
+    # #6: thin vertical decor — a framed painting hung on a wall.
+    "painting": {
+        "width": (0.3, 1.2),
+        "height": (0.3, 1.2),
+        "thickness": (0.03, 0.08),
+    },
 }
 
 
