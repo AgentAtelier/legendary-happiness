@@ -1,8 +1,15 @@
 # Backlog — Finalized Prompts (paste-ready for the CLI AI)
 
-**Date:** 2026-06-20 (rev 3 — NQ1–NQ10 folded in)
+**Date:** 2026-06-20 (rev 4 — NQ1–NQ10 + R1–R4 folded in)
 **Order:** B-prompts first (small, parallel-safe), then C-slices in the agreed sequence. Each C-slice is
 larger — the prompt tells the CLI AI to produce a short spec+plan, get it reviewed, then implement.
+
+## Guiding principle (R1) — build broad & modular
+> There is **no fixed game**. The open-world RPG is a *lighthouse* (integration target), not a spec.
+> When a choice is narrow-vs-broad, take the **broad** path (include the common options). Build every
+> subsystem so it **stands alone and is extractable** (asset foundry · room-gen · quest-gen · combat ·
+> character-gen) — worst case we spin one out as its own product. We are in an **exploration phase**:
+> include things, keep options open, find the gold. Prefer data-driven/extensible over hard-coded.
 
 ## Standing rules (paste at the top of every handoff)
 > Read `AGENTS.md` + `docs/current/SLICE1-RPG-FETCH-QUEST.md`. **Dedicated branch/worktree** (Q13). TDD
@@ -16,6 +23,9 @@ larger — the prompt tells the CLI AI to produce a short spec+plan, get it revi
 ---
 
 # READY PROMPTS
+
+## P-E · Carryable items + target realism — DONE ✅ (f75d9d7; 573+ py / 7 godot / 10 blender green)
+_Original brief kept for reference._
 
 ## P-E · Carryable items + target realism  [Q1=C, NQ1=a]
 > Add 10 small **pickable** carryable generators (≤0.3 m, `decor=false`): **key, book, cup, gem, bottle,
@@ -54,12 +64,18 @@ larger — the prompt tells the CLI AI to produce a short spec+plan, get it revi
 
 # DESIGN-FIRST SLICES (sequenced — spec+plan then implement)
 
-## C-0 · Room control rules / theme tables  [Q6+Q13, NQ10=c]  — DO FIRST
-> Build a deterministic **control layer** over RoomPlanner: per-theme **tables** (theme → required props,
-> palette bands, density min/max, must-include) **plus** global **guards** (NPC clearance, min/max density,
-> at-least-one-seat). The LLM fills within the table; guards clamp + emit Decision Points. Seed themes from
-> **R4** (see chat). Keep stochastic variety *within* the rules. Eval: "variety-within-rules" + "guards
-> never violated" signals. (This shapes every later room — land it early.)
+## C-0 · Room control rules / theme tables  [Q6+Q13, NQ10=c, R4]  — DO FIRST
+> Build a deterministic **control layer** over RoomPlanner: a **data-driven theme table** (JSON, so new
+> themes are trivial to add) + global **guards**. Per-theme entry: required props, allowed palette/material
+> bias, density band (min/max prop count), must-include (e.g. at-least-one-seat). Global guards (apply to
+> every theme): NPC clearance, player-spawn clearance, min/max density, door clearance (for C-5). The LLM
+> fills *within* the table; guards clamp + emit Decision Points. **Seed 5 themes (R4):** `blacksmith`
+> (metal bias, dense, anvil/weapon-rack), `hermit_shack` (worn wood, sparse), `tavern` (mixed, many
+> seats+tables), `storeroom` (containers — crates/barrels/chests), `study` (shelves+books+carryables).
+> Theme is picked from the prompt by keyword match (deterministic), default = a generic table. Keep
+> stochastic variety *within* the rules. **Eval:** "variety-within-rules" + "guards never violated" +
+> "theme keyword → table" signals. Land this early — it shapes every later room and is itself a
+> standalone, reusable generator-control module.
 
 ## C-1 · Audio — in-engine synth  [Q4=C, NQ4=b]
 > Generation-first SFX via Godot `AudioStreamGenerator`/procedural DSP in GDScript: footstep, pickup, talk,
@@ -78,9 +94,15 @@ larger — the prompt tells the CLI AI to produce a short spec+plan, get it revi
 > >1 NPC per room, a quest each (behaviour-gen per NPC), HUD tracks the active quest. Decor-vs-target and
 > carryable-target rules from P-E still hold per NPC.
 
-## C-5 · Multi-room graph + leave-to-win  [systems #4, Q11/Q14, NQ8=b]  — needs R2
-> A **graph/grid** of generated rooms connected by doors; traverse via doors; win by delivering AND/OR
-> reaching an exit. Connection/generation/traversal model needs a design pass (R2). Spec first, reviewed.
+## C-5 · Multi-room graph + leave-to-win  [systems #4, Q11/Q14, NQ8=b, R2]
+> A **graph/grid** of generated rooms. Model (R2): a separate **graph-manager** module (room-gen stays
+> standalone) builds a random grid graph with a **spanning tree + a few extra loop edges** and a
+> **guaranteed path** from a start room to a designated **exit room**. Rooms are generated **lazily on
+> entry** (reuse the existing room-gen + C-0). Doors sit on the wall shared with a neighbour; C-0's
+> door-clearance guard keeps them unobstructed. Traverse by walking through a door → load/generate the
+> neighbour. **Win = both supported:** completing quests AND reaching the exit (configurable; default =
+> reach exit). Spec+plan first (reviewed). **Eval:** "start→exit path always exists", "every door leads
+> to a generated room", "no orphan rooms". Keep the graph manager extractable as a standalone dungeon-graph tool.
 
 ## C-6 · NPC pathfinding / idle-wander  [systems #5]
 > NavMesh bake in the generated room; NPC idle-wander + approach. Spec first.
@@ -89,9 +111,14 @@ larger — the prompt tells the CLI AI to produce a short spec+plan, get it revi
 > A scaffold/build flag selects first- OR third-person rig (NO runtime swap). Both share the visible body.
 > Add the flag to `quest`/`scaffold_project`/`scene_compiler`. Verify both modes headless-load clean.
 
-## C-8 · Basic combat  [Q10, NQ7=a]  — needs R3
-> Player melee + ONE enemy type with health + approach-only AI; defeat to proceed/win. Enemy source &
-> defeat/win model = R3. Spec first. Eval: "enemy defeatable / win reachable."
+## C-8 · Basic combat  [Q10, NQ7=a, R3]
+> Player melee (E/click swing, short range) + health, and ONE enemy type. **Enemy source (R3):** a
+> **generated primitive "golem"** (existing primitive generators + a simple idle/approach bob) so combat
+> does **not** block on the rigged humanoid (C-9); add a humanoid enemy variant later, once C-9 lands.
+> Enemy has health + approach-only AI (walk toward player, melee on contact). **Enemies are optional
+> obstacles** — some rooms have them, some don't (driven by C-0 theme/density); clearing is not always
+> required. Player death → respawn/restart. Spec+plan first. **Eval:** "enemy defeatable", "player can die
+> & recover", "a combat room is still completable". Keep the combat module decoupled so it's reusable.
 
 ## C-9 · Rigged animated humanoid NPC (basic)  [Q10, NQ6=a]  — frontier
 > Replace the primitive NPC body with a **rigged GLB + a single idle animation**, gate-passing AND
@@ -100,6 +127,8 @@ larger — the prompt tells the CLI AI to produce a short spec+plan, get it revi
 
 ---
 
-# REMAINING DISCUSSION (R1–R4) — see chat
-R1 game-composition/vision · R2 multi-room graph model · R3 combat enemy source & win model ·
-R4 seed theme set for the control tables.
+# R1–R4 — RESOLVED (broad/modular philosophy)
+R1 no fixed game → broadest coherent superset, each subsystem standalone/extractable · R2 lazy grid-graph
+(spanning tree + loops, guaranteed start→exit), separate graph manager, dual win · R3 generated primitive
+"golem" enemy first (combat un-blocked from C-9), enemies optional obstacles · R4 5 data-driven seed themes
+(blacksmith, hermit_shack, tavern, storeroom, study). No open questions remain — the full pipeline is specced.
