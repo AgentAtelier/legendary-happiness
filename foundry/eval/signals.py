@@ -459,6 +459,11 @@ def compute_quest_signals(record) -> Set[str]:
         if dialogue_tag:
             tags.add(dialogue_tag)
 
+        # C-2: multi-item inventory possible (>=2 carryables in manifest)
+        multi_tag = check_multi_item_possible(record)
+        if multi_tag:
+            tags.add(multi_tag)
+
     if not tags:
         tags.add("clean")
     return tags
@@ -552,6 +557,21 @@ _CARRYABLE_CATEGORIES = {
 }
 
 
+# C-2: multi-item inventory check ────────────────────────────────────
+
+def check_multi_item_possible(record) -> Optional[str]:
+    """C-2: Return a signal tag if the manifest has ≥2 carryable items,
+    making multi-item inventory testable.  Low-severity — informative."""
+    manifest = getattr(record, "manifest", None) or []
+    carryable_count = sum(
+        1 for e in manifest
+        if e.get("category") in _CARRYABLE_CATEGORIES
+    )
+    if carryable_count >= 2:
+        return "multi_item_possible"
+    return None
+
+
 def check_target_is_carryable(record) -> Optional[str]:
     """P-E: Return a signal tag if the quest target_entity is NOT a
     carryable item (i.e. it's furniture or decor) AND carryables exist
@@ -633,3 +653,5 @@ SIGNAL_SEVERITY["theme_out_of_bounds"] = "high"
 # P-G: painting mode + per-theme lighting signals
 SIGNAL_SEVERITY["painting_mode_honored"] = "low"
 SIGNAL_SEVERITY["lighting_not_theme_aware"] = "high"
+# C-2: multi-item inventory signal
+SIGNAL_SEVERITY["multi_item_possible"] = "low"

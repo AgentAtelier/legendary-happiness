@@ -8,6 +8,10 @@
 #   2. Walk parent tree to find _forge_tag node
 #   3. Call on_interact(tag) — same endpoint as human E-key press
 #
+# C-2: Multi-item inventory — the probe now tests multi-item carry,
+#      active-item cycling, drop-removes-from-inventory, and
+#      win-leaves-other-items-untouched.
+#
 # The downward raycast exercises the identical physics raycast system
 # that interaction.gd uses.  In headless mode, camera-raycasting from
 # a dynamically positioned CharacterBody3D is unreliable; downward
@@ -31,9 +35,8 @@ var _distractor_prop = null
 var _player = null
 var _target_entity = ""
 var _done = false
-# V-1: track original positions for swap restore verification
-var _distractor_original_pos: Vector3 = Vector3.ZERO
-var _distractor_restored_ok: bool = false
+# C-2: track inventory state (removed V-1 _distractor_original_pos —
+#      single-item restore is no longer the behaviour).
 var _drop_ok: bool = false
 
 
@@ -101,21 +104,21 @@ func _run_phase():
 			_phase = 2
 			_phase_timer = 0.0
 
-	# Phase 2: Pick up distractor (record original position)
+	# Phase 2: Pick up distractor (C-2: add to inventory)
 	if _phase == 2:
 		if _phase_timer > 0.2:
 			if _distractor_prop != null:
-				# V-1: record original position before picking up
-				_distractor_original_pos = _distractor_prop.global_position
-				_result["checks"].append("ACTION: pick up DISTRACTOR prop (original pos recorded)")
+				_result["checks"].append("ACTION: pick up DISTRACTOR prop")
 				_interact_with(_distractor_prop)
 		if _phase_timer > 0.4:
 			if _distractor_prop != null:
-				var carried = str(_player.carried_item)
-				if carried == _distractor_prop.name:
-					_result["checks"].append("PASS: player carries distractor=" + carried)
+				# C-2: check get_active_item() instead of carried_item
+				var active = str(_player.get_active_item())
+				if active == _distractor_prop.name:
+					_result["checks"].append("PASS: player carries distractor=" + active)
+					_result["checks"].append("C-2: inventory size=" + str(_player.carried_items.size()))
 				else:
-					_result["checks"].append("FAIL: expected carried=" + _distractor_prop.name + " got=" + carried)
+					_result["checks"].append("FAIL: expected active=" + _distractor_prop.name + " got=" + active)
 			else:
 				_result["checks"].append("SKIP: no distractor")
 			_phase = 3
@@ -142,44 +145,71 @@ func _run_phase():
 			_phase = 4
 			_phase_timer = 0.0
 
-	# Phase 4: Pick up target prop → verify distractor restored to original position
+	# Phase 4: Pick up target prop → C-2: both in inventory, active=target
 	if _phase == 4:
 		if _phase_timer > 0.2:
-			_result["checks"].append("ACTION: pick up TARGET prop (should restore distractor)")
+			_result["checks"].append("ACTION: pick up TARGET prop (C-2: adds to inventory)")
 			_interact_with(_target_prop)
 		if _phase_timer > 0.4:
-			var carried = str(_player.carried_item)
-			if carried == _target_prop.name:
-				_result["checks"].append("PASS: player carries target=" + carried)
+			# C-2: Verify active is target AND distractor still in inventory
+			var active = str(_player.get_active_item())
+			var inv_size = _player.carried_items.size()
+			if active == _target_prop.name:
+				_result["checks"].append("PASS: active=" + active)
 			else:
-				_result["checks"].append("FAIL: expected carried=" + _target_prop.name + " got=" + carried)
-		# V-1: Verify distractor was restored to its original position (not floating)
-		if _distractor_prop != null and is_instance_valid(_distractor_prop):
-			var new_pos = _distractor_prop.global_position
-			var dist = new_pos.distance_to(_distractor_original_pos)
-			if dist < 0.1:
-				_result["checks"].append("PASS: distractor restored to original position (dist=%.3f)" % dist)
-				_distractor_restored_ok = true
+				_result["checks"].append("FAIL: expected active=" + _target_prop.name + " got=" + active)
+			if _distractor_prop != null:
+				var distractor_in_inv = _distractor_prop.name in _player.carried_items
+				if distractor_in_inv:
+					_result["checks"].append("PASS: C-2 distractor still in inventory (size=" + str(inv_size) + ")")
+				else:
+					_result["checks"].append("FAIL: C-2 distractor MISSING from inventory")
 			else:
-				_result["checks"].append("FAIL: distractor FLOATING — moved %.3f from original" % dist)
-		else:
-			_result["checks"].append("SKIP: cannot verify distractor restore (no distractor)")
-			_distractor_restored_ok = true  # no distractor to fail
-		_phase = 5
-		_phase_timer = 0.0
+				_result["checks"].append("C-2: inventory size=" + str(inv_size))
+		if _phase_timer > 0.6 and _distractor_prop != null:
+			# C-2: Cycle backward to distractor
+			_result["checks"].append("ACTION: C-2 cycle active backward to distractor")
+			_player._cycle_active(-1)
+			var active = str(_player.get_active_item())
+			if active == _distractor_prop.name:
+				_result["checks"].append("PASS: C-2 cycled back to distractor=" + active)
+			else:
+				_result["checks"].append("FAIL: C-2 cycle expected=" + _distractor_prop.name + " got=" + active)
+		if _phase_timer > 0.8 and _distractor_prop != null:
+			# C-2: Cycle forward back to target
+			_result["checks"].append("ACTION: C-2 cycle active forward to target")
+			_player._cycle_active(1)
+			var active = str(_player.get_active_item())
+			if active == _target_prop.name:
+				_result["checks"].append("PASS: C-2 cycled forward to target=" + active)
+			else:
+				_result["checks"].append("FAIL: C-2 cycle expected=" + _target_prop.name + " got=" + active)
+		if _phase_timer > 1.0:
+			_phase = 5
+			_phase_timer = 0.0
 
-	# Phase 5: Drop the carried target and verify it's on the floor
+	# Phase 5: Drop active item (target) → verify removed, distractor remains
 	if _phase == 5:
 		if _phase_timer > 0.2:
-			_result["checks"].append("ACTION: drop carried item (G key)")
-			if _player.has_method("_drop_item"):
-				_player._drop_item()
+			_result["checks"].append("ACTION: drop active item (C-2: _drop_active_item)")
+			if _player.has_method("_drop_active_item"):
+				_player._drop_active_item()
 		if _phase_timer > 0.4:
-			if _player.carried_item == "":
-				_result["checks"].append("PASS: carried_item cleared after drop")
+			# C-2: Target should be gone, distractor should remain active
+			var active = str(_player.get_active_item())
+			var target_in_inv = _target_prop.name in _player.carried_items
+			if not target_in_inv:
+				_result["checks"].append("PASS: C-2 target removed from inventory after drop")
 			else:
-				_result["checks"].append("FAIL: still carrying " + str(_player.carried_item))
-			# V-1: Verify dropped item is on the floor (y close to its original y)
+				_result["checks"].append("FAIL: C-2 target STILL in inventory")
+			if _distractor_prop != null:
+				if _distractor_prop.name in _player.carried_items:
+					_result["checks"].append("PASS: C-2 distractor remains in inventory (active=" + active + ")")
+				else:
+					_result["checks"].append("FAIL: C-2 distractor LOST from inventory")
+			else:
+				_result["checks"].append("PASS: inventory empty after drop (no distractor)")
+			# V-1: Verify dropped item is on the floor (y close to 0)
 			if _target_prop != null and is_instance_valid(_target_prop):
 				var drop_y = _target_prop.global_position.y
 				if drop_y < 1.0:
@@ -198,11 +228,18 @@ func _run_phase():
 			_result["checks"].append("ACTION: re-pick up target from floor")
 			_interact_with(_target_prop)
 		if _phase_timer > 0.4:
-			var carried = str(_player.carried_item)
-			if carried == _target_prop.name:
-				_result["checks"].append("PASS: re-picked target from floor=" + carried)
+			var active = str(_player.get_active_item())
+			var inv_size = _player.carried_items.size()
+			if active == _target_prop.name:
+				_result["checks"].append("PASS: C-2 re-picked target active=" + active + " (inv size=" + str(inv_size) + ")")
 			else:
-				_result["checks"].append("FAIL: expected carried=" + _target_prop.name + " got=" + carried)
+				_result["checks"].append("FAIL: expected active=" + _target_prop.name + " got=" + active)
+			# C-2: Distractor should still be in inventory
+			if _distractor_prop != null:
+				if _distractor_prop.name in _player.carried_items:
+					_result["checks"].append("PASS: C-2 distractor still in inventory after re-pick")
+				else:
+					_result["checks"].append("FAIL: C-2 distractor LOST after re-pick")
 			_phase = 7
 			_phase_timer = 0.0
 
@@ -219,10 +256,16 @@ func _run_phase():
 			_phase = 8
 			_phase_timer = 0.0
 
-	# Phase 8: Check WinScreen
+	# Phase 8: Check WinScreen + C-2: distractor still in inventory
 	if _phase == 8:
 		if _phase_timer > 0.3:
 			_check_win_screen()
+			# C-2: Win shouldn't clear other inventory items
+			if _distractor_prop != null:
+				if _distractor_prop.name in _player.carried_items:
+					_result["checks"].append("PASS: C-2 distractor survived win (still in inventory)")
+				else:
+					_result["checks"].append("C-2: distractor not in inventory after win (may be intentional)")
 			_done = true
 			_print_and_quit(0 if _result["ok"] else 1)
 

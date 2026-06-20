@@ -39,7 +39,10 @@ func on_interact(tag: String) -> void:
 			_state = State.QUEST_GIVEN
 		State.QUEST_GIVEN:
 			var player = get_node("/root/Root/Player")
-			var carried: String = player.carried_item
+			# C-2: Use get_active_item() for multi-item inventory
+			var carried: String = ""
+			if player.has_method("get_active_item"):
+				carried = player.get_active_item()
 			var target: String = _quest_data.get("target_entity", "")
 			if carried == target:
 				_show_line(hud, "thank")
