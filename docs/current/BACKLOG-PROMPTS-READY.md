@@ -172,3 +172,60 @@ remaps new props→table. New tickets:
 ## T-5 · Tiny rooms place ~0 furniture  [layout · S]
 > 4×4 rooms (min clamp) fit 0–2 grid cells at CELL=1.8 → near-empty (saved by the carryable guarantee).
 > Scale CELL/WALL_MARGIN down for small rooms, or raise the min room size.
+
+---
+
+# POLISH BATCH (do before resuming C-slices) — playtest fixes
+**Verification mandate:** these are "passed-tests-but-broken-in-real-play" bugs (parse crash, pickup/drop,
+missing walls, dialogue, painting). Headless-load is NOT sufficient. **V-1 below must land first**, then each
+fix is verified through the REAL scripts (and a screenshot where it's visual/feel).
+
+## V-1 · Real-play probe drives the actual scripts  [eval · M] — DO FIRST
+> Rewrite `probe_playthrough.gd` to drive the REAL `interaction.gd` / `pickup.gd` / `npc.gd` (not
+> reimplementations) through the full loop: walk → look-at-NPC → talk → advance → pick up A → pick up B
+> (assert A returned to its spot) → drop B (assert B on floor) → deliver target → win. This closes the gap
+> that let the interaction.gd parse error + pickup float bug pass CI. Every fix below is verified through it.
+
+## U-1 · Missing walls + ceiling  [scene_compiler · S]
+> 4 walls + ceiling are emitted but only 2 walls render from inside — back-face culling (single-sided
+> StandardMaterial3D). Set wall/ceiling materials double-sided (`cull_mode = CULL_DISABLED`) or fix normals
+> so all 4 walls + ceiling show from spawn. Verify with a screenshot from the player start.
+
+## U-2 · Pickup/drop broken  [pickup.gd + shell · M]  (the big one)
+> (a) Switching items leaves the previous item FLOATING: `_restore_to_world` calls `model.reparent(prop)`
+> which keeps global transform — pass `keep_global_transform=false` so it snaps back to the prop's origin.
+> (b) No working/discoverable DROP: add a drop action (G) that places the carried item on the floor in
+> front of the player, clears `carried_item`, re-enables its collision, and a HUD hint "G to drop". Verify
+> via V-1: pick A → pick B (A back in place, not floating) → drop B (on floor, not clipping).
+
+## U-3 · Painting orientation off 90°  [room_layout / painting geometry · S]
+> Wall paintings render rotated 90° (flat face perpendicular to the wall). Fix the painting yaw (or the
+> generator's axis) so the picture face is parallel to its wall and faces into the room — for back/left/right
+> walls. Verify each wall visually.
+
+## U-4 · Semantic placement (chairs around tables)  [room_layout · M]
+> Naive grid → props don't relate. Add relational placement: chairs cluster around + face the nearest table;
+> stools near benches; keep non-overlap + spawn/NPC clearance; deterministic. Eval: "chairs adjacent to a
+> table when both present".
+
+## U-5 · All props read as the same texture  [materials / build_asset · S-M]
+> Props look identically textured even across materials. Investigate the per-prop bake (likely no per-prop
+> variation, and/or theme palette clamps a whole room to one material). Add seed-driven per-prop color/texture
+> variation and allow ≥2 materials per room so rooms aren't monochrome. Verify with a screenshot.
+
+## U-6 · NPC dialogue UX  [npc.gd / interaction.gd / hud · S-M]
+> (a) Must look DOWN to talk — raise the NPC talk trigger to eye level (taller talk Area / aim assist) so you
+> can talk looking straight ahead. (b) Advance dialogue with Space/Enter, with a "Space to continue" hint.
+> Verify in V-1.
+
+## U-7 · Camera first/third build-time flag  [scene_compiler/scaffold/quest · S]  (C-7 pulled forward)
+> Implement NQ5=B: `quest --camera first|third` (default first) selects the rig at scaffold time, no runtime
+> swap. First-person should feel right after U-1/U-6. Both modes headless-load clean + a screenshot each.
+
+## Also fold in the earlier tickets (same batch)
+> **T-4 (category registry — DO right after V-1):** single source of truth for the category set; root cause
+> of the 3 integration bugs. **T-1** RoomPlanner parse fallback. **T-2** model-driven carryable target.
+> **T-3** fabric materials reach themes. **T-5** tiny-room furniture (CELL/min-size).
+
+**After this batch:** resume the C-slices — next is **C-2 Inventory** (pairs naturally with the fixed
+pickup/drop) then C-1 audio · C-3 persistence · C-4 multi-NPC · C-5 multi-room · C-6 · C-8 combat · C-9 humanoid.
