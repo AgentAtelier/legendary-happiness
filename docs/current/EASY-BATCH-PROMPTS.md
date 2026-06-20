@@ -49,7 +49,7 @@ high-consensus, and compose with what exists.
 
 ## EB-5 · Visual richness  [Godot shell + room-gen + assets]
 - **Post-processing stack** — `WorldEnvironment`: ACES tonemap + SSAO + bloom + per-theme fog/exposure (per-theme *lights* already exist from P-G; this adds the env stack). Biggest cheap visual win.
-- **Day/time tint (build flag)** — `--time dawn|noon|dusk|night` sets sun angle + sky/ambient tint at scaffold time.
+- ~~Day/time tint (build flag)~~ — **removed: promoted to a runtime day/night CYCLE (its own greenlit feature, see BACKLOG-CONSOLIDATED LIST 3 ★).**
 - **Light-emitting props** — lamp/torch/window props cast actual `OmniLight3D`/`SpotLight3D`, placed per theme.
 > *Verify:* headless-load clean; screenshot from spawn per setting; eval "env stack present + deterministic per (theme, seed)".
 
