@@ -568,16 +568,43 @@ def compile_scene(
     tscn_stem = Path(output_path).stem
     data_filename = f"{tscn_stem}_quest_data.json"
     data_path = str(Path(output_dir) / data_filename)
+    # C-3: world log path for NPC quest-state persistence
+    world_log_filename = f"{tscn_stem}_world_log.jsonl"
+    world_log_path = str(Path(output_dir) / world_log_filename)
+
+    # C-3: NPC placement dict — the full representation so npc.gd can
+    # write complete "replace" intents to the world log on state change.
+    npc_placement: dict = {
+        "id": "NPC",
+        "asset_hash": f"{_NPC_BODY_CATEGORY}_{_NPC_BODY_MATERIAL}",
+        "attrs": {
+            "role": npc_role,
+            "npc_state": "idle",
+            "x": 0.0,
+            "y": 0.0,
+            "z": -2.0,
+        },
+    }
+
     quest_data: dict = {
         "npc_role": npc_role,
         "target_entity": target_entity,
         "dialogue": dialogue,
         "objective": objective,
+        # C-3: NPC quest-state persistence touchpoints
+        "npc_id": "NPC",
+        "npc_placement": npc_placement,
+        "world_log_path": world_log_path,
     }
     Path(data_path).write_text(
         json.dumps(quest_data, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+
+    # C-3: Initialise the world log with the NPC's starting state.
+    # This is the first event in the append-only transaction log.
+    # npc.gd will replay this on scene load to restore state.
+    _init_world_log(world_log_path, npc_placement)
 
     # ── Build GLB id map ────────────────────────────────────────
     glb_ids: dict[Tuple[str, str], str] = {}
@@ -1107,6 +1134,23 @@ def _parse_scene_text(tscn_text: str) -> dict:
         "nodes": nodes,
         "metadata": metadata,
     }
+
+
+
+# ── C-3: World log initialisation ─────────────────────────────────
+
+def _init_world_log(log_path: str, npc_placement: dict) -> None:
+    """C-3: Write the NPC's initial state as the first event in
+    the world log.  npc.gd replays this on scene load to restore
+    quest state across reloads."""
+    import json as _json
+    from pathlib import Path as _Path
+    event = {
+        "action": "replace",
+        "placement": npc_placement,
+    }
+    _Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+    _Path(log_path).write_text(_json.dumps(event) + "\n", encoding="utf-8")
 
 
 def read_quest_data(tscn_path: str) -> dict | None:
