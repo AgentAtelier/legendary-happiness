@@ -14,6 +14,8 @@ Assertions:
     4. Zero "Resource file not found" / "non-existent resource" errors
        in stderr
     5. The target prop is reachable by a downward/forward raycast
+    6. P-D: Zero SCRIPT ERROR/Parse Error/Failed to load script in stderr
+       on a plain headless launch (no probe script)
 """
 
 from __future__ import annotations
@@ -69,6 +71,33 @@ def _godot_available() -> bool:
         and os.path.isdir(_LIBRARY_DIR)
         and os.path.isdir(_TEMPLATE_DIR)
     )
+
+
+def _headless_launch_stderr(tmp_dir: str) -> str:
+    """P-D: Scaffold a fresh build, launch Godot headless (no probe),
+    return stderr for SCRIPT ERROR / Parse Error assertion."""
+    from scaffold import scaffold_project
+
+    build_path = scaffold_project(
+        name="headless_check",
+        quest_spec=_SYNTHETIC_QUEST_SPEC,
+        manifest=_SYNTHETIC_MANIFEST,
+        template_dir=_TEMPLATE_DIR,
+        library_dir=_LIBRARY_DIR,
+        out_root=tmp_dir,
+    )
+
+    cmd = [
+        _GODOT_BIN, "--headless",
+        "--path", str(build_path),
+        "--quit",
+    ]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True, text=True, timeout=60,
+    )
+    return result.stderr
 
 
 def _compile_and_probe(quest_spec, manifest, tmp_dir: str, probe_script: str = "probe_smoke.gd") -> dict:
@@ -274,4 +303,35 @@ def test_scripted_playthrough_talk_right_win():
     assert result.get("ok", False), (
         f"Scripted playthrough should succeed (ok=true)\n"
         f"Checks: {checks}"
+    )
+
+
+# ── P-D: Close the smoke-probe gap ───────────────────────────────────
+
+@pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+def test_no_script_errors_on_plain_launch():
+    """P-D: A plain headless launch (no probe script) produces 0 lines
+    matching SCRIPT ERROR|Parse Error|Failed to load script.
+
+    This catches parse errors in interaction.gd, pickup.gd, npc.gd, etc.
+    that the probes might mask because they reimplement interaction logic.
+
+    EXpected to fail if you introduce a GDScript parse error.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        stderr = _headless_launch_stderr(td)
+
+    # Check for script-level errors
+    script_error_patterns = ["SCRIPT ERROR", "Parse Error",
+                              "Failed to load script"]
+    found_errors: list[str] = []
+    for line in stderr.splitlines():
+        for pat in script_error_patterns:
+            if pat.lower() in line.lower():
+                found_errors.append(line.strip())
+                break
+
+    assert len(found_errors) == 0, (
+        f"Found {len(found_errors)} script error(s) in Godot stderr "
+        f"on plain headless launch:\n" + "\n".join(found_errors)
     )
