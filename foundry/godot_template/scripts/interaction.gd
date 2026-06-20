@@ -22,15 +22,16 @@ func _process(_delta: float) -> void:
 	var result: Dictionary = space_state.intersect_ray(query)
 
 	if not result.is_empty():
-		var collider: Node3D = result.collider
-		var parent: Node = collider.get_parent() if collider else null
-		while parent:
-			if parent.has_meta("_forge_tag"):
-				var tag: String = parent.get_meta("_forge_tag")
+		# intersect_ray returns the CollisionObject3D (e.g. StaticBody3D),
+		# not the CollisionShape3D child.  Start from the collider itself.
+		var current: Node = result.collider as Node
+		while current:
+			if current.has_meta("_forge_tag"):
+				var tag: String = current.get_meta("_forge_tag")
 				if tag == "pickup" or tag == "talk":
 					interact_prompt.emit(true, "Press E to " + tag)
 					return
-			parent = parent.get_parent() if parent else null
+			current = current.get_parent()
 
 	interact_prompt.emit(false, "")
 
@@ -45,15 +46,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			var query := PhysicsRayQueryParameters3D.create(origin, end)
 			query.collide_with_areas = true
 			query.collide_with_bodies = true
-			var result: Dictionary = space_state.intersect_ray(query)
-			if not result.is_empty():
-				var collider: Node3D = result.collider
-				var parent: Node = collider.get_parent() if collider else null
-				while parent:
-					if parent.has_meta("_forge_tag"):
-						var tag: String = parent.get_meta("_forge_tag")
-						if tag == "pickup" or tag == "talk":
-							if parent.has_method("on_interact"):
-								parent.on_interact(tag)
-							return
-					parent = parent.get_parent() if parent else null
+			var result: Dictionary = space_state.intersect_ray(query)		if not result.is_empty():
+			# intersect_ray returns the CollisionObject3D, start from it
+			var current: Node = result.collider as Node
+			while current:
+				if current.has_meta("_forge_tag"):
+					var tag: String = current.get_meta("_forge_tag")
+					if tag == "pickup" or tag == "talk":
+						if current.has_method("on_interact"):
+							current.on_interact(tag)
+						return
+					current = current.get_parent()

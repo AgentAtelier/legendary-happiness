@@ -14,7 +14,11 @@
 #   4. No "Resource file not found" / "non-existent resource" errors
 #      in the output log (checked by Python harness via stderr)
 #   5. The target prop is reachable by a downward/forward raycast
-
+#   6. WorldEnvironment node exists (Item 1)
+#   7. DirectionalLight3D exists (Item 1)
+#   8. Visible room shell: FloorMesh, walls, Ceiling (Item 2)
+#   9. Player body MeshInstance3D exists (Item 4)
+#  10. Player is_on_floor() after physics step (Item 4)
 extends SceneTree
 
 var _result := {
@@ -23,6 +27,11 @@ var _result := {
 	"floor_collision": false,
 	"player_collision": false,
 	"target_reachable": false,
+	"world_env": false,
+	"directional_light": false,
+	"room_shell_ok": false,
+	"player_body": false,
+	"player_grounded": false,
 	"checks": []
 }
 
@@ -70,6 +79,10 @@ func _run_checks():
 	_check_floor(all_nodes)
 	_check_player_collision(all_nodes)
 	_check_target_reachable(all_nodes)
+	_check_lights(all_nodes)
+	_check_room_shell(all_nodes)
+	_check_player_body(all_nodes)
+	_check_player_grounded(all_nodes)
 
 	_result["ok"] = true
 	for check in _result["checks"]:
@@ -198,10 +211,114 @@ func _check_target_reachable(all_nodes: Array[Node]):
 			_result["checks"].append("FAIL: target prop not reachable by raycast")
 
 
+# ── Item 1: Lights ───────────────────────────────────────────────
+
+func _check_lights(all_nodes: Array[Node]):
+	var has_env := false
+	var has_light := false
+
+	for n in all_nodes:
+		if n is WorldEnvironment:
+			has_env = true
+		if n is DirectionalLight3D:
+			has_light = true
+
+	_result["world_env"] = has_env
+	_result["directional_light"] = has_light
+
+	if has_env:
+		_result["checks"].append("PASS: WorldEnvironment node found")
+	else:
+		_result["checks"].append("FAIL: no WorldEnvironment node")
+
+	if has_light:
+		_result["checks"].append("PASS: DirectionalLight3D found")
+	else:
+		_result["checks"].append("FAIL: no DirectionalLight3D")
+
+
+# ── Item 2: Room shell ───────────────────────────────────────────
+
+func _check_room_shell(all_nodes: Array[Node]):
+	var has_floor_mesh := false
+	var has_wall_n := false
+	var has_wall_s := false
+	var has_wall_e := false
+	var has_wall_w := false
+	var has_ceiling := false
+
+	for n in all_nodes:
+		if n.name == "FloorMesh" and n is MeshInstance3D:
+			has_floor_mesh = true
+		if n.name == "WallN" and n is StaticBody3D:
+			has_wall_n = true
+		if n.name == "WallS" and n is StaticBody3D:
+			has_wall_s = true
+		if n.name == "WallE" and n is StaticBody3D:
+			has_wall_e = true
+		if n.name == "WallW" and n is StaticBody3D:
+			has_wall_w = true
+		if n.name == "Ceiling" and n is MeshInstance3D:
+			has_ceiling = true
+
+	_result["room_shell_ok"] = (
+		has_floor_mesh and has_wall_n and has_wall_s
+		and has_wall_e and has_wall_w and has_ceiling
+	)
+
+	if _result["room_shell_ok"]:
+		_result["checks"].append("PASS: room shell complete (floor mesh + 4 walls + ceiling)")
+	else:
+		var missing := PackedStringArray()
+		if not has_floor_mesh: missing.append("FloorMesh")
+		if not has_wall_n: missing.append("WallN")
+		if not has_wall_s: missing.append("WallS")
+		if not has_wall_e: missing.append("WallE")
+		if not has_wall_w: missing.append("WallW")
+		if not has_ceiling: missing.append("Ceiling")
+		_result["checks"].append("FAIL: room shell missing: " + ", ".join(missing))
+
+
+# ── Item 4: Player body ─────────────────────────────────────────
+
+func _check_player_body(all_nodes: Array[Node]):
+	for n in all_nodes:
+		if n.name == "Player" and n is CharacterBody3D:
+			for child in n.get_children():
+				if child.name == "BodyMesh" and child is MeshInstance3D:
+					_result["player_body"] = true
+					_result["checks"].append("PASS: player body MeshInstance3D found")
+					return
+			_result["checks"].append("FAIL: Player has no BodyMesh MeshInstance3D")
+			return
+	_result["checks"].append("FAIL: Player node not found")
+
+
+# ── Item 4: Player grounded ─────────────────────────────────────
+
+func _check_player_grounded(all_nodes: Array[Node]):
+	var player: CharacterBody3D = null
+	for n in all_nodes:
+		if n is CharacterBody3D and n.name == "Player":
+			player = n
+			break
+
+	if player == null:
+		_result["checks"].append("FAIL: cannot check grounding — Player not found")
+		return
+
+	# Apply downward velocity and step physics
+	player.velocity = Vector3(0, -1.0, 0)
+	player.move_and_slide()
+
+	if player.is_on_floor():
+		_result["player_grounded"] = true
+		_result["checks"].append("PASS: player is_on_floor() after physics step")
+	else:
+		_result["checks"].append("FAIL: player not on floor after move_and_slide() (y=%.2f)" % player.global_position.y)
+
+
 func _print_and_quit(exit_code: int):
-	# Print compact single-line JSON so the Python harness can find it
-	# among Godot engine log output.  The marker prefix makes extraction
-	# unambiguous.
 	var json_str = JSON.stringify(_result, "")
 	print("PROBE_JSON_OUTPUT:" + json_str)
 	quit(exit_code)

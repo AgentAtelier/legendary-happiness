@@ -25,6 +25,8 @@ class PlacedEntity(TypedDict, total=False):
     x: float             # world position
     y: float
     z: float
+    surface: str         # "underlay" for rugs (skip AABB separation)
+    decor: bool          # True for decoration (no collider, no pickup tag)
 
 
 # ── Tag → component table ────────────────────────────────────────
@@ -86,6 +88,23 @@ _COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
     "?": (0.5, 0.5, 0.5),
 }
 
+# ── Room dimensions (Item 2) ─────────────────────────────────────
+# The visible room shell: floor, 4 walls, ceiling.
+# Sized to contain all props within a 20×20 footprint.
+
+_ROOM_WIDTH = 20.0       # X extent
+_ROOM_DEPTH = 20.0       # Z extent
+_ROOM_HEIGHT = 3.0       # wall height
+_ROOM_WALL_THICKNESS = 0.4
+_ROOM_FLOOR_THICKNESS = 0.2
+
+# ── Light defaults (Item 1) ──────────────────────────────────────
+
+_LIGHT_DIRECTION = (-0.5, -0.75, 0.433013)  # DirectionalLight rotation basis
+_LIGHT_HEIGHT = 8.0
+_AMBIENT_COLOR = (0.15, 0.15, 0.2, 1.0)
+_BACKGROUND_COLOR = (0.05, 0.05, 0.1, 1.0)
+
 # Player spawn offset (FIX-1): player sits at (0, PLAYER_SPAWN_Y, 0)
 # to be clear of the floor (top at y=0) and props.
 _PLAYER_SPAWN_Y = 1.0
@@ -95,6 +114,148 @@ _PLAYER_SPAWN_Y = 1.0
 # directly on the player.
 _PLAYER_CLEAR_RADIUS = 1.0
 
+
+# ── Helper functions (defined before data structures that use them) ─
+
+def _fmt_pos(v: float) -> str:
+    """Format a position value: 0.0 → 0, 1.0 → 1, 0.5 → 0.5."""
+    if v == int(v):
+        return str(int(v))
+    return str(v)
+
+
+def _fmt_vec3(x: float, y: float, z: float) -> str:
+    """Format a Vector3 string for sub_resource size fields."""
+    return f"Vector3({_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
+
+
+# ── Room sub-resource builder (Item 2) ────────────────────────────
+# Built per-call so room_size can vary.  Uses _fmt_pos and light
+# constants defined above.
+
+def _build_room_sub_resources(
+    room_w: float, room_d: float,
+    room_h: float = _ROOM_HEIGHT,
+    wall_t: float = _ROOM_WALL_THICKNESS,
+    floor_t: float = _ROOM_FLOOR_THICKNESS,
+) -> List[dict]:
+    """Build the list of room sub-resources for the given dimensions."""
+    return [
+    # Environment for WorldEnvironment (Item 1)
+    {"id": "world_env", "type": "Environment",
+     "props": [
+         "background_mode = 1",
+         f"background_color = Color({_BACKGROUND_COLOR[0]}, {_BACKGROUND_COLOR[1]}, {_BACKGROUND_COLOR[2]}, {_BACKGROUND_COLOR[3]})",
+         "ambient_light_source = 1",
+         f"ambient_light_color = Color({_AMBIENT_COLOR[0]}, {_AMBIENT_COLOR[1]}, {_AMBIENT_COLOR[2]}, {_AMBIENT_COLOR[3]})",
+     ]},
+    # BoxMeshes for visible room shell (sized by room_w, room_d)
+    {"id": "floor_vis_mesh", "type": "BoxMesh",
+     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
+    {"id": "wall_ns_mesh", "type": "BoxMesh",
+     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
+    {"id": "wall_ew_mesh", "type": "BoxMesh",
+     "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
+    {"id": "ceiling_mesh", "type": "BoxMesh",
+     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
+    # StandardMaterial3Ds
+    {"id": "floor_mat", "type": "StandardMaterial3D",
+     "props": ["albedo_color = Color(0.35, 0.25, 0.15, 1)"]},
+    {"id": "wall_mat", "type": "StandardMaterial3D",
+     "props": ["albedo_color = Color(0.6, 0.55, 0.5, 1)"]},
+    {"id": "ceiling_mat", "type": "StandardMaterial3D",
+     "props": ["albedo_color = Color(0.75, 0.7, 0.65, 1)"]},
+    # Player visible body (Item 4)
+    {"id": "player_body_mesh", "type": "CapsuleMesh",
+     "props": ["radius = 0.5", "height = 1.8"]},
+    {"id": "player_body_mat", "type": "StandardMaterial3D",
+     "props": ["albedo_color = Color(0.2, 0.3, 0.5, 1)"]},
+    # Collision shapes for walls
+    {"id": "wall_ns_shape", "type": "BoxShape3D",
+     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
+    {"id": "wall_ew_shape", "type": "BoxShape3D",
+     "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
+]
+
+# ── Room node builder (Items 1-2) ─────────────────────────────────
+# Built per-call so room_size can vary.
+
+def _build_room_nodes(
+    room_w: float, room_d: float,
+    room_h: float = _ROOM_HEIGHT,
+) -> List[dict]:
+    """Build the list of room nodes (lights, meshes, walls) for the
+    given dimensions."""
+    return [
+    # WorldEnvironment (Item 1)
+    {"name": "WorldEnvironment", "type": "WorldEnvironment", "parent": ".",
+     "props": ['environment = SubResource("world_env")']},
+    # DirectionalLight3D (Item 1)
+    {"name": "DirectionalLight3D", "type": "DirectionalLight3D", "parent": ".",
+     "props": [
+         f"transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, {_fmt_pos(_LIGHT_HEIGHT)}, 0)",
+     ]},
+    # Visible floor mesh (child of existing Floor StaticBody3D)
+    {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
+     "props": [
+         'mesh = SubResource("floor_vis_mesh")',
+         'surface_material_override/0 = SubResource("floor_mat")',
+     ]},
+    # North wall (z = -room_d/2)
+    {"name": "WallN", "type": "StaticBody3D", "parent": ".",
+     "props": [
+         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h / 2)}, {_fmt_pos(-room_d / 2)})",
+     ]},
+    # South wall (z = +room_d/2)
+    {"name": "WallS", "type": "StaticBody3D", "parent": ".",
+     "props": [
+         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h / 2)}, {_fmt_pos(room_d / 2)})",
+     ]},
+    # East wall (x = +room_w/2)
+    {"name": "WallE", "type": "StaticBody3D", "parent": ".",
+     "props": [
+         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
+     ]},
+    # West wall (x = -room_w/2)
+    {"name": "WallW", "type": "StaticBody3D", "parent": ".",
+     "props": [
+         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(-room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
+     ]},
+    # Ceiling
+    {"name": "Ceiling", "type": "MeshInstance3D", "parent": ".",
+     "props": [
+         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h)}, 0)",
+         'mesh = SubResource("ceiling_mesh")',
+         'surface_material_override/0 = SubResource("ceiling_mat")',
+     ]},
+]
+
+# ── Wall collision children definitions ───────────────────────────
+
+_WALL_COLLISION_NODES: List[dict] = [
+    {"name": "WallN_collision", "type": "CollisionShape3D", "parent": "WallN",
+     "shape": "wall_ns_shape"},
+    {"name": "WallS_collision", "type": "CollisionShape3D", "parent": "WallS",
+     "shape": "wall_ns_shape"},
+    {"name": "WallE_collision", "type": "CollisionShape3D", "parent": "WallE",
+     "shape": "wall_ew_shape"},
+    {"name": "WallW_collision", "type": "CollisionShape3D", "parent": "WallW",
+     "shape": "wall_ew_shape"},
+]
+
+_WALL_MESH_NODES: List[dict] = [
+    {"name": "WallN_mesh", "type": "MeshInstance3D", "parent": "WallN",
+     "mesh": "wall_ns_mesh", "mat": "wall_mat"},
+    {"name": "WallS_mesh", "type": "MeshInstance3D", "parent": "WallS",
+     "mesh": "wall_ns_mesh", "mat": "wall_mat"},
+    {"name": "WallE_mesh", "type": "MeshInstance3D", "parent": "WallE",
+     "mesh": "wall_ew_mesh", "mat": "wall_mat"},
+    {"name": "WallW_mesh", "type": "MeshInstance3D", "parent": "WallW",
+     "mesh": "wall_ew_mesh", "mat": "wall_mat"},
+]
+
+
+# ── Public helpers ───────────────────────────────────────────────
 
 def _emit_control_layout(lines: list[str], fill: bool = False) -> None:
     """Emit Godot 4 Control layout properties for a full-window fill."""
@@ -159,18 +320,6 @@ def _ext_resource_block(unique_glbs: List[Tuple[str, str]], assets_subdir: str) 
     return "\n".join(lines)
 
 
-def _fmt_pos(v: float) -> str:
-    """Format a position value: 0.0 → 0, 1.0 → 1, 0.5 → 0.5."""
-    if v == int(v):
-        return str(int(v))
-    return str(v)
-
-
-def _fmt_vec3(x: float, y: float, z: float) -> str:
-    """Format a Vector3 string for sub_resource size fields."""
-    return f"Vector3({_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
-
-
 def _guard_player_spawn(x: float, z: float) -> Tuple[float, float]:
     """If (x,z) is too close to the player spawn at (0,0), push it away.
 
@@ -185,12 +334,123 @@ def _guard_player_spawn(x: float, z: float) -> Tuple[float, float]:
     return (x, z)
 
 
+def _prop_half_extents(category: str) -> Tuple[float, float, float]:
+    """Return half-extents (hx, hy, hz) for a prop's AABB from its category."""
+    sx, sy, sz = _COLLISION_SIZES.get(category, _COLLISION_SIZES["?"])
+    return (sx / 2.0, sy / 2.0, sz / 2.0)
+
+
+def _resolve_prop_overlaps(
+    manifest: List[dict],
+    npc_x: float = 0.0,
+    npc_z: float = -2.0,
+    max_iterations: int = 20,
+) -> List[dict]:
+    """Deterministic AABB separation pass (Item 3).
+
+    Pushes overlapping props apart so they don't intersect each other
+    or the NPC.  Processes in sorted entity-id order for determinism.
+    Uses axis-aligned bounding boxes from ``_COLLISION_SIZES`` on the
+    XZ plane (ignoring Y).
+
+    Returns a **new** list of manifest entries with updated x,z
+    positions.
+    """
+    # Work on a full copy — all entries returned, but only
+    # separable entries (non-underlay, non-decor) participate in
+    # collision checking.
+    result: list[dict] = [dict(e) for e in manifest]
+
+    # Indices of entries that participate in separation
+    separable = [
+        i for i, e in enumerate(result)
+        if e.get("surface") != "underlay" and not e.get("decor")
+    ]
+
+    if len(separable) == 0:
+        return result  # no separable props to check
+
+    # NPC half-extents (humanoid)
+    npc_hx, _, npc_hz = _prop_half_extents("humanoid")
+
+    # Build list of (index, hx, hz) for quick lookup
+    prop_data: list[Tuple[int, float, float]] = []
+    for i, entry in enumerate(result):
+        cat = entry.get("category", "?")
+        hx, _, hz = _prop_half_extents(cat)
+        prop_data.append((i, hx, hz))
+
+    for _iteration in range(max_iterations):
+        moved = False
+
+        # Process only separable indices in sorted entity-id order
+        separable_sorted = sorted(separable, key=lambda i: result[i].get("id", ""))
+
+        for idx in separable_sorted:
+            entry = result[idx]
+            _, hx, hz = prop_data[idx]  # (i, half_x, half_z)
+            px = entry.get("x", 0.0)
+            pz = entry.get("z", 0.0)
+
+            # Check against NPC.  NPC doesn't move, so push full overlap.
+            # Use <= to handle same-position case deterministically.
+            ox = (hx + npc_hx) - abs(px - npc_x)
+            oz = (hz + npc_hz) - abs(pz - npc_z)
+            if ox > 0 and oz > 0:
+                moved = True
+                if ox < oz:
+                    push = ox + 0.01
+                    if px <= npc_x:
+                        entry["x"] = px - push
+                    else:
+                        entry["x"] = px + push
+                else:
+                    push = oz + 0.01
+                    if pz <= npc_z:
+                        entry["z"] = pz - push
+                    else:
+                        entry["z"] = pz + push
+                px = entry.get("x", px)
+                pz = entry.get("z", pz)
+
+            # Check against previously placed separable props
+            for other_idx in separable_sorted:
+                if other_idx >= idx:
+                    break
+                other = result[other_idx]
+                _, other_hx, other_hz = prop_data[other_idx]
+                ox = (hx + other_hx) - abs(px - other.get("x", 0.0))
+                oz = (hz + other_hz) - abs(pz - other.get("z", 0.0))
+                if ox > 0 and oz > 0:
+                    moved = True
+                    if ox < oz:
+                        push = ox / 2.0 + 0.01
+                        if px < other.get("x", 0.0):
+                            entry["x"] = px - push
+                        else:
+                            entry["x"] = px + push
+                    else:
+                        push = oz / 2.0 + 0.01
+                        if pz < other.get("z", 0.0):
+                            entry["z"] = pz - push
+                        else:
+                            entry["z"] = pz + push
+                    px = entry.get("x", px)
+                    pz = entry.get("z", pz)
+
+        if not moved:
+            break
+
+    return result
+
+
 def compile_scene(
     quest_spec: dict,
     manifest: List[PlacedEntity],
     output_path: str,
     assets_subdir: str = "assets",
     scene_uid: str | None = None,
+    room_size: dict | None = None,
 ) -> str:
     """Compile a quest spec + manifest into a Godot .tscn file.
 
@@ -203,6 +463,10 @@ def compile_scene(
     (not a property line); floor + player collision shapes added;
     props are pushed away from the player spawn.
 
+    Items 1-2: Emits WorldEnvironment + DirectionalLight3D for
+    lighting, and a visible room shell (floor/walls/ceiling meshes
+    with materials) so the scene isn't grey.
+
     Args:
         quest_spec: Validated quest spec from ``QuestBehaviourPlanner.plan()``.
         manifest: List of placed entities with at least ``id``, ``category``,
@@ -212,6 +476,8 @@ def compile_scene(
         assets_subdir: Subdirectory where GLBs live (default ``"assets"``).
         scene_uid: Optional Godot UID for the scene.  Only emitted when
                    provided (keeps tests deterministic).
+        room_size: Optional dict with ``w`` (width) and ``d`` (depth)
+                   keys to size the room shell.  Defaults to 20×20.
 
     Returns:
         The *output_path* (so callers can assert the file was written).
@@ -231,16 +497,34 @@ def compile_scene(
         if path:
             used_tag_scripts[path] = f"s_{tag}"
 
+    # ── Resolve room dimensions from room_size or defaults ─────
+    room_w: float = _ROOM_WIDTH
+    room_d: float = _ROOM_DEPTH
+    if room_size:
+        room_w = float(room_size.get("w", _ROOM_WIDTH))
+        room_d = float(room_size.get("d", _ROOM_DEPTH))
+
     # ── Identify interactable entities (FIX-5) ──────────────────
-    # All props are now pickable with collision shapes so the
-    # camera raycast hits them. The quest target is identified
-    # by target_entity in quest_data.json (NPC checks carried_item).
-    interactable_ids: set[str] = {e["id"] for e in manifest}
+    # Decor entries get no collider, no pickup tag.
+    interactable_ids: set[str] = {
+        e["id"] for e in manifest
+        if not e.get("decor")
+    }
 
     # ── Compute sub_resource count (FIX-1/FIX-5) ───────────────
     # floor BoxShape3D + player CapsuleShape3D + one BoxShape3D per
-    # prop (all pickable) + NPC.
-    num_sub_resources = 2 + len(manifest) + 1  # +1 for NPC
+    # interactable prop + NPC.
+    num_interactable = len(interactable_ids)
+    num_sub_resources = 2 + num_interactable + 1  # +1 for NPC
+
+    # ── Build room resources for resolved dimensions ───────────
+    room_sub_resources = _build_room_sub_resources(room_w, room_d)
+    room_nodes = _build_room_nodes(room_w, room_d)
+
+    # ── No-clip placement pass (Item 3) ─────────────────────────
+    # Deterministic AABB separation so props don't intersect each
+    # other or the NPC.  Skips underlay and decor entries.
+    separated_manifest = _resolve_prop_overlaps(manifest)
 
     # ── Write quest data as a JSON file alongside the .tscn ──────
     output_dir = str(Path(output_path).parent)
@@ -276,9 +560,11 @@ def compile_scene(
     player_sub_id = f"sub_{sub_res_idx}"
     sub_res_idx += 1
 
-    # All prop collisions (FIX-5: every prop is now pickable)
+    # All prop collisions — skip decor entries (no collider)
     for entry in manifest:
         eid = entry["id"]
+        if entry.get("decor"):
+            continue  # decor entries get no collision
         cat = entry.get("category", "?")
         collision_info[eid] = (
             f"sub_{sub_res_idx}",
@@ -296,9 +582,15 @@ def compile_scene(
     # ── Build .tscn content ─────────────────────────────────────
     lines: list[str] = []
 
-    # Header — load_steps = ext_resources + sub_resources
+    # Count room shell sub-resources for load_steps
+    num_room_sub_resources = len(room_sub_resources)
+
     total_load_steps = (
-        len(unique_glbs) + 4 + len(used_tag_scripts) + num_sub_resources
+        len(unique_glbs)                     # GLB ext_resources
+        + 4                                  # shell scripts
+        + len(used_tag_scripts)              # component scripts
+        + num_sub_resources                  # collision sub_resources
+        + num_room_sub_resources             # Environment + meshes + materials + wall shapes
     )
     header = f"[gd_scene load_steps={total_load_steps} format=3]"
     if scene_uid:
@@ -323,9 +615,9 @@ def compile_scene(
     lines.append("")
 
     # ── SubResources: collision shapes (FIX-1) ──────────────────
-    # Floor: BoxShape3D 20×1×20
+    # Floor: BoxShape3D sized by room dimensions
     lines.append(f'[sub_resource type="BoxShape3D" id="{floor_sub_id}"]')
-    lines.append("size = Vector3(20, 1, 20)")
+    lines.append(f"size = Vector3({_fmt_pos(room_w)}, 1, {_fmt_pos(room_d)})")
     lines.append("")
 
     # Player: CapsuleShape3D
@@ -340,12 +632,19 @@ def compile_scene(
         lines.append(f"size = {_fmt_vec3(sx, sy, sz)}")
         lines.append("")
 
+    # ── Room shell sub-resources (Environment, meshes, materials) ─
+    for sr in room_sub_resources:
+        lines.append(f'[sub_resource type="{sr["type"]}" id="{sr["id"]}"]')
+        for prop in sr["props"]:
+            lines.append(prop)
+        lines.append("")
+
     # Root (no parent attribute — Godot 4 convention)
     lines.append('[node name="Root" type="Node3D"]')
     lines.append("")
 
     # ── Floor node (FIX-1b) ─────────────────────────────────────
-    # StaticBody3D covering 20×1×20, top at y=0 → centre at y=-0.5
+    # StaticBody3D sized by room dimensions, top at y=0 → centre at y=-0.5
     lines.append('[node name="Floor" type="StaticBody3D" parent="."]')
     lines.append(
         "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)"
@@ -354,24 +653,65 @@ def compile_scene(
     lines.append(f'shape = SubResource("{floor_sub_id}")')
     lines.append("")
 
+    # ── Room shell nodes: lights, visible geometry, walls (Items 1-2) ─
+    for room_node in room_nodes:
+        lines.append(
+            f'[node name="{room_node["name"]}" type="{room_node["type"]}" '
+            f'parent="{room_node["parent"]}"]'
+        )
+        for prop in room_node.get("props", []):
+            lines.append(prop)
+        lines.append("")
+        # Emit wall collision child if this is a wall body
+        wall_coll = next(
+            (wc for wc in _WALL_COLLISION_NODES if wc["parent"] == room_node["name"]),
+            None,
+        )
+        if wall_coll:
+            lines.append(
+                f'[node name="{wall_coll["name"]}" type="{wall_coll["type"]}" '
+                f'parent="{wall_coll["parent"]}"]'
+            )
+            lines.append(f'shape = SubResource("{wall_coll["shape"]}")')
+            lines.append("")
+        # Emit wall mesh child if this is a wall body
+        wall_mesh = next(
+            (wm for wm in _WALL_MESH_NODES if wm["parent"] == room_node["name"]),
+            None,
+        )
+        if wall_mesh:
+            lines.append(
+                f'[node name="{wall_mesh["name"]}" type="{wall_mesh["type"]}" '
+                f'parent="{wall_mesh["parent"]}"]'
+            )
+            lines.append(f'mesh = SubResource("{wall_mesh["mesh"]}")')
+            lines.append(
+                f'surface_material_override/0 = SubResource("{wall_mesh["mat"]}")'
+            )
+            lines.append("")
+
     # ── Placed props (FIX-1a/d/e) ───────────────────────────────
     # Props are now StaticBody3D with collision shapes.  GLB model
     # is instanced via header-line instance=ExtResource(...).
-    for entry in manifest:
+    # Uses separated_manifest from the no-clip pass (Item 3).
+    for entry in separated_manifest:
         eid = entry["id"]
         cat = entry.get("category", "?")
         mat = entry.get("material", "default")
         x = entry.get("x", 0.0)
         y = entry.get("y", 0.0)
         z = entry.get("z", 0.0)
-        tag = "pickup"  # FIX-5: all props are now pickable
+        is_decor = entry.get("decor", False)
+        tag = "inert" if is_decor else "pickup"
         glb_id = glb_ids.get((cat, mat), "1")
 
         # Guard: push away from player spawn (FIX-1e)
         x, z = _guard_player_spawn(x, z)
 
-        # Prop root: Node3D for inert, StaticBody3D for interactable
-        if eid in interactable_ids:
+        # Decor entries: Node3D (no physics), no tag, no script
+        if is_decor:
+            lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
+        elif eid in interactable_ids:
             lines.append(f'[node name="{eid}" type="StaticBody3D" parent="."]')
         else:
             lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
@@ -379,17 +719,18 @@ def compile_scene(
             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
             f"{_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
         )
-        lines.append(f'metadata/_forge_tag = "{tag}"')
-        # P5: attach component script by tag
-        component_path = _TAG_TABLE.get(tag)
-        if component_path and component_path in used_tag_scripts:
-            lines.append(
-                f'script = ExtResource("{used_tag_scripts[component_path]}")'
-            )
+        if not is_decor:
+            lines.append(f'metadata/_forge_tag = "{tag}"')
+            # P5: attach component script by tag
+            component_path = _TAG_TABLE.get(tag)
+            if component_path and component_path in used_tag_scripts:
+                lines.append(
+                    f'script = ExtResource("{used_tag_scripts[component_path]}")'
+                )
         lines.append("")
 
-        # Collision shape for interactable props (FIX-1d)
-        if eid in collision_info:
+        # Collision shape for interactable props (FIX-1d), skip decor
+        if not is_decor and eid in collision_info:
             sub_id = collision_info[eid][0]
             lines.append(
                 f'[node name="{eid}_collision" type="CollisionShape3D" parent="{eid}"]'
@@ -472,6 +813,17 @@ def compile_scene(
     lines.append(f'shape = SubResource("{player_sub_id}")')
     lines.append("")
 
+    # Player visible body (Item 4) — CapsuleMesh so the player doesn't
+    # appear as a floating free camera.
+    lines.append(
+        '[node name="BodyMesh" type="MeshInstance3D" parent="Player"]'
+    )
+    lines.append('mesh = SubResource("player_body_mesh")')
+    lines.append(
+        'surface_material_override/0 = SubResource("player_body_mat")'
+    )
+    lines.append("")
+
     # HUD child labels
     lines.append('[node name="ObjectiveLabel" type="Label" parent="HUD"]')
     lines.append("layout_mode = 0")
@@ -521,6 +873,18 @@ def _parse_scene_text(tscn_text: str) -> dict:
     metadata: dict[str, dict[str, str]] = {}
     current_node: dict | None = None
 
+    # Property prefixes we recognise as belonging to the current node
+    _NODE_PROPERTY_PREFIXES = (
+        "instance ", "transform ", "metadata/",
+        "script ", "shape ",
+        "current ", "visible ",
+        "layout_mode ", "anchors_preset ",
+        "anchor_", "offset_", "grow_", "text ",
+        "horizontal_alignment ",
+        "environment ", "shadow_enabled ",
+        "mesh ", "surface_material_override/",
+    )
+
     for line in tscn_text.split("\n"):
         stripped = line.strip()
         if not stripped:
@@ -562,12 +926,7 @@ def _parse_scene_text(tscn_text: str) -> dict:
             metadata[current_node["name"]] = {}
 
         elif current_node and (
-            stripped.startswith(("instance ", "transform ", "metadata/",
-                                 "script ", "shape ",
-                                 "current ", "visible ",
-                                 "layout_mode ", "anchors_preset ",
-                                 "anchor_", "offset_", "grow_", "text ",
-                                 "horizontal_alignment "))
+            stripped.startswith(_NODE_PROPERTY_PREFIXES)
         ):
             # Property line for the current node
             if stripped.startswith("instance = ExtResource"):
@@ -588,6 +947,26 @@ def _parse_scene_text(tscn_text: str) -> dict:
                 )
                 if m:
                     current_node["shape"] = m.group(1)
+            elif stripped.startswith("mesh = SubResource"):
+                m = re.search(
+                    r'mesh\s*=\s*SubResource\("([^"]+)"\)', stripped
+                )
+                if m:
+                    current_node["mesh"] = m.group(1)
+            elif stripped.startswith("environment = SubResource"):
+                m = re.search(
+                    r'environment\s*=\s*SubResource\("([^"]+)"\)', stripped
+                )
+                if m:
+                    current_node["environment"] = m.group(1)
+            elif stripped.startswith("surface_material_override/"):
+                m = re.search(
+                    r'surface_material_override/\d+\s*=\s*SubResource\("([^"]+)"\)', stripped
+                )
+                if m:
+                    if "surface_materials" not in current_node:
+                        current_node["surface_materials"] = []
+                    current_node["surface_materials"].append(m.group(1))
             elif stripped.startswith("metadata/"):
                 key_val = stripped[len("metadata/"):]
                 eq = key_val.find(" = ")

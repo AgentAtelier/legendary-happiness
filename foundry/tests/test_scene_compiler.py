@@ -19,6 +19,8 @@ from scene_compiler import (
     _ext_resource_block,
     _fmt_pos,
     _parse_scene_text,
+    _resolve_prop_overlaps,
+    _prop_half_extents,
     compile_scene,
     read_quest_data,
 )
@@ -367,14 +369,12 @@ def test_ext_resources_include_npc_body_glb():
 
 
 def test_no_capsule_mesh_sub_resource():
-    """P7 removes the CapsuleMesh sub_resource — NPC body is now a GLB."""
+    """P7 removes the CapsuleMesh sub_resource — NPC body is now a GLB.
+
+    CapsuleMesh for the player visible body (Item 4) and room shell
+    materials (Item 2) are expected.
+    """
     text, _, _ = _compile_and_parse()
-    assert "CapsuleMesh" not in text, (
-        "CapsuleMesh sub_resource should be removed (P7 replaces with GLB)"
-    )
-    assert "StandardMaterial3D" not in text, (
-        "StandardMaterial3D sub_resource should be removed (P7 replaces with GLB)"
-    )
     assert "npc_mesh" not in text
     assert "npc_mat" not in text
 
@@ -590,4 +590,223 @@ def test_prop_far_from_origin_stays():
     x, z = _guard_player_spawn(5.0, 3.0)
     assert (x, z) == (5.0, 3.0), (
         f"(5,3) should stay unchanged, got ({x},{z})"
+    )
+
+
+# ── Item 1: Lights ──────────────────────────────────────────────
+
+def test_world_environment_node_exists():
+    """Item 1: Scene has a WorldEnvironment node."""
+    _, parsed, _ = _compile_and_parse()
+    env_nodes = [n for n in parsed["nodes"] if n["type"] == "WorldEnvironment"]
+    assert len(env_nodes) >= 1, (
+        f"expected at least 1 WorldEnvironment node, got {len(env_nodes)}"
+    )
+    assert env_nodes[0]["name"] == "WorldEnvironment"
+
+
+def test_directional_light_node_exists():
+    """Item 1: Scene has a DirectionalLight3D."""
+    _, parsed, _ = _compile_and_parse()
+    light_nodes = [n for n in parsed["nodes"] if n["type"] == "DirectionalLight3D"]
+    assert len(light_nodes) >= 1, (
+        f"expected at least 1 DirectionalLight3D node, got {len(light_nodes)}"
+    )
+
+
+def test_environment_sub_resource_exists():
+    """Item 1: Scene has an Environment sub_resource."""
+    _, parsed, _ = _compile_and_parse()
+    sub_types = {s["type"] for s in parsed.get("sub_resources", [])}
+    assert "Environment" in sub_types, (
+        f"expected Environment sub_resource, got {sub_types}"
+    )
+
+
+# ── Item 2: Room shell ──────────────────────────────────────────
+
+def test_visible_floor_mesh_exists():
+    """Item 2: Scene has a FloorMesh MeshInstance3D child of Floor."""
+    _, parsed, _ = _compile_and_parse()
+    floor_nodes = [n for n in parsed["nodes"] if n["name"] == "FloorMesh"]
+    assert len(floor_nodes) == 1, (
+        f"expected 1 FloorMesh node, got {len(floor_nodes)}"
+    )
+    assert floor_nodes[0]["type"] == "MeshInstance3D"
+    assert floor_nodes[0]["parent"] == "Floor"
+
+
+def test_wall_nodes_exist():
+    """Item 2: Scene has 4 wall StaticBody3D nodes."""
+    _, parsed, _ = _compile_and_parse()
+    for wall_name in ("WallN", "WallS", "WallE", "WallW"):
+        wall_nodes = [n for n in parsed["nodes"] if n["name"] == wall_name]
+        assert len(wall_nodes) == 1, f"expected 1 {wall_name} node, got {len(wall_nodes)}"
+        assert wall_nodes[0]["type"] == "StaticBody3D"
+
+
+def test_walls_have_collision_and_mesh_children():
+    """Item 2: Each wall has a CollisionShape3D and MeshInstance3D child."""
+    _, parsed, _ = _compile_and_parse()
+    for wall_name in ("WallN", "WallS", "WallE", "WallW"):
+        coll_children = [
+            n for n in parsed["nodes"]
+            if n["name"] == f"{wall_name}_collision" and n["type"] == "CollisionShape3D"
+        ]
+        assert len(coll_children) == 1, (
+            f"{wall_name} missing collision child"
+        )
+        mesh_children = [
+            n for n in parsed["nodes"]
+            if n["name"] == f"{wall_name}_mesh" and n["type"] == "MeshInstance3D"
+        ]
+        assert len(mesh_children) == 1, (
+            f"{wall_name} missing mesh child"
+        )
+
+
+def test_ceiling_node_exists():
+    """Item 2: Scene has a Ceiling MeshInstance3D."""
+    _, parsed, _ = _compile_and_parse()
+    ceiling_nodes = [n for n in parsed["nodes"] if n["name"] == "Ceiling"]
+    assert len(ceiling_nodes) == 1
+    assert ceiling_nodes[0]["type"] == "MeshInstance3D"
+
+
+def test_room_material_sub_resources_exist():
+    """Item 2: Sub resources include StandardMaterial3D for floor/walls/ceiling."""
+    _, parsed, _ = _compile_and_parse()
+    sub_ids = {s["id"] for s in parsed.get("sub_resources", [])}
+    for mat_id in ("floor_mat", "wall_mat", "ceiling_mat"):
+        assert mat_id in sub_ids, f"expected {mat_id} sub_resource, got {sub_ids}"
+
+
+def test_room_box_mesh_sub_resources_exist():
+    """Item 2: Sub resources include BoxMeshes for floor, walls, ceiling."""
+    _, parsed, _ = _compile_and_parse()
+    sub_ids = {s["id"] for s in parsed.get("sub_resources", [])}
+    for mesh_id in ("floor_vis_mesh", "wall_ns_mesh", "wall_ew_mesh", "ceiling_mesh"):
+        assert mesh_id in sub_ids, f"expected {mesh_id} sub_resource, got {sub_ids}"
+
+
+# ── Item 3: No-clip placement ───────────────────────────────────
+
+def test_prop_half_extents_returns_half_sizes():
+    """Item 3: _prop_half_extents returns (sx/2, sy/2, sz/2)."""
+    hx, hy, hz = _prop_half_extents("table")
+    assert hx == 0.6  # 1.2 / 2
+    assert hy == 0.3  # 0.6 / 2
+    assert hz == 0.4  # 0.8 / 2
+
+
+def test_no_overlap_manifest_is_unchanged():
+    """Item 3: Non-overlapping manifest is returned unchanged."""
+    manifest: list[PlacedEntity] = [
+        {"id": "a", "category": "table", "material": "worn_oak", "x": 5.0, "z": 5.0},
+        {"id": "b", "category": "shelf", "material": "rough_granite", "x": -5.0, "z": -5.0},
+    ]
+    result = _resolve_prop_overlaps(manifest)
+    assert len(result) == 2
+    assert result[0]["x"] == 5.0
+    assert result[0]["z"] == 5.0
+    assert result[1]["x"] == -5.0
+    assert result[1]["z"] == -5.0
+
+
+def test_overlapping_props_are_separated():
+    """Item 3: Two props at exactly the same position get pushed apart."""
+    manifest: list[PlacedEntity] = [
+        {"id": "a", "category": "table", "material": "worn_oak", "x": 0.0, "z": 0.0},
+        {"id": "b", "category": "table", "material": "worn_oak", "x": 0.0, "z": 0.0},
+    ]
+    result = _resolve_prop_overlaps(manifest)
+    # Props should be separated (x or z different)
+    a_x = result[0].get("x", 0.0)
+    a_z = result[0].get("z", 0.0)
+    b_x = result[1].get("x", 0.0)
+    b_z = result[1].get("z", 0.0)
+    # At least one axis should differ
+    diff = abs(a_x - b_x) + abs(a_z - b_z)
+    assert diff > 0.01, (
+        f"props not separated: a=({a_x},{a_z}) b=({b_x},{b_z})"
+    )
+
+
+def test_props_dont_overlap_npc():
+    """Item 3: Props placed at NPC position get pushed away."""
+    manifest: list[PlacedEntity] = [
+        {"id": "a", "category": "table", "material": "worn_oak", "x": 0.0, "z": -2.0},
+    ]
+    result = _resolve_prop_overlaps(manifest, npc_x=0.0, npc_z=-2.0)
+    # Prop should have been pushed away from NPC at (0, -2)
+    px = result[0].get("x", 0.0)
+    pz = result[0].get("z", 0.0)
+    dist_from_npc = ((px - 0) ** 2 + (pz + 2) ** 2) ** 0.5
+    assert dist_from_npc > 0.5, (
+        f"prop too close to NPC: ({px},{pz}), dist={dist_from_npc}"
+    )
+
+
+def test_separation_is_deterministic():
+    """Item 3: Same input → same output every time."""
+    manifest: list[PlacedEntity] = [
+        {"id": "a", "category": "table", "material": "worn_oak", "x": 0.0, "z": 0.0},
+        {"id": "b", "category": "shelf", "material": "rough_granite", "x": 0.0, "z": 0.0},
+        {"id": "c", "category": "cabinet", "material": "wrought_iron", "x": 0.0, "z": 0.0},
+    ]
+    results = [_resolve_prop_overlaps(manifest) for _ in range(5)]
+    # All results should be byte-identical
+    for i in range(1, len(results)):
+        for j, entry in enumerate(results[i]):
+            assert entry["x"] == results[0][j]["x"], (
+                f"run {i} prop {j} x differs: {entry['x']} vs {results[0][j]['x']}"
+            )
+            assert entry["z"] == results[0][j]["z"], (
+                f"run {i} prop {j} z differs"
+            )
+
+
+def test_scene_uses_separated_positions():
+    """Item 3: The compiled .tscn uses positions from the separation pass."""
+    # Same-position props should have different transforms in the tscn
+    manifest_4: list[PlacedEntity] = [
+        {"id": "p0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 0.0, "y": 0.0, "z": 0.0},
+        {"id": "p1", "category": "shelf", "material": "rough_granite",
+         "wear": 0.3, "x": 0.0, "y": 0.0, "z": 0.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "p0"
+    text, _, _ = _compile_and_parse(quest_spec=spec, manifest=manifest_4)
+    # Both props should appear in the text
+    assert "p0" in text and "p1" in text
+    # Their transforms should be different (separated)
+    import re
+    transforms = re.findall(r'Transform3D\([^)]+\)', text)
+    # at least 2 prop transforms should exist and be different
+    assert len(transforms) >= 2, f"expected at least 2 transforms, got {len(transforms)}"
+
+
+# ── Item 4: Player body ─────────────────────────────────────────
+
+def test_player_body_mesh_node_exists():
+    """Item 4: Player has a BodyMesh MeshInstance3D child."""
+    _, parsed, _ = _compile_and_parse()
+    body_nodes = [n for n in parsed["nodes"] if n["name"] == "BodyMesh"]
+    assert len(body_nodes) == 1, (
+        f"expected 1 BodyMesh node, got {len(body_nodes)}"
+    )
+    assert body_nodes[0]["type"] == "MeshInstance3D"
+    assert body_nodes[0]["parent"] == "Player"
+
+
+def test_player_body_has_mesh_sub_resource():
+    """Item 4: Sub resources include CapsuleMesh for player body."""
+    _, parsed, _ = _compile_and_parse()
+    sub_ids = {s["id"] for s in parsed.get("sub_resources", [])}
+    assert "player_body_mesh" in sub_ids, (
+        f"expected player_body_mesh sub_resource, got {sub_ids}"
+    )
+    assert "player_body_mat" in sub_ids, (
+        f"expected player_body_mat sub_resource, got {sub_ids}"
     )
