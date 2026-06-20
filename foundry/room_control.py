@@ -93,6 +93,10 @@ _GLOBAL_MIN_DENSITY = 1
 _GLOBAL_MAX_DENSITY = 20
 _COUNT_HI = 8           # per-category max (mirrors RoomPlanner.COUNT_HI)
 _DECOR_CATEGORIES = {"rug", "painting"}
+# Theme tables only gate the BASE furniture categories. Carryables (P-E) and the
+# extended prop set (P-F) pass through every theme — the theme still biases their
+# palette/density — so they actually appear in rooms (and a carryable target exists).
+_BASE_FURNITURE = {"table", "chair", "shelf", "cabinet"}
 _AT_LEAST_ONE_SEAT = True
 
 
@@ -147,8 +151,9 @@ def apply_rules(
                 {"category": cat, "material": mat, "count": cnt}
             )
             continue
-        # Drop out-of-theme furniture categories
-        if cat not in allowed_cats:
+        # Drop only out-of-theme BASE furniture; carryables + extended props
+        # pass through (they aren't theme-restricted — they fit any room).
+        if cat in _BASE_FURNITURE and cat not in allowed_cats:
             dropped_cats.add(cat)
             continue
         # Clamp material to palette

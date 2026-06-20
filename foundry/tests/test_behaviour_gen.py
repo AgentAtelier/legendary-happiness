@@ -802,3 +802,13 @@ def test_plan_live_produces_valid_quest_spec():
     if decisions:
         for d in decisions:
             print(f"    [{d.severity}] {d.code}: {d.technical}")
+
+
+def test_plan_no_carryables_falls_back_to_furniture():
+    """Robustness: when carryable_ids is empty (room has no carryables), the
+    planner must fall back to a furniture target, not hard-fail."""
+    planner = QuestBehaviourPlanner()
+    spec, decisions = planner.plan(
+        "a hermit's shack", _MANIFEST_4, _fake_llm_valid, carryable_ids=set()
+    )
+    assert spec["target_entity"] in _VALID_MANIFEST_IDS

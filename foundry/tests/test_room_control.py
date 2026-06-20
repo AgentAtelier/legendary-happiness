@@ -117,3 +117,18 @@ def test_all_theme_rows_have_required_fields():
         assert not missing, f"Row {row['theme']} missing keys: {missing}"
         assert row["density"]["min"] >= 1
         assert row["density"]["max"] >= row["density"]["min"]
+
+
+def test_apply_rules_carryable_and_new_prop_pass_through():
+    """Integration: carryables (P-E target) and new props (P-F) must NOT be
+    dropped by the theme filter — only out-of-theme BASE furniture is dropped."""
+    from room_control import apply_rules
+    plan = {"room_size": {"w": 6, "d": 6}, "props": [
+        {"category": "table", "material": "worn_oak", "count": 1},
+        {"category": "key", "material": "wrought_iron", "count": 1},
+        {"category": "barrel", "material": "worn_oak", "count": 2},
+    ]}
+    clamped, _ = apply_rules(plan, "a hermit's shack")
+    cats = {p["category"] for p in clamped["props"]}
+    assert "key" in cats, "carryable was dropped by the control layer"
+    assert "barrel" in cats, "new prop was dropped by the control layer"

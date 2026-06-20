@@ -307,10 +307,14 @@ class QuestBehaviourPlanner:
         decisions: list[DecisionPoint] = []
 
         # ── Guard: manifest must have eligible targets ────────────
-        # P-E: if carryable_ids provided, only carryables are eligible targets.
-        # Otherwise all manifest entities are eligible (backward compat).
+        # P-E: prefer a carryable target; but fall back to any non-decor prop so
+        # a room without carryables still yields a winnable quest (was a hard fail).
         all_manifest_ids = self._manifest_ids(manifest)
-        valid_ids = carryable_ids & all_manifest_ids if carryable_ids is not None else all_manifest_ids
+        non_decor_ids = {e["id"] for e in manifest if "id" in e and not e.get("decor")}
+        if carryable_ids is None:
+            valid_ids = all_manifest_ids
+        else:
+            valid_ids = (carryable_ids & all_manifest_ids) or non_decor_ids
         if not valid_ids:
             decisions.append(
                 make_decision(
