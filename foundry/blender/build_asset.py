@@ -760,12 +760,26 @@ def _add_idle_bob(obj, amplitude=0.04, period=60):
         fc.modifiers.new("CYCLES")
 
 
+def _build_rug_geometry(params):
+    """A thin flat watertight box — a rug/mat lying on the floor (#6 decor)."""
+    w, d, t = params["width"], params["depth"], params["thickness"]
+    mesh = bpy.data.meshes.new("rug")
+    obj = bpy.data.objects.new("rug", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    _add_box(bm, 0.0, 0.0, t / 2.0, w, d, t)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
     "shelf": _build_shelf_geometry,
     "cabinet": _build_cabinet_geometry,
     "humanoid": _build_humanoid_geometry,
+    "rug": _build_rug_geometry,
 }
 
 _COLOR_BUILDERS = {
@@ -787,14 +801,24 @@ def build_geometry(spec):
 def apply_bevel(mesh_data):
     """Apply a small uniform edge bevel so edges catch light.
 
-    Offset ~0.015 m, 2 segments; bakes into the exported mesh.
+    Offset ~0.015 m, 2 segments; bakes into the exported mesh.  The offset is
+    clamped to a fraction of the mesh's smallest extent so thin decor (a 0.02 m
+    rug) isn't collapsed — without this a fixed 0.015 m bevel eats a 0.01 m
+    half-thickness and breaks watertightness.
     """
+    co = [v.co for v in mesh_data.vertices]
+    if co:
+        xs = [c.x for c in co]; ys = [c.y for c in co]; zs = [c.z for c in co]
+        min_extent = min(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs))
+        offset = min(0.015, 0.4 * min_extent)
+    else:
+        offset = 0.015
     bm = bmesh.new()
     bm.from_mesh(mesh_data)
     bmesh.ops.bevel(
         bm,
         geom=[e for e in bm.edges],
-        offset=0.015,
+        offset=offset,
         offset_type="OFFSET",
         segments=2,
         profile=0.5,

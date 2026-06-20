@@ -9,7 +9,7 @@ import json
 
 from materials import MATERIAL_PALETTE
 
-GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid"}
+GENERATORS = {"table", "chair", "shelf", "cabinet", "humanoid", "rug", "painting"}
 MATERIALS = set(MATERIAL_PALETTE.keys())
 
 # Per-generator parameter ranges (min, max). The narrow, known-good envelope —
@@ -56,6 +56,12 @@ PARAM_RANGES = {
         "body_width": (0.3, 0.7),
         "limb_thickness": (0.08, 0.2),
         "head_size": (0.15, 0.35),
+    },
+    # #6: thin flat decor — a rug/mat lying on the floor.
+    "rug": {
+        "width": (0.8, 3.5),
+        "depth": (0.6, 2.5),
+        "thickness": (0.01, 0.04),
     },
 }
 

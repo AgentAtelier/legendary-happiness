@@ -283,6 +283,27 @@
       "variants": {
         "rough_granite": "res://assets/humanoid_rough_granite.glb"
       }
+    },
+    "rug": {
+      "path": "",
+      "category": [
+        "decor",
+        "floor"
+      ],
+      "footprint": {
+        "width": 3.5,
+        "depth": 2.5
+      },
+      "height": 0.06,
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.3,
+          0.2
+        ]
+      },
+      "label": "Rug"
     }
   }
 }

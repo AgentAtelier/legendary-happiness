@@ -403,3 +403,19 @@ def test_chair_has_baked_texture_and_uvs(tmp_path):
     mesh = gltf.meshes[0]
     primitive = mesh.primitives[0]
     assert primitive.attributes.TEXCOORD_0 is not None, "expected TEXCOORD_0"
+
+
+def test_rug_builds_and_passes_gate(tmp_path):
+    from gate import gate_asset
+    spec = {"asset_id": "rug", "generator": "rug", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 2.0, "depth": 1.4, "thickness": 0.02}}
+    sp = tmp_path / "rug.json"; sp.write_text(json.dumps(spec))
+    out = tmp_path / "rug.glb"
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(sp), str(out)],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert out.exists(), proc.stderr[-2000:] or proc.stdout[-2000:]
+    fp, h = read_envelope(LIVE_LEXICON, "rug")
+    result = gate_asset(str(out), fp, h)
+    assert result.passed, result.reasons

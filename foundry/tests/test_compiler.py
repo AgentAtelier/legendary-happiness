@@ -183,3 +183,11 @@ def test_cabinet_missing_param_rejected():
     s = _cabinet_spec(); del s["params"]["panel_thickness"]
     with pytest.raises(SpecError):
         compile_spec(s)
+
+
+def test_rug_spec_compiles():
+    from compiler import compile_spec
+    spec = {"asset_id": "rug", "generator": "rug", "material": "worn_oak",
+            "age": 0.2, "params": {"width": 2.0, "depth": 1.4, "thickness": 0.02}}
+    out = compile_spec(spec)
+    assert out["generator"] == "rug" and out["params"]["thickness"] == 0.02
