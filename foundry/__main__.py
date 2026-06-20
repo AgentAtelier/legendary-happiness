@@ -147,6 +147,10 @@ def _cmd_quest(args: list[str]) -> int:
     if seed is not None:
         print(f"[quest] Seed: {seed}")
     room_plan, room_decisions = RoomPlanner().plan(parsed.request, llm, seed=seed)
+    # C-0: apply theme-based control rules + global guards
+    from room_control import apply_rules
+    room_plan, control_decisions = apply_rules(room_plan, parsed.request)
+    room_decisions.extend(control_decisions)
     manifest, room_size, layout_decisions = layout_room(room_plan, seed=seed)
     print(f"[quest] Room: {room_size['w']}x{room_size['d']} m, "
           f"{len(manifest)} entities")

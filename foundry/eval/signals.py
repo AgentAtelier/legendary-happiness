@@ -537,3 +537,6 @@ def check_headless_load_clean(stderr: str) -> bool:
 # P-K: decor-never-target tag in SIGNAL_SEVERITY ──────────────────────
 SIGNAL_SEVERITY["decor_never_target"] = "high"
 SIGNAL_SEVERITY["headless_not_clean"] = "high"
+# C-0: room control signals
+SIGNAL_SEVERITY["guards_violated"] = "high"
+SIGNAL_SEVERITY["theme_out_of_bounds"] = "high"
