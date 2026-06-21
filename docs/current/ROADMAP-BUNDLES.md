@@ -1,5 +1,15 @@
 # Execution Roadmap — Bundles (Anvil ports + LIST 3 + remaining)
 
+> **⚠ DIRECTION UPDATE (2026-06-21): everything below now rides the Interpretation Spine.**
+> See `SPINE-DESIGN.md`. Forge is a *general* embodied-3D-game generator, not this one RPG.
+> The new definition-of-done has **three pillars**: Capability + Interpretation (free prompt →
+> engine vocabulary) + Legibility (a build report saying understood / built / assumed /
+> couldn't-do). A bundle is not "done" until its capability is expressed in the shared **Brief**
+> and surfaces in the **Build Report**. Sequencing: **Spine Slice 1 (rooms)** → **Slice 2
+> (quests ride the spine, incl. the parked per-NPC grammared dialogue fix)** → then the bundles
+> below, each refactored to "add a Brief section + a generator that consumes it + its Decision
+> Points + its report lines." The bundle *content* stands; the *bar* rose.
+
 Each **bundle = one stop-and-verify cycle**: the CLI AI does it, then we run the live checkpoint
 (headless gate + `test_godot_smoke.py` + a real playthrough; live run-twice for generation changes)
 and fix before the next. **Standing rules + gate discipline:** see `EASY-BATCH-PROMPTS.md` header
