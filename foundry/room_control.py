@@ -267,6 +267,25 @@ def apply_rules(
             else:
                 p["material"] = allowed_palette[0]
 
+    # EB-7: Force-fabric on at least one decor prop when theme supports fabric.
+    # The LLM always picks palette[0] for decor, so rugs stay non-fabric even
+    # in fabric-rich themes (kitchen, noble, tavern).  If the palette has fabric
+    # AND at least one rug exists, swap it to fabric so fabric actually surfaces.
+    fabric_in_palette = [m for m in allowed_palette if m in _FABRIC_MATERIALS]
+    if fabric_in_palette:
+        for p in decor_props:
+            if p.get("category") == "rug" and p.get("material") not in _FABRIC_MATERIALS:
+                p["material"] = fabric_in_palette[0]
+                decisions.append(DecisionPoint(
+                    code="room.fabric_on_decor",
+                    technical=f"rug material → {fabric_in_palette[0]}",
+                    plain=f"Applied {fabric_in_palette[0]} to rug (fabric-eligible theme)",
+                    stage="control", severity="assumption",
+                    context={"material": fabric_in_palette[0]},
+                    choices=[Choice(label="Accept", plain="Accept", apply={})],
+                ))
+                break  # only one rug needs fabric to prove the feature
+
     if dropped_cats:
         decisions.append(DecisionPoint(
             code="room.category_dropped",
@@ -386,7 +405,7 @@ def apply_rules(
     # ── 6. U-5 / EB-7: Material variety guard ─────────────────
     # If the room only uses 1 material, has ≥2 furniture/carryable
     # props, and the palette has ≥2, inject a second material for
-    # ~half the props so rooms aren't monochrome.
+    # some props so rooms aren't monochrome.
     # EB-7: Fabric materials are only applied to fabric-safe
     # categories (chairs, rugs, stools, benches), not hard furniture.
     furniture_props = [p for p in clamped_props if p["category"] not in _DECOR_CATEGORIES]
@@ -397,10 +416,13 @@ def apply_rules(
         # fabric-safe categories
         non_fabric_alts = [m for m in allowed_palette if m != current_mat and m not in _FABRIC_MATERIALS]
         fabric_alts = [m for m in allowed_palette if m != current_mat and m in _FABRIC_MATERIALS]
-        varied = 0
+        # EB-7-fix: Change at least one prop, then alternate every other.
+        # Previously, the even/odd gate (varied>0 and varied%2==0) meant that
+        # with exactly 2 furniture props NEITHER got changed (varied=0 and 1).
+        changed_count = 0
         for p in clamped_props:
             if p["category"] not in _DECOR_CATEGORIES:
-                if varied > 0 and varied % 2 == 0:
+                if changed_count == 0 or changed_count % 2 == 0:
                     # Pick alt: prefer fabric for fabric-safe cats
                     cat = p["category"]
                     if cat in _FABRIC_SAFE_CATEGORIES and fabric_alts:
@@ -409,8 +431,8 @@ def apply_rules(
                         p["material"] = non_fabric_alts[0]
                     else:
                         p["material"] = next(m for m in allowed_palette if m != current_mat)
-                varied += 1
-        if varied > 0:
+                changed_count += 1
+        if changed_count > 0:
             alt_used = next(
                 (p["material"] for p in clamped_props
                  if p["category"] not in _DECOR_CATEGORIES and p["material"] != current_mat),
