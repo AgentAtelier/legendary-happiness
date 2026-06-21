@@ -22,6 +22,11 @@ prompts and stores the soul on each spec; `scene_compiler` writes it into `quest
 
 ## Global Constraints (verbatim — same as Slices 1–2)
 
+- **Testing split (standing rule):** the **CLI AI** runs the *fast* gates per task — the unit suite
+  (`pytest tests/ -q`) and the Godot smoke gate (`pytest tests/test_godot_smoke.py -q`) — both green
+  before each commit, then hands off. The **ORCHESTRATOR** (not the CLI AI) owns all *time-intensive*
+  verification: live ≥9B generation, run-twice, and the multi-model comparison. CLI-AI tasks below are
+  marked **[CLI]**; orchestrator verification is marked **[ORCH]** — do NOT run the [ORCH] steps.
 - Standing rules (`EASY-BATCH-PROMPTS.md` header). Dedicated branch/worktree. TDD red→green.
   Run **both** `pytest tests/ -q` **and** `pytest tests/test_godot_smoke.py -q` green. Commit per task.
 - **LLM lessons (`canned-npc-means-pipeline-bug`):** free-form call → `llm(prompt, "")` never `None`;
@@ -149,7 +154,7 @@ blacksmith". (Import `soul.tone_descriptor`.)
 - [ ] Run `pytest tests/ -q` AND `pytest tests/test_godot_smoke.py -q` — both green.
 - [ ] Commit: `feat(foundry): bake soul into quest_data + npc.gd reads it + report shows tone (spine slice 3)`.
 
-## Task 5 — eval signal + live verify
+## Task 5 [CLI] — eval signals (unit only)
 
 **Files:** Modify `foundry/eval/signals.py`, `foundry/tests/test_eval_signals.py`.
 
@@ -157,24 +162,27 @@ blacksmith". (Import `soul.tone_descriptor`.)
 all 7 values in [-1,1]. Plus `check_soul_tones_vary(record)` — positive when ≥2 NPCs exist and their
 `tone_descriptor` strings are not all identical (souls actually differentiate characters).
 
-**Steps (TDD + live):**
+**Steps (TDD — fast gates only, then hand off):**
 - [ ] Test: a record with two NPCs whose souls give different tones → both signals positive; a record
   where every NPC has `default_soul()` → `check_soul_tones_vary` negative (all "even-tempered").
 - [ ] Run `pytest tests/ -q` AND `pytest tests/test_godot_smoke.py -q` — both green.
-- [ ] **Live (≥9B):** `python -m foundry quest --request "a fearful hermit and a proud, generous
-  blacksmith share a workshop" --scene chk_soul --npc-count 2` → `build_report.txt` "understood" shows
-  two *distinct* souled characters (e.g. "a timid hermit", "a bold, warm blacksmith"); the two NPCs'
-  greet lines read in **different tones**; `quest_data` NPCs carry souls; headless-load clean. **Run
-  twice** (stochastic) — both produce distinct, valid souls + clean build.
-- [ ] Commit: `feat(foundry): soul eval signals + slice-3 live verify (spine slice 3)`.
+- [ ] Commit: `feat(foundry): soul eval signals (spine slice 3)`. **Then hand off to the orchestrator** —
+  do NOT run live generation.
 
 ---
 
-## Verify (slice-level checkpoint, then hand back)
+## [ORCH] Live verification — orchestrator only (do NOT run as the CLI AI)
 
-Run the 4-model comparison (`quest_compare --full-pipeline --run-playthrough --npc-count 2`, 9b/14b/27b)
-on a personality-rich prompt: every model's two NPCs should read as **distinct characters** (tone
-varies with substrate), and each `build_report.txt` should describe the souls in plain words. This is
-the first proof that a *new capability* (Anvil G1) ships with its interpretation + legibility through
-the spine. Next candidates: G2 needs/utility (the living-NPC loop, where the axes start getting used) or
-a lighter bundle (item verbs / atmosphere) through the spine.
+The orchestrator runs the time-intensive checks after the CLI AI hands off green:
+- **Live (≥9B):** `python -m foundry quest --request "a fearful hermit and a proud, generous blacksmith
+  share a workshop" --scene chk_soul --npc-count 2` → `build_report.txt` "understood" shows two
+  *distinct* souled characters (e.g. "a timid hermit", "a bold, warm blacksmith"); the two NPCs' greet
+  lines read in **different tones**; `quest_data` NPCs carry souls; headless-load clean. **Run twice**
+  (stochastic) — both produce distinct, valid souls + clean build.
+- **4-model comparison:** `quest_compare --full-pipeline --run-playthrough --npc-count 2` (9b/14b/27b)
+  on the personality-rich prompt — every model's two NPCs should read as **distinct characters** (tone
+  varies with substrate), each `build_report.txt` describing the souls in plain words.
+
+This is the first proof that a *new capability* (Anvil G1) ships with its interpretation + legibility
+through the spine. Next candidates: G2 needs/utility (the living-NPC loop, where the axes start getting
+used) or a lighter bundle (item verbs / atmosphere) through the spine.
