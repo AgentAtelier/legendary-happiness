@@ -69,7 +69,14 @@ class FoundryLLM:
     def __call__(self, prompt: str, grammar: Optional[str] = None) -> str:
         """Generate a response.  Callable signature: (prompt, grammar) -> str.
 
-        If *grammar* is provided it overrides the default asset-spec grammar.
+        Grammar semantics (footgun — read carefully):
+          * ``grammar=None``  → fall back to the default asset-spec GBNF.
+            This is NOT "no grammar". Callers that want a free-form answer
+            (e.g. multi-NPC quest JSON) must pass ``""``, not ``None``, or the
+            model gets straitjacketed into the asset {asset_id, generator,
+            params} schema.
+          * ``grammar=""``    → no grammar sent; the model answers freely.
+          * ``grammar="<gbnf>"`` → use that grammar (normalized per-call).
         """
         active_grammar = grammar if grammar is not None else self._grammar
         # Instance grammar is already normalized at load time; only normalize

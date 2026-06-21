@@ -144,6 +144,22 @@ def test_parse_with_think_tags():
     assert spec["npc_role"] == "hermit"
 
 
+def test_parse_ignores_trailing_content_after_json():
+    """Ungrammared models (multi-NPC path) often append prose or an unclosed
+    <think> AFTER the JSON object. parse() must extract just the first complete
+    object via raw_decode — json.loads(text[start:]) rejected the 'Extra data'
+    and collapsed the whole quest to canned fallbacks intermittently."""
+    planner = QuestBehaviourPlanner()
+    raw = (
+        '{"npc_0":{"npc_role":"blacksmith","target_entity":"key_0",'
+        '"dialogue":{"greet":"Hail","ask":"Find it","wrong":"No","thank":"Ta"},'
+        '"objective":{"type":"fetch","target":"key_0","giver":"npc"}}}\n\n'
+        '<think>\nNow let me reconsider whether the apprentice should...\n'  # unclosed think + prose
+    )
+    spec = planner.parse(raw)
+    assert spec["npc_0"]["npc_role"] == "blacksmith"
+
+
 def test_parse_empty_text_raises():
     planner = QuestBehaviourPlanner()
     with pytest.raises(ValueError, match="Empty"):
@@ -828,3 +844,25 @@ def test_plan_multi_recovers_from_malformed_json():
     targets = [s["target_entity"] for s in specs]
     assert all(t in _VALID_MANIFEST_IDS for t in targets)
     assert len(set(targets)) == 2  # distinct targets per NPC
+
+
+def test_plan_multi_calls_llm_with_no_grammar_not_none():
+    """plan_multi MUST pass an empty-string grammar (== no grammar), NOT None.
+
+    FoundryLLM expands grammar=None to its default ASSET-spec GBNF, which
+    straitjackets the model into {asset_id, generator, params} and made every
+    model's multi-NPC dialogue collapse to canned fallbacks. The contract is:
+    multi-NPC generation is ungrammared, expressed as grammar="".
+    """
+    planner = QuestBehaviourPlanner()
+    seen: dict = {}
+
+    def capturing(prompt, grammar=None):
+        seen["grammar"] = grammar
+        return "{}"
+
+    planner.plan_multi("a tavern", _MANIFEST_4, capturing, npc_count=2)
+    assert seen["grammar"] == "", (
+        f"expected grammar='' (no grammar), got {seen['grammar']!r} — "
+        "None would trigger FoundryLLM's default asset grammar"
+    )

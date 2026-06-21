@@ -336,8 +336,14 @@ class QuestBehaviourPlanner:
         if start == -1:
             raise ValueError(f"No JSON found in response:\n{text[:200]}")
 
+        # Use raw_decode, NOT json.loads(text[start:]): ungrammared models
+        # (the multi-NPC path) routinely append trailing prose or an unclosed
+        # <think> block AFTER the JSON object. json.loads() rejects that as
+        # "Extra data" and the whole quest collapses to canned fallbacks. We
+        # only want the first complete JSON value; raw_decode stops at its end
+        # and ignores whatever trails.
         try:
-            data = json.loads(text[start:])
+            data, _end = json.JSONDecoder().raw_decode(text[start:])
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in LLM response: {e}\n{text[:200]}")
 
@@ -595,9 +601,14 @@ class QuestBehaviourPlanner:
             carryable_section=carryable_section,
         )
 
-        # Call LLM (no grammar for multi-NPC — the output is a dict-of-dicts
-        # which doesn't fit a single GBNF schema easily)
-        response = llm(prompt, None)
+        # Call LLM with NO grammar — the multi-NPC output is a dict-of-dicts
+        # which doesn't fit a single GBNF schema easily.
+        # ⚠ Pass "" (empty), NOT None: FoundryLLM treats grammar=None as
+        # "use my default grammar" (= the ASSET-spec GBNF), which silently
+        # straitjacketed every model into {asset_id, generator, params} and
+        # made all multi-NPC dialogue collapse to canned fallbacks. An empty
+        # string is falsy → no grammar is sent → the model answers freely.
+        response = llm(prompt, "")
 
         # Parse the response. The multi-NPC call is ungrammared (dict-of-dicts
         # doesn't fit one GBNF), so weak/stochastic models often emit malformed
