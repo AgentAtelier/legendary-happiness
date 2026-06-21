@@ -1422,3 +1422,71 @@ class TestWinnableOracle:
             f"Expected quest_all_npcs_winnable for valid single-NPC quest, got: {tags}"
         )
 
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Spine Slice 2: dialogue_not_all_canned signal
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_dialogue_not_all_canned_positive_with_grammared():
+    """A record with one grammared NPC → dialogue_not_all_canned."""
+    from eval.signals import check_dialogue_not_all_canned
+
+    class MockRecord:
+        decisions = [
+            {"code": "quest.npc_grammared_fallback", "context": {"npc_id": "npc_0"}},
+        ]
+        npc_count = 2
+
+    result = check_dialogue_not_all_canned(MockRecord())
+    assert result == "dialogue_not_all_canned"
+
+
+def test_dialogue_not_all_canned_positive_with_model():
+    """A record where all NPCs are produced by the model (no canned/missing)
+    → dialogue_not_all_canned."""
+    from eval.signals import check_dialogue_not_all_canned
+
+    class MockRecord:
+        decisions = []  # no missing_npc or grammared_fallback — all model
+        npc_count = 2
+
+    result = check_dialogue_not_all_canned(MockRecord())
+    assert result == "dialogue_not_all_canned"
+
+
+def test_dialogue_not_all_canned_negative_all_canned():
+    """A record where every NPC has quest.missing_npc → None (NOT positive)."""
+    from eval.signals import check_dialogue_not_all_canned
+
+    class MockRecord:
+        decisions = [
+            {"code": "quest.missing_npc", "context": {"npc_id": "npc_0"}},
+            {"code": "quest.missing_npc", "context": {"npc_id": "npc_1"}},
+        ]
+        npc_count = 2
+
+    result = check_dialogue_not_all_canned(MockRecord())
+    assert result is None
+
+
+def test_dialogue_not_all_canned_mixed():
+    """One grammared, one missing → still positive (at least one non-canned)."""
+    from eval.signals import check_dialogue_not_all_canned
+
+    class MockRecord:
+        decisions = [
+            {"code": "quest.npc_grammared_fallback", "context": {"npc_id": "npc_0"}},
+            {"code": "quest.missing_npc", "context": {"npc_id": "npc_1"}},
+        ]
+        npc_count = 2
+
+    result = check_dialogue_not_all_canned(MockRecord())
+    assert result == "dialogue_not_all_canned"
+
+
+def test_dialogue_not_all_canned_in_severity_map():
+    """dialogue_not_all_canned is in SIGNAL_SEVERITY as 'low'."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY.get("dialogue_not_all_canned") == "low"
+

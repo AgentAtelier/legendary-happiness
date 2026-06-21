@@ -231,6 +231,19 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "I couldn't understand the request format, so I built a default room instead.",
     ),
+    # ── Quest spine (spine slice 2) ──
+    "quest.role_from_brief": (
+        # technical
+        "{npc_id}: role set to {role!r} from Brief characters.",
+        # plain
+        "The Brief named '{role}' — so I used that for the NPC's role instead of the model's guess.",
+    ),
+    "quest.npc_grammared_fallback": (
+        # technical
+        "{npc_id}: multi-call failed; retried via grammar-constrained plan().",
+        # plain
+        "The ungrammared multi-NPC call failed for one NPC, so I retried that NPC through the reliable single-NPC path to get themed dialogue.",
+    ),
 }
 
 

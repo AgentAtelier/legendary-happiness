@@ -40,6 +40,9 @@ def build_report_dict(
         if f.get("status") == "mapped"
     ]
     understood["key_features"] = mapped_texts
+    # Spine Slice 2: characters from Brief
+    char_roles = [c["role"] for c in brief.get("characters", []) or [] if isinstance(c, dict) and c.get("role")]
+    understood["characters"] = char_roles
 
     # ── Built ──────────────────────────────────────────────────
     prop_categories = sorted({e.get("category", "?") for e in manifest})
@@ -56,6 +59,27 @@ def build_report_dict(
         and f.get("category") in feature_categories_in_manifest
     ]
     built["key_features_built"] = features_built
+
+    # Spine Slice 2: per-NPC dialogue source tags
+    # Derive source from decisions: grammared > model > canned
+    npc_dialogue_sources: dict[str, str] = {}
+    for d in decisions:
+        code = d.code if hasattr(d, "code") else d.get("code", "")
+        ctx = d.context if hasattr(d, "context") else d.get("context", {})
+        npc_id = ctx.get("npc_id", "")
+        if not npc_id:
+            continue
+        if code == "quest.npc_grammared_fallback":
+            npc_dialogue_sources[npc_id] = "grammared"
+        elif code == "quest.missing_npc" and npc_id not in npc_dialogue_sources:
+            npc_dialogue_sources[npc_id] = "canned"
+    # Any NPC not tagged is "model" (from the multi-call)
+    # Also fill from brief characters for NPCs with no decisions
+    for i in range(max(len(npc_dialogue_sources), len(brief.get("characters", [])))):
+        npc_id_loop = f"npc_{i}"
+        if npc_id_loop not in npc_dialogue_sources:
+            npc_dialogue_sources[npc_id_loop] = "model"
+    built["npc_dialogue_sources"] = npc_dialogue_sources
 
     # ── Assumed ────────────────────────────────────────────────
     assumed_lines: list[str] = []
@@ -106,6 +130,8 @@ def render_build_report(
     lines.append(f"  Theme: {u['theme_tag']}")
     if u.get("key_features"):
         lines.append(f"  Named features: {', '.join(u['key_features'])}")
+    if u.get("characters"):
+        lines.append(f"  Characters: {', '.join(u['characters'])}")
 
     # ── Built ──────────────────────────────────────────────────
     b = rpt["built"]
@@ -116,6 +142,12 @@ def render_build_report(
         lines.append(f"  Categories: {', '.join(b['categories'])}")
     if b.get("key_features_built"):
         lines.append(f"  Named features built: {', '.join(b['key_features_built'])}")
+    # Spine Slice 2: quest dialogue sources
+    if b.get("npc_dialogue_sources"):
+        sources = b["npc_dialogue_sources"]
+        lines.append("  NPC dialogue sources:")
+        for npc_id in sorted(sources):
+            lines.append(f"    {npc_id}: {sources[npc_id]}")
 
     # ── Assumed ────────────────────────────────────────────────
     if rpt["assumed"]:

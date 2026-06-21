@@ -192,9 +192,9 @@ def _cmd_quest(args: list[str]) -> int:
         "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
         "candle", "dagger", "ring",
     )}
-    print(f"[quest] Planning quests for {npc_count} NPCs: {parsed.request!r}")
+    print(f"[quest] Planning quests for {npc_count} NPCs via Brief: {parsed.request!r}")
     specs, quest_decisions = planner.plan_multi(
-        parsed.request, manifest, llm,
+        brief, manifest, llm,
         npc_count=npc_count, seed=seed,
         carryable_ids=carryable_ids,
     )

@@ -248,3 +248,44 @@ def test_interpret_star_theme_passthrough():
     assert brief["theme_tag"] == "*"
     error_dps = [d for d in decs if d.severity == "error"]
     assert not error_dps
+
+
+def test_interpret_extracts_characters():
+    """Interpreter stub returns characters → they survive into the Brief."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+        return json.dumps({
+            "theme_tag": "blacksmith",
+            "scale": "medium",
+            "characters": [
+                {"role": "blacksmith", "note": "master forger"},
+                {"role": "apprentice", "note": None},
+            ],
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a blacksmith's forge with an apprentice", fake_llm)
+
+    assert brief["characters"] == [
+        {"role": "blacksmith", "note": "master forger"},
+        {"role": "apprentice", "note": None},
+    ]
+    # No error decisions for valid characters
+    error_dps = [d for d in decs if d.severity == "error"]
+    assert not error_dps
+
+
+def test_interpret_no_characters_stays_empty():
+    """Interpreter returns no characters → characters stays []."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+        return json.dumps({
+            "theme_tag": "tavern",
+            "scale": "medium",
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a cozy tavern", fake_llm)
+    assert brief["characters"] == []

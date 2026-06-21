@@ -43,13 +43,13 @@ def _infer_theme(prompt: str) -> str:
 
 
 def minimal(prompt: str) -> dict:
-    """Build a valid Brief from a raw prompt string.
+    """Build a valid Brief v2 from a raw prompt string.
 
     Used as a back-compat pass-through when no LLM Interpreter is
     available (tests, fallback paths).
     """
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_prompt": prompt,
         "setting": prompt,
         "mood": [],
@@ -57,6 +57,7 @@ def minimal(prompt: str) -> dict:
         "theme_tag": _infer_theme(prompt),
         "key_features": [],
         "unmapped": [],
+        "characters": [],
     }
 
 
@@ -151,6 +152,24 @@ def validate_brief(
     # --- mood (free-text list) ---
     mood = raw.get("mood", [])
     brief["mood"] = list(mood) if isinstance(mood, (list, tuple)) else []
+
+    # --- characters (open vocabulary, keep verbatim) ---
+    raw_characters = raw.get("characters", []) or []
+    validated_characters: list[dict] = []
+    for ch in raw_characters:
+        if not isinstance(ch, dict):
+            continue
+        role_val = ch.get("role", "")
+        # Guard: None → treat as empty (not "None" string)
+        if role_val is None:
+            continue
+        role = str(role_val).strip()
+        if not role:
+            continue  # drop empty-role entries silently
+        note = ch.get("note")
+        note = str(note).strip() if note else None
+        validated_characters.append({"role": role, "note": note})
+    brief["characters"] = validated_characters
 
     # --- key_features (validate each) ---
     raw_features = raw.get("key_features", []) or []

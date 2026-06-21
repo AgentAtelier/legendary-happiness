@@ -261,3 +261,103 @@ def test_render_build_report_omits_empty_sections():
     assert "═══ Couldn't do ═══" not in text
     assert "═══ Understood ═══" in text
     assert "═══ Built ═══" in text
+
+
+# ── Spine Slice 2: Quest sections in build report ───────────────────
+
+def test_report_understood_includes_characters():
+    """Brief with characters → 'understood' lists their roles."""
+    from report import build_report_dict
+
+    brief = {
+        "setting": "a blacksmith's forge",
+        "mood": [],
+        "scale": "medium",
+        "theme_tag": "blacksmith",
+        "key_features": [],
+        "unmapped": [],
+        "characters": [
+            {"role": "blacksmith", "note": "master"},
+            {"role": "apprentice"},
+        ],
+    }
+    rpt = build_report_dict(brief, [])
+    assert rpt["understood"]["characters"] == ["blacksmith", "apprentice"]
+
+
+def test_report_built_npc_dialogue_sources_grammared():
+    """When a grammared fallback DP fires for npc_1 → that NPC's dialogue
+    source is 'grammared'."""
+    from report import build_report_dict
+    from decisions import make_decision
+
+    brief = {
+        "setting": "test", "mood": [], "scale": "medium",
+        "theme_tag": "hermit", "key_features": [], "unmapped": [],
+        "characters": [{"role": "hermit"}, {"role": "apprentice"}],
+    }
+    dp_grammared = make_decision(
+        "quest.npc_grammared_fallback", "planner", "assumption",
+        {"npc_id": "npc_1"}, choices=(),
+    )
+    rpt = build_report_dict(brief, [dp_grammared])
+    sources = rpt["built"].get("npc_dialogue_sources", {})
+    assert sources.get("npc_1") == "grammared"
+
+
+def test_report_built_npc_dialogue_sources_canned():
+    """When quest.missing_npc fires for npc_0 → dialogue source 'canned'."""
+    from report import build_report_dict
+    from decisions import make_decision
+
+    brief = {
+        "setting": "test", "mood": [], "scale": "medium",
+        "theme_tag": "hermit", "key_features": [], "unmapped": [],
+        "characters": [{"role": "hermit"}],
+    }
+    dp_canned = make_decision(
+        "quest.missing_npc", "planner", "assumption",
+        {"npc_id": "npc_0"}, choices=(),
+    )
+    rpt = build_report_dict(brief, [dp_canned])
+    sources = rpt["built"].get("npc_dialogue_sources", {})
+    assert sources.get("npc_0") == "canned"
+
+
+def test_report_built_npc_dialogue_sources_model_default():
+    """NPCs with no decisions default to 'model' source."""
+    from report import build_report_dict
+
+    brief = {
+        "setting": "test", "mood": [], "scale": "medium",
+        "theme_tag": "hermit", "key_features": [], "unmapped": [],
+        "characters": [{"role": "hermit"}],
+    }
+    rpt = build_report_dict(brief, [])
+    sources = rpt["built"].get("npc_dialogue_sources", {})
+    assert sources.get("npc_0") == "model"
+
+
+def test_render_report_includes_characters_and_sources():
+    """Rendered report includes characters and NPC dialogue sources."""
+    from report import render_build_report
+    from decisions import make_decision
+
+    brief = {
+        "setting": "a blacksmith's forge",
+        "mood": ["hot"],
+        "scale": "medium",
+        "theme_tag": "blacksmith",
+        "key_features": [],
+        "unmapped": [],
+        "characters": [{"role": "blacksmith"}, {"role": "apprentice"}],
+    }
+    dp = make_decision(
+        "quest.npc_grammared_fallback", "planner", "assumption",
+        {"npc_id": "npc_1"}, choices=(),
+    )
+    text = render_build_report(brief, [dp], [])
+
+    assert "blacksmith, apprentice" in text
+    assert "npc_0: model" in text
+    assert "npc_1: grammared" in text

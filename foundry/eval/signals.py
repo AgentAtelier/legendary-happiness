@@ -874,3 +874,51 @@ SIGNAL_SEVERITY["insufficient_carryables_for_npcs"] = "high"
 # EB-7: material variety
 SIGNAL_SEVERITY["room_not_monochrome"] = "low"
 SIGNAL_SEVERITY["fabric_in_fabric_themes"] = "low"
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Spine Slice 2: dialogue-not-all-canned signal
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def check_dialogue_not_all_canned(record) -> Optional[str]:
+    """Spine Slice 2: Return 'dialogue_not_all_canned' when at least one
+    NPC's dialogue source is 'model' or 'grammared' (i.e. the build is
+    NOT 100% canned fallbacks).
+
+    Positive signal — fires when the pipeline produced at least some
+    real themed dialogue.  Returns None when every NPC is canned
+    (every NPC has a quest.missing_npc decision and no
+    quest.npc_grammared_fallback or original model data).
+    """
+    decisions = getattr(record, "decisions", None) or []
+    npc_count = getattr(record, "npc_count", 1)
+
+    # Collect dialogue source per NPC from decisions
+    canned_npcs: set[str] = set()
+    grammared_npcs: set[str] = set()
+    model_npcs: set[str] = set()
+
+    for d in decisions:
+        code = d.get("code", "") if isinstance(d, dict) else getattr(d, "code", "")
+        ctx = d.get("context", {}) if isinstance(d, dict) else getattr(d, "context", {})
+        npc_id = ctx.get("npc_id", "")
+        if not npc_id:
+            continue
+        if code == "quest.missing_npc":
+            canned_npcs.add(npc_id)
+        elif code == "quest.npc_grammared_fallback":
+            grammared_npcs.add(npc_id)
+
+    # Any NPC NOT in canned or grammared = had model output
+    for i in range(npc_count):
+        npc_id_loop = f"npc_{i}"
+        if npc_id_loop not in canned_npcs and npc_id_loop not in grammared_npcs:
+            model_npcs.add(npc_id_loop)
+
+    # Positive when at least one NPC is model or grammared
+    if model_npcs or grammared_npcs:
+        return "dialogue_not_all_canned"
+    return None
+
+
+SIGNAL_SEVERITY["dialogue_not_all_canned"] = "low"

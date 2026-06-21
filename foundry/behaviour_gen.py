@@ -538,7 +538,7 @@ class QuestBehaviourPlanner:
 
     def plan_multi(
         self,
-        room_theme: str,
+        brief: dict | str,
         manifest: list[dict],
         llm: Callable[[str, Optional[str]], str],
         *,
@@ -549,8 +549,12 @@ class QuestBehaviourPlanner:
         """C-4: Generate *npc_count* quest specs for multiple NPCs in
         a single LLM call so the LLM picks distinct targets and roles.
 
+        Spine Slice 2: consumes a Brief (dict) with normalized intent
+        and character roles.  Back-compat: accepts a raw str, wrapped
+        via ``brief.minimal()``.
+
         Args:
-            room_theme: Short description (e.g. "a blacksmith's forge").
+            brief: Brief dict or raw string (back-compat).
             manifest: List of placed-entity dicts.
             llm: Callable (prompt, grammar) -> str.
             npc_count: How many NPCs to generate quests for (default 2).
@@ -562,7 +566,18 @@ class QuestBehaviourPlanner:
             quest-spec dicts, one per NPC; *decisions* is the combined
             Decision Points.
         """
+        from brief import minimal as brief_minimal
+
         decisions: list[DecisionPoint] = []
+
+        # Back-compat: wrap raw strings in Brief.minimal
+        if isinstance(brief, str):
+            brief = brief_minimal(brief)
+
+        # Normalized intent from Brief
+        room_theme = brief.get("theme_tag", "*")
+        brief_setting = brief.get("setting", brief.get("source_prompt", "a room"))
+        brief_characters: list[dict] = list(brief.get("characters", []) or [])
 
         # Generate NPC IDs
         npc_ids = [f"npc_{i}" for i in range(npc_count)]
@@ -592,14 +607,23 @@ class QuestBehaviourPlanner:
                 "No carryable items are available — use furniture targets as last resort."
             )
 
-        # Build prompt
+        # Build character hint for the prompt (if the Brief named characters)
+        char_hint = ""
+        if brief_characters:
+            roles = [c["role"] for c in brief_characters]
+            char_hint = (
+                f"\nThe user described these characters: {', '.join(roles)}. "
+                f"Assign these roles to the NPCs where they fit the count."
+            )
+
+        # Build prompt with normalized Brief setting
         prompt = _MULTI_NPC_PROMPT.format(
             npc_count=npc_count,
             npc_ids=npc_id_list,
-            room_theme=room_theme,
+            room_theme=f"{brief_setting} ({room_theme})",
             manifest_text=manifest_text,
             carryable_section=carryable_section,
-        )
+        ) + char_hint
 
         # Call LLM with NO grammar — the multi-NPC output is a dict-of-dicts
         # which doesn't fit a single GBNF schema easily.
@@ -653,12 +677,50 @@ class QuestBehaviourPlanner:
         used_targets: set[str] = set()
         specs: list[dict] = []
 
-        for npc_id in npc_ids:
+        for i, npc_id in enumerate(npc_ids):
             raw = data.get(npc_id, {})
-            if not raw:
-                # No usable LLM data for this NPC — emit a DP but DON'T drop the
-                # NPC; fall through so role/target/dialogue validation below
-                # builds a winnable default quest (canned dialogue, unused target).
+
+            # ── Spine Slice 2 Task 3: Per-NPC grammared fallback ──
+            # When the ungrammared multi-call yields no usable data for an NPC,
+            # retry that NPC through the grammar-constrained single-NPC plan(),
+            # which is reliable, to get themed dialogue (NOT canned "villager").
+            if not raw or not isinstance(raw, dict):
+                try:
+                    # Retry via the reliable grammar-constrained single-NPC path
+                    spec_fb, dpx_fb = self.plan(
+                        brief_setting, manifest, llm,
+                        seed=seed, carryable_ids=carryable_ids,
+                    )
+                    decisions.extend(dpx_fb)
+                    decisions.append(
+                        make_decision(
+                            code="quest.npc_grammared_fallback",
+                            stage="planner",
+                            severity="assumption",
+                            context={"npc_id": npc_id},
+                            choices=(),
+                        )
+                    )
+                    # Use the grammared spec as the raw data for this NPC
+                    raw = {
+                        "npc_role": spec_fb.get("npc_role", ""),
+                        "target_entity": spec_fb.get("target_entity", ""),
+                        "dialogue": spec_fb.get("dialogue", {}),
+                        "idle_barks": spec_fb.get("idle_barks", []),
+                    }
+                    # Enforce a distinct target vs already-used ones
+                    fb_target = raw["target_entity"]
+                    if fb_target in used_targets or fb_target not in valid_ids:
+                        available = sorted(valid_ids - used_targets)
+                        if available:
+                            raw["target_entity"] = available[0]
+                except (ValueError, Exception):
+                    # plan() itself failed → fall through to canned default
+                    pass
+
+            if not raw or not isinstance(raw, dict):
+                # Both multi-call and grammared fallback failed → canned default.
+                # Emit quest.missing_npc (truly canned case).
                 decisions.append(
                     make_decision(
                         code="quest.missing_npc",
@@ -670,9 +732,40 @@ class QuestBehaviourPlanner:
                 )
                 raw = {}
 
-            # Validate NPC role
+            # ── Spine Slice 2 Task 2: Seed NPC role from Brief characters ──
             raw_role = raw.get("npc_role", "")
-            npc_role, role_decisions = _validate_npc_role(raw_role)
+            role_from_brief = None
+            if i < len(brief_characters):
+                role_from_brief = brief_characters[i].get("role", "")
+
+            if role_from_brief:
+                # Brief character role wins over model output.
+                # Always emit quest.role_from_brief when a brief character
+                # sets the role (spec requirement).
+                if raw_role and raw_role != role_from_brief:
+                    decisions.append(
+                        make_decision(
+                            code="quest.role_from_brief",
+                            stage="planner",
+                            severity="assumption",
+                            context={"npc_id": npc_id, "role": role_from_brief},
+                            choices=(),
+                        )
+                    )
+                else:
+                    decisions.append(
+                        make_decision(
+                            code="quest.role_from_brief",
+                            stage="planner",
+                            severity="info",
+                            context={"npc_id": npc_id, "role": role_from_brief},
+                            choices=(),
+                        )
+                    )
+                # Override with brief character role for validation
+                npc_role, role_decisions = _validate_npc_role(role_from_brief)
+            else:
+                npc_role, role_decisions = _validate_npc_role(raw_role)
             decisions.extend(role_decisions)
 
             # Validate target_entity

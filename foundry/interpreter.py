@@ -40,6 +40,9 @@ Given a user's description, output ONLY a JSON object — no prose, no explanati
 - "key_features": a list of notable things the user explicitly named. For each, include:
     - "text": what the user asked for, in their own words (e.g. "anvil", "many tools", "a lava river")
     - "category": the CLOSEST matching category from the available list below, or null if nothing fits.
+- "characters": a list of people/NPCs the description names or clearly implies. Each entry has:
+    - "role": a short label for the character (e.g. "blacksmith", "apprentice", "shopkeeper"). Free-form — no closed set.
+    - "note": optional short note about the character, or null.
 
 Available placeable object categories (pick from these for key_features[].category):
 {category_list}

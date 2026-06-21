@@ -853,16 +853,256 @@ def test_plan_multi_calls_llm_with_no_grammar_not_none():
     straitjackets the model into {asset_id, generator, params} and made every
     model's multi-NPC dialogue collapse to canned fallbacks. The contract is:
     multi-NPC generation is ungrammared, expressed as grammar="".
+
+    Spine Slice 2: the grammared fallback also calls plan() with _GRAMMAR,
+    so there may be two LLM calls.  We only verify the multi-call was
+    ungrammared.
     """
     planner = QuestBehaviourPlanner()
-    seen: dict = {}
+    seen: list = []
 
     def capturing(prompt, grammar=None):
-        seen["grammar"] = grammar
+        seen.append(grammar)
         return "{}"
 
     planner.plan_multi("a tavern", _MANIFEST_4, capturing, npc_count=2)
-    assert seen["grammar"] == "", (
-        f"expected grammar='' (no grammar), got {seen['grammar']!r} — "
+
+    # The first call (multi-NPC) MUST be grammar=""
+    assert len(seen) >= 1
+    assert seen[0] == "", (
+        f"expected first call grammar='' (no grammar), got {seen[0]!r} — "
         "None would trigger FoundryLLM's default asset grammar"
     )
+
+
+# ── Spine Slice 2 Task 2: plan_multi consumes Brief + brief-seeded roles ──
+
+def _brief_with_characters() -> dict:
+    """A Brief v2 dict with two named characters."""
+    return {
+        "schema_version": 2,
+        "source_prompt": "a blacksmith's forge with an apprentice",
+        "setting": "a blacksmith's forge",
+        "theme_tag": "blacksmith",
+        "scale": "medium",
+        "mood": [],
+        "key_features": [],
+        "unmapped": [],
+        "characters": [
+            {"role": "blacksmith", "note": "master forger"},
+            {"role": "apprentice", "note": None},
+        ],
+    }
+
+
+def test_plan_multi_back_compat_string_input():
+    """plan_multi with a raw string (back-compat) → 2 specs with distinct
+    targets, same behaviour as before."""
+    planner = QuestBehaviourPlanner()
+
+    # CARRYABLE manifest for plan_multi (needs at least npc_count=2 carryables)
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_multi_llm(prompt, grammar=None):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "tavern_keeper",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "patron",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a tavern", carry_manifest, fake_multi_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+    assert len(specs) == 2
+    targets = {s["target_entity"] for s in specs}
+    assert targets == {"key_0", "gem_0"}  # distinct
+
+
+def test_plan_multi_brief_seeded_roles():
+    """Brief with characters → NPC roles come from the Brief, not the model."""
+    planner = QuestBehaviourPlanner()
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_multi_llm(prompt, grammar=None):
+        # Model returns "villager" roles — should be overridden by Brief
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "villager",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "villager",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    brief = _brief_with_characters()
+    specs, decs = planner.plan_multi(
+        brief, carry_manifest, fake_multi_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    roles = [s["npc_role"] for s in specs]
+    assert roles == ["blacksmith", "apprentice"]
+
+    # quest.role_from_brief DPs should be present
+    role_dps = [d for d in decs if d.code == "quest.role_from_brief"]
+    assert len(role_dps) == 2
+
+
+def test_plan_multi_brief_characters_with_empty_model_roles():
+    """Brief characters set roles even when model returns no roles."""
+    planner = QuestBehaviourPlanner()
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_multi_llm(prompt, grammar=None):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    brief = _brief_with_characters()
+    specs, decs = planner.plan_multi(
+        brief, carry_manifest, fake_multi_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    roles = [s["npc_role"] for s in specs]
+    assert roles == ["blacksmith", "apprentice"]
+
+
+# ── Spine Slice 2 Task 3: Per-NPC grammared fallback ──
+
+
+def test_plan_multi_grammared_fallback_for_missing_npc():
+    """When multi-call returns {} for npc_1, retry via grammar-constrained
+    plan() → npc_1 gets themed dialogue (NOT 'villager'/'Hello there, traveler'),
+    and quest.npc_grammared_fallback DP fires."""
+    planner = QuestBehaviourPlanner()
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_multi_llm(prompt, grammar=None):
+        # Multi-call returns data only for npc_0, npc_1 is missing
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+        })
+
+    def fake_single_llm(prompt, grammar=None):
+        return json.dumps({
+            "npc_role": "shopkeeper",
+            "target_entity": "gem_0",
+            "dialogue": {
+                "greet": "Welcome to my shop.",
+                "ask": "Can you find my gem for me?",
+                "wrong": "No, that is not the gem I need.",
+                "thank": "Yes, the gem! Thank you so much.",
+            },
+            "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+        })
+
+    # Create a planner with injected LLMs
+    # The multi-call uses fake_multi_llm, the fallback plan() uses fake_single_llm
+    class TestPlanner(QuestBehaviourPlanner):
+        def plan(self, room_theme, manifest, llm, seed=None, carryable_ids=None):
+            return QuestBehaviourPlanner.plan(
+                self, room_theme, manifest, fake_single_llm,
+                seed=seed, carryable_ids=carryable_ids,
+            )
+
+    planner2 = TestPlanner()
+    specs, decs = planner2.plan_multi(
+        "a hermit's shack", carry_manifest, fake_multi_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    # First NPC from multi-call
+    assert specs[0]["npc_role"] == "hermit"
+    # Second NPC from grammared fallback
+    assert specs[1]["npc_role"] == "shopkeeper"
+    # Dialogue should NOT be canned — should be the themed dialogue
+    assert "shop" in specs[1]["dialogue"]["greet"]
+
+    # Should have quest.npc_grammared_fallback DP
+    fb_dps = [d for d in decs if d.code == "quest.npc_grammared_fallback"]
+    assert len(fb_dps) == 1
+    assert fb_dps[0].context["npc_id"] == "npc_1"
+
+    # Should NOT have quest.missing_npc for npc_1
+    missing_dps = [d for d in decs if d.code == "quest.missing_npc"]
+    assert not [d for d in missing_dps if d.context.get("npc_id") == "npc_1"]
+
+    # Targets remain distinct
+    targets = {s["target_entity"] for s in specs}
+    assert len(targets) == 2
+
+
+def test_plan_multi_both_multi_and_grammared_fail():
+    """When both multi-call and plan() fail → canned default + quest.missing_npc."""
+    planner = QuestBehaviourPlanner()
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def bad_llm(prompt, grammar=None):
+        return "{not valid json at all"
+
+    # Both calls fail — this should route through missing_npc
+    specs, decs = planner.plan_multi(
+        "a tavern", carry_manifest, bad_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    # Should have quest.missing_npc for BOTH NPCs (grammared fallback also failed)
+    missing_dps = [d for d in decs if d.code == "quest.missing_npc"]
+    assert len(missing_dps) == 2
+
+    # Grammared fallback DPs should NOT be present (they failed too)
+    fb_dps = [d for d in decs if d.code == "quest.npc_grammared_fallback"]
+    assert len(fb_dps) == 0

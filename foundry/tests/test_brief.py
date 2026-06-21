@@ -46,13 +46,14 @@ def test_minimal_blacksmith_forge():
     from brief import minimal
 
     b = minimal("a blacksmith's forge")
-    assert b["schema_version"] == 1
+    assert b["schema_version"] == 2
     assert b["source_prompt"] == "a blacksmith's forge"
     assert b["theme_tag"] == "blacksmith"
     assert b["scale"] == "medium"
     assert b["mood"] == []
     assert b["key_features"] == []
     assert b["unmapped"] == []
+    assert b["characters"] == []
 
 
 def test_minimal_unknown_theme_falls_back_to_star():
@@ -307,11 +308,56 @@ def test_validate_preserves_source_prompt():
 
 
 def test_validate_schema_version_defaults():
-    """Missing schema_version → 1."""
+    """Missing schema_version → 1 (raw passes through as-is)."""
     from brief import validate_brief
 
     brief, _ = validate_brief({"theme_tag": "wizard", "scale": "medium"})
     assert brief["schema_version"] == 1
+
+def test_validate_characters_keeps_valid_roles():
+    """Characters with valid roles are preserved verbatim."""
+    from brief import validate_brief
+
+    raw = {
+        "theme_tag": "blacksmith",
+        "scale": "medium",
+        "characters": [
+            {"role": "blacksmith", "note": "the master of the forge"},
+            {"role": "apprentice"},
+        ],
+    }
+    brief, decs = validate_brief(raw)
+    assert brief["characters"] == [
+        {"role": "blacksmith", "note": "the master of the forge"},
+        {"role": "apprentice", "note": None},
+    ]
+
+def test_validate_characters_drops_empty_role():
+    """Characters with empty role are dropped."""
+    from brief import validate_brief
+
+    raw = {
+        "theme_tag": "tavern",
+        "scale": "medium",
+        "characters": [
+            {"role": "blacksmith"},
+            {"role": "", "note": "nothing"},
+            {"role": None},
+        ],
+    }
+    brief, decs = validate_brief(raw)
+    assert len(brief["characters"]) == 1
+    assert brief["characters"][0]["role"] == "blacksmith"
+
+def test_validate_characters_none_or_missing():
+    """Missing or None characters → empty list."""
+    from brief import validate_brief
+
+    brief1, _ = validate_brief({"theme_tag": "hermit", "scale": "medium"})
+    assert brief1["characters"] == []
+
+    brief2, _ = validate_brief({"theme_tag": "hermit", "scale": "medium", "characters": None})
+    assert brief2["characters"] == []
 
 
 def test_validate_mood_is_preserved():
