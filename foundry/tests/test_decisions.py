@@ -108,6 +108,52 @@ def test_make_decision_unknown_code_raises():
         )
 
 
+# ── registry completeness (regression guard) ──────────────────────
+
+
+def test_every_make_decision_code_is_registered():
+    """Every literal ``code=`` passed to ``make_decision()`` anywhere in the
+    foundry must be present in ``_TEMPLATES``. An unregistered code raises
+    KeyError only when its branch fires at runtime — so a stub-LLM unit suite
+    can pass 100% while live generation dies. This meta-test walks the AST of
+    every module and fails loudly if any code is missing, killing that whole
+    bug class (see quest.ignored_available_carryable / insufficient_carryables
+    / idle_bark_fallback / examine.flavour_fallback / room.planner_parse_fallback,
+    all shipped unregistered and only caught in a live 4-model run).
+    """
+    import ast
+    import pathlib
+
+    import decisions
+
+    registered = set(decisions._TEMPLATES)
+    foundry_dir = pathlib.Path(__file__).resolve().parent.parent
+    missing: list[str] = []
+    for path in foundry_dir.rglob("*.py"):
+        rel = path.relative_to(foundry_dir)
+        if rel.parts[0] in {"tests", ".venv"}:
+            continue
+        try:
+            tree = ast.parse(path.read_text())
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "make_decision"
+            ):
+                for kw in node.keywords:
+                    if (
+                        kw.arg == "code"
+                        and isinstance(kw.value, ast.Constant)
+                        and kw.value.value not in registered
+                    ):
+                        missing.append(f"{rel}:{node.lineno} -> {kw.value.value!r}")
+
+    assert not missing, "Unregistered make_decision codes:\n  " + "\n  ".join(missing)
+
+
 # ── to_dict / JSON round-trip ──────────────────────────────────────
 
 

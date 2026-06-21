@@ -140,6 +140,30 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model didn't return a quest for one NPC, so a simple default was used.",
     ),
+    "quest.ignored_available_carryable": (
+        # technical
+        "{npc_id}: target {picked!r} is not a carryable; carryables available ({available}).",
+        # plain
+        "The model picked '{picked}' for one NPC even though pick-up-able items were available.",
+    ),
+    "quest.insufficient_carryables": (
+        # technical
+        "room has {carryable_count} carryables but {npc_count} NPCs need distinct targets.",
+        # plain
+        "There aren't enough pick-up-able items ({carryable_count}) for {npc_count} NPCs.",
+    ),
+    "quest.idle_bark_fallback": (
+        # technical
+        "idle bark #{index} failed validation (original: {original!r}); substituted canned line.",
+        # plain
+        "One of the NPC's idle lines was unusable, so a template line was used instead.",
+    ),
+    "examine.flavour_fallback": (
+        # technical
+        "examine flavour for {prop_id} ({category}) failed validation (original: {original!r}); used {fallback!r}.",
+        # plain
+        "The model's examine text for '{prop_id}' was unusable, so a canned description was used.",
+    ),
     "room.size_clamped": (
         # technical
         "room_size {axis}={raw} clamped to {clamped} (bounds [{lo}, {hi}]).",
@@ -157,6 +181,12 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "room plan had no props.",
         # plain
         "The room came out empty, so there's nothing to furnish it with yet.",
+    ),
+    "room.planner_parse_fallback": (
+        # technical
+        "RoomPlanner output failed to parse ({error}); fell back to default room.",
+        # plain
+        "The room layout couldn't be read, so a simple default room was used.",
     ),
     "room.over_capacity": (
         # technical
