@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import textwrap
@@ -231,10 +232,17 @@ def _parse_quest_output(stdout: str) -> dict:
     spec: dict = {}
     for raw in stdout.splitlines():
         line = raw.strip()
+        # Single-NPC format: "[quest] NPC role: ..." / "[quest] Target entity: ..."
         if line.startswith("[quest] NPC role:"):
             spec["npc_role"] = line.split(":", 1)[1].strip()
         elif line.startswith("[quest] Target entity:"):
             spec["target"] = line.split(":", 1)[1].strip()
+        # Multi-NPC format: "[quest] npc_0 (blacksmith): target=key_0"
+        elif re.match(r"\[quest\] \S+ \(.+\): target=", line):
+            m = re.match(r"\[quest\] \S+ \((?P<role>.+)\): target=(?P<target>\S+)", line)
+            if m:
+                spec["npc_role"] = m.group("role").strip()
+                spec["target"] = m.group("target").strip()
         else:
             for key in ("greet", "ask", "wrong", "thank"):
                 if line.startswith(f"{key}:"):

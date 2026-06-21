@@ -197,7 +197,7 @@ def _cmd_quest(args: list[str]) -> int:
         npc_id = spec.get("npc_id", "?")
         print(f"[quest] {npc_id} ({npc_role}): target={target}")
         dialogue = spec.get("dialogue", {})
-        for key in ("greet", "ask"):
+        for key in ("greet", "ask", "wrong", "thank"):
             print(f"  {key}: {dialogue.get(key, '')}")
 
     # ── Step 2: Compile scene into scaffolded project ──────────
