@@ -22,9 +22,10 @@ func on_interact(tag: String) -> void:
 	if interaction and interaction.has_method("_clear_highlight"):
 		interaction._clear_highlight()
 	# Move the model to the CarriedItem node (in front of camera)
+	var model = null
 	var carried_parent = get_node_or_null("/root/Root/Player/Camera3D/CarriedItem")
 	if carried_parent:
-		var model = get_node_or_null("%s_model" % name)
+		model = get_node_or_null("%s_model" % name)
 		if model:
 			# B1: Tween bounce before reparenting
 			_do_pickup_bounce(model)
@@ -43,8 +44,20 @@ func on_interact(tag: String) -> void:
 	set("collision_mask", 0)
 	hide()
 
-	# C-2: Use add_item() for multi-item inventory
-	player.add_item(name)
+	# C-2/B3: Use add_item() for multi-item inventory (returns false if blocked)
+	var added: bool = player.add_item(name)
+	if not added:
+		# B3: Rollback — inventory full or too heavy, restore the prop
+		if model:
+			model.reparent(self, false)
+		set("collision_layer", 1)
+		set("collision_mask", 1)
+		show()
+		# Re-enable light if was on
+		light = get_node_or_null("%s_light" % name)
+		if light:
+			light.visible = true
+		return
 	picked_up.emit(name)
 	# C-1: audio feedback
 	if has_node("/root/Audio"):

@@ -25,6 +25,11 @@ Per-category fields:
   param_ranges    {param: (min, max)} for compiler validation (may be None for decor)
   furniture_top_y float — where carryables sit on this furniture (may be None)
   decor           bool — True for decoration-only categories
+  B3: per-item carryable flags
+    use_verb    str | None — "consume" | "light" | None (what happens on 'use')
+    weight      float — 0.0 to 5.0, affects carry capacity
+    durability  int | None — max uses before break (None = unbreakable)
+    openable    bool — True for containers that can be opened (chest, cabinet, wardrobe)
 """
 
 from __future__ import annotations
@@ -80,6 +85,7 @@ REGISTRY: Dict[str, dict] = {
         "kind": "furniture",
         "collision_size": (0.8, 1.5, 0.5),
         "furniture_top_y": 1.55,
+        "openable": True,
         "param_ranges": {
             "width": (0.5, 0.92),
             "depth": (0.3, 0.575),
@@ -112,6 +118,7 @@ REGISTRY: Dict[str, dict] = {
         "kind": "furniture",
         "collision_size": (0.75, 0.55, 0.55),
         "furniture_top_y": 0.55,
+        "openable": True,
         "param_ranges": {
             "width": (0.3, 0.7),
             "depth": (0.2, 0.5),
@@ -142,6 +149,7 @@ REGISTRY: Dict[str, dict] = {
         "kind": "furniture",
         "collision_size": (1.25, 2.6, 0.75),
         "furniture_top_y": 2.55,
+        "openable": True,
         "param_ranges": {
             "width": (0.6, 1.2),
             "depth": (0.4, 0.7),
@@ -298,6 +306,10 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.12, 0.01, 0.06),
         "furniture_top_y": None,
+        # B3: key is a tool used to unlock doors/containers
+        "use_verb": None,
+        "weight": 0.1,
+        "durability": None,
         "param_ranges": {
             "head_w": (0.03, 0.08),
             "head_h": (0.02, 0.05),
@@ -308,6 +320,9 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.25, 0.05, 0.2),
         "furniture_top_y": None,
+        "use_verb": None,
+        "weight": 0.5,
+        "durability": None,
         "param_ranges": {
             "width": (0.1, 0.25),
             "depth": (0.08, 0.2),
@@ -318,6 +333,10 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.16, 0.15, 0.16),
         "furniture_top_y": None,
+        # B3: cup is consumable — drink to heal
+        "use_verb": "consume",
+        "weight": 0.3,
+        "durability": 1,  # single-use, breaks after one drink
         "param_ranges": {
             "radius": (0.03, 0.08),
             "height": (0.06, 0.15),
@@ -327,6 +346,9 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.08, 0.08, 0.08),
         "furniture_top_y": None,
+        "use_verb": None,
+        "weight": 0.2,
+        "durability": None,
         "param_ranges": {
             "size": (0.03, 0.08),
         },
@@ -335,6 +357,10 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.14, 0.22, 0.14),
         "furniture_top_y": None,
+        # B3: bottle is consumable (potion)
+        "use_verb": "consume",
+        "weight": 0.4,
+        "durability": 1,
         "param_ranges": {
             "body_radius": (0.03, 0.07),
             "body_height": (0.06, 0.15),
@@ -346,6 +372,9 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.06, 0.05, 0.25),
         "furniture_top_y": None,
+        "use_verb": None,
+        "weight": 0.1,
+        "durability": None,
         "param_ranges": {
             "radius": (0.02, 0.05),
             "length": (0.1, 0.25),
@@ -355,6 +384,9 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.15, 0.1, 0.12),
         "furniture_top_y": None,
+        "use_verb": None,
+        "weight": 0.3,
+        "durability": None,
         "param_ranges": {
             "width": (0.06, 0.15),
             "depth": (0.05, 0.12),
@@ -365,6 +397,10 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.1, 0.15, 0.1),
         "furniture_top_y": None,
+        # B3: candle can be lit on 'use'
+        "use_verb": "light",
+        "weight": 0.2,
+        "durability": 1,  # single-use: lit once
         "param_ranges": {
             "radius": (0.02, 0.05),
             "height": (0.06, 0.15),
@@ -374,6 +410,10 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.25, 0.04, 0.06),
         "furniture_top_y": None,
+        # B3: dagger is a tool, not consumable
+        "use_verb": None,
+        "weight": 0.6,
+        "durability": 5,  # 5 uses before dulling
         "param_ranges": {
             "blade_l": (0.1, 0.2),
             "blade_w": (0.01, 0.03),
@@ -384,6 +424,9 @@ REGISTRY: Dict[str, dict] = {
         "kind": "carryable",
         "collision_size": (0.07, 0.03, 0.07),
         "furniture_top_y": None,
+        "use_verb": "consume",  # B3: wear the ring (speed buff)
+        "weight": 0.05,
+        "durability": 1,
         "param_ranges": {
             "size": (0.03, 0.07),
         },

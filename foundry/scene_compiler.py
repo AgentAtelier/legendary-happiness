@@ -53,6 +53,26 @@ _LIGHT_EMITTING: Dict[str, dict] = {
     "candle":  {"color": (1.0, 0.8, 0.4), "energy": 1.2, "range": 2.0, "negative": False},
 }
 
+# ── B3: Per-item metadata emitter ──────────────────────────────
+# Reads use_verb/weight/durability/openable from category_registry
+# and emits _forge_* metadata on compiled props.
+
+def _b3_emit_item_metadata(lines: list[str], category: str) -> None:
+    """Emit B3 per-item metadata lines for *category* from the registry."""
+    from category_registry import REGISTRY
+    entry = REGISTRY.get(category, {})
+    uv = entry.get("use_verb")
+    if uv:
+        lines.append(f'metadata/_forge_use_verb = "{uv}"')
+    wt = entry.get("weight")
+    if wt is not None:
+        lines.append(f'metadata/_forge_weight = {float(wt)}')
+    dur = entry.get("durability")
+    if dur is not None:
+        lines.append(f'metadata/_forge_durability = {int(dur)}')
+    if entry.get("openable"):
+        lines.append('metadata/_forge_openable = "true"')
+
 # ── Shell scripts ──────────────────────────────────────────────
 # P4: reusable GDScript files the compiler always attaches.
 # Paths relative to res:// — these were authored once in rpg/scripts/.
@@ -857,6 +877,8 @@ def compile_scene(
             lines.append(f'metadata/_forge_tag = "{tag}"')
             # P-B: add category metadata for named prompts
             lines.append(f'metadata/_forge_category = "{cat}"')
+            # B3: per-item flags (use_verb, weight, durability, openable)
+            _b3_emit_item_metadata(lines, cat)
             # P5: attach component script by tag
             component_path = _TAG_TABLE.get(tag)
             if component_path and component_path in used_tag_scripts:

@@ -7,6 +7,9 @@
 # B1: Crouch (Ctrl) — slower movement, lower camera.
 # B1: Head-bob — subtle camera Y oscillation when walking.
 # B1: Drop particle puff when dropping items.
+# B3: Throw (Q) — held item becomes RigidBody3D projectile.
+# B3: Use (F) — activates use_verb on held item.
+# B3: Weight tracking + slot cap (8 slots).
 #
 # C-2: Multi-item inventory — carried_items array + active_item_index
 #       replaces the single carried_item string.
@@ -15,6 +18,12 @@ extends CharacterBody3D
 # C-2: multi-item inventory
 var carried_items: Array = []       # ["key_0", "book_1", ...]
 var active_item_index: int = -1     # -1 when empty
+# B3: weight tracking + durability
+var carried_weights: Dictionary = {}  # item_id → weight (float)
+var carried_durability: Dictionary = {}  # item_id → uses_left (int)
+var total_weight: float = 0.0
+var max_weight: float = 10.0        # carry capacity
+var max_slots: int = 8              # inventory slot cap
 
 var speed: float = 5.0
 var mouse_sensitivity: float = 0.002
@@ -68,23 +77,52 @@ func get_active_item() -> String:
 	return ""
 
 
-func add_item(item_id: String) -> void:
-	"""C-2: Add an item to the inventory and make it active."""
+func add_item(item_id: String) -> bool:
+	"""C-2/B3: Add an item to the inventory (weight/slot-aware).
+	Returns true if the item was added, false if blocked."""
 	var idx = carried_items.find(item_id)
 	if idx >= 0:
 		active_item_index = idx
 		_show_active_model()
-		return
+		_update_hud_inventory()
+		return true
+	# B3: Slot cap check
+	if carried_items.size() >= max_slots:
+		var hud = get_node_or_null("/root/Root/HUD")
+		if hud and hud.has_method("set_objective"):
+			hud.set_objective("Inventory full (%d slots)" % max_slots)
+		return false
+	# B3: Weight check — block if over capacity
+	var weight := _get_item_weight(item_id)
+	if total_weight + weight > max_weight:
+		var hud = get_node_or_null("/root/Root/HUD")
+		if hud and hud.has_method("set_objective"):
+			hud.set_objective("Too heavy to carry")
+		return false
 	carried_items.append(item_id)
+	carried_weights[item_id] = weight
+	total_weight += weight
+	# B3: Durability tracking
+	var dur := _get_item_durability(item_id)
+	if dur > 0:
+		carried_durability[item_id] = dur
 	active_item_index = carried_items.size() - 1
 	_show_active_model()
+	_update_hud_inventory()
+	return true
 
 
 func remove_item(item_id: String) -> void:
-	"""C-2: Remove an item from the inventory."""
+	"""C-2/B3: Remove an item from the inventory (weight-aware)."""
 	var idx = carried_items.find(item_id)
 	if idx < 0:
 		return
+	# B3: Remove weight
+	if carried_weights.has(item_id):
+		total_weight -= carried_weights[item_id]
+		total_weight = maxf(0.0, total_weight)
+	carried_weights.erase(item_id)
+	carried_durability.erase(item_id)
 	# If this was the active item, hide its model
 	if idx == active_item_index:
 		_hide_all_models()
@@ -95,9 +133,7 @@ func remove_item(item_id: String) -> void:
 		active_item_index = carried_items.size() - 1
 	if active_item_index >= 0:
 		_show_active_model()
-	var hud = get_node_or_null("/root/Root/HUD")
-	if hud and hud.has_method("update_inventory"):
-		hud.update_inventory(carried_items, active_item_index)
+	_update_hud_inventory()
 
 
 func _input(event: InputEvent) -> void:
@@ -113,6 +149,12 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.physical_keycode == KEY_G:
 			_drop_active_item()
+		# B3: Throw active item (Q key)
+		if event.physical_keycode == KEY_Q:
+			_throw_active_item()
+		# B3: Use active item (F key)
+		if event.physical_keycode == KEY_F:
+			_use_active_item()
 		# C-2: Number keys 1-8 for direct inventory selection
 		if event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_8:
 			var slot = event.physical_keycode - KEY_1
@@ -215,9 +257,7 @@ func _select_slot(slot: int) -> void:
 		return
 	active_item_index = slot
 	_show_active_model()
-	var hud = get_node_or_null("/root/Root/HUD")
-	if hud and hud.has_method("update_inventory"):
-		hud.update_inventory(carried_items, active_item_index)
+	_update_hud_inventory()
 
 
 func _cycle_active(direction: int) -> void:
@@ -226,9 +266,7 @@ func _cycle_active(direction: int) -> void:
 		return
 	active_item_index = posmod(active_item_index + direction, carried_items.size())
 	_show_active_model()
-	var hud = get_node_or_null("/root/Root/HUD")
-	if hud and hud.has_method("update_inventory"):
-		hud.update_inventory(carried_items, active_item_index)
+	_update_hud_inventory()
 
 
 func _show_active_model() -> void:
@@ -249,6 +287,184 @@ func _hide_all_models() -> void:
 	var carried = $Camera3D/CarriedItem
 	for child in carried.get_children():
 		child.hide()
+
+
+# ── B3: Weight helpers ──────────────────────────────────────────
+
+func _get_item_category(item_id: String) -> String:
+	"""Parse the category from an item ID (e.g. 'wooden_key_3' → 'key')."""
+	var prop = get_node_or_null("/root/Root/" + item_id)
+	if prop and prop.has_meta("_forge_category"):
+		return str(prop.get_meta("_forge_category"))
+	# Fallback: extract from name before first underscore-index
+	var parts := item_id.split("_")
+	if parts.size() >= 2 and parts[-1].is_valid_int():
+		return "_".join(parts.slice(0, -1))
+	return item_id
+
+
+func _get_item_weight(item_id: String) -> float:
+	"""Get weight from category registry metadata or default 0.5."""
+	var prop = get_node_or_null("/root/Root/" + item_id)
+	if prop and prop.has_meta("_forge_weight"):
+		return float(prop.get_meta("_forge_weight"))
+	return 0.5
+
+
+func _get_item_durability(item_id: String) -> int:
+	"""Get max durability from category registry metadata or default 0."""
+	var prop = get_node_or_null("/root/Root/" + item_id)
+	if prop and prop.has_meta("_forge_durability"):
+		return int(prop.get_meta("_forge_durability"))
+	return 0
+
+
+func _get_item_use_verb(item_id: String) -> String:
+	"""Get use verb from category registry metadata or empty."""
+	var prop = get_node_or_null("/root/Root/" + item_id)
+	if prop and prop.has_meta("_forge_use_verb"):
+		return str(prop.get_meta("_forge_use_verb"))
+	return ""
+
+
+func _update_hud_inventory() -> void:
+	"""B3: Push full inventory state to HUD."""
+	var hud = get_node_or_null("/root/Root/HUD")
+	if hud and hud.has_method("update_inventory"):
+		# Build durability dict for display
+		var dur_display: Dictionary = {}
+		for item_id in carried_items:
+			if carried_durability.has(item_id):
+				dur_display[item_id] = carried_durability[item_id]
+		hud.update_inventory(carried_items, active_item_index,
+			total_weight, max_weight, max_slots, dur_display)
+
+
+# ── B3: Throw active item ──────────────────────────────────────
+
+func _throw_active_item() -> void:
+	"""Throw the active item as a RigidBody3D projectile.
+
+	Reparents the model from CarriedItem to a new RigidBody3D node,
+	applies forward impulse, and enables gravity.  The RigidBody3D
+	self-frees after 5 seconds."""
+	var active_id = get_active_item()
+	if active_id == "":
+		return
+
+	# Find the model in CarriedItem
+	var carried = $Camera3D/CarriedItem
+	var model = carried.get_node_or_null("%s_model" % active_id)
+	if not model:
+		return
+
+	# Create a RigidBody3D projectile
+	var proj := RigidBody3D.new()
+	proj.name = "%s_projectile" % active_id
+	proj.collision_layer = 1
+	proj.collision_mask = 1
+
+	# Position at camera origin (will fly forward)
+	proj.global_position = _camera.global_position
+
+	# Add a CollisionShape3D (small box)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.15, 0.15, 0.15)
+	shape.shape = box
+	proj.add_child(shape)
+
+	# Reparent model to projectile
+	model.reparent(proj, false)
+	model.position = Vector3.ZERO
+
+	# Add to scene
+	get_parent().add_child(proj)
+
+	# Apply forward impulse
+	var forward: Vector3 = -_camera.global_transform.basis.z * 8.0 + Vector3(0, 2.0, 0)
+	proj.apply_central_impulse(forward)
+
+	# B1: particle puff at throw position
+	_spawn_drop_puff(_camera.global_position)
+
+	# Remove from inventory
+	remove_item(active_id)
+
+	# Auto-cleanup after 5 seconds
+	await get_tree().create_timer(5.0).timeout
+	proj.queue_free()
+
+
+# ── B3: Use active item ────────────────────────────────────────
+
+func _use_active_item() -> void:
+	"""Activate the use verb on the held item.
+
+	Reads _get_item_use_verb() for the action:
+	  "consume" → heal effect + remove item
+	  "light"   → toggle light effect
+	  ""        → nothing happens"""
+	var active_id = get_active_item()
+	if active_id == "":
+		return
+
+	var use_verb := _get_item_use_verb(active_id)
+	var hud = get_node_or_null("/root/Root/HUD")
+
+	match use_verb:
+		"consume":
+			# Heal / buff effect — flash green briefly
+			if hud and hud.has_method("set_objective"):
+				hud.set_objective("Used %s — healed!" % _item_display_name(active_id))
+			# B3: Durability tracking — decrement, break if zero
+			_consume_durability(active_id)
+		"light":
+			# Toggle light on the carried model
+			var model = get_node_or_null("Camera3D/CarriedItem/%s_model" % active_id)
+			if model:
+				# Find any OmniLight3D on the original prop
+				var prop = get_node_or_null("/root/Root/" + active_id)
+				if prop:
+					var light = prop.get_node_or_null("%s_light" % active_id)
+					if light:
+						light.visible = not light.visible
+						if hud and hud.has_method("set_objective"):
+							hud.set_objective("Candle %s" % ("lit" if light.visible else "extinguished"))
+			_consume_durability(active_id)
+		_:
+			# No use verb — nothing happens
+			pass
+
+
+func _consume_durability(item_id: String) -> void:
+	"""B3: Decrement durability; remove item if broken."""
+	if not carried_durability.has(item_id):
+		return  # unbreakable
+	var left: int = carried_durability[item_id] - 1
+	if left <= 0:
+		# Item breaks
+		var hud = get_node_or_null("/root/Root/HUD")
+		if hud and hud.has_method("set_objective"):
+			hud.set_objective("%s broke!" % _item_display_name(item_id))
+		remove_item(item_id)
+		# Clean up model
+		var carried = $Camera3D/CarriedItem
+		var model = carried.get_node_or_null("%s_model" % item_id)
+		if model:
+			model.queue_free()
+	else:
+		carried_durability[item_id] = left
+		_update_hud_inventory()
+
+
+func _item_display_name(item_id: String) -> String:
+	"""Pretty-print an item ID (e.g. 'worn_oak_key_3' → 'worn oak key')."""
+	var s := item_id
+	var lu := s.rfind("_")
+	if lu > 0 and s.substr(lu + 1).is_valid_int():
+		s = s.substr(0, lu)
+	return s.replace("_", " ")
 
 
 # ── Drop + particle puff (B1) ────────────────────────────────────

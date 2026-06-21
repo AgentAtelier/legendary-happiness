@@ -213,21 +213,25 @@ func show_tooltip(text: String) -> void:
 
 # ── C-2: Inventory display ──────────────────────────────────────────
 
-func update_inventory(items: Array, active_index: int) -> void:
-	"""Render the inventory list with > marker on the active item."""
+func update_inventory(items: Array, active_index: int, weight: float = 0.0, max_wt: float = 10.0, max_sl: int = 8, durability: Dictionary = {}) -> void:
+	"""B3: Render inventory with weight, slot usage, and durability."""
 	if not _inventory_label:
 		return
 	var lines: PackedStringArray = []
+	lines.append("=== Inventory  %.1f/%.1f kg  %d/%d slots ===" % [weight, max_wt, items.size(), max_sl])
 	if items.is_empty():
-		_inventory_label.text = ""
-		return
-	for i in range(items.size()):
-		var item_id: String = items[i]
-		var display_name: String = _display_name(item_id)
-		if i == active_index:
-			lines.append("> %s" % display_name)
-		else:
-			lines.append("  %s" % display_name)
+		lines.append("  (empty)")
+	else:
+		for i in range(items.size()):
+			var item_id: String = items[i]
+			var display_name: String = _display_name(item_id)
+			var dur_text: String = ""
+			if durability.has(item_id):
+				dur_text = " [%d]" % durability[item_id]
+			if i == active_index:
+				lines.append("> %s%s" % [display_name, dur_text])
+			else:
+				lines.append("  %s%s" % [display_name, dur_text])
 	_inventory_label.text = "\n".join(lines)
 
 
