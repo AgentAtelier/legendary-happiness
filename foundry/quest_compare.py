@@ -37,6 +37,14 @@ HEALTH_POLL_INTERVAL = 2.0
 
 LLAMA_SERVICE = "forge-llama.service"
 
+# Builds are scaffolded by ``python -m foundry quest`` into <repo-root>/builds/
+# (see _run_quest, which sets cwd=repo-root). The signal/smoke/playthrough
+# helpers MUST resolve builds against this same anchor — NOT Path.cwd(), which
+# is foundry/ when launched as ``cd foundry && python -m quest_compare`` and
+# made every eval signal a false-negative ("build dir not found").
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_BUILDS_DIR = _REPO_ROOT / "builds"
+
 # B5: smoke test error cache (populated by _run_godot_smoke on failure)
 _last_smoke_error: str = ""
 
@@ -248,7 +256,7 @@ def _compute_quest_signals(scene_name: str) -> dict:
     """
     from types import SimpleNamespace
 
-    builds_dir = Path.cwd() / "builds" / scene_name
+    builds_dir = _BUILDS_DIR / scene_name
     data_file = builds_dir / "scenes" / "main_quest_data.json"
     if not data_file.exists():
         return {"tags": [], "ok": False, "error": "quest_data.json not found"}
@@ -281,7 +289,7 @@ def _run_godot_smoke(scene_name: str) -> bool:
     global _last_smoke_error
     _last_smoke_error = ""
 
-    builds_dir = Path.cwd() / "builds" / scene_name
+    builds_dir = _BUILDS_DIR / scene_name
     if not builds_dir.exists():
         _last_smoke_error = "build dir not found"
         return False
@@ -310,7 +318,7 @@ def _run_playthrough_probe(scene_name: str) -> Tuple[bool, dict]:
     Uses probe_playthrough.gd to drive a scripted playthrough.
     Returns (ok, probe_result_dict).
     """
-    builds_dir = Path.cwd() / "builds" / scene_name
+    builds_dir = _BUILDS_DIR / scene_name
     tscn = str(builds_dir / "scenes" / "main.tscn")
     probe = str(Path(__file__).resolve().parent / "godot_template" / "probe_playthrough.gd")
 
