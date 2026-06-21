@@ -662,6 +662,7 @@ def compile_scene(
     world_log_path = str(Path(output_dir) / world_log_filename)
 
     # C-4: Build per-NPC quest data and placements for the shared JSON.
+    from soul import default_soul
     npcs_data: dict = {}
     for i, spec in enumerate(quest_specs):
         npc_id = spec.get("npc_id", f"npc_{i}")
@@ -669,6 +670,8 @@ def compile_scene(
         npc_index = int(npc_id.split("_")[-1]) if "_" in npc_id else i
         npc_pos_x = (npc_index - (len(quest_specs) - 1) / 2.0) * 2.5
         npc_pos_z = -2.0
+        # Spine Slice 3: bake soul into quest_data
+        npc_soul = spec.get("soul", default_soul())
         placement: dict = {
             "id": npc_id,
             "asset_hash": f"{_NPC_BODY_CATEGORY}_{_NPC_BODY_MATERIAL}",
@@ -682,6 +685,7 @@ def compile_scene(
         }
         npcs_data[npc_id] = {
             **spec,
+            "soul": npc_soul,
             "npc_placement": placement,
         }
         # C-3: Initialise the world log with this NPC's starting state

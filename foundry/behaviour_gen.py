@@ -20,6 +20,7 @@ from typing import Callable, List, Optional, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 from dialogue_validator import validate_dialogue, validate_idle_barks, get_canned_idle_barks
+from soul import default_soul, tone_descriptor
 
 log = logging.getLogger(__name__)
 
@@ -616,6 +617,17 @@ class QuestBehaviourPlanner:
                 f"Assign these roles to the NPCs where they fit the count."
             )
 
+        # Spine Slice 3: tone hints from per-NPC souls
+        tone_hints: list[str] = []
+        for i in range(npc_count):
+            if i < len(brief_characters) and brief_characters[i].get("soul"):
+                soul = brief_characters[i]["soul"]
+            else:
+                soul = default_soul()
+            tone = tone_descriptor(soul)
+            role = brief_characters[i]["role"] if i < len(brief_characters) else f"npc_{i}"
+            tone_hints.append(f"{role} is a {tone} character")
+
         # Build prompt with normalized Brief setting
         prompt = _MULTI_NPC_PROMPT.format(
             npc_count=npc_count,
@@ -624,6 +636,13 @@ class QuestBehaviourPlanner:
             manifest_text=manifest_text,
             carryable_section=carryable_section,
         ) + char_hint
+
+        # Append tone hints to the prompt so the LLM writes in-character dialogue
+        if tone_hints:
+            prompt += (
+                f"\nCharacter tones (write each NPC's dialogue to match): "
+                f"{'; '.join(tone_hints)}. "
+            )
 
         # Call LLM with NO grammar — the multi-NPC output is a dict-of-dicts
         # which doesn't fit a single GBNF schema easily.
@@ -677,18 +696,31 @@ class QuestBehaviourPlanner:
         used_targets: set[str] = set()
         specs: list[dict] = []
 
+        # Spine Slice 3: resolve souls per NPC (store on every spec)
+        npc_souls: list[dict] = []
+        for i in range(npc_count):
+            if i < len(brief_characters) and brief_characters[i].get("soul"):
+                npc_souls.append(brief_characters[i]["soul"])
+            else:
+                npc_souls.append(default_soul())
+
         for i, npc_id in enumerate(npc_ids):
             raw = data.get(npc_id, {})
+            npc_soul = npc_souls[i]
+            npc_tone = tone_descriptor(npc_soul)
 
             # ── Spine Slice 2 Task 3: Per-NPC grammared fallback ──
             # When the ungrammared multi-call yields no usable data for an NPC,
             # retry that NPC through the grammar-constrained single-NPC plan(),
             # which is reliable, to get themed dialogue (NOT canned "villager").
+            # Spine Slice 3: prepend soul tone to room_theme for themed fallback.
             if not raw or not isinstance(raw, dict):
                 try:
-                    # Retry via the reliable grammar-constrained single-NPC path
+                    # Retry via the reliable grammar-constrained single-NPC path,
+                    # prepending the soul tone so fallback dialogue reflects it.
+                    themed_room = f"{npc_tone} — {brief_setting}"
                     spec_fb, dpx_fb = self.plan(
-                        brief_setting, manifest, llm,
+                        themed_room, manifest, llm,
                         seed=seed, carryable_ids=carryable_ids,
                     )
                     decisions.extend(dpx_fb)
@@ -843,6 +875,7 @@ class QuestBehaviourPlanner:
                 "dialogue": validated_dialogue,
                 "objective": objective,
                 "idle_barks": idle_barks,
+                "soul": npc_soul,
             }
             specs.append(spec)
 

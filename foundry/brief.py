@@ -170,6 +170,7 @@ def validate_brief(
     brief["mood"] = list(mood) if isinstance(mood, (list, tuple)) else []
 
     # --- characters (open vocabulary, keep verbatim) ---
+    from soul import default_soul, validate_soul  # noqa: E402
     raw_characters = raw.get("characters", []) or []
     validated_characters: list[dict] = []
     for ch in raw_characters:
@@ -184,7 +185,18 @@ def validate_brief(
             continue  # drop empty-role entries silently
         note = ch.get("note")
         note = str(note).strip() if note else None
-        validated_characters.append({"role": role, "note": note})
+        # Spine Slice 3: validate soul per character
+        raw_soul = ch.get("soul", {})
+        if isinstance(raw_soul, dict) and raw_soul:
+            char_soul, soul_decisions = validate_soul(raw_soul)
+            decisions.extend(soul_decisions)
+        else:
+            char_soul = default_soul()
+        validated_characters.append({
+            "role": role,
+            "note": note,
+            "soul": char_soul,
+        })
     brief["characters"] = validated_characters
 
     # --- key_features (validate each) ---

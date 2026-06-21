@@ -47,6 +47,11 @@ Given a user's description, output ONLY a JSON object — no prose, no explanati
 - "characters": a list of people/NPCs the description names or clearly implies. Each entry has:
     - "role": a short label for the character (e.g. "blacksmith", "apprentice", "shopkeeper"). Free-form — no closed set.
     - "note": optional short note about the character, or null.
+    - "soul": (optional) inferred personality from the user's words. Contains a "substrate" object with three stable traits (courage, generosity, stability), each a float in -1.0..1.0:
+        - courage: 1.0=bold/brave, -1.0=fearful/timid. Words like "wary", "fearful", "cautious" → negative; "brave", "proud", "confident" → positive.
+        - generosity: 1.0=warm/generous, -1.0=selfish/guarded. Words like "generous", "kind", "welcoming" → positive; "greedy", "stingy" → negative.
+        - stability: 1.0=steady/calm, -1.0=anxious/nervous. Words like "nervous", "jittery", "skittish" → negative; "calm", "steady" → positive.
+      If the prompt implies nothing about a character's personality, omit the soul or set all traits to 0. You may optionally include an "axes" object (security, belonging, agency, satiation), all 0.0 if unsure."
 
 Available placeable object categories (pick from these for key_features[].category):
 {category_list}

@@ -14,6 +14,8 @@ signal quest_state_changed(npc_id: String, state: int)
 
 var _state: int = State.IDLE
 var _quest_data: Dictionary = {}
+# Spine Slice 3: NPC soul (substrate + axes)
+var _soul: Dictionary = {}
 # C-3: world log persistence
 var _npc_id: String = ""
 var _world_log_path: String = ""
@@ -28,6 +30,11 @@ const _IDLE_BARK_INTERVAL: float = 12.0  # seconds between barks
 var _idle_tween: Tween = null
 var _breath_scale_high: float = 1.03
 var _breath_period: float = 3.5  # seconds for one breath cycle
+# Spine Slice 3: courage-based idle tweak — timid NPCs breathe slower +
+# less pronounced sway (smaller visual presence)
+var _breath_scale_low: float = 1.0
+var _sway_angle: float = 0.02
+var _sway_direction_sign: float = 1.0
 
 
 func _ready() -> void:
@@ -55,6 +62,10 @@ func _load_quest_data() -> void:
 			if my_data and not my_data.is_empty():
 				_quest_data = my_data
 				_base_placement = my_data.get("npc_placement", {})
+				# Spine Slice 3: read soul from quest_data
+				var raw_soul = my_data.get("soul", {})
+				if raw_soul is Dictionary and not raw_soul.is_empty():
+					_soul = raw_soul
 			else:
 				# Fallback: single-NPC format (C-3 backward compat)
 				_quest_data = parsed
@@ -293,21 +304,40 @@ func _push_subtitle_line(line: String) -> void:
 # ── B1: Idle micro-animation ─────────────────────────────────────
 
 func _start_idle_anim() -> void:
-	"""Start a looping Tween that animates breath scale + slight sway."""
+	"""Start a looping Tween that animates breath scale + slight sway.
+	
+	Spine Slice 3: timid NPCs (courage <= -0.33) get slower breathing,
+	subtler sway — a small visible cue of their personality."""
 	if _idle_tween and _idle_tween.is_valid():
 		_idle_tween.kill()
+	
+	# Spine Slice 3: adjust animation params from soul
+	var anim_period := _breath_period
+	var anim_scale_high := _breath_scale_high
+	var anim_sway := _sway_angle
+	if not _soul.is_empty():
+		var sub = _soul.get("substrate", {})
+		if sub is Dictionary:
+			var courage: float = float(sub.get("courage", 0.0))
+			if courage <= -0.33:
+				# Timid: slower, shallower, randomised sway dir
+				anim_period = _breath_period * 1.6
+				anim_scale_high = 1.015
+				anim_sway = 0.01
+				_sway_direction_sign = -1.0 if randi() % 2 == 0 else 1.0
+
 	_idle_tween = create_tween()
 	_idle_tween.set_loops(0)  # infinite
-	# Breath: scale oscillates between 1.0 and _breath_scale_high
-	# Sway: slight rotation on Z axis
+	# Breath: scale oscillates between 1.0 and anim_scale_high
+	# Sway: slight rotation on Z axis (timid NPCs sway opposite direction)
 	var body = get_node_or_null("Body")
 	if body:
-		var half_period := _breath_period / 2.0
+		var half_period := anim_period / 2.0
 		# Breath in
-		_idle_tween.tween_property(body, "scale", Vector3(_breath_scale_high, _breath_scale_high, _breath_scale_high), half_period).set_ease(Tween.EASE_IN_OUT)
+		_idle_tween.tween_property(body, "scale", Vector3(anim_scale_high, anim_scale_high, anim_scale_high), half_period).set_ease(Tween.EASE_IN_OUT)
 		# Sway right while breathing in
-		_idle_tween.parallel().tween_property(body, "rotation:z", 0.02, half_period).set_ease(Tween.EASE_IN_OUT)
+		_idle_tween.parallel().tween_property(body, "rotation:z", anim_sway * _sway_direction_sign, half_period).set_ease(Tween.EASE_IN_OUT)
 		# Breath out
 		_idle_tween.tween_property(body, "scale", Vector3(1.0, 1.0, 1.0), half_period).set_ease(Tween.EASE_IN_OUT)
 		# Sway left while breathing out
-		_idle_tween.parallel().tween_property(body, "rotation:z", -0.02, half_period).set_ease(Tween.EASE_IN_OUT)
+		_idle_tween.parallel().tween_property(body, "rotation:z", -anim_sway * _sway_direction_sign, half_period).set_ease(Tween.EASE_IN_OUT)

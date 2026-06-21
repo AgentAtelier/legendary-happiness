@@ -251,8 +251,10 @@ def test_interpret_star_theme_passthrough():
 
 
 def test_interpret_extracts_characters():
-    """Interpreter stub returns characters → they survive into the Brief."""
+    """Interpreter stub returns characters → they survive into the Brief,
+    with default soul added by validate_brief."""
     from interpreter import Interpreter
+    from soul import default_soul
 
     def fake_llm(prompt: str, grammar: Optional[str]) -> str:
         return json.dumps({
@@ -267,10 +269,12 @@ def test_interpret_extracts_characters():
     interp = Interpreter()
     brief, decs = interp.interpret("a blacksmith's forge with an apprentice", fake_llm)
 
-    assert brief["characters"] == [
-        {"role": "blacksmith", "note": "master forger"},
-        {"role": "apprentice", "note": None},
-    ]
+    assert brief["characters"][0]["role"] == "blacksmith"
+    assert brief["characters"][0]["note"] == "master forger"
+    assert brief["characters"][0]["soul"] == default_soul()
+    assert brief["characters"][1]["role"] == "apprentice"
+    assert brief["characters"][1]["note"] is None
+    assert brief["characters"][1]["soul"] == default_soul()
     # No error decisions for valid characters
     error_dps = [d for d in decs if d.severity == "error"]
     assert not error_dps
@@ -289,3 +293,26 @@ def test_interpret_no_characters_stays_empty():
     interp = Interpreter()
     brief, decs = interp.interpret("a cozy tavern", fake_llm)
     assert brief["characters"] == []
+
+
+def test_interpret_character_with_soul():
+    """Interpreter stub returns a character with soul → soul survives into Brief."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+        return json.dumps({
+            "theme_tag": "blacksmith",
+            "scale": "medium",
+            "characters": [{
+                "role": "generous_hermit",
+                "soul": {"substrate": {"generosity": 0.7, "courage": -0.1, "stability": 0.2}},
+            }],
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a generous hermit's hut", fake_llm)
+
+    assert len(brief["characters"]) == 1
+    assert brief["characters"][0]["role"] == "generous_hermit"
+    assert brief["characters"][0]["soul"]["substrate"]["generosity"] == 0.7
+    assert brief["characters"][0]["soul"]["substrate"]["courage"] == -0.1

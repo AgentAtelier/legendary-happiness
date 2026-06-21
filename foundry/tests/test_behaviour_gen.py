@@ -1106,3 +1106,201 @@ def test_plan_multi_both_multi_and_grammared_fail():
     # Grammared fallback DPs should NOT be present (they failed too)
     fb_dps = [d for d in decs if d.code == "quest.npc_grammared_fallback"]
     assert len(fb_dps) == 0
+
+
+# ── Spine Slice 3 Task 3: Soul tone in prompts + soul on specs ──
+
+_BRIEF_WITH_SOULS: dict = {
+    "schema_version": 2,
+    "source_prompt": "a fearful hermit and a bold blacksmith",
+    "setting": "a shared workshop",
+    "theme_tag": "blacksmith",
+    "scale": "medium",
+    "mood": [],
+    "key_features": [],
+    "unmapped": [],
+    "characters": [
+        {
+            "role": "hermit",
+            "note": None,
+            "soul": {
+                "substrate": {"courage": -0.6, "generosity": 0.0, "stability": 0.0},
+                "axes": {"security": 0.0, "belonging": 0.0, "agency": 0.0, "satiation": 0.0},
+            },
+        },
+        {
+            "role": "blacksmith",
+            "note": None,
+            "soul": {
+                "substrate": {"courage": 0.8, "generosity": 0.0, "stability": 0.0},
+                "axes": {"security": 0.0, "belonging": 0.0, "agency": 0.0, "satiation": 0.0},
+            },
+        },
+    ],
+}
+
+
+def test_plan_multi_prompt_contains_tone_from_soul():
+    """A Brief with soul → the prompt passed to the LLM contains the tone adjective."""
+    planner = QuestBehaviourPlanner()
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    captured_prompt: list[str] = []
+
+    def capturing_llm(prompt, grammar=None):
+        captured_prompt.append(prompt)
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "blacksmith",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    planner.plan_multi(
+        _BRIEF_WITH_SOULS, carry_manifest, capturing_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(captured_prompt) == 1
+    prompt_text = captured_prompt[0]
+    assert "timid" in prompt_text, f"expected 'timid' in prompt, got:\n{prompt_text[:500]}"
+    assert "bold" in prompt_text, f"expected 'bold' in prompt"
+    assert "hermit is a timid character" in prompt_text
+    assert "blacksmith is a bold character" in prompt_text
+
+
+def test_plan_multi_every_spec_has_soul_key():
+    """Every spec returned by plan_multi has a 'soul' key with the full shape,
+    including NPCs with no named character → default_soul()."""
+    planner = QuestBehaviourPlanner()
+    from soul import default_soul
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_multi_llm(prompt, grammar=None):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "blacksmith",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        _BRIEF_WITH_SOULS, carry_manifest, fake_multi_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    for i, spec in enumerate(specs):
+        assert "soul" in spec, f"spec[{i}] missing 'soul' key"
+        soul = spec["soul"]
+        assert "substrate" in soul
+        assert "axes" in soul
+        assert set(soul["substrate"].keys()) == {"courage", "generosity", "stability"}
+        assert set(soul["axes"].keys()) == {"security", "belonging", "agency", "satiation"}
+
+    # First NPC (hermit) should have the timid soul from Brief
+    assert specs[0]["soul"]["substrate"]["courage"] == -0.6
+    # Second NPC (blacksmith) should have the bold soul from Brief
+    assert specs[1]["soul"]["substrate"]["courage"] == 0.8
+
+
+def test_plan_multi_different_tones_from_opposite_courage():
+    """Two characters with opposite courage → tone hints differ ('timid' vs 'bold')."""
+    planner = QuestBehaviourPlanner()
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    captured_prompt: list[str] = []
+
+    def capturing_llm(prompt, grammar=None):
+        captured_prompt.append(prompt)
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "blacksmith",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    planner.plan_multi(
+        _BRIEF_WITH_SOULS, carry_manifest, capturing_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    prompt_text = captured_prompt[0]
+    # hermit is timid, blacksmith is bold
+    timid_pos = prompt_text.find("timid")
+    bold_pos = prompt_text.find("bold")
+    assert timid_pos != -1
+    assert bold_pos != -1
+    assert timid_pos != bold_pos  # different positions → different tones
+
+
+def test_plan_multi_default_souls_for_nameless_npcs():
+    """NPCs without a named character in the Brief get default_soul()."""
+    planner = QuestBehaviourPlanner()
+    from soul import default_soul
+
+    carry_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_multi_llm(prompt, grammar=None):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "villager",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "villager",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem", "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    # Use a string (no characters) → all NPCs get default_soul
+    specs, decs = planner.plan_multi(
+        "a tavern", carry_manifest, fake_multi_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    for spec in specs:
+        assert spec["soul"] == default_soul()

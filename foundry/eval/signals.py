@@ -922,3 +922,84 @@ def check_dialogue_not_all_canned(record) -> Optional[str]:
 
 
 SIGNAL_SEVERITY["dialogue_not_all_canned"] = "low"
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Spine Slice 3: Soul validation signals
+# ═══════════════════════════════════════════════════════════════════════
+
+_SOUL_TRAITS = ("courage", "generosity", "stability")
+_SOUL_AXES = ("security", "belonging", "agency", "satiation")
+
+
+def check_every_npc_has_valid_soul(record) -> Optional[str]:
+    """Spine Slice 3: Return 'every_npc_has_valid_soul' when every NPC
+    spec has a 'soul' with all 7 values in [-1.0, 1.0].
+
+    Positive signal — fires when all NPCs carry valid souls.
+    Returns None when any NPC is missing a soul or has out-of-range values."""
+    specs = getattr(record, "quest_specs", None)
+    if not specs:
+        single = getattr(record, "quest_spec", None)
+        if single and isinstance(single, dict):
+            specs = [single]
+    if not specs or not isinstance(specs, (list, tuple)):
+        return None
+
+    for spec in specs:
+        if not isinstance(spec, dict):
+            return None
+        soul = spec.get("soul")
+        if not isinstance(soul, dict):
+            return None
+        sub = soul.get("substrate")
+        axe = soul.get("axes")
+        if not isinstance(sub, dict) or not isinstance(axe, dict):
+            return None
+        for trait in _SOUL_TRAITS:
+            v = sub.get(trait)
+            if not isinstance(v, (int, float)):
+                return None
+            if v < -1.0 or v > 1.0:
+                return None
+        for axis in _SOUL_AXES:
+            v = axe.get(axis)
+            if not isinstance(v, (int, float)):
+                return None
+            if v < -1.0 or v > 1.0:
+                return None
+
+    return "every_npc_has_valid_soul"
+
+
+def check_soul_tones_vary(record) -> Optional[str]:
+    """Spine Slice 3: Return 'soul_tones_vary' when ≥2 NPCs exist and
+    their tone_descriptor strings are not all identical (souls actually
+    differentiate characters).
+
+    Positive signal — fires when characters feel distinct.
+    Returns None when all NPCs have the same tone (all 'even-tempered'
+    or all identical adjectives)."""
+    from soul import tone_descriptor
+
+    specs = getattr(record, "quest_specs", None)
+    if not specs:
+        single = getattr(record, "quest_spec", None)
+        if single and isinstance(single, dict):
+            specs = [single]
+    if not specs or len(specs) < 2:
+        return None
+
+    tones: set[str] = set()
+    for spec in specs:
+        if not isinstance(spec, dict):
+            return None
+        soul = spec.get("soul", {})
+        tones.add(tone_descriptor(soul))
+
+    if len(tones) >= 2:
+        return "soul_tones_vary"
+    return None
+
+
+SIGNAL_SEVERITY["every_npc_has_valid_soul"] = "low"
+SIGNAL_SEVERITY["soul_tones_vary"] = "low"

@@ -41,8 +41,14 @@ def build_report_dict(
     ]
     understood["key_features"] = mapped_texts
     # Spine Slice 2: characters from Brief
-    char_roles = [c["role"] for c in brief.get("characters", []) or [] if isinstance(c, dict) and c.get("role")]
-    understood["characters"] = char_roles
+    from soul import tone_descriptor as _soul_tone  # noqa: E402
+    char_descriptions: list[str] = []
+    for c in (brief.get("characters", []) or []):
+        if isinstance(c, dict) and c.get("role"):
+            soul = c.get("soul", {})
+            tone = _soul_tone(soul) if soul else "even-tempered"
+            char_descriptions.append(f"{tone} {c['role']}")
+    understood["characters"] = char_descriptions
 
     # ── Built ──────────────────────────────────────────────────
     prop_categories = sorted({e.get("category", "?") for e in manifest})

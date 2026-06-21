@@ -244,6 +244,19 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The ungrammared multi-NPC call failed for one NPC, so I retried that NPC through the reliable single-NPC path to get themed dialogue.",
     ),
+    # ── Soul (spine slice 3) ──
+    "soul.clamped": (
+        # technical
+        "soul {field}={raw} clamped to {clamped} (bounds [-1.0, 1.0]).",
+        # plain
+        "The {field} trait was out of range ({raw}) and was nudged to {clamped}.",
+    ),
+    "soul.defaulted": (
+        # technical
+        "soul {field} missing/invalid; defaulted to 0.0.",
+        # plain
+        "No value was given for {field}, so a neutral 0.0 was used.",
+    ),
 }
 
 

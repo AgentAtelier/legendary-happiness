@@ -315,8 +315,9 @@ def test_validate_schema_version_defaults():
     assert brief["schema_version"] == 1
 
 def test_validate_characters_keeps_valid_roles():
-    """Characters with valid roles are preserved verbatim."""
+    """Characters with valid roles are preserved verbatim, with default soul added."""
     from brief import validate_brief
+    from soul import default_soul
 
     raw = {
         "theme_tag": "blacksmith",
@@ -327,10 +328,12 @@ def test_validate_characters_keeps_valid_roles():
         ],
     }
     brief, decs = validate_brief(raw)
-    assert brief["characters"] == [
-        {"role": "blacksmith", "note": "the master of the forge"},
-        {"role": "apprentice", "note": None},
-    ]
+    assert brief["characters"][0]["role"] == "blacksmith"
+    assert brief["characters"][0]["note"] == "the master of the forge"
+    assert brief["characters"][0]["soul"] == default_soul()
+    assert brief["characters"][1]["role"] == "apprentice"
+    assert brief["characters"][1]["note"] is None
+    assert brief["characters"][1]["soul"] == default_soul()
 
 def test_validate_characters_drops_empty_role():
     """Characters with empty role are dropped."""
@@ -407,6 +410,59 @@ def test_validate_key_features_none_is_safe():
 
     brief, _ = validate_brief({"theme_tag": "armory", "scale": "large", "key_features": None})
     assert brief["key_features"] == []
+
+
+# ── validate_brief — soul on characters (spine slice 3) ────
+
+def test_validate_character_without_soul_gets_default():
+    """A character lacking 'soul' gets default_soul() (all 0.0, full shape)."""
+    from brief import validate_brief
+    from soul import default_soul
+
+    raw = {
+        "theme_tag": "tavern",
+        "scale": "medium",
+        "characters": [{"role": "barkeep"}],
+    }
+    brief, decs = validate_brief(raw)
+    assert brief["characters"][0]["soul"] == default_soul()
+
+
+def test_validate_character_soul_preserved():
+    """A character with a valid soul → soul preserved within range."""
+    from brief import validate_brief
+
+    raw = {
+        "theme_tag": "tavern",
+        "scale": "medium",
+        "characters": [{
+            "role": "wary_blacksmith",
+            "soul": {"substrate": {"courage": -0.9, "generosity": 0.0, "stability": 0.0}},
+        }],
+    }
+    brief, decs = validate_brief(raw)
+    assert brief["characters"][0]["soul"]["substrate"]["courage"] == -0.9
+    assert brief["characters"][0]["soul"]["substrate"]["generosity"] == 0.0
+    assert brief["characters"][0]["soul"]["substrate"]["stability"] == 0.0
+
+def test_validate_character_soul_clamped():
+    """Out-of-range soul values are clamped, emitting soul.clamped DP."""
+    from brief import validate_brief
+
+    raw = {
+        "theme_tag": "tavern",
+        "scale": "medium",
+        "characters": [{
+            "role": "overconfident_hero",
+            "soul": {"substrate": {"courage": 2.5}},
+        }],
+    }
+    brief, decs = validate_brief(raw)
+    assert brief["characters"][0]["soul"]["substrate"]["courage"] == 1.0
+    clamped = [d for d in decs if d.code == "soul.clamped"]
+    assert len(clamped) == 1
+    assert clamped[0].context["field"] == "substrate.courage"
+    assert clamped[0].context["raw"] == 2.5
 
 
 def test_validate_brief_drops_features_subsumed_by_theme_or_characters():

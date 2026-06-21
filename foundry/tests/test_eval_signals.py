@@ -1490,3 +1490,110 @@ def test_dialogue_not_all_canned_in_severity_map():
     from eval.signals import SIGNAL_SEVERITY
     assert SIGNAL_SEVERITY.get("dialogue_not_all_canned") == "low"
 
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Spine Slice 3: Soul validation signals
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_every_npc_has_valid_soul_positive():
+    """Record where all NPC specs have valid souls → positive signal."""
+    from eval.signals import check_every_npc_has_valid_soul
+
+    class MockRecord:
+        quest_specs = [
+            {"soul": {"substrate": {"courage": 0.5, "generosity": -0.2, "stability": 0.3},
+                      "axes": {"security": 0.0, "belonging": 0.0, "agency": 0.0, "satiation": 0.0}}},
+            {"soul": {"substrate": {"courage": -0.8, "generosity": 0.7, "stability": 0.0},
+                      "axes": {"security": 0.0, "belonging": 0.0, "agency": 0.0, "satiation": 0.0}}},
+        ]
+        quest_spec = None
+
+    result = check_every_npc_has_valid_soul(MockRecord())
+    assert result == "every_npc_has_valid_soul"
+
+
+def test_every_npc_has_valid_soul_negative_missing_soul():
+    """Record with an NPC missing a soul → None (not positive)."""
+    from eval.signals import check_every_npc_has_valid_soul
+
+    class MockRecord:
+        quest_specs = [
+            {"soul": {"substrate": {"courage": 0.5, "generosity": 0.0, "stability": 0.0}}},
+            {},  # no soul
+        ]
+        quest_spec = None
+
+    result = check_every_npc_has_valid_soul(MockRecord())
+    assert result is None
+
+
+def test_every_npc_has_valid_soul_negative_out_of_range():
+    """Record with an out-of-range soul value → None (not positive)."""
+    from eval.signals import check_every_npc_has_valid_soul
+
+    class MockRecord:
+        quest_specs = [
+            {"soul": {"substrate": {"courage": 2.5, "generosity": 0.0, "stability": 0.0},
+                      "axes": {"security": 0.0, "belonging": 0.0, "agency": 0.0, "satiation": 0.0}}},
+        ]
+        quest_spec = None
+
+    result = check_every_npc_has_valid_soul(MockRecord())
+    assert result is None
+
+
+def test_soul_tones_vary_positive():
+    """Two NPCs with different tone descriptors → soul_tones_vary."""
+    from eval.signals import check_soul_tones_vary
+
+    class MockRecord:
+        quest_specs = [
+            {"soul": {"substrate": {"courage": -0.8, "generosity": 0.0, "stability": 0.0},
+                      "axes": {}}},
+            {"soul": {"substrate": {"courage": 0.8, "generosity": 0.0, "stability": 0.0},
+                      "axes": {}}},
+        ]
+        quest_spec = None
+
+    result = check_soul_tones_vary(MockRecord())
+    assert result == "soul_tones_vary"
+
+
+def test_soul_tones_vary_negative_all_even_tempered():
+    """When every NPC has default_soul() → all 'even-tempered' → not positive."""
+    from eval.signals import check_soul_tones_vary
+
+    class MockRecord:
+        quest_specs = [
+            {"soul": {"substrate": {"courage": 0.0, "generosity": 0.0, "stability": 0.0},
+                      "axes": {}}},
+            {"soul": {"substrate": {"courage": 0.0, "generosity": 0.0, "stability": 0.0},
+                      "axes": {}}},
+        ]
+        quest_spec = None
+
+    result = check_soul_tones_vary(MockRecord())
+    assert result is None
+
+
+def test_soul_tones_vary_negative_single_npc():
+    """Only one NPC → can't vary → None."""
+    from eval.signals import check_soul_tones_vary
+
+    class MockRecord:
+        quest_specs = [
+            {"soul": {"substrate": {"courage": -0.5, "generosity": 0.0, "stability": 0.0},
+                      "axes": {}}},
+        ]
+        quest_spec = None
+
+    result = check_soul_tones_vary(MockRecord())
+    assert result is None
+
+
+def test_soul_signals_in_severity_map():
+    """Both soul signals are in SIGNAL_SEVERITY."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY.get("every_npc_has_valid_soul") == "low"
+    assert SIGNAL_SEVERITY.get("soul_tones_vary") == "low"
+

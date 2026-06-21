@@ -266,7 +266,7 @@ def test_render_build_report_omits_empty_sections():
 # ── Spine Slice 2: Quest sections in build report ───────────────────
 
 def test_report_understood_includes_characters():
-    """Brief with characters → 'understood' lists their roles."""
+    """Brief with characters → 'understood' lists their roles with soul tone."""
     from report import build_report_dict
 
     brief = {
@@ -282,7 +282,30 @@ def test_report_understood_includes_characters():
         ],
     }
     rpt = build_report_dict(brief, [])
-    assert rpt["understood"]["characters"] == ["blacksmith", "apprentice"]
+    chars = rpt["understood"]["characters"]
+    assert len(chars) == 2
+    assert all("blacksmith" in c for c in [chars[0]])
+    assert all("apprentice" in c for c in [chars[1]])
+
+
+def test_report_characters_show_soul_tone():
+    """Brief character with a timid/warm soul → 'understood' shows 'timid, warm <role>'."""
+    from report import build_report_dict
+
+    brief = {
+        "setting": "a forge",
+        "mood": [],
+        "scale": "medium",
+        "theme_tag": "blacksmith",
+        "key_features": [],
+        "unmapped": [],
+        "characters": [{
+            "role": "blacksmith",
+            "soul": {"substrate": {"courage": -0.5, "generosity": 0.6, "stability": 0.1}},
+        }],
+    }
+    rpt = build_report_dict(brief, [])
+    assert rpt["understood"]["characters"][0] == "timid, warm blacksmith"
 
 
 def test_report_built_npc_dialogue_sources_grammared():
@@ -339,7 +362,7 @@ def test_report_built_npc_dialogue_sources_model_default():
 
 
 def test_render_report_includes_characters_and_sources():
-    """Rendered report includes characters and NPC dialogue sources."""
+    """Rendered report includes characters (with soul tone) and NPC dialogue sources."""
     from report import render_build_report
     from decisions import make_decision
 
@@ -358,6 +381,7 @@ def test_render_report_includes_characters_and_sources():
     )
     text = render_build_report(brief, [dp], [])
 
-    assert "blacksmith, apprentice" in text
+    assert "blacksmith" in text
+    assert "apprentice" in text
     assert "npc_0: model" in text
     assert "npc_1: grammared" in text
