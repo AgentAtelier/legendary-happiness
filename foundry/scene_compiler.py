@@ -687,9 +687,18 @@ def compile_scene(
         # C-3: Initialise the world log with this NPC's starting state
         _init_world_log(world_log_path, placement)
 
+    # EB-6: Build examine flavour text for all props
+    examine_flavour: dict[str, str] = {}
+    from examine_validator import _category_fallback
+    for entry in manifest:
+        eid = entry.get("id", "")
+        cat = entry.get("category", "?")
+        examine_flavour[eid] = _category_fallback(cat)
+
     quest_data: dict = {
         "npcs": npcs_data,
         "world_log_path": world_log_path,
+        "examine": examine_flavour,
     }
     Path(data_path).write_text(
         json.dumps(quest_data, indent=2, ensure_ascii=False) + "\n",

@@ -18,6 +18,12 @@ var _quest_data: Dictionary = {}
 var _npc_id: String = ""
 var _world_log_path: String = ""
 var _base_placement: Dictionary = {}
+# EB-6: idle bark rotation
+var _idle_barks: Array[String] = []
+var _idle_bark_index: int = -1
+var _idle_bark_timer: float = 0.0
+const _IDLE_BARK_INTERVAL: float = 12.0  # seconds between barks
+
 # B1: idle anim
 var _idle_tween: Tween = null
 var _breath_scale_high: float = 1.03
@@ -53,6 +59,13 @@ func _load_quest_data() -> void:
 				# Fallback: single-NPC format (C-3 backward compat)
 				_quest_data = parsed
 				_base_placement = parsed.get("npc_placement", {})
+		# EB-6: Load idle barks
+		var raw_barks = _quest_data.get("idle_barks", [])
+		if raw_barks is Array and raw_barks.size() > 0:
+			for b in raw_barks:
+				_idle_barks.append(str(b))
+			_idle_bark_index = 0
+			_idle_bark_timer = _IDLE_BARK_INTERVAL  # start after interval
 
 
 func on_interact(tag: String) -> void:
@@ -254,6 +267,27 @@ func _push_subtitle(line_key: String) -> void:
 	var hud = get_node_or_null("/root/Root/HUD")
 	if hud and hud.has_method("push_subtitle"):
 		hud.push_subtitle(prefix + ": " + line)
+
+
+# ── EB-6: Idle bark process ──────────────────────────────────
+
+func _process(delta: float) -> void:
+	"""Drive the idle bark timer."""
+	if _idle_barks.is_empty():
+		return
+	_idle_bark_timer -= delta
+	if _idle_bark_timer <= 0.0:
+		_idle_bark_timer = _IDLE_BARK_INTERVAL
+		if _idle_bark_index >= 0 and _idle_bark_index < _idle_barks.size():
+			_push_subtitle_line(_idle_barks[_idle_bark_index])
+			_idle_bark_index = (_idle_bark_index + 1) % _idle_barks.size()
+
+
+func _push_subtitle_line(line: String) -> void:
+	"""Push a raw line to the subtitle without NPC prefix."""
+	var hud = get_node_or_null("/root/Root/HUD")
+	if hud and hud.has_method("push_subtitle"):
+		hud.push_subtitle("[" + str(get_meta("_forge_role", "NPC")) + "] " + line)
 
 
 # ── B1: Idle micro-animation ─────────────────────────────────────

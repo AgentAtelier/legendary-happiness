@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
-from dialogue_validator import validate_dialogue
+from dialogue_validator import validate_dialogue, validate_idle_barks, get_canned_idle_barks
 
 log = logging.getLogger(__name__)
 
@@ -207,6 +207,7 @@ Important rules:
 - Each NPC must have a DISTINCT target entity — no two NPCs can ask for the same item.
 - Each NPC must have a DISTINCT role that fits the room theme.
 - Prefer **pickable carryable items** (key, book, cup, gem, bottle, scroll, coin-pouch, candle, dagger, ring) as quest targets.
+- EB-6: Also generate 3 short idle-bark lines per NPC — things they might mutter to themselves when the player is nearby but not talking to them. These should be atmospheric, not quest-related. Put them in an "idle_barks" list inside each NPC's object.
 
 Output ONLY a JSON object — no prose, no explanation. The JSON MUST be keyed by NPC ID:
 {{
@@ -219,7 +220,8 @@ Output ONLY a JSON object — no prose, no explanation. The JSON MUST be keyed b
       "wrong": "...",
       "thank": "..."
     }},
-    "objective": {{"type": "fetch", "target": "<prop_id>", "giver": "npc"}}
+    "objective": {{"type": "fetch", "target": "<prop_id>", "giver": "npc"}},
+    "idle_barks": ["bark 1", "bark 2", "bark 3"]
   }},
   "npc_1": {{ ... }}
 }}
@@ -235,7 +237,8 @@ Example with 2 NPCs in a blacksmith's forge:
       "wrong": "That's not my key. Keep looking.",
       "thank": "Aha, my key! You have my thanks, friend."
     }},
-    "objective": {{"type": "fetch", "target": "key_0", "giver": "npc"}}
+    "objective": {{"type": "fetch", "target": "key_0", "giver": "npc"}},
+    "idle_barks": ["Another day at the anvil...", "This steel won't temper itself.", "Hmm, the forge-fire is low."]
   }},
   "npc_1": {{
     "npc_role": "apprentice",
@@ -246,7 +249,8 @@ Example with 2 NPCs in a blacksmith's forge:
       "wrong": "No, that's not the gem I lost.",
       "thank": "That's it! The master will be pleased."
     }},
-    "objective": {{"type": "fetch", "target": "gem_0", "giver": "npc"}}
+    "objective": {{"type": "fetch", "target": "gem_0", "giver": "npc"}},
+    "idle_barks": ["The master works so fast...", "I hope I don't drop anything else.", "The bellows need more strength."]
   }}
 }}
 
@@ -453,6 +457,13 @@ class QuestBehaviourPlanner:
         )
         decisions.extend(dialogue_decisions)
 
+        # ── EB-6: Validate idle barks ────────────────────────────
+        raw_idle = spec.get("idle_barks", [])
+        if not isinstance(raw_idle, list):
+            raw_idle = []
+        idle_barks, idle_decisions = validate_idle_barks(raw_idle, theme=room_theme)
+        decisions.extend(idle_decisions)
+
         # ── Build the objective (fixed shape) ────────────────────
         objective = {
             "type": "fetch",
@@ -466,6 +477,7 @@ class QuestBehaviourPlanner:
             "target_entity": target_entity,
             "dialogue": validated_dialogue,
             "objective": objective,
+            "idle_barks": idle_barks,
         }
 
         return validated_spec, decisions
@@ -625,6 +637,13 @@ class QuestBehaviourPlanner:
             )
             decisions.extend(dialogue_decisions)
 
+            # EB-6: Validate idle barks
+            raw_idle = raw.get("idle_barks", [])
+            if not isinstance(raw_idle, list):
+                raw_idle = []
+            idle_barks, idle_decisions = validate_idle_barks(raw_idle, theme=room_theme)
+            decisions.extend(idle_decisions)
+
             # Build objective
             objective = {
                 "type": "fetch",
@@ -638,6 +657,7 @@ class QuestBehaviourPlanner:
                 "target_entity": target_entity,
                 "dialogue": validated_dialogue,
                 "objective": objective,
+                "idle_barks": idle_barks,
             }
             specs.append(spec)
 

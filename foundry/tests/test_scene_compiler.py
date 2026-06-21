@@ -42,6 +42,7 @@ _MANIFEST: list[PlacedEntity] = [
 _QUEST_SPEC = {
     "npc_role": "hermit",
     "target_entity": "shelf_0",
+    "idle_barks": ["The dust tells stories here.", "A quiet day in the shack.", "The shelves need tending."],
     "dialogue": {
         "greet": "Ah, a visitor! Welcome.",
         "ask": "Find my lost book on the shelf.",
@@ -1177,3 +1178,58 @@ def test_day_night_script_in_ext_resources():
     _, parsed, _ = _compile_and_parse()
     paths = {r["path"] for r in parsed["ext_resources"]}
     assert "res://scripts/day_night.gd" in paths, "B2: day_night.gd missing from ext_resources"
+
+
+# ── EB-6: Examine flavour text ────────────────────────────────────
+
+def test_quest_data_has_examine_key():
+    """EB-6: quest_data.json includes an 'examine' dict mapping prop ids to flavour."""
+    _, _, data = _compile_and_parse()
+    assert "examine" in data, "EB-6: quest_data missing 'examine' key"
+    assert isinstance(data["examine"], dict), "EB-6: examine should be a dict"
+
+def test_examine_has_flavour_per_prop():
+    """EB-6: Every prop in the manifest has an examine flavour entry."""
+    _, _, data = _compile_and_parse()
+    examine = data.get("examine", {})
+    for entry in _MANIFEST:
+        eid = entry["id"]
+        assert eid in examine, f"EB-6: examine missing flavour for {eid}"
+        assert len(examine[eid]) >= 8, f"EB-6: flavour for {eid} too short: {examine[eid]!r}"
+
+def test_npc_has_idle_barks():
+    """EB-6: Each NPC has an idle_barks list in quest_data."""
+    _, _, data = _compile_and_parse()
+    npcs = data.get("npcs", {})
+    for npc_id, npc_data in npcs.items():
+        assert "idle_barks" in npc_data, f"EB-6: {npc_id} missing idle_barks"
+        barks = npc_data["idle_barks"]
+        assert isinstance(barks, list), f"EB-6: {npc_id} idle_barks not a list"
+        assert len(barks) >= 3, f"EB-6: {npc_id} has {len(barks)} idle barks, need ≥3"
+
+
+# ── EB-6: More themes ──────────────────────────────────────────
+
+def test_new_themes_in_theme_table():
+    """EB-6: Theme table includes crypt, armory, workshop, tavern."""
+    from room_control import THEME_TABLE
+    themes = {row["theme"] for row in THEME_TABLE}
+    for t in ("crypt", "armory", "workshop", "tavern"):
+        assert t in themes, f"EB-6: missing theme '{t}'"
+
+def test_new_themes_in_lighting_table():
+    """EB-6: Lighting table includes crypt, armory, workshop, tavern."""
+    from room_control import LIGHTING_TABLE
+    for t in ("crypt", "armory", "workshop", "tavern"):
+        assert t in LIGHTING_TABLE, f"EB-6: missing lighting for '{t}'"
+        entry = LIGHTING_TABLE[t]
+        for key in ("fog_color", "fog_density", "fog_light_energy", "exposure"):
+            assert key in entry, f"EB-6: {t} missing {key}"
+
+def test_examine_fallback_returns_string():
+    """EB-6: _category_fallback returns a non-empty string for known categories."""
+    from examine_validator import _category_fallback
+    for cat in ("table", "key", "book", "unknown_cat_xyz"):
+        fb = _category_fallback(cat)
+        assert len(fb) >= 8, f"EB-6: fallback for {cat} too short: {fb!r}"
+

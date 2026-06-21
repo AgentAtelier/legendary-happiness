@@ -562,7 +562,7 @@ def test_plan_returns_correct_shape():
     """The spec dict has all expected top-level keys."""
     planner = QuestBehaviourPlanner()
     spec, _ = planner.plan("a room", _MANIFEST_4, _fake_llm_valid)
-    assert set(spec.keys()) == {"npc_role", "target_entity", "dialogue", "objective"}
+    assert set(spec.keys()) == {"npc_role", "target_entity", "dialogue", "objective", "idle_barks"}
     assert set(spec["dialogue"].keys()) == {"greet", "ask", "wrong", "thank"}
     assert set(spec["objective"].keys()) == {"type", "target", "giver"}
 

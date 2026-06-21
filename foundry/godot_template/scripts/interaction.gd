@@ -93,6 +93,47 @@ func _unhandled_input(event: InputEvent) -> void:
 								current.on_interact(tag)
 							return
 					current = current.get_parent()
+	if event is InputEventKey and event.physical_keycode == KEY_X:
+		if event.pressed and not event.echo:
+			# EB-6: Examine — show flavour text for the looked-at prop/NPC
+			_examine()
+
+
+# ── EB-6: Examine action ───────────────────────────────────────
+
+func _examine() -> void:
+	"""Look at whatever prop/NPC the player is hovering and show its
+	flavour text on the HUD subtitle panel."""
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var origin: Vector3 = _camera.global_position
+	var end: Vector3 = origin + -_camera.global_transform.basis.z * interact_range
+	var query := PhysicsRayQueryParameters3D.create(origin, end)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.is_empty():
+		return
+	var current: Node = result.collider as Node
+	while current:
+		if current.has_meta("_forge_tag"):
+			# Build the flavour line from cached quest_data
+			var line: String = _get_examine_line(current.name)
+			if line != "":
+				var hud = get_node_or_null("/root/Root/HUD")
+				if hud and hud.has_method("push_subtitle"):
+					hud.push_subtitle(line)
+			return
+		current = current.get_parent()
+
+
+func _get_examine_line(prop_id: String) -> String:
+	"""Read the examine flavour text for *prop_id* from cached quest_data."""
+	var examine_map = _cached_quest_data.get("examine", {})
+	if examine_map is Dictionary:
+		var line: String = str(examine_map.get(prop_id, ""))
+		if line != "":
+			return "[Examine] " + line
+	return ""
 
 
 func _build_prompt(node: Node, tag: String) -> String:

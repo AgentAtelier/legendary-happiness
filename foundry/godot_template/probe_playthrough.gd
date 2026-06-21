@@ -33,7 +33,9 @@ var _result = {
 	# B2: Atmosphere — post-processing + day/night
 	"world_env_found": false,
 	"day_night_found": false,
-	"sun_found": false
+	"sun_found": false,
+	# EB-6: Examine flavour text
+	"examine_data_found": false
 }
 
 var _scene_path = ""
@@ -109,6 +111,24 @@ func _run_phase():
 				_result["world_env_found"] = self.root.has_node("Root/WorldEnvironment")
 				_result["day_night_found"] = self.root.has_node("Root/DayNight")
 				_result["sun_found"] = self.root.has_node("Root/DirectionalLight3D")
+				# EB-6: Check examine flavour data in quest_data
+				var data_path: String = _scene_path.replace(".tscn", "_quest_data.json")
+				var file2 = FileAccess.open(data_path, FileAccess.READ)
+				if file2:
+					var parsed2 = JSON.parse_string(file2.get_as_text())
+					if parsed2 is Dictionary and parsed2.has("examine"):
+						_result["examine_data_found"] = true
+						found_parts.append("ExamineData")
+					# EB-6: Check idle barks exist for each NPC
+					var npcs2 = parsed2.get("npcs", {})
+					if npcs2 is Dictionary:
+						var bark_count := 0
+						for k in npcs2.keys():
+							var nd = npcs2[k]
+							if nd is Dictionary and nd.has("idle_barks"):
+								bark_count += 1
+						if bark_count > 0:
+							found_parts.append("IdleBarks")
 				if _result["world_env_found"]:
 					found_parts.append("WorldEnv")
 				if _result["day_night_found"]:
