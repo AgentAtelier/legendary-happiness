@@ -407,3 +407,26 @@ def test_validate_key_features_none_is_safe():
 
     brief, _ = validate_brief({"theme_tag": "armory", "scale": "large", "key_features": None})
     assert brief["key_features"] == []
+
+
+def test_validate_brief_drops_features_subsumed_by_theme_or_characters():
+    """An 'unmapped' feature that merely restates the setting/theme/a character
+    (e.g. 'blacksmith's forge', 'an apprentice') must NOT reach `unmapped` —
+    otherwise the build report contradicts itself ('can't build a blacksmith's
+    forge' right after building one). A genuinely novel feature still surfaces."""
+    from brief import validate_brief, THEMES, CATEGORIES
+    raw = {
+        "theme_tag": "blacksmith",
+        "setting": "a blacksmith's forge",
+        "scale": "medium",
+        "characters": [{"role": "apprentice", "note": None}],
+        "key_features": [
+            {"text": "blacksmith's forge", "category": None},  # restates setting/theme
+            {"text": "an apprentice", "category": None},       # restates a character
+            {"text": "a lava river", "category": None},        # genuinely unsupported
+        ],
+    }
+    brief, _ = validate_brief(raw, THEMES, CATEGORIES)
+    assert "blacksmith's forge" not in brief["unmapped"]
+    assert "an apprentice" not in brief["unmapped"]
+    assert "a lava river" in brief["unmapped"]

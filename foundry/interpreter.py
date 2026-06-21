@@ -37,9 +37,13 @@ Given a user's description, output ONLY a JSON object — no prose, no explanati
     "large"  → a spacious room, 9–12 metres
 - "theme_tag": ONE of these known themes: {theme_list}
   Pick the best match. If nothing fits, use "*".
-- "key_features": a list of notable things the user explicitly named. For each, include:
-    - "text": what the user asked for, in their own words (e.g. "anvil", "many tools", "a lava river")
+- "key_features": a list of notable PHYSICAL OBJECTS/PROPS the user named to put IN the room
+  (e.g. "anvil", "many tools", "a sword on the wall"). For each, include:
+    - "text": the object, in the user's own words (e.g. "anvil", "many tools")
     - "category": the CLOSEST matching category from the available list below, or null if nothing fits.
+  Do NOT put the setting/room-type here (that is "setting"/"theme_tag"), and do NOT put people
+  here (those are "characters"). Only concrete things that sit in the room. If the user named no
+  specific objects, use an empty list [].
 - "characters": a list of people/NPCs the description names or clearly implies. Each entry has:
     - "role": a short label for the character (e.g. "blacksmith", "apprentice", "shopkeeper"). Free-form — no closed set.
     - "note": optional short note about the character, or null.

@@ -10,9 +10,25 @@ deterministic validation — no LLM calls.
 
 from __future__ import annotations
 
+import re
 from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
+
+# Tiny stopword set for the feature subsumption guard — articles/preposition
+# noise that shouldn't count when deciding if a feature merely restates the
+# setting/theme/a character.
+_STOPWORDS = {"a", "an", "the", "of", "with", "and", "s", "in", "on"}
+
+
+def _content_words(text: str) -> set[str]:
+    """Lowercase content words of *text* (punctuation stripped, stopwords and
+    1-char tokens dropped). Used to test whether a key_feature is subsumed by
+    what the Brief already understood."""
+    return {
+        w for w in re.split(r"[^a-z0-9]+", (text or "").lower())
+        if w and len(w) > 1 and w not in _STOPWORDS
+    }
 
 # ── Closed vocabularies (imported live, not hardcoded) ─────────────
 
@@ -175,6 +191,17 @@ def validate_brief(
     raw_features = raw.get("key_features", []) or []
     brief["unmapped"] = list(raw.get("unmapped", [])) or []
 
+    # Subsumption terms: what the Brief already represents (theme/setting/
+    # characters). An "unmapped" feature whose words are all covered by these
+    # merely restates something we DID handle (e.g. "blacksmith's forge",
+    # "an apprentice") — we drop it silently rather than contradict the build
+    # report with "I can't build a blacksmith's forge" right after building one.
+    understood_terms: set[str] = set()
+    understood_terms |= _content_words(brief["theme_tag"])
+    understood_terms |= _content_words(brief["setting"])
+    for ch in brief["characters"]:
+        understood_terms |= _content_words(ch["role"])
+
     validated_features: list[dict] = []
     for feat in raw_features:
         if not isinstance(feat, dict):
@@ -184,6 +211,12 @@ def validate_brief(
             continue
         cat = feat.get("category")
         cat = str(cat).strip() if cat else None
+        # Drop features that merely restate the setting/theme/a character
+        # before they reach the "unmapped"/couldn't-do path.
+        if (not cat or cat not in categories):
+            fwords = _content_words(text)
+            if fwords and fwords <= understood_terms:
+                continue
         if cat and cat not in categories:
             # Feature named something we can't map
             decisions.append(
