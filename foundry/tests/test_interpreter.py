@@ -316,3 +316,33 @@ def test_interpret_character_with_soul():
     assert brief["characters"][0]["role"] == "generous_hermit"
     assert brief["characters"][0]["soul"]["substrate"]["generosity"] == 0.7
     assert brief["characters"][0]["soul"]["substrate"]["courage"] == -0.1
+
+
+def test_parse_strips_think_block_with_braces_in_reasoning():
+    """Heavy thinkers (14B/27B) emit a <think> block whose reasoning contains
+    braces / example JSON, then the real JSON after. The think content MUST be
+    removed wholesale — a tag-only strip left an inner brace for find('{') to
+    grab, so interpret() collapsed every capable model to a minimal-Brief
+    fallback and souls never engaged."""
+    from interpreter import Interpreter
+    resp = (
+        "<think>\nThe schema is like {\"setting\": ..., \"characters\": [...]}.\n"
+        "I'll set courage to -0.8.\n</think>\n\n"
+        '{"setting":"a workshop","scale":"medium","theme_tag":"hermit",'
+        '"key_features":[],"characters":[{"role":"hermit",'
+        '"soul":{"substrate":{"courage":-0.8}}}]}'
+    )
+    d = Interpreter.parse(resp)
+    assert d["setting"] == "a workshop"
+    assert d["characters"][0]["role"] == "hermit"
+    assert d["characters"][0]["soul"]["substrate"]["courage"] == -0.8
+
+
+def test_parse_strips_unclosed_think_to_end():
+    """An unclosed <think> (model truncated mid-thought) leaves no valid JSON;
+    parse must not pick a brace out of the reasoning."""
+    from interpreter import Interpreter
+    import pytest as _pytest
+    resp = '<think>\nLet me think about {"setting": ...\nmore reasoning'
+    with _pytest.raises(ValueError):
+        Interpreter.parse(resp)

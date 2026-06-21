@@ -100,8 +100,14 @@ class Interpreter:
         if not text or not text.strip():
             raise ValueError("Empty LLM response")
 
-        # Strip <think>…</think> blocks (including unclosed)
-        text = re.sub(r"<think>.*?(?:</think>)?", "", text, flags=re.DOTALL)
+        # Strip <think>…</think> reasoning. Remove CLOSED blocks *including their
+        # content* — heavy thinkers (14B/27B) put example JSON with braces inside
+        # their reasoning, and a tag-only strip left that brace for find("{") to
+        # grab, collapsing every capable model to a minimal-Brief fallback (souls
+        # never engaged). Then strip any leftover unclosed <think> to end-of-text
+        # (the model is still thinking; no valid JSON follows it anyway).
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+        text = re.sub(r"<think>.*$", "", text, flags=re.DOTALL)
 
         # Strip markdown ``` fences
         text = re.sub(r"^```(?:json)?\s*", "", text.strip())
