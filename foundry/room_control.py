@@ -357,6 +357,11 @@ def apply_rules(
             ))
 
     # ── EB-7: Carryable guard for multi-NPC rooms ─────────────
+    # EB-7b: This is a LAST-RESORT injection — the LLM prompts now
+    # tag carryables with [CARRYABLE] and the planner emits
+    # quest.ignored_available_carryable when the LLM ignores them.
+    # Injection only fires when the room plan genuinely has too few
+    # carryable categories, not because the LLM missed them.
     # When npc_count > 1, the room must have at least npc_count
     # distinct carryable items so each NPC can get a unique target.
     if npc_count > 1:

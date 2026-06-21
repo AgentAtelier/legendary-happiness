@@ -148,6 +148,11 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
             })
 
     # ── EB-7: Guarantee ≥npc_count distinct carryables ────────
+    # EB-7b: LAST-RESORT injection — only fires when the room plan
+    # genuinely lacks enough carryable categories.  The LLM prompts
+    # now tag carryables with [CARRYABLE] so the LLM should pick
+    # them; this guard catches the case where npc_count exceeds the
+    # number of carryable categories in the plan.
     # Multi-NPC rooms need at least npc_count pickable carryables
     # so each NPC can have a unique quest target. If the plan didn't
     # produce enough (or any), inject distinct items with different

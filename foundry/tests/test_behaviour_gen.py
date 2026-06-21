@@ -87,9 +87,10 @@ def test_build_prompt_contains_room_theme_and_manifest():
     assert "shelf_0" in prompt
     assert "cabinet_0" in prompt
     assert "table_1" in prompt
-    assert "(table)" in prompt
-    assert "(shelf)" in prompt
-    assert "(cabinet)" in prompt
+    # EB-7b: manifest lines now include material adjective: "id (adj category)"
+    assert "(wooden table)" in prompt
+    assert "(stone shelf)" in prompt
+    assert "(brass cabinet)" in prompt
 
 
 def test_build_prompt_contains_example():

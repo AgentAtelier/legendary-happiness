@@ -151,13 +151,15 @@ Room theme: {room_theme}
 Placed props in the room:
 {manifest_text}
 
-T-2: Prefer a **pickable carryable item** (like key, book, cup, gem, bottle, scroll, coin-pouch, candle, dagger, ring) as the quest target — these items can actually be picked up by the player. Only fall back to furniture if no carryables are listed.
+{carryable_section}
+
+EB-7b: You MUST pick one of the [CARRYABLE] items as the quest target — these are pickable objects the player can actually collect and carry. Only fall back to furniture items if NO carryables are listed above.
 
 Pick ONE of the props as the quest target. The NPC will ask the player to find it.
 
 Output ONLY a JSON object — no prose, no explanation. The JSON MUST have these exact fields:
 - "npc_role": a short role for the NPC that fits the room theme (e.g. "hermit", "blacksmith", "shopkeeper")
-- "target_entity": the ID of the prop the player must find (MUST be one of the IDs listed above)
+- "target_entity": the ID of the prop the player must find (MUST be one of the [CARRYABLE] IDs if any exist)
 - "dialogue": an object with four short lines of dialogue:
   - "greet": what the NPC says when you first talk to them
   - "ask": what the NPC says to ask you to find the item
@@ -169,19 +171,20 @@ Output ONLY a JSON object — no prose, no explanation. The JSON MUST have these
   - "giver": always "npc"
 
 Example:
-A room themed "hermit's shack" with props: [table_0 (table), shelf_0 (shelf), cabinet_0 (cabinet)]
+A room themed "hermit's shack" with props: [table_0 (table), key_0 (key) [CARRYABLE], shelf_0 (shelf)]
+Carryable items available: key_0
 {{
   "npc_role": "hermit",
-  "target_entity": "shelf_0",
+  "target_entity": "key_0",
   "dialogue": {{
     "greet": "Ah, a visitor! Welcome to my humble shack.",
-    "ask": "I have lost a small trinket on my shelf. Could you find it for me?",
+    "ask": "I have lost a small key among my belongings. Could you find it for me?",
     "wrong": "No, that is not what I am looking for.",
     "thank": "Yes, that is it! You have my gratitude, traveler."
   }},
   "objective": {{
     "type": "fetch",
-    "target": "shelf_0",
+    "target": "key_0",
     "giver": "npc"
   }}
 }}
@@ -203,10 +206,12 @@ Room theme: {room_theme}
 Placed props in the room:
 {manifest_text}
 
+{carryable_section}
+
 Important rules:
 - Each NPC must have a DISTINCT target entity — no two NPCs can ask for the same item.
 - Each NPC must have a DISTINCT role that fits the room theme.
-- Prefer **pickable carryable items** (key, book, cup, gem, bottle, scroll, coin-pouch, candle, dagger, ring) as quest targets.
+- EB-7b: You MUST choose [CARRYABLE] items as quest targets. Only fall back to furniture if there aren't enough carryables.
 - EB-6: Also generate 3 short idle-bark lines per NPC — things they might mutter to themselves when the player is nearby but not talking to them. These should be atmospheric, not quest-related. Put them in an "idle_barks" list inside each NPC's object.
 
 Output ONLY a JSON object — no prose, no explanation. The JSON MUST be keyed by NPC ID:
@@ -269,25 +274,45 @@ class QuestBehaviourPlanner:
     injectable — tests pass a FAKE callable.
     """
 
-    def build_prompt(self, room_theme: str, manifest: list[dict]) -> str:
+    def build_prompt(self, room_theme: str, manifest: list[dict],
+                     carryable_ids: set[str] | None = None) -> str:
         """Build the quest-planner prompt for *room_theme* and *manifest*.
 
         *manifest* is a list of dicts, each with at least ``id``,
         ``category``, and ``material`` keys.
+        *carryable_ids* optionally provides the set of entity IDs that
+        are carryable (quest targets). When set, those items are tagged
+        ``[CARRYABLE]`` in the manifest text and a separate carryable
+        summary section is included.
         """
         # Build a compact manifest text: one line per prop
+        carryable_set = carryable_ids or set()
         lines: list[str] = []
+        carryable_list: list[str] = []
         for entry in manifest:
             eid = entry.get("id", "?")
             cat = entry.get("category", "?")
             mat = entry.get("material", "?")
             adj = self._material_adjective(mat)
-            lines.append(f"  {eid} ({adj} {cat})")
+            tag = " [CARRYABLE]" if eid in carryable_set else ""
+            lines.append(f"  {eid} ({adj} {cat}){tag}")
+            if eid in carryable_set:
+                carryable_list.append(eid)
         manifest_text = "\n".join(lines)
+        # Build carryable summary section
+        if carryable_list:
+            carryable_section = (
+                f"Carryable items available: {', '.join(carryable_list)}"
+            )
+        else:
+            carryable_section = (
+                "No carryable items are available — you must use a furniture target."
+            )
 
         return _QUEST_PLANNER_PROMPT.format(
             room_theme=room_theme,
             manifest_text=manifest_text,
+            carryable_section=carryable_section,
         )
 
     @staticmethod
@@ -411,11 +436,32 @@ class QuestBehaviourPlanner:
             )
 
         # ── Call the LLM ─────────────────────────────────────────
-        prompt = self.build_prompt(room_theme, manifest)
+        prompt = self.build_prompt(room_theme, manifest,
+                                   carryable_ids=carryable_ids)
         response = llm(prompt, _GRAMMAR)
 
         # ── Parse the response ───────────────────────────────────
         spec = self.parse(response)
+
+        # ── EB-7b: Track when LLM ignores available carryables ──
+        raw_target = spec.get("target_entity", "")
+        if carryable_ids and raw_target not in carryable_ids:
+            decisions.append(
+                make_decision(
+                    code="quest.ignored_available_carryable",
+                    stage="planner",
+                    severity="assumption",
+                    context={"picked": raw_target,
+                             "available": sorted(carryable_ids)[:8]},
+                    choices=(
+                        Choice(
+                            label="Use carryable",
+                            plain=f"Override target to a carryable item instead of '{raw_target}'.",
+                            apply={"action": "use_carryable"},
+                        ),
+                    ),
+                )
+            )
 
         # ── Validate NPC role (non-blocking) ────────────────────
         raw_role = spec.get("npc_role", "")
@@ -516,15 +562,29 @@ class QuestBehaviourPlanner:
         npc_ids = [f"npc_{i}" for i in range(npc_count)]
         npc_id_list = ", ".join(npc_ids)
 
-        # Build manifest text
+        # Build manifest text, tagging carryables
+        carryable_set = carryable_ids or set()
         lines: list[str] = []
+        carryable_list: list[str] = []
         for entry in manifest:
             eid = entry.get("id", "?")
             cat = entry.get("category", "?")
             mat = entry.get("material", "?")
             adj = self._material_adjective(mat)
-            lines.append(f"  {eid} ({adj} {cat})")
+            tag = " [CARRYABLE]" if eid in carryable_set else ""
+            lines.append(f"  {eid} ({adj} {cat}){tag}")
+            if eid in carryable_set:
+                carryable_list.append(eid)
         manifest_text = "\n".join(lines)
+        # Build carryable summary section
+        if carryable_list:
+            carryable_section = (
+                f"Carryable items available: {', '.join(carryable_list)}"
+            )
+        else:
+            carryable_section = (
+                "No carryable items are available — use furniture targets as last resort."
+            )
 
         # Build prompt
         prompt = _MULTI_NPC_PROMPT.format(
@@ -532,6 +592,7 @@ class QuestBehaviourPlanner:
             npc_ids=npc_id_list,
             room_theme=room_theme,
             manifest_text=manifest_text,
+            carryable_section=carryable_section,
         )
 
         # Call LLM (no grammar for multi-NPC — the output is a dict-of-dicts
@@ -605,6 +666,26 @@ class QuestBehaviourPlanner:
 
             # Validate target_entity
             target_entity = raw.get("target_entity", "")
+
+            # EB-7b: Track when LLM ignores available carryables
+            if carryable_set and target_entity not in carryable_set:
+                decisions.append(
+                    make_decision(
+                        code="quest.ignored_available_carryable",
+                        stage="planner",
+                        severity="assumption",
+                        context={"picked": target_entity, "npc_id": npc_id,
+                                 "available": sorted(carryable_set)[:8]},
+                        choices=(
+                            Choice(
+                                label="Use carryable",
+                                plain=f"Override target to a carryable item instead of '{target_entity}'.",
+                                apply={"action": "use_carryable"},
+                            ),
+                        ),
+                    )
+                )
+
             if target_entity not in valid_ids or target_entity in used_targets:
                 # Auto-pick an unused eligible target
                 available = sorted(valid_ids - used_targets)
