@@ -194,6 +194,12 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model asked for more furniture than the room holds; {placed} fit and {dropped} were left out.",
     ),
+    "room.key_feature_injected": (
+        # technical
+        "key_feature {text!r} ({category}) injected as required prop.",
+        # plain
+        "You asked for '{text}' — I made sure it appears in the room.",
+    ),
     # ── Brief (spine slice 1) ──
     "brief.theme_unmapped": (
         # technical
