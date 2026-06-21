@@ -708,3 +708,138 @@ def test_l_bench_builds_and_passes_gate(tmp_path):
     topo, result = _build_and_gate(spec, tmp_path)
     assert result.passed, result.reasons
     assert topo.is_watertight, "L_bench mesh must be watertight"
+
+
+# ── E1: Full PBR set verification tests ───────────────────────────
+
+def _glb_has_full_pbr_set(glb_path: str) -> dict:
+    """Parse a GLB and return PBR texture presence dict.
+
+    Returns: {"baseColor": bool, "metallicRoughness": bool, "normal": bool}
+    """
+    from io import BytesIO
+    import numpy as np
+    from PIL import Image
+    from pygltflib import GLTF2
+
+    gltf = GLTF2().load(glb_path)
+    mat = gltf.materials[0]
+    pbr = mat.pbrMetallicRoughness
+
+    result = {
+        "baseColor": pbr.baseColorTexture is not None,
+        "metallicRoughness": pbr.metallicRoughnessTexture is not None,
+        "normal": mat.normalTexture is not None,
+    }
+
+    # E1: Also verify the ORM R channel has AO data (not all 0)
+    if result["metallicRoughness"]:
+        mrt = pbr.metallicRoughnessTexture
+        tex = gltf.textures[mrt.index]
+        image = gltf.images[tex.source]
+        bv = gltf.bufferViews[image.bufferView]
+        blob = gltf.binary_blob()
+        img = Image.open(BytesIO(blob[bv.byteOffset:bv.byteOffset + bv.byteLength]))
+        arr = np.array(img)
+        if arr.ndim == 3 and arr.shape[2] >= 3:
+            r_mean = float(arr[:, :, 0].mean())
+            result["orm_r_has_ao"] = r_mean > 5.0  # R channel not all-zero
+        else:
+            result["orm_r_has_ao"] = False
+
+    return result
+
+
+_LINEN_CHAIR = {
+    "asset_id": "chair", "generator": "chair", "material": "linen",
+    "age": 0.15,
+    "params": {"seat_width": 0.5, "seat_depth": 0.5, "seat_thickness": 0.06,
+               "leg_height": 0.45, "leg_radius": 0.04, "leg_inset": 0.05,
+               "back_height": 0.35},
+}
+
+
+def test_stone_glb_has_full_pbr_set(tmp_path):
+    """E1: A rough_granite GLB carries baseColor, metallicRoughness,
+    AND normalTexture."""
+    spec_path = tmp_path / "granite_pbr.json"
+    spec_path.write_text(json.dumps(_GRANITE_SPEC), encoding="utf-8")
+    glb = str(tmp_path / "granite_pbr.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    result = _glb_has_full_pbr_set(glb)
+    assert result["baseColor"], "stone GLB must have baseColorTexture"
+    assert result["metallicRoughness"], "stone GLB must have metallicRoughnessTexture"
+    assert result["normal"], "stone GLB must have normalTexture"
+
+
+def test_iron_glb_has_full_pbr_set(tmp_path):
+    """E1: A wrought_iron GLB carries the full PBR set + AO in ORM R."""
+    spec_path = tmp_path / "iron_pbr.json"
+    spec_path.write_text(json.dumps(_IRON_SPEC), encoding="utf-8")
+    glb = str(tmp_path / "iron_pbr.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    result = _glb_has_full_pbr_set(glb)
+    assert result["baseColor"], "iron GLB must have baseColorTexture"
+    assert result["metallicRoughness"], "iron GLB must have metallicRoughnessTexture"
+    assert result["normal"], "iron GLB must have normalTexture"
+    assert result.get("orm_r_has_ao"), "iron GLB ORM R channel should have AO data"
+
+
+def test_wood_glb_has_full_pbr_set(tmp_path):
+    """E1: A worn_oak GLB carries the full PBR set."""
+    spec = {"asset_id": "table", "generator": "table", "material": "worn_oak",
+            "age": 0.15, "params": {"top_width": 1.5, "top_depth": 1.0,
+            "top_thickness": 0.08, "leg_height": 0.67, "leg_radius": 0.06,
+            "leg_inset": 0.1}}
+    spec_path = tmp_path / "wood_pbr.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    glb = str(tmp_path / "wood_pbr.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    result = _glb_has_full_pbr_set(glb)
+    assert result["baseColor"], "wood GLB must have baseColorTexture"
+    assert result["metallicRoughness"], "wood GLB must have metallicRoughnessTexture"
+    assert result["normal"], "wood GLB must have normalTexture"
+
+
+def test_fabric_glb_has_full_pbr_set(tmp_path):
+    """E1: A linen GLB carries the full PBR set."""
+    spec_path = tmp_path / "linen_pbr.json"
+    spec_path.write_text(json.dumps(_LINEN_CHAIR), encoding="utf-8")
+    glb = str(tmp_path / "linen_pbr.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    result = _glb_has_full_pbr_set(glb)
+    assert result["baseColor"], "fabric GLB must have baseColorTexture"
+    assert result["metallicRoughness"], "fabric GLB must have metallicRoughnessTexture"
+    assert result["normal"], "fabric GLB must have normalTexture"
+
+
+def test_orm_r_channel_has_ao_for_stone(tmp_path):
+    """E1: The ORM image R channel has AO data (not all-zero) for stone."""
+    spec_path = tmp_path / "stone_ao.json"
+    spec_path.write_text(json.dumps(_GRANITE_SPEC), encoding="utf-8")
+    glb = str(tmp_path / "stone_ao.glb")
+    proc = subprocess.run(
+        [BLENDER, "--background", "--python", BUILD, "--", str(spec_path), glb],
+        capture_output=True, text=True, timeout=180,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    result = _glb_has_full_pbr_set(glb)
+    assert result.get("orm_r_has_ao"), (
+        "stone ORM R channel should have AO data (mean > 5 in [0,255])"
+    )

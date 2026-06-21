@@ -119,8 +119,8 @@ def _build_chair_geometry(params):
 
 
 def _metal_color_nodes(nodes, links, mat_info, seed):
-    """Build a metal-specific colour subgraph: mostly flat dark tint with a
-    subtle noise streak for variation, 2-stop ramp between tint_rgb and base_rgb.
+    """Build a metal-specific colour subgraph: dark tint + noise streak +
+    E1 anisotropic scratch streaks + smudge noise overlay.
 
     Returns the ColorRamp's Color output socket."""
     tint = mat_info["tint_rgb"]
@@ -143,9 +143,57 @@ def _metal_color_nodes(nodes, links, mat_info, seed):
     noise.inputs["Detail"].default_value = 2.0
     noise.inputs["Roughness"].default_value = 0.9
 
-    # Wire coordinates → noise
+    # E1: Anisotropic scratch streaks — wave texture at rotated mapping
+    wave_scratch = nodes.new("ShaderNodeTexWave")
+    wave_scratch.wave_type = "BANDS"
+    wave_scratch.bands_direction = "X"
+    wave_scratch.location = (-400, 50)
+    wave_scratch.inputs["Scale"].default_value = 40.0
+    wave_scratch.inputs["Distortion"].default_value = 2.0
+    wave_scratch.inputs["Detail"].default_value = 3.0
+
+    scratch_map = nodes.new("ShaderNodeMapping")
+    scratch_map.location = (-600, 50)
+    scratch_map.vector_type = "TEXTURE"
+    scratch_map.inputs["Scale"].default_value = (2.0, 1.0, 1.0)
+    scratch_map.inputs["Location"].default_value = (seed + 3.0, seed, 0.0)
+
+    # E1: Smudge noise overlay for surface wear
+    smudge = nodes.new("ShaderNodeTexNoise")
+    smudge.location = (-200, 50)
+    smudge.inputs["Scale"].default_value = 5.0
+    smudge.inputs["Detail"].default_value = 6.0
+    smudge.inputs["Roughness"].default_value = 0.5
+
+    smudge_map = nodes.new("ShaderNodeMapping")
+    smudge_map.location = (-600, -100)
+    smudge_map.vector_type = "TEXTURE"
+    smudge_map.inputs["Scale"].default_value = (1.0, 1.0, 1.0)
+    smudge_map.inputs["Location"].default_value = (seed + 7.0, seed + 3.0, 0.0)
+
+    # Mix scratch + smudge into a composite fac
+    mix_scratch = nodes.new("ShaderNodeMixRGB")
+    mix_scratch.blend_type = "OVERLAY"
+    mix_scratch.location = (-100, 300)
+    mix_scratch.inputs["Fac"].default_value = 0.3
+
+    # Combine base noise + scratch/smudge into final fac
+    mix_detail = nodes.new("ShaderNodeMixRGB")
+    mix_detail.blend_type = "MIX"
+    mix_detail.location = (50, 300)
+    mix_detail.inputs["Fac"].default_value = 0.4
+
+    # Wire coordinate chains
     links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
     links.new(mapping.outputs["Vector"], noise.inputs["Vector"])
+    links.new(tex_coord.outputs["Object"], scratch_map.inputs["Vector"])
+    links.new(scratch_map.outputs["Vector"], wave_scratch.inputs["Vector"])
+    links.new(tex_coord.outputs["Object"], smudge_map.inputs["Vector"])
+    links.new(smudge_map.outputs["Vector"], smudge.inputs["Vector"])
+    links.new(wave_scratch.outputs["Color"], mix_scratch.inputs["Color1"])
+    links.new(smudge.outputs["Color"], mix_scratch.inputs["Color2"])
+    links.new(noise.outputs["Color"], mix_detail.inputs["Color1"])
+    links.new(mix_scratch.outputs["Color"], mix_detail.inputs["Color2"])
 
     # ColorRamp: 2-stop dark tint → slightly lighter base
     ramp = nodes.new("ShaderNodeValToRGB")
@@ -157,23 +205,101 @@ def _metal_color_nodes(nodes, links, mat_info, seed):
     stops[1].position = 1.0
     stops[1].color = (*base, 1.0)
 
-    # Wire noise fac → ramp
-    links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    # Wire mix_detail → ramp
+    links.new(mix_detail.outputs["Color"], ramp.inputs["Fac"])
 
     # Slice 4: also expose noise.Fac as the NORMAL-bake height source.
     return ramp.outputs["Color"], noise.outputs["Fac"]
+
+
+def apply_ao_bake(obj, nodes, links, bsdf, ao_socket, image_name="baked_ao"):
+    """Bake Cycles AO into a separate grayscale image so the ORM
+    packer can write it into the R (occlusion) channel.
+
+    E1: The *ao_socket* is the ``ShaderNodeAmbientOcclusion.Color``
+    output (already created in apply_material).  We temporarily swap
+    the Surface for an Emission that emits AO brightness, EMIT-bake
+    it, then restore the BSDF wiring.  The baked AO image is returned
+    (not packed yet — the ORM packer handles that).
+    """
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 1
+
+    # 1 ── Image to bake the AO into.
+    ao_image = bpy.data.images.new(
+        image_name, width=1024, height=1024,
+        alpha=False, float_buffer=False,
+    )
+    ao_image.file_format = "PNG"
+    ao_image.colorspace_settings.name = "Non-Color"
+
+    ao_tex = nodes.new("ShaderNodeTexImage")
+    ao_tex.image = ao_image
+    ao_tex.location = (200, -700)
+
+    # 2 ── Select the AO image as the active bake target.
+    saved_select = {n.name: n.select for n in nodes}
+    for n in nodes:
+        n.select = False
+    nodes.active = ao_tex
+    ao_tex.select = True
+
+    # 3 ── Make the target object active.
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+    # 4 ── Temporarily swap Surface to emit AO brightness.
+    material_output = next(
+        (n for n in nodes if n.type == "OUTPUT_MATERIAL"), None
+    )
+    if material_output is None:
+        raise RuntimeError("expected an OUTPUT_MATERIAL node")
+    for link in list(material_output.inputs["Surface"].links):
+        links.remove(link)
+
+    emit = nodes.new("ShaderNodeEmission")
+    emit.location = (400, -700)
+    links.new(ao_socket, emit.inputs["Color"])
+    links.new(emit.outputs["Emission"], material_output.inputs["Surface"])
+
+    # 5 ── Bake with margin to stop seam bleed.
+    bpy.ops.object.bake(type="EMIT", use_clear=True, margin=16)
+
+    # 6 ── Restore BSDF wiring.
+    for link in list(material_output.inputs["Surface"].links):
+        links.remove(link)
+    for link in list(emit.inputs["Color"].links):
+        links.remove(link)
+    nodes.remove(emit)
+    links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
+
+    # Restore selection state.
+    for n in nodes:
+        n.select = False
+    for name, was in saved_select.items():
+        if was:
+            try:
+                nodes[name].select = True
+            except KeyError:
+                pass
+    nodes.active = None
+
+    return ao_image
 
 
 def apply_roughness_bake(
     obj, nodes, links, bsdf,
     baseline_roughness, metallic_factor,
     image_name="baked_metallic_roughness",
+    ao_image=None,
 ):
     """Bake a packed ``metallicRoughnessTexture`` image so the glTF
     exporter emits a single ``metallicRoughnessTexture`` entry.
 
     Channel convention (matches glTF 2.0 spec):
-      R = unused
+      R = AO (occlusion, from *ao_image* if provided, else 0)
       G = roughness (per-material base ± small noise variation)
       B = metallic_factor (per-material constant)
       A = 1
@@ -306,14 +432,23 @@ def apply_roughness_bake(
 
     # 6 ── Python post-pack: bake produced R=G=B=roughness; re-pack into
     #       the glTF metallicRoughnessTexture channel convention
-    #       R=0, G=roughness_value, B=metallic_factor, A=1.
+    #       R=occlusion (from ao_image if provided, else 0),
+    #       G=roughness_value, B=metallic_factor, A=1.
     src_pixels = list(rough_image.pixels[:])
     px_count = len(src_pixels) // 4
     out = [0.0] * (px_count * 4)
+    if ao_image is not None:
+        assert (ao_image.size[0], ao_image.size[1]) == (rough_image.size[0], rough_image.size[1]), (
+            f"AO image {tuple(ao_image.size)} must match roughness image {tuple(rough_image.size)}"
+        )
+        ao_pixels = list(ao_image.pixels[:])
     for i in range(px_count):
         # The bake wrote the scalar roughness value into all three RGB
         # channels; pick the green channel since that maps to roughness.
         g = src_pixels[4 * i + 1]
+        # E1: pack AO into R channel (occlusion)
+        if ao_image is not None:
+            out[4 * i + 0] = ao_pixels[4 * i]  # R channel of AO = occlusion
         out[4 * i + 1] = g
         out[4 * i + 2] = float(metallic_factor)
         out[4 * i + 3] = 1.0
@@ -420,6 +555,10 @@ def _wood_color_nodes(nodes, links, mat_info, seed):
     """Build the wood-specific colour subgraph: object-space coords with
     noise warp → Wave Texture (bands) → CONSTANT ColorRamp of wood tones.
 
+    E1 upgrade: plank-seam variation (dark seam lines between planks via a
+    second Wave at coarse scale) + subtle edge darkening (Voronoi to simulate
+    edge wear).
+
     Returns the ColorRamp's Color output socket."""
     dark = mat_info["grain_dark_rgb"]
     light = mat_info["grain_light_rgb"]
@@ -460,12 +599,42 @@ def _wood_color_nodes(nodes, links, mat_info, seed):
     wave.inputs["Detail Scale"].default_value = 3.0
     wave.location = (-200, 300)
 
+    # ── E1: Plank seam variation — coarse wave for seam lines ─
+    wave_plank = nodes.new("ShaderNodeTexWave")
+    wave_plank.wave_type = "BANDS"
+    wave_plank.bands_direction = "X"
+    wave_plank.location = (-200, 100)
+    wave_plank.inputs["Scale"].default_value = 1.5
+    wave_plank.inputs["Distortion"].default_value = 0.5
+    wave_plank.inputs["Detail"].default_value = 2.0
+
+    # E1: Edge wear — Voronoi for dark corners/edges
+    voronoi_edge = nodes.new("ShaderNodeTexVoronoi")
+    voronoi_edge.location = (-200, -100)
+    voronoi_edge.inputs["Scale"].default_value = 2.0
+
+    # Mix plank seams into the base grain fac
+    mix_plank = nodes.new("ShaderNodeMixRGB")
+    mix_plank.blend_type = "DARKEN"
+    mix_plank.location = (0, 250)
+    mix_plank.inputs["Fac"].default_value = 0.15
+
     # ── Wire the coordinate warp chain ──────────────────────
     links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
     links.new(mapping.outputs["Vector"], warp_add.inputs[0])
     links.new(noise.outputs["Color"], noise_scale.inputs[0])
     links.new(noise_scale.outputs["Vector"], warp_add.inputs[1])
     links.new(warp_add.outputs["Vector"], wave.inputs["Vector"])
+    links.new(warp_add.outputs["Vector"], wave_plank.inputs["Vector"])
+    links.new(warp_add.outputs["Vector"], voronoi_edge.inputs["Vector"])
+    links.new(wave.outputs["Fac"], mix_plank.inputs["Color1"])
+    links.new(wave_plank.outputs["Fac"], mix_plank.inputs["Color2"])
+
+    # E1: Apply edge wear — darken albedo at Voronoi cell edges
+    mix_edge = nodes.new("ShaderNodeMixRGB")
+    mix_edge.blend_type = "MULTIPLY"
+    mix_edge.location = (300, 300)
+    mix_edge.inputs["Fac"].default_value = 0.12
 
     # ColorRamp: map wave fac to wood tones from the palette.
     # CONSTANT interpolation → stepped, painted-band read.
@@ -483,11 +652,13 @@ def _wood_color_nodes(nodes, links, mat_info, seed):
     s3 = stops.new(1.0)
     s3.color = (*dark, 1.0)
 
-    # Wire wave → ramp
-    links.new(wave.outputs["Fac"], ramp.inputs["Fac"])
+    # Wire: plank-augmented fac → ramp; ramp color → edge darkening
+    links.new(mix_plank.outputs["Color"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], mix_edge.inputs["Color1"])
+    links.new(voronoi_edge.outputs["Color"], mix_edge.inputs["Color2"])
 
     # Slice 4: also expose wave.Fac as the NORMAL-bake height source.
-    return ramp.outputs["Color"], wave.outputs["Fac"]
+    return mix_edge.outputs["Color"], wave.outputs["Fac"]
 
 
 def _build_shelf_geometry(params):
@@ -1553,6 +1724,23 @@ def apply_bevel(mesh_data):
     bm.free()
 
 
+def _apply_triangulate(mesh_data):
+    """E1 determinism: apply a Triangulate modifier before UV/bake so
+    n-gon triangulation is deterministic across runs.
+
+    Blender's default triangulation of n-gons can vary (e.g. different
+    Blender builds / internal state).  A modifier locks it in.
+    """
+    obj = _find_object_for_mesh(mesh_data)
+    if obj is None:
+        return
+    bpy.context.view_layer.objects.active = obj
+    mod = obj.modifiers.new(name="Triangulate", type="TRIANGULATE")
+    mod.quad_method = "SHORTEST_DIAGONAL"
+    mod.ngon_method = "CLIP"
+    bpy.ops.object.modifier_apply(modifier="Triangulate")
+
+
 def assign_uvs(mesh_data):
     """UV unwrap every face using Blender's smart_project so all faces (top
     AND legs) get sensible texture coordinates.  May introduce UV seams at
@@ -1648,7 +1836,7 @@ def apply_normal_bake(obj, nodes, links, bsdf, height_socket, image_name="baked_
     # Blender, but pinning it removes a version-dependency foot-gun:
     # glTF's normalTexture is always tangent-space, so a bake in any
     # other space would silently produce a malformed asset).
-    bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT", use_clear=True)
+    bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT", use_clear=True, margin=16)
 
     # 6 ── Tear down the live Bump wiring.
     for link in list(bump.inputs["Height"].links):
@@ -1764,6 +1952,11 @@ def apply_material(mesh, material_name, seed=0.0, spec=None):
     links.new(mix_ao.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
 
+    # ── E1: Bake Ambient Occlusion into a separate image before it is
+    #       mixed into baseColor.  The AO image gets packed into R of
+    #       the ORM (occlusion channel).
+    ao_image = apply_ao_bake(obj, nodes, links, bsdf, ao.outputs["Color"])
+
     # ── Slice 4: Bake the NORMAL pass before the baseColor pass. ─
     # See apply_normal_bake() for the rationale (Bump → bake → swap to
     # image→NormalMap→BSDF.Normal so glTF writes a normalTexture).
@@ -1801,7 +1994,7 @@ def apply_material(mesh, material_name, seed=0.0, spec=None):
     # Bake.
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
-    bpy.ops.object.bake(type="EMIT")
+    bpy.ops.object.bake(type="EMIT", margin=16)
 
     # Restore the Principled BSDF and wire the baked texture.
     links.new(bsdf.outputs["BSDF"], material_output.inputs["Surface"])
@@ -1814,13 +2007,15 @@ def apply_material(mesh, material_name, seed=0.0, spec=None):
     bake_image.pack()
 
     # ── Slice 5: Bake the metallicRoughnessTexture pass. ────────────
-    # Packs (R=0, G=roughness_modulated, B=metallic_factor, A=1) so the
-    # glTF exporter emits a single metallicRoughnessTexture entry.
+    # Packs (R=occlusion, G=roughness_modulated, B=metallic_factor, A=1)
+    # so the glTF exporter emits a single metallicRoughnessTexture entry.
+    # E1: AO image is packed into the R channel (occlusion).
     # See apply_roughness_bake() for the rationale.
     apply_roughness_bake(
         obj, nodes, links, bsdf,
         baseline_roughness=roughness,
         metallic_factor=float(mat_info.get("metallic", 0.0)),
+        ao_image=ao_image,
     )
 
 
@@ -1954,6 +2149,9 @@ def main():
     mesh = build_geometry(spec)
     apply_entropy(mesh, age, entropy_seed)
     apply_bevel(mesh)
+    # E1 determinism: Triangulate before UV/bake so n-gons don't
+    # produce different triangulations across runs.
+    _apply_triangulate(mesh)
     assign_uvs(mesh)
     apply_material(mesh, spec.get("material", "default"), seed=material_offset, spec=spec)
 

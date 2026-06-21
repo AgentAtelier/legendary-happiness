@@ -661,6 +661,94 @@ def get_lighting(theme: str) -> dict:
     return LIGHTING_TABLE["*"]
 
 
+# ── E1: Per-theme shell material table ───────────────────────────
+# Each theme maps to floor/wall/ceiling albedo + roughness so the
+# room shell reads as real materials (stone floor, plaster walls)
+# rather than flat grey boxes.  When baked tiling textures exist on
+# disk they take priority; this table is the fallback.
+# Colours are (r, g, b) in [0, 1]; roughness in [0, 1].
+
+SHELL_TABLE: Dict[str, dict] = {
+    "hermit": {
+        "floor": {"albedo": (0.35, 0.25, 0.15), "roughness": 0.85},
+        "wall": {"albedo": (0.55, 0.5, 0.45), "roughness": 0.8},
+        "ceiling": {"albedo": (0.65, 0.6, 0.55), "roughness": 0.75},
+    },
+    "blacksmith": {
+        "floor": {"albedo": (0.28, 0.22, 0.18), "roughness": 0.88},
+        "wall": {"albedo": (0.42, 0.35, 0.3), "roughness": 0.82},
+        "ceiling": {"albedo": (0.55, 0.48, 0.42), "roughness": 0.78},
+    },
+    "wizard": {
+        "floor": {"albedo": (0.3, 0.28, 0.35), "roughness": 0.82},
+        "wall": {"albedo": (0.45, 0.42, 0.5), "roughness": 0.78},
+        "ceiling": {"albedo": (0.55, 0.52, 0.6), "roughness": 0.72},
+    },
+    "kitchen": {
+        "floor": {"albedo": (0.4, 0.3, 0.2), "roughness": 0.8},
+        "wall": {"albedo": (0.65, 0.58, 0.48), "roughness": 0.75},
+        "ceiling": {"albedo": (0.72, 0.68, 0.58), "roughness": 0.7},
+    },
+    "noble": {
+        "floor": {"albedo": (0.38, 0.3, 0.22), "roughness": 0.78},
+        "wall": {"albedo": (0.6, 0.52, 0.42), "roughness": 0.72},
+        "ceiling": {"albedo": (0.7, 0.62, 0.52), "roughness": 0.68},
+    },
+    "dungeon": {
+        "floor": {"albedo": (0.22, 0.22, 0.25), "roughness": 0.9},
+        "wall": {"albedo": (0.3, 0.3, 0.35), "roughness": 0.88},
+        "ceiling": {"albedo": (0.38, 0.38, 0.42), "roughness": 0.85},
+    },
+    "attic": {
+        "floor": {"albedo": (0.32, 0.24, 0.16), "roughness": 0.82},
+        "wall": {"albedo": (0.5, 0.42, 0.35), "roughness": 0.78},
+        "ceiling": {"albedo": (0.58, 0.5, 0.42), "roughness": 0.75},
+    },
+    "ship": {
+        "floor": {"albedo": (0.3, 0.24, 0.18), "roughness": 0.8},
+        "wall": {"albedo": (0.45, 0.38, 0.32), "roughness": 0.78},
+        "ceiling": {"albedo": (0.52, 0.46, 0.38), "roughness": 0.75},
+    },
+    "crypt": {
+        "floor": {"albedo": (0.18, 0.18, 0.22), "roughness": 0.92},
+        "wall": {"albedo": (0.25, 0.25, 0.3), "roughness": 0.9},
+        "ceiling": {"albedo": (0.35, 0.35, 0.4), "roughness": 0.88},
+    },
+    "armory": {
+        "floor": {"albedo": (0.3, 0.25, 0.2), "roughness": 0.82},
+        "wall": {"albedo": (0.45, 0.4, 0.35), "roughness": 0.78},
+        "ceiling": {"albedo": (0.55, 0.5, 0.45), "roughness": 0.75},
+    },
+    "workshop": {
+        "floor": {"albedo": (0.32, 0.25, 0.18), "roughness": 0.85},
+        "wall": {"albedo": (0.5, 0.45, 0.38), "roughness": 0.8},
+        "ceiling": {"albedo": (0.6, 0.55, 0.48), "roughness": 0.75},
+    },
+    "tavern": {
+        "floor": {"albedo": (0.35, 0.25, 0.15), "roughness": 0.8},
+        "wall": {"albedo": (0.5, 0.4, 0.3), "roughness": 0.75},
+        "ceiling": {"albedo": (0.6, 0.5, 0.4), "roughness": 0.7},
+    },
+    "*": {
+        "floor": {"albedo": (0.35, 0.25, 0.15), "roughness": 0.85},
+        "wall": {"albedo": (0.6, 0.55, 0.5), "roughness": 0.8},
+        "ceiling": {"albedo": (0.75, 0.7, 0.65), "roughness": 0.75},
+    },
+}
+
+
+def get_shell_material(theme: str, surface: str) -> dict:
+    """E1: Return the (albedo, roughness) for *surface* (floor|wall|ceiling)
+    in *theme*.  Falls back to '*' default."""
+    theme_lower = theme.lower()
+    for key, entry in SHELL_TABLE.items():
+        if key == "*":
+            continue
+        if key in theme_lower:
+            return entry.get(surface, SHELL_TABLE["*"][surface])
+    return SHELL_TABLE["*"][surface]
+
+
 def check_guards_violated(decisions: List[DecisionPoint]) -> bool:
     """C-0 eval: True if any guard emitted a Decision Point (i.e. the
     LLM output needed correction beyond theme-appropriate variation)."""

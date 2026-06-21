@@ -168,6 +168,9 @@ def _build_room_sub_resources(
     fog_density: float = 0.015,
     fog_light_energy: float = 0.5,
     exposure: float = 1.0,
+    shell_floor: dict | None = None,
+    shell_wall: dict | None = None,
+    shell_ceiling: dict | None = None,
 ) -> List[dict]:
     """Build the list of room sub-resources for the given dimensions.
 
@@ -181,6 +184,10 @@ def _build_room_sub_resources(
     amb = ambient if ambient is not None else _AMBIENT_COLOR
     bg = background if background is not None else _BACKGROUND_COLOR
     fc = fog_color if fog_color is not None else (0.2, 0.18, 0.22, 1.0)
+    # E1: per-theme shell material overrides
+    sf = shell_floor or {"albedo": (0.35, 0.25, 0.15), "roughness": 0.85}
+    sw = shell_wall or {"albedo": (0.6, 0.55, 0.5), "roughness": 0.8}
+    sc = shell_ceiling or {"albedo": (0.75, 0.7, 0.65), "roughness": 0.75}
     return [
     # Environment for WorldEnvironment (Item 1)
     # B2: Extended with ACES tonemap, SSAO, bloom, fog, exposure
@@ -230,13 +237,28 @@ def _build_room_sub_resources(
      "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
     {"id": "ceiling_mesh", "type": "BoxMesh",
      "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
-    # StandardMaterial3Ds
+    # StandardMaterial3Ds — E1: per-theme shell materials with roughness
+    # uv1_scale set for tiling when baked textures are wired in.
     {"id": "floor_mat", "type": "StandardMaterial3D",
-     "props": ["albedo_color = Color(0.35, 0.25, 0.15, 1)"]},
+     "props": [
+         f"albedo_color = Color({sf['albedo'][0]}, {sf['albedo'][1]}, {sf['albedo'][2]}, 1)",
+         f"roughness = {sf['roughness']}",
+         "uv1_scale = Vector3(10, 10, 10)",
+     ]},
     {"id": "wall_mat", "type": "StandardMaterial3D",
-     "props": ["albedo_color = Color(0.6, 0.55, 0.5, 1)", "cull_mode = 2"]},
+     "props": [
+         f"albedo_color = Color({sw['albedo'][0]}, {sw['albedo'][1]}, {sw['albedo'][2]}, 1)",
+         f"roughness = {sw['roughness']}",
+         "uv1_scale = Vector3(10, 10, 10)",
+         "cull_mode = 2",
+     ]},
     {"id": "ceiling_mat", "type": "StandardMaterial3D",
-     "props": ["albedo_color = Color(0.75, 0.7, 0.65, 1)", "cull_mode = 2"]},
+     "props": [
+         f"albedo_color = Color({sc['albedo'][0]}, {sc['albedo'][1]}, {sc['albedo'][2]}, 1)",
+         f"roughness = {sc['roughness']}",
+         "uv1_scale = Vector3(10, 10, 10)",
+         "cull_mode = 2",
+     ]},
     # Player visible body (Item 4)
     {"id": "player_body_mesh", "type": "CapsuleMesh",
      "props": ["radius = 0.3", "height = 1.8"]},
@@ -753,7 +775,7 @@ def compile_scene(
     fog_light_energy_override = 0.5
     exposure_override = 1.0
     if theme:
-        from room_control import get_lighting
+        from room_control import get_lighting, get_shell_material
         lighting = get_lighting(theme)
         ambient_override = tuple(lighting["ambient_color"])
         ambient_energy_override = float(lighting.get("ambient_light_energy", 0.5))
@@ -775,6 +797,15 @@ def compile_scene(
         room_w, room_d, _ROOM_HEIGHT,
         interior_color_override, interior_energy_override,
     )
+    # E1: per-theme shell materials
+    shell_floor = None
+    shell_wall = None
+    shell_ceiling = None
+    if theme:
+        shell_floor = get_shell_material(theme, "floor")
+        shell_wall = get_shell_material(theme, "wall")
+        shell_ceiling = get_shell_material(theme, "ceiling")
+
     room_sub_resources = _build_room_sub_resources(
         room_w, room_d,
         ambient=ambient_override,
@@ -784,6 +815,9 @@ def compile_scene(
         fog_density=fog_density_override,
         fog_light_energy=fog_light_energy_override,
         exposure=exposure_override,
+        shell_floor=shell_floor,
+        shell_wall=shell_wall,
+        shell_ceiling=shell_ceiling,
     )
     room_nodes = _build_room_nodes(
         room_w, room_d,
