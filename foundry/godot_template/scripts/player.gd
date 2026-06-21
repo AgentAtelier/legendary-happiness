@@ -39,6 +39,11 @@ var _head_bob_t: float = 0.0
 var _head_bob_amp: float = 0.03  # vertical oscillation amplitude
 var _head_bob_freq: float = 8.0   # frequency when walking
 
+# B2: Floor-surface detection for footstep audio
+var _floor_surface: String = "stone"
+var _surface_ray: RayCast3D = null
+var _surface_check_timer: float = 0.0
+
 @onready var _camera: Camera3D = $Camera3D
 
 
@@ -47,6 +52,13 @@ func _ready() -> void:
 	_base_speed = speed
 	_base_fov = _camera.fov
 	_camera_base_y = _camera.position.y
+
+	# B2: Set up floor-surface raycast
+	_surface_ray = RayCast3D.new()
+	_surface_ray.target_position = Vector3(0, -2.0, 0)  # ray straight down
+	_surface_ray.collision_mask = 1  # layer 1 = default
+	_surface_ray.enabled = true
+	add_child(_surface_ray)
 
 
 func get_active_item() -> String:
@@ -182,8 +194,10 @@ func _physics_process(delta: float) -> void:
 		_footstep_timer -= delta
 		if _footstep_timer <= 0.0:
 			_footstep_timer = footstep_interval
+			# B2: Surface-aware footstep
+			_check_floor_surface()
 			if has_node("/root/Audio"):
-				get_node("/root/Audio").play_footstep()
+				get_node("/root/Audio").play_footstep(_floor_surface)
 
 	if not is_on_floor():
 		velocity.y -= gravity * delta
@@ -238,6 +252,32 @@ func _hide_all_models() -> void:
 
 
 # ── Drop + particle puff (B1) ────────────────────────────────────
+
+func _check_floor_surface() -> void:
+	"""B2: Raycast downward to detect floor surface type.
+
+	Reads _forge_surface metadata from the hit node (set by scene
+	compiler) or infers from node name: Floor→stone, rug→rug,
+	otherwise →wood."""
+	if not _surface_ray or not _surface_ray.is_colliding():
+		return
+	var collider = _surface_ray.get_collider()
+	if not collider:
+		return
+	# Check metadata first
+	var surf: String = str(collider.get_meta("_forge_surface", ""))
+	if surf != "":
+		_floor_surface = surf
+		return
+	# Fallback: infer from node name
+	var cname: String = collider.name.to_lower()
+	if "floor" in cname:
+		_floor_surface = "stone"
+	elif "rug" in cname:
+		_floor_surface = "rug"
+	else:
+		_floor_surface = "wood"
+
 
 func _drop_active_item() -> void:
 	"""C-2: Drop the active carried item on the floor.  B1: particle puff."""

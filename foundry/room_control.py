@@ -405,60 +405,100 @@ def apply_rules(
 # per room theme.
 # Colours are (r, g, b) tuples in [0, 1]; energy in [0, 4].
 
+# B2: EB-5 fog/exposure per theme added to the existing LIGHTING_TABLE.
+# Fog: (color_r, color_g, color_b, density, light_energy)
+# Exposure: brightness multiplier (1.0 = neutral)
+
 LIGHTING_TABLE: Dict[str, dict] = {
     "hermit": {
         "directional_color": (1.0, 0.9, 0.75),
         "directional_energy": 2.5,
         "ambient_color": (0.18, 0.16, 0.12, 1.0),
         "background_color": (0.08, 0.06, 0.04, 1.0),
+        "fog_color": (0.35, 0.28, 0.2, 1.0),
+        "fog_density": 0.012,
+        "fog_light_energy": 0.6,
+        "exposure": 1.05,
     },
     "blacksmith": {
         "directional_color": (1.0, 0.7, 0.4),
         "directional_energy": 3.5,
         "ambient_color": (0.2, 0.12, 0.06, 1.0),
         "background_color": (0.1, 0.05, 0.02, 1.0),
+        "fog_color": (0.45, 0.22, 0.08, 1.0),
+        "fog_density": 0.02,
+        "fog_light_energy": 0.8,
+        "exposure": 1.1,
     },
     "wizard": {
         "directional_color": (0.6, 0.7, 1.0),
         "directional_energy": 2.0,
         "ambient_color": (0.1, 0.1, 0.2, 1.0),
         "background_color": (0.04, 0.04, 0.1, 1.0),
+        "fog_color": (0.12, 0.14, 0.35, 1.0),
+        "fog_density": 0.015,
+        "fog_light_energy": 0.5,
+        "exposure": 0.9,
     },
     "kitchen": {
         "directional_color": (1.0, 0.95, 0.8),
         "directional_energy": 2.8,
         "ambient_color": (0.2, 0.18, 0.14, 1.0),
         "background_color": (0.08, 0.07, 0.05, 1.0),
+        "fog_color": (0.3, 0.25, 0.18, 1.0),
+        "fog_density": 0.008,
+        "fog_light_energy": 0.7,
+        "exposure": 1.1,
     },
     "noble": {
         "directional_color": (1.0, 0.85, 0.65),
         "directional_energy": 3.0,
         "ambient_color": (0.15, 0.12, 0.08, 1.0),
         "background_color": (0.06, 0.04, 0.02, 1.0),
+        "fog_color": (0.25, 0.2, 0.1, 1.0),
+        "fog_density": 0.01,
+        "fog_light_energy": 0.6,
+        "exposure": 1.05,
     },
     "dungeon": {
         "directional_color": (0.5, 0.55, 0.7),
         "directional_energy": 1.2,
         "ambient_color": (0.06, 0.06, 0.1, 1.0),
         "background_color": (0.02, 0.02, 0.04, 1.0),
+        "fog_color": (0.08, 0.08, 0.13, 1.0),
+        "fog_density": 0.03,
+        "fog_light_energy": 0.3,
+        "exposure": 0.75,
     },
     "attic": {
         "directional_color": (0.9, 0.85, 0.8),
         "directional_energy": 1.8,
         "ambient_color": (0.12, 0.11, 0.1, 1.0),
         "background_color": (0.05, 0.04, 0.03, 1.0),
+        "fog_color": (0.25, 0.22, 0.15, 1.0),
+        "fog_density": 0.018,
+        "fog_light_energy": 0.5,
+        "exposure": 0.95,
     },
     "ship": {
         "directional_color": (0.7, 0.8, 1.0),
         "directional_energy": 2.2,
         "ambient_color": (0.1, 0.13, 0.18, 1.0),
         "background_color": (0.04, 0.06, 0.1, 1.0),
+        "fog_color": (0.15, 0.2, 0.3, 1.0),
+        "fog_density": 0.014,
+        "fog_light_energy": 0.55,
+        "exposure": 1.0,
     },
     "*": {
         "directional_color": (1.0, 0.95, 0.85),
         "directional_energy": 2.5,
         "ambient_color": (0.15, 0.15, 0.2, 1.0),
         "background_color": (0.05, 0.05, 0.1, 1.0),
+        "fog_color": (0.2, 0.18, 0.22, 1.0),
+        "fog_density": 0.015,
+        "fog_light_energy": 0.5,
+        "exposure": 1.0,
     },
 }
 

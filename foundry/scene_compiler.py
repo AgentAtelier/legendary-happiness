@@ -43,6 +43,16 @@ _TAG_TABLE: Dict[str, str | None] = {
     "inert": None,
 }
 
+# ── B2: Light-emitting props ────────────────────────────────────
+# Categories that emit OmniLight3D when placed.  Per-category light
+# params (color, energy, range) tuned for cosy indoor scale.
+# Colour is (r, g, b) in [0, 1].
+
+_LIGHT_EMITTING: Dict[str, dict] = {
+    "lantern": {"color": (1.0, 0.7, 0.3), "energy": 2.5, "range": 4.0, "negative": False},
+    "candle":  {"color": (1.0, 0.8, 0.4), "energy": 1.2, "range": 2.0, "negative": False},
+}
+
 # ── Shell scripts ──────────────────────────────────────────────
 # P4: reusable GDScript files the compiler always attaches.
 # Paths relative to res:// — these were authored once in rpg/scripts/.
@@ -52,6 +62,8 @@ _SHELL_SCRIPTS: List[dict] = [
     {"id": "s_interact", "path": "res://scripts/interaction.gd"},
     {"id": "s_hud", "path": "res://scripts/hud.gd"},
     {"id": "s_win", "path": "res://scripts/win_screen.gd"},
+    # B2: day/night cycle runtime
+    {"id": "s_day_night", "path": "res://scripts/day_night.gd"},
 ]
 
 # ── Shell node definitions ───────────────────────────────────────
@@ -65,6 +77,8 @@ _SHELL_NODES: List[dict] = [
     {"name": "InteractionRaycast", "type": "Node3D", "parent": "Player/Camera3D", "script": "s_interact"},
     {"name": "HUD", "type": "Control", "parent": ".", "script": "s_hud"},
     {"name": "WinScreen", "type": "Control", "parent": ".", "script": "s_win"},
+    # B2: day/night cycle runtime node
+    {"name": "DayNight", "type": "Node", "parent": ".", "script": "s_day_night"},
 ]
 
 # ── NPC body (P7: procedurally generated humanoid GLB) ──────────
@@ -128,21 +142,60 @@ def _build_room_sub_resources(
     floor_t: float = _ROOM_FLOOR_THICKNESS,
     ambient: tuple | None = None,
     background: tuple | None = None,
+    fog_color: tuple | None = None,
+    fog_density: float = 0.015,
+    fog_light_energy: float = 0.5,
+    exposure: float = 1.0,
 ) -> List[dict]:
     """Build the list of room sub-resources for the given dimensions.
 
     P-G: *ambient* and *background* override the default environment
-    colours (per-theme lighting)."""
+    colours (per-theme lighting).
+
+    B2: *fog_color*, *fog_density*, *fog_light_energy*, and *exposure*
+    override the default post-processing (per-theme atmosphere).
+    """
     amb = ambient if ambient is not None else _AMBIENT_COLOR
     bg = background if background is not None else _BACKGROUND_COLOR
+    fc = fog_color if fog_color is not None else (0.2, 0.18, 0.22, 1.0)
     return [
     # Environment for WorldEnvironment (Item 1)
+    # B2: Extended with ACES tonemap, SSAO, bloom, fog, exposure
     {"id": "world_env", "type": "Environment",
      "props": [
          "background_mode = 1",
          f"background_color = Color({bg[0]}, {bg[1]}, {bg[2]}, {bg[3]})",
          "ambient_light_source = 1",
          f"ambient_light_color = Color({amb[0]}, {amb[1]}, {amb[2]}, {amb[3]})",
+         # B2: ACES tonemap
+         "tonemap_mode = 3",
+         "tonemap_white = 1.0",
+         # B2: SSAO
+         "ssao_enabled = true",
+         "ssao_radius = 0.8",
+         "ssao_intensity = 1.2",
+         "ssao_power = 1.5",
+         "ssao_detail = 0.5",
+         "ssao_horizon = 0.06",
+         "ssao_sharpness = 0.98",
+         # B2: Bloom
+         "glow_enabled = true",
+         "glow_intensity = 0.35",
+         "glow_strength = 1.0",
+         "glow_bloom = 0.0",
+         "glow_blend_mode = 2",
+         "glow_hdr_bleed_threshold = 1.0",
+         "glow_hdr_bleed_scale = 2.0",
+         "glow_hdr_luminance_cap = 12.0",
+         # B2: Fog (exponential — day_night.gd adjusts at runtime)
+         "fog_enabled = true",
+         "fog_mode = 0",
+         f"fog_density = {fog_density}",
+         f"fog_light_color = Color({fc[0]}, {fc[1]}, {fc[2]}, {fc[3]})",
+         f"fog_light_energy = {fog_light_energy}",
+         # B2: Exposure (brightness adjustment)
+         "adjustment_enabled = true",
+         f"adjustment_brightness = {exposure}",
      ]},
     # BoxMeshes for visible room shell (sized by room_w, room_d)
     {"id": "floor_vis_mesh", "type": "BoxMesh",
@@ -541,6 +594,10 @@ def compile_scene(
     background_override = None
     dir_color_override = None
     dir_energy_override = None
+    fog_color_override = None
+    fog_density_override = 0.015
+    fog_light_energy_override = 0.5
+    exposure_override = 1.0
     if theme:
         from room_control import get_lighting
         lighting = get_lighting(theme)
@@ -548,12 +605,21 @@ def compile_scene(
         background_override = tuple(lighting["background_color"])
         dir_color_override = tuple(lighting["directional_color"])
         dir_energy_override = float(lighting["directional_energy"])
+        # B2: per-theme fog + exposure
+        fog_color_override = tuple(lighting.get("fog_color", (0.2, 0.18, 0.22, 1.0)))
+        fog_density_override = float(lighting.get("fog_density", 0.015))
+        fog_light_energy_override = float(lighting.get("fog_light_energy", 0.5))
+        exposure_override = float(lighting.get("exposure", 1.0))
 
     # ── Build room resources for resolved dimensions ───────────
     room_sub_resources = _build_room_sub_resources(
         room_w, room_d,
         ambient=ambient_override,
         background=background_override,
+        fog_color=fog_color_override,
+        fog_density=fog_density_override,
+        fog_light_energy=fog_light_energy_override,
+        exposure=exposure_override,
     )
     room_nodes = _build_room_nodes(
         room_w, room_d,
@@ -655,7 +721,7 @@ def compile_scene(
 
     total_load_steps = (
         len(unique_glbs)                     # GLB ext_resources
-        + 4                                  # shell scripts
+        + len(_SHELL_SCRIPTS)                # shell scripts
         + len(used_tag_scripts)              # component scripts
         + num_sub_resources                  # collision sub_resources
         + num_room_sub_resources             # Environment + meshes + materials + wall shapes
@@ -813,6 +879,27 @@ def compile_scene(
             f'[node name="{eid}_model" parent="{eid}" instance=ExtResource("{glb_id}")]'
         )
         lines.append("")
+
+        # B2: Light-emitting prop child (OmniLight3D)
+        if cat in _LIGHT_EMITTING:
+            le = _LIGHT_EMITTING[cat]
+            light_color = le["color"]
+            light_node_name = f"{eid}_light"
+            lines.append(
+                f'[node name="{light_node_name}" type="OmniLight3D" parent="{eid}"]'
+            )
+            # Position the light above the prop centre
+            lines.append("transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)")
+            lines.append(
+                f"light_color = Color({light_color[0]}, {light_color[1]}, {light_color[2]}, 1)"
+            )
+            lines.append(f"light_energy = {le['energy']}")
+            lines.append(f"omni_range = {le['range']}")
+            if le.get("negative", False):
+                lines.append("light_negative = true")
+            # Small shadow for atmosphere (baked to keep perf)
+            lines.append("shadow_enabled = true")
+            lines.append("")
 
     # ── C-4: NPC nodes — one per quest spec ─────────────────────
     npc_script_path = _TAG_TABLE.get("talk")
@@ -1099,6 +1186,12 @@ def compile_scene(
     lines.append("horizontal_alignment = 1")
     lines.append("vertical_alignment = 1")
     lines.append("")
+
+    # B2: Wire theme into DayNight node for ambient sound + time-of-day start
+    if theme:
+        lines.append('[node name="DayNight" parent="."]')
+        lines.append(f'metadata/_forge_theme = "{theme}"')
+        lines.append("")
 
     # QuestData node (no script — P5 reads the JSON resource directly)
     lines.append('[node name="QuestData" type="Node" parent="."]')

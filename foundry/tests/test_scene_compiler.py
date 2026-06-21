@@ -163,6 +163,7 @@ def test_scene_has_shell_nodes():
     assert "Camera3D" in node_names
     assert "HUD" in node_names
     assert "WinScreen" in node_names
+    assert "DayNight" in node_names  # B2
 
 
 def test_camera_is_child_of_player():
@@ -252,6 +253,9 @@ def test_shell_nodes_have_shell_scripts():
     assert hud.get("script") == "s_hud"
     win = next(n for n in parsed["nodes"] if n["name"] == "WinScreen")
     assert win.get("script") == "s_win"
+    # B2: day/night cycle
+    daynight = next(n for n in parsed["nodes"] if n["name"] == "DayNight")
+    assert daynight.get("script") == "s_day_night"
 
 
 # ── Quest data JSON round-trip ───────────────────────────────────
@@ -973,3 +977,203 @@ def test_no_theme_keeps_default_lighting():
         data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
         if data_file.exists():
             data_file.unlink()
+
+
+# ── B2: Post-processing stack (EB-5) ──────────────────────────────
+
+def test_environment_has_aces_tonemap():
+    """B2: Environment sub_resource has ACES tonemap."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "tonemap_mode = 3" in text, "B2: missing ACES tonemap"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_environment_has_ssao():
+    """B2: Environment sub_resource has SSAO enabled."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "ssao_enabled = true" in text, "B2: missing SSAO"
+        assert "ssao_radius" in text
+        assert "ssao_intensity" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_environment_has_bloom():
+    """B2: Environment sub_resource has bloom (glow) enabled."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "glow_enabled = true" in text, "B2: missing bloom/glow"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_environment_has_fog():
+    """B2: Environment sub_resource has fog enabled."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "fog_enabled = true" in text, "B2: missing fog"
+        assert "fog_mode = 0" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_per_theme_fog_applied():
+    """B2: Per-theme fog color and density are emitted."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, theme="dungeon")
+        text = Path(out).read_text(encoding="utf-8")
+        # Dungeon: dark fog, high density
+        assert "fog_light_color = Color(0.08, 0.08, 0.13, 1.0)" in text
+        assert "fog_density = 0.03" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_environment_has_exposure():
+    """B2: Environment sub_resource has adjustment (exposure) enabled."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "adjustment_enabled = true" in text, "B2: missing exposure adjustment"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_lighting_table_has_fog_and_exposure():
+    """B2: LIGHTING_TABLE entries have fog and exposure keys."""
+    from room_control import LIGHTING_TABLE
+    for theme, entry in LIGHTING_TABLE.items():
+        assert "fog_color" in entry, f"{theme}: missing fog_color"
+        assert "fog_density" in entry, f"{theme}: missing fog_density"
+        assert "fog_light_energy" in entry, f"{theme}: missing fog_light_energy"
+        assert "exposure" in entry, f"{theme}: missing exposure"
+
+
+# ── B2: Light-emitting props ──────────────────────────────────────
+
+def test_lantern_prop_has_light_child():
+    """B2: A lantern prop gets an OmniLight3D child."""
+    manifest: list[PlacedEntity] = [
+        {"id": "lantern_0", "category": "lantern", "material": "wrought_iron",
+         "wear": 0.5, "x": 1.0, "y": 0.0, "z": 0.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "lantern_0"
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, manifest, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "lantern_0_light" in text, "B2: lantern should have OmniLight3D child"
+        assert "OmniLight3D" in text
+        assert "light_color" in text
+        assert "omni_range" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_non_light_prop_has_no_light_child():
+    """B2: Regular props (e.g. table) do NOT get light children."""
+    _, parsed, _ = _compile_and_parse()
+    for n in parsed["nodes"]:
+        assert not n["name"].endswith("_light"), (
+            f"unexpected light node: {n['name']}"
+        )
+
+
+def test_candle_prop_has_light_child():
+    """B2: A candle carryable prop gets an OmniLight3D child."""
+    manifest: list[PlacedEntity] = [
+        {"id": "candle_0", "category": "candle", "material": "wrought_iron",
+         "wear": 0.5, "x": 3.0, "y": 0.0, "z": 0.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "candle_0"
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, manifest, out)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "candle_0_light" in text, "B2: candle should have OmniLight3D child"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+# ── B2: Day/night node ────────────────────────────────────────────
+
+def test_day_night_script_in_ext_resources():
+    """B2: day_night.gd is in ext_resource block."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/day_night.gd" in paths, "B2: day_night.gd missing from ext_resources"

@@ -31,6 +31,11 @@ func on_interact(tag: String) -> void:
 			model.reparent(carried_parent, false)
 			# C-2: Don't show() here — player.add_item() calls _show_active_model()
 
+	# B2: Disable any light child (OmniLight3D) so it doesn't stay glowing at origin
+	var light = get_node_or_null("%s_light" % name)
+	if light:
+		light.visible = false
+
 	# Disable collision so the prop doesn't block the player
 	# Use set() to bypass GDScript static analysis (script extends Node3D,
 	# but is attached to StaticBody3D nodes at runtime).

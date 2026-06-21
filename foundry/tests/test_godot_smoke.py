@@ -405,6 +405,20 @@ def test_scripted_playthrough_talk_right_win():
         f"Checks: {checks}"
     )
 
+    # B2: Atmosphere — post-processing + day/night nodes must be present
+    assert result.get("world_env_found", False), (
+        f"B2: WorldEnvironment node should exist in scene\n"
+        f"Checks: {checks}"
+    )
+    assert result.get("day_night_found", False), (
+        f"B2: DayNight node should exist in scene\n"
+        f"Checks: {checks}"
+    )
+    assert result.get("sun_found", False), (
+        f"B2: DirectionalLight3D should exist in scene\n"
+        f"Checks: {checks}"
+    )
+
 
 # ── B0: Multi-NPC playthrough probe ──────────────────────────────────
 

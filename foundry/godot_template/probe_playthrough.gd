@@ -29,7 +29,11 @@ var _result = {
 	"both_done": false,
 	# B1: multi-quest win gate
 	"win_after_first_done": false,
-	"quest_log_populated": false
+	"quest_log_populated": false,
+	# B2: Atmosphere — post-processing + day/night
+	"world_env_found": false,
+	"day_night_found": false,
+	"sun_found": false
 }
 
 var _scene_path = ""
@@ -101,6 +105,16 @@ func _run_phase():
 					if _target_1_prop != null:
 						found_parts.append("target1")
 				_result["multi_npc"] = _multi_npc and _npc_1 != null and _target_1_prop != null
+				# B2: verify post-processing + day/night nodes
+				_result["world_env_found"] = self.root.has_node("Root/WorldEnvironment")
+				_result["day_night_found"] = self.root.has_node("Root/DayNight")
+				_result["sun_found"] = self.root.has_node("Root/DirectionalLight3D")
+				if _result["world_env_found"]:
+					found_parts.append("WorldEnv")
+				if _result["day_night_found"]:
+					found_parts.append("DayNight")
+				if _result["sun_found"]:
+					found_parts.append("Sun")
 				_result["checks"].append("PASS: all key nodes found (" + ", ".join(found_parts) + ")")
 				if _multi_npc and (_npc_1 == null or _target_1_prop == null):
 					_result["checks"].append("WARNING: multi-NPC quest_data but second NPC/target not found")
