@@ -1,0 +1,219 @@
+"""Brief schema v1 — the shared structured intent (spine slice 1).
+
+One structured Brief sits between the prompt and every generator.
+The Interpreter produces it; every generator consumes it; the Build
+Report reflects it back.
+
+This module owns the schema shape, closed-vocab constants, and
+deterministic validation — no LLM calls.
+"""
+
+from __future__ import annotations
+
+from typing import List, Tuple
+
+from decisions import Choice, DecisionPoint, make_decision
+
+# ── Closed vocabularies (imported live, not hardcoded) ─────────────
+
+from room_control import THEME_TABLE  # noqa: E402
+
+THEMES: Tuple[str, ...] = tuple(r["theme"] for r in THEME_TABLE)
+
+from room_planner import CATEGORIES  # noqa: E402
+
+VALID_SCALES: Tuple[str, ...] = ("small", "medium", "large")
+
+# Size band mapping: scale → (min, max) metres for the room.
+SCALE_BANDS: dict = {"small": (4, 6), "medium": (6, 9), "large": (9, 12)}
+
+
+# ── Brief.minimal (tiny constructor, back-compat) ──────────────────
+
+
+def _infer_theme(prompt: str) -> str:
+    """Case-insensitive substring match against THEMES, else '*'."""
+    prompt_lower = prompt.lower()
+    for theme in THEMES:
+        if theme == "*":
+            continue
+        if theme in prompt_lower:
+            return theme
+    return "*"
+
+
+def minimal(prompt: str) -> dict:
+    """Build a valid Brief from a raw prompt string.
+
+    Used as a back-compat pass-through when no LLM Interpreter is
+    available (tests, fallback paths).
+    """
+    return {
+        "schema_version": 1,
+        "source_prompt": prompt,
+        "setting": prompt,
+        "mood": [],
+        "scale": "medium",
+        "theme_tag": _infer_theme(prompt),
+        "key_features": [],
+        "unmapped": [],
+    }
+
+
+# ── validate_brief ─────────────────────────────────────────────────
+
+
+def validate_brief(
+    raw: dict,
+    themes: Tuple[str, ...] = THEMES,
+    categories: Tuple[str, ...] = CATEGORIES,
+) -> Tuple[dict, List[DecisionPoint]]:
+    """Normalise and validate a raw dict into a clean Brief dict.
+
+    Every deviation from the closed vocabularies emits a Decision Point
+    instead of raising.  Returns ``(brief_dict, decisions)``.
+    """
+    decisions: List[DecisionPoint] = []
+
+    # --- schema_version (always 1) ---
+    brief: dict = {"schema_version": raw.get("schema_version", 1)}
+
+    # --- source_prompt (preserve provenance) ---
+    brief["source_prompt"] = raw.get("source_prompt", "")
+
+    # --- theme_tag (closed set + '*' fallback) ---
+    raw_theme = raw.get("theme_tag")
+    theme_tag = str(raw_theme).strip().lower() if raw_theme is not None else ""
+    if not theme_tag or theme_tag not in themes:
+        decisions.append(
+            make_decision(
+                "brief.theme_unmapped",
+                stage="interpreter",
+                severity="assumption",
+                context={"requested": theme_tag or "<empty>", "resolved": "*"},
+                choices=(
+                    Choice(
+                        label="Accept",
+                        plain="Use '*' (general room)",
+                        apply={"field": "theme_tag", "value": "*"},
+                    ),
+                ),
+            )
+        )
+        theme_tag = "*"
+    brief["theme_tag"] = theme_tag
+
+    # --- scale (enum) ---
+    scale = raw.get("scale", "")
+    scale = str(scale).strip().lower() if scale else ""
+    if scale not in VALID_SCALES:
+        decisions.append(
+            make_decision(
+                "brief.scale_defaulted",
+                stage="interpreter",
+                severity="assumption",
+                context={"requested": scale or "<empty>", "resolved": "medium"},
+                choices=(
+                    Choice(
+                        label="Accept medium",
+                        plain="Use a medium-sized room",
+                        apply={"field": "scale", "value": "medium"},
+                    ),
+                ),
+            )
+        )
+        scale = "medium"
+    brief["scale"] = scale
+
+    # --- setting (free text, defaulted if empty) ---
+    setting = raw.get("setting", "")
+    setting = str(setting).strip() if setting else ""
+    if not setting:
+        resolved_setting = f"a {theme_tag} room" if theme_tag != "*" else "a room"
+        decisions.append(
+            make_decision(
+                "brief.setting_defaulted",
+                stage="interpreter",
+                severity="assumption",
+                context={"resolved": resolved_setting},
+                choices=(
+                    Choice(
+                        label="Accept",
+                        plain=f"Use '{resolved_setting}' as the room name",
+                        apply={"field": "setting", "value": resolved_setting},
+                    ),
+                ),
+            )
+        )
+        setting = resolved_setting
+    brief["setting"] = setting
+
+    # --- mood (free-text list) ---
+    mood = raw.get("mood", [])
+    brief["mood"] = list(mood) if isinstance(mood, (list, tuple)) else []
+
+    # --- key_features (validate each) ---
+    raw_features = raw.get("key_features", []) or []
+    brief["unmapped"] = list(raw.get("unmapped", [])) or []
+
+    validated_features: list[dict] = []
+    for feat in raw_features:
+        if not isinstance(feat, dict):
+            continue
+        text = str(feat.get("text", "")).strip()
+        if not text:
+            continue
+        cat = feat.get("category")
+        cat = str(cat).strip() if cat else None
+        if cat and cat not in categories:
+            # Feature named something we can't map
+            decisions.append(
+                make_decision(
+                    "brief.feature_unmapped",
+                    stage="interpreter",
+                    severity="error",
+                    context={"text": text},
+                    choices=(
+                        Choice(
+                            label="Skip feature",
+                            plain=f"Skip '{text}' (not supported yet)",
+                            apply={"field": "key_features", "text": text},
+                        ),
+                    ),
+                )
+            )
+            validated_features.append(
+                {"text": text, "status": "unmapped", "category": None}
+            )
+            if text not in brief["unmapped"]:
+                brief["unmapped"].append(text)
+        elif cat:
+            validated_features.append(
+                {"text": text, "status": "mapped", "category": cat}
+            )
+        else:
+            # No category at all → unmapped
+            decisions.append(
+                make_decision(
+                    "brief.feature_unmapped",
+                    stage="interpreter",
+                    severity="error",
+                    context={"text": text},
+                    choices=(
+                        Choice(
+                            label="Skip feature",
+                            plain=f"Skip '{text}' (not mapped to a category)",
+                            apply={"field": "key_features", "text": text},
+                        ),
+                    ),
+                )
+            )
+            validated_features.append(
+                {"text": text, "status": "unmapped", "category": None}
+            )
+            if text not in brief["unmapped"]:
+                brief["unmapped"].append(text)
+
+    brief["key_features"] = validated_features
+
+    return brief, decisions

@@ -194,6 +194,37 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model asked for more furniture than the room holds; {placed} fit and {dropped} were left out.",
     ),
+    # ── Brief (spine slice 1) ──
+    "brief.theme_unmapped": (
+        # technical
+        "theme_tag {requested!r} not in known set; resolved to {resolved!r}.",
+        # plain
+        "I don't know the theme '{requested}', so I picked the closest or a general room ({resolved}).",
+    ),
+    "brief.scale_defaulted": (
+        # technical
+        "scale {requested!r} invalid; defaulted to {resolved!r}.",
+        # plain
+        "The room scale '{requested}' wasn't recognised, so I used a medium-sized room.",
+    ),
+    "brief.feature_unmapped": (
+        # technical
+        "key_feature {text!r} could not be mapped to a known category.",
+        # plain
+        "You asked for '{text}' but I don't know how to build that yet — it's noted in the report.",
+    ),
+    "brief.setting_defaulted": (
+        # technical
+        "setting was empty; defaulted to {resolved!r} from theme.",
+        # plain
+        "No room name was given, so I called it '{resolved}'.",
+    ),
+    "brief.parse_fallback": (
+        # technical
+        "Brief parse failed ({error}); fell back to Brief.minimal.",
+        # plain
+        "I couldn't understand the request format, so I built a default room instead.",
+    ),
 }
 
 
