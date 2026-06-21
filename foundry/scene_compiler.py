@@ -126,6 +126,7 @@ _LIGHT_DIRECTION = (-0.5, -0.75, 0.433013)  # DirectionalLight rotation basis
 _LIGHT_HEIGHT = 8.0
 _AMBIENT_COLOR = (0.15, 0.15, 0.2, 1.0)
 _BACKGROUND_COLOR = (0.05, 0.05, 0.1, 1.0)
+_INTERIOR_LIGHT_AREA_PER_LIGHT = 22.5  # m² per ceiling OmniLight3D (Quality A)
 
 # Player spawn offset (FIX-1): player sits at (0, PLAYER_SPAWN_Y, 0)
 # to be clear of the floor (top at y=0) and props.
@@ -161,6 +162,7 @@ def _build_room_sub_resources(
     wall_t: float = _ROOM_WALL_THICKNESS,
     floor_t: float = _ROOM_FLOOR_THICKNESS,
     ambient: tuple | None = None,
+    ambient_energy: float = 0.5,
     background: tuple | None = None,
     fog_color: tuple | None = None,
     fog_density: float = 0.015,
@@ -170,7 +172,8 @@ def _build_room_sub_resources(
     """Build the list of room sub-resources for the given dimensions.
 
     P-G: *ambient* and *background* override the default environment
-    colours (per-theme lighting).
+    colours (per-theme lighting).  Quality A: *ambient_energy* sets
+    ambient_light_energy.
 
     B2: *fog_color*, *fog_density*, *fog_light_energy*, and *exposure*
     override the default post-processing (per-theme atmosphere).
@@ -187,6 +190,7 @@ def _build_room_sub_resources(
          f"background_color = Color({bg[0]}, {bg[1]}, {bg[2]}, {bg[3]})",
          "ambient_light_source = 1",
          f"ambient_light_color = Color({amb[0]}, {amb[1]}, {amb[2]}, {amb[3]})",
+         f"ambient_light_energy = {ambient_energy}",
          # B2: ACES tonemap
          "tonemap_mode = 3",
          "tonemap_white = 1.0",
@@ -244,6 +248,49 @@ def _build_room_sub_resources(
     {"id": "wall_ew_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
 ]
+
+# Quality A: Interior lighting — ceiling-mounted OmniLight3D nodes.
+# Placed evenly across the ceiling to light the room interior.
+
+def _build_interior_lights(
+    room_w: float, room_d: float, room_h: float,
+    interior_color: tuple, interior_energy: float,
+) -> List[dict]:
+    """Build interior OmniLight3D nodes for ceiling-mounted room lights.
+    
+    One light per ~_INTERIOR_LIGHT_AREA_PER_LIGHT m² (at least 1),
+    placed near the ceiling (y = room_h - 0.4), with range ≈ room
+    diagonal."""
+    area = room_w * room_d
+    n_lights = max(1, int(area / _INTERIOR_LIGHT_AREA_PER_LIGHT + 0.5))
+    room_diag = (room_w * room_w + room_d * room_d) ** 0.5
+    light_y = room_h - 0.4
+    
+    lights: list[dict] = []
+    # Distribute lights in a grid: √n × √n
+    grid = max(1, int(n_lights ** 0.5 + 0.5))
+    # Recalculate so we get an even-ish grid
+    cols = grid
+    rows = max(1, (n_lights + cols - 1) // cols)
+    for i in range(n_lights):
+        col = i % cols
+        row = i // cols
+        # Even spacing across the room, shrinking margins for the grid
+        x = (col - (cols - 1) / 2.0) * (room_w / max(cols, 1)) * 0.7
+        z = (row - (rows - 1) / 2.0) * (room_d / max(rows, 1)) * 0.7
+        light_name = f"InteriorLight{i}" if n_lights > 1 else "InteriorLight"
+        lights.append({
+            "name": light_name, "type": "OmniLight3D", "parent": ".",
+            "props": [
+                f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(x)}, {_fmt_pos(light_y)}, {_fmt_pos(z)})",
+                f"light_color = Color({interior_color[0]}, {interior_color[1]}, {interior_color[2]}, 1)",
+                f"light_energy = {interior_energy}",
+                f"omni_range = {_fmt_pos(room_diag)}",
+                "shadow_enabled = true",
+            ],
+        })
+    return lights
+
 
 # ── Room node builder (Items 1-2) ─────────────────────────────────
 # Built per-call so room_size can vary.
@@ -422,6 +469,90 @@ def _prop_half_extents(category: str) -> Tuple[float, float, float]:
     """Return half-extents (hx, hy, hz) for a prop's AABB from its category."""
     sx, sy, sz = COLLISION_SIZES.get(category, COLLISION_SIZES["?"])
     return (sx / 2.0, sy / 2.0, sz / 2.0)
+
+
+_NPC_CLEARANCE = 0.6  # Quality B1: min distance from NPC to prop/player/other NPC
+
+
+def _find_open_npc_positions(
+    quest_specs: list[dict],
+    manifest: list[dict],
+    room_w: float,
+    room_d: float,
+    seed: int = 42,
+) -> list[tuple[float, float]]:
+    """Quality B1: Find open-floor (x,z) positions for NPCs with clearance
+    from prop footprints and player spawn (0,0).  Distributes NPCs across
+    the room instead of clustering them on the back wall."""
+    import random as _random
+    _rng = _random.Random(seed)
+
+    npc_hx, _, npc_hz = _prop_half_extents("humanoid")
+    clearance = _NPC_CLEARANCE
+
+    # Collect prop footprints: (x, z, half_x, half_z) for separable props
+    prop_footprints: list[tuple[float, float, float, float]] = []
+    for entry in manifest:
+        if entry.get("surface") == "underlay" or entry.get("decor"):
+            continue
+        hx, _, hz = _prop_half_extents(entry.get("category", "?"))
+        prop_footprints.append((
+            entry.get("x", 0.0), entry.get("z", 0.0),
+            hx + clearance, hz + clearance,
+        ))
+
+    def _overlaps(px: float, pz: float, ox: float, oz: float, ohx: float, ohz: float) -> bool:
+        return abs(px - ox) < (npc_hx + ohx) and abs(pz - oz) < (npc_hz + ohz)
+
+    def _valid_npc_spot(x: float, z: float, placed: list[tuple[float, float]]) -> bool:
+        # Clear of player spawn
+        if abs(x) < (_PLAYER_CLEAR_RADIUS + npc_hx) and abs(z) < (_PLAYER_CLEAR_RADIUS + npc_hz):
+            return False
+        # Clear of prop footprints
+        for (px, pz, phx, phz) in prop_footprints:
+            if _overlaps(x, z, px, pz, phx, phz):
+                return False
+        # Clear of other NPCs
+        for (ox, oz) in placed:
+            if _overlaps(x, z, ox, oz, npc_hx + clearance, npc_hz + clearance):
+                return False
+        return True
+
+    n_npcs = len(quest_specs)
+    positions: list[tuple[float, float]] = []
+
+    # Try a set of candidate positions spread across the room
+    half_w = room_w / 2.0 - 0.5
+    half_d = room_d / 2.0 - 0.5
+    # Generate candidates: spread across the room in a rough grid
+    candidates: list[tuple[float, float]] = []
+    for row in range(-2, 3):
+        for col in range(-2, 3):
+            x = col * half_w * 0.45
+            z = row * half_d * 0.4
+            candidates.append((x, z))
+    _rng.shuffle(candidates)
+
+    for _ in range(n_npcs):
+        found = False
+        for cx, cz in candidates:
+            if (cx, cz) not in positions and _valid_npc_spot(cx, cz, positions):
+                positions.append((cx, cz))
+                found = True
+                break
+        if not found:
+            # Fallback: place at back of room spread along X
+            x = (_rng.random() * half_w * 1.5 - half_w * 0.75)
+            z = -half_d + 0.8
+            # Ensure not on top of another NPC
+            attempts = 0
+            while not _valid_npc_spot(x, z, positions) and attempts < 50:
+                x = (_rng.random() * half_w * 1.5 - half_w * 0.75)
+                z = -half_d + 0.8
+                attempts += 1
+            positions.append((x, z))
+
+    return positions
 
 
 def _resolve_prop_overlaps(
@@ -611,9 +742,12 @@ def compile_scene(
 
     # ── P-G: Resolve per-theme lighting ─────────────────────
     ambient_override = None
+    ambient_energy_override = 0.5
     background_override = None
     dir_color_override = None
     dir_energy_override = None
+    interior_color_override: tuple = (1.0, 0.7, 0.35)
+    interior_energy_override = 1.5
     fog_color_override = None
     fog_density_override = 0.015
     fog_light_energy_override = 0.5
@@ -622,9 +756,13 @@ def compile_scene(
         from room_control import get_lighting
         lighting = get_lighting(theme)
         ambient_override = tuple(lighting["ambient_color"])
+        ambient_energy_override = float(lighting.get("ambient_light_energy", 0.5))
         background_override = tuple(lighting["background_color"])
         dir_color_override = tuple(lighting["directional_color"])
         dir_energy_override = float(lighting["directional_energy"])
+        # Quality A: interior lighting
+        interior_color_override = tuple(lighting.get("interior_light_color", (1.0, 0.7, 0.35)))
+        interior_energy_override = float(lighting.get("interior_light_energy", 1.5))
         # B2: per-theme fog + exposure
         fog_color_override = tuple(lighting.get("fog_color", (0.2, 0.18, 0.22, 1.0)))
         fog_density_override = float(lighting.get("fog_density", 0.015))
@@ -632,9 +770,15 @@ def compile_scene(
         exposure_override = float(lighting.get("exposure", 1.0))
 
     # ── Build room resources for resolved dimensions ───────────
+    # Quality A: build interior lights from resolved theme params
+    interior_lights = _build_interior_lights(
+        room_w, room_d, _ROOM_HEIGHT,
+        interior_color_override, interior_energy_override,
+    )
     room_sub_resources = _build_room_sub_resources(
         room_w, room_d,
         ambient=ambient_override,
+        ambient_energy=ambient_energy_override,
         background=background_override,
         fog_color=fog_color_override,
         fog_density=fog_density_override,
@@ -664,12 +808,16 @@ def compile_scene(
     # C-4: Build per-NPC quest data and placements for the shared JSON.
     from soul import default_soul
     npcs_data: dict = {}
+    
+    # Quality B1: Compute NPC positions by finding open floor spots
+    # with at least 0.6 m clearance from every prop footprint.
+    npc_positions = _find_open_npc_positions(
+        quest_specs, separated_manifest, room_w, room_d,
+    )
+    
     for i, spec in enumerate(quest_specs):
         npc_id = spec.get("npc_id", f"npc_{i}")
-        # NPC position: spread the NPCs along X at z=-2 (C-4)
-        npc_index = int(npc_id.split("_")[-1]) if "_" in npc_id else i
-        npc_pos_x = (npc_index - (len(quest_specs) - 1) / 2.0) * 2.5
-        npc_pos_z = -2.0
+        npc_pos_x, npc_pos_z = npc_positions[i]
         # Spine Slice 3: bake soul into quest_data
         npc_soul = spec.get("soul", default_soul())
         placement: dict = {
@@ -857,6 +1005,16 @@ def compile_scene(
             )
             lines.append("")
 
+    # Quality A: Interior OmniLight3D ceiling lights (after shell, before props)
+    for il_node in interior_lights:
+        lines.append(
+            f'[node name="{il_node["name"]}" type="{il_node["type"]}" '
+            f'parent="{il_node["parent"]}"]'
+        )
+        for prop in il_node.get("props", []):
+            lines.append(prop)
+        lines.append("")
+
     # ── Placed props (FIX-1a/d/e) ───────────────────────────────
     # Props are now StaticBody3D with collision shapes.  GLB model
     # is instanced via header-line instance=ExtResource(...).
@@ -944,10 +1102,9 @@ def compile_scene(
     for idx, spec in enumerate(quest_specs):
         npc_id = spec.get("npc_id", f"npc_{idx}")
         npc_role = spec.get("npc_role", "villager")
-        # Spread NPCs along X at z=-2
-        npc_x = (idx - (len(quest_specs) - 1) / 2.0) * 2.5
+        # Quality B1: use computed open-floor positions
+        npc_x, npc_z = npc_positions[idx]
         npc_y = 0.0
-        npc_z = -2.0
 
         lines.append(f'[node name="{npc_id}" type="StaticBody3D" parent="."]')
         lines.append(

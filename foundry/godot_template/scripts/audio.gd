@@ -11,7 +11,7 @@
 # after playback.  Multiple cues can overlap (polyphony).
 extends Node
 
-# ── B2: Ambient drone state ─────────────────────────────────────
+# ── Quality D: Ambient bed state ──────────────────────────────────
 
 # Persistent ambient player (single, crossfaded on theme change)
 var _ambient_player: AudioStreamPlayer = null
@@ -191,56 +191,51 @@ func _gen_win(playback, n: int, rate: int, duration: float, _extra: Dictionary =
 		playback.push_frame(Vector2(sample, sample))
 
 
-# ── B2: Ambient soundscape ──────────────────────────────────────
+# ── Quality D: Simple ambient bed ─────────────────────────────────
 
 func start_ambient(theme: String) -> void:
-	"""Start or crossfade the ambient drone for *theme*.
+	"""Start or crossfade the ambient bed for *theme*.
 	Creates a persistent AudioStreamPlayer and begins filling its
 	buffer in _process().  If already playing, triggers a crossfade
 	to the new theme."""
 	if _ambient_player and is_instance_valid(_ambient_player):
 		if _ambient_target_theme != theme:
-			# Trigger crossfade: fade out current, then fade in new
 			_ambient_target_theme = theme
-			_ambient_fade_dir = -1  # start fading out
+			_ambient_fade_dir = -1
 		return
 
-	# First-time setup
 	_ambient_target_theme = theme
 	_ambient_fade = 1.0
 	_ambient_fade_dir = 0
 
 	_ambient_player = AudioStreamPlayer.new()
 	_ambient_player.bus = "Master"
-	_ambient_player.volume_db = linear_to_db(0.18)  # subtle
+	_ambient_player.volume_db = linear_to_db(0.08)  # very quiet
 	add_child(_ambient_player)
 
 	_ambient_gen = AudioStreamGenerator.new()
 	_ambient_gen.mix_rate = MIX_RATE
-	_ambient_gen.buffer_length = 0.1  # small buffer for low-latency loop
+	_ambient_gen.buffer_length = 0.1
 	_ambient_player.stream = _ambient_gen
 	_ambient_player.play()
 	_ambient_playback = _ambient_player.get_stream_playback()
 
 
 func _process(_delta: float) -> void:
-	# B2: Feed the ambient drone continuously
 	if not _ambient_playback:
 		return
 
-	# Handle crossfade state machine
 	if _ambient_fade_dir == -1:
 		_ambient_fade = maxf(0.0, _ambient_fade - 0.5 * _delta)
 		if _ambient_fade <= 0.0:
 			_ambient_fade = 0.0
-			_ambient_fade_dir = 1  # start fading in (new theme)
+			_ambient_fade_dir = 1
 	elif _ambient_fade_dir == 1:
 		_ambient_fade = minf(1.0, _ambient_fade + 0.5 * _delta)
 		if _ambient_fade >= 1.0:
 			_ambient_fade = 1.0
-			_ambient_fade_dir = 0  # steady
+			_ambient_fade_dir = 0
 
-	# Fill enough frames for one _process tick (~16ms at 60fps)
 	var frames_to_fill: int = _ambient_gen.mix_rate / 60
 	var to_fill: int = mini(frames_to_fill, _ambient_playback.get_frames_available())
 
@@ -249,48 +244,38 @@ func _process(_delta: float) -> void:
 
 
 func _generate_ambient_frames(count: int, theme: String, volume: float) -> void:
-	"""Push *count* frames of procedurally generated ambient drone.
-
-	Each theme has a different drone character:
-	- hermit: warm low rumble + gentle sine
-	- blacksmith: mid-range metallic hum + sub-bass
-	- wizard: airy high shimmer + low pad
-	- kitchen: soft mid-bass + crackle texture
-	- noble: rich low pad + subtle reverb tail
-	- dungeon: deep drone + distant drip texture
-	- attic: dusty mid-range + wind whisper
-	- ship: low swell + creak harmonics
-	- default: neutral low-mid pad
+	"""Quality D: Simple, quiet room tone — one soft low sine with
+	gentle LFO.  Theme-flavoured base frequency, unobtrusive.
+	
+	- hermit:    55 Hz (warm low)
+	- blacksmith: 65 Hz (low rumble)
+	- wizard:    70 Hz (airy low)
+	- kitchen:   50 Hz (soft bass)
+	- noble:     48 Hz (rich low)
+	- dungeon:   40 Hz (deep)
+	- attic:     60 Hz (dusty mid-low)
+	- ship:      45 Hz (low swell)
+	- crypt:     35 Hz (deep thrum)
+	- armory:    62 Hz (low metal)
+	- workshop:  58 Hz (steady hum)
+	- tavern:    52 Hz (warm)
+	- default:   55 Hz
 	"""
-	var freq_low: float = 55.0
-	var freq_mid: float = 110.0
-	var freq_high: float = 220.0
-	var texture_rate: float = 0.0
-
+	var base_freq: float = 55.0
 	match theme:
-		"hermit":
-			freq_low = 48.0; freq_mid = 96.0; freq_high = 192.0
-		"blacksmith":
-			freq_low = 40.0; freq_mid = 120.0; freq_high = 240.0
-			texture_rate = 3.0
-		"wizard":
-			freq_low = 65.0; freq_mid = 130.0; freq_high = 330.0
-		"kitchen":
-			freq_low = 50.0; freq_mid = 100.0; freq_high = 200.0
-			texture_rate = 1.5
-		"noble":
-			freq_low = 44.0; freq_mid = 88.0; freq_high = 176.0
-		"dungeon":
-			freq_low = 32.0; freq_mid = 64.0; freq_high = 128.0
-			texture_rate = 0.8
-		"attic":
-			freq_low = 55.0; freq_mid = 110.0; freq_high = 220.0
-			texture_rate = 2.5
-		"ship":
-			freq_low = 42.0; freq_mid = 84.0; freq_high = 168.0
-			texture_rate = 1.2
-		_:
-			freq_low = 55.0; freq_mid = 110.0; freq_high = 220.0
+		"hermit":     base_freq = 55.0
+		"blacksmith": base_freq = 65.0
+		"wizard":     base_freq = 70.0
+		"kitchen":    base_freq = 50.0
+		"noble":      base_freq = 48.0
+		"dungeon":    base_freq = 40.0
+		"attic":      base_freq = 60.0
+		"ship":       base_freq = 45.0
+		"crypt":      base_freq = 35.0
+		"armory":     base_freq = 62.0
+		"workshop":   base_freq = 58.0
+		"tavern":     base_freq = 52.0
+		_:            base_freq = 55.0
 
 	for _i in range(count):
 		_ambient_phase += 1.0 / MIX_RATE
@@ -299,19 +284,9 @@ func _generate_ambient_frames(count: int, theme: String, volume: float) -> void:
 
 		var t: float = _ambient_phase
 
-		# Three-layer drone: low sine + mid sine (detuned) + high sine
-		var low: float = sin(t * freq_low * TAU) * 0.4
-		var mid: float = sin(t * freq_mid * TAU * 1.002) * 0.25
-		var high: float = sin(t * freq_high * TAU * 0.998) * 0.12
-
-		# Slow amplitude modulation for movement
-		var lfo: float = sin(t * 0.15 * TAU) * 0.5 + 0.5  # 0..1, 6.7s cycle
-
-		# Texture layer: filtered noise-like components
-		var texture: float = 0.0
-		if texture_rate > 0.0:
-			texture = sin(t * texture_rate * 997.0) * 0.03
-
-		var sample: float = (low + mid * lfo + high + texture) * volume * 0.5
+		# Simple soft sine with slow amplitude modulation
+		var lfo: float = sin(t * 0.12 * TAU) * 0.15 + 0.85  # subtle 8.3s swell
+		var sine: float = sin(t * base_freq * TAU) * 0.35 * lfo
+		var sample: float = sine * volume * 0.3
 		sample = clampf(sample, -1.0, 1.0)
 		_ambient_playback.push_frame(Vector2(sample, sample))

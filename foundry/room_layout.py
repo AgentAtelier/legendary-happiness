@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from category_registry import FURNITURE, CARRYABLES, FURNITURE_TOP_Y
+from category_registry import FURNITURE, CARRYABLES, FURNITURE_TOP_Y, COLLISION_SIZES
 from decisions import Choice, DecisionPoint, make_decision
 
 CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
@@ -109,6 +109,8 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
     # ── P-E: Carryables placed on furniture surfaces ─────────
     # Each carryable is placed on a furniture top if available,
     # else on the floor.  surface="on" with y offset above the furniture top.
+    # Quality B2: Carryables placed "on" furniture must be within the
+    # furniture's XZ footprint; otherwise, place on the floor.
     _FURNITURE_TOP_Y = FURNITURE_TOP_Y
     for i, e in enumerate(carryables):
         # Place on the i-th furniture item (wrap around)
@@ -117,20 +119,45 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
             px, pz = parent_entry["x"], parent_entry["z"]
             pcat = parent_entry["category"]
             top_y = _FURNITURE_TOP_Y.get(pcat, 0.8)
-            # Small random offset on the surface (deterministic: use i as seed)
+            # Quality B2: clamp carryable offset to stay within furniture footprint
+            psx, _, psz = COLLISION_SIZES.get(pcat, (1.0, 1.0, 1.0))
+            phx = psx / 2.0
+            phz = psz / 2.0
             ox = (i % 3 - 1) * 0.1
             oz = ((i // 3) % 3 - 1) * 0.1
-            manifest.append({
-                "id": f"{e['category']}_{i}",
-                "category": e["category"],
-                "material": e["material"],
-                "x": round(px + ox, 3),
-                "y": round(top_y + 0.02, 3),
-                "z": round(pz + oz, 3),
-                "yaw": 0.0,
-                "surface": "on",
-                "decor": False,
-            })
+            # Clamp to stay within furniture surface bounds
+            ox = max(-phx + 0.05, min(phx - 0.05, ox))
+            oz = max(-phz + 0.05, min(phz - 0.05, oz))
+            cx = round(px + ox, 3)
+            cz = round(pz + oz, 3)
+            # Verify the carryable is actually on the furniture footprint
+            if abs(cx - px) <= phx and abs(cz - pz) <= phz:
+                manifest.append({
+                    "id": f"{e['category']}_{i}",
+                    "category": e["category"],
+                    "material": e["material"],
+                    "x": cx,
+                    "y": round(top_y + 0.02, 3),
+                    "z": cz,
+                    "yaw": 0.0,
+                    "surface": "on",
+                    "decor": False,
+                })
+            else:
+                # Safety: place on floor if can't fit on furniture
+                fx = (i * 0.25) % 1.5 - 0.75
+                fz = 0.5 + (i * 0.2)
+                manifest.append({
+                    "id": f"{e['category']}_{i}",
+                    "category": e["category"],
+                    "material": e["material"],
+                    "x": round(fx, 3),
+                    "y": 0.02,
+                    "z": round(fz, 3),
+                    "yaw": 0.0,
+                    "surface": "floor",
+                    "decor": False,
+                })
         else:
             # No furniture left — place on floor near origin
             fx = (i * 0.15) % 1.0 - 0.5
@@ -204,20 +231,29 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
     # ── U-4: Chairs-around-tables relational placement ───────
     # After grid placement, if both chairs and tables are present,
     # cluster chairs around the nearest table, facing inward.
+    # Quality B2: chair offset ≥ table_half_depth + chair_half_depth
+    # so chairs tuck to table edge, not under it.
     tables_in_manifest = [e for e in manifest if e["category"] == "table"]
     if tables_in_manifest and any(e["category"] == "chair" for e in manifest):
+        # Use collision sizes for proper footprint offsets
+        table_size = COLLISION_SIZES.get("table", (1.2, 0.6, 0.8))
+        chair_size = COLLISION_SIZES.get("chair", (0.5, 0.9, 0.5))
+        # Chair offset: half the table depth + half the chair depth
+        table_half_depth = table_size[2] / 2.0
+        chair_half_depth = chair_size[2] / 2.0
+        chair_standoff = table_half_depth + chair_half_depth
         for e in manifest:
             if e["category"] == "chair":
                 nearest = min(tables_in_manifest,
                               key=lambda t: (e["x"] - t["x"])**2 + (e["z"] - t["z"])**2)
                 tx, tz = nearest["x"], nearest["z"]
-                # Place chair near table edge, facing toward table
+                # Place chair near table edge
                 dx = e["x"] - tx
                 dz = e["z"] - tz
                 dist = (dx*dx + dz*dz) ** 0.5
                 if dist > 0.01:
-                    # Pull chair to table edge (0.7 m from centre)
-                    scale = 0.7 / dist
+                    # Pull chair to table edge using collision-aware offset
+                    scale = chair_standoff / dist
                     e["x"] = round(tx + dx * scale, 3)
                     e["z"] = round(tz + dz * scale, 3)
                     # Chair faces table: yaw = atan2 toward table

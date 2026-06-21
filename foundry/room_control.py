@@ -267,24 +267,30 @@ def apply_rules(
             else:
                 p["material"] = allowed_palette[0]
 
-    # EB-7: Force-fabric on at least one decor prop when theme supports fabric.
-    # The LLM always picks palette[0] for decor, so rugs stay non-fabric even
-    # in fabric-rich themes (kitchen, noble, tavern).  If the palette has fabric
-    # AND at least one rug exists, swap it to fabric so fabric actually surfaces.
+    # Quality C: Force-fabric on rugs for ALL themes.
+    # If the theme palette has fabric, use it.  If not, inject a fabric
+    # material (linen by default) so rugs never render as stone/metal.
+    # The LLM always picks palette[0] for decor, so rugs stay non-fabric
+    # without this guard.
     fabric_in_palette = [m for m in allowed_palette if m in _FABRIC_MATERIALS]
-    if fabric_in_palette:
-        for p in decor_props:
-            if p.get("category") == "rug" and p.get("material") not in _FABRIC_MATERIALS:
+    for p in decor_props:
+        if p.get("category") == "rug" and p.get("material") not in _FABRIC_MATERIALS:
+            if fabric_in_palette:
                 p["material"] = fabric_in_palette[0]
-                decisions.append(DecisionPoint(
-                    code="room.fabric_on_decor",
-                    technical=f"rug material → {fabric_in_palette[0]}",
-                    plain=f"Applied {fabric_in_palette[0]} to rug (fabric-eligible theme)",
-                    stage="control", severity="assumption",
-                    context={"material": fabric_in_palette[0]},
-                    choices=[Choice(label="Accept", plain="Accept", apply={})],
-                ))
-                break  # only one rug needs fabric to prove the feature
+                injected = fabric_in_palette[0]
+            else:
+                # Theme has no fabric — inject linen so rugs aren't stone/metal
+                p["material"] = "linen"
+                injected = "linen"
+            decisions.append(DecisionPoint(
+                code="room.fabric_on_decor",
+                technical=f"rug material → {injected}",
+                plain=f"Applied {injected} to rug (fabric guard)",
+                stage="control", severity="assumption",
+                context={"material": injected},
+                choices=[Choice(label="Accept", plain="Accept", apply={})],
+            ))
+            break  # one rug with fabric proves the feature
 
     if dropped_cats:
         decisions.append(DecisionPoint(
@@ -465,12 +471,19 @@ def apply_rules(
 # Fog: (color_r, color_g, color_b, density, light_energy)
 # Exposure: brightness multiplier (1.0 = neutral)
 
+# Quality A: Interior lighting per-theme — warm ceiling-mounted OmniLight3D
+# colour + energy.  Emitted by scene_compiler per room area.
+# Also: ambient_light_energy raised ≥ 0.4; directional demoted to fill.
+
 LIGHTING_TABLE: Dict[str, dict] = {
     "hermit": {
         "directional_color": (1.0, 0.9, 0.75),
-        "directional_energy": 2.5,
-        "ambient_color": (0.18, 0.16, 0.12, 1.0),
+        "directional_energy": 1.2,
+        "ambient_color": (0.22, 0.2, 0.16, 1.0),
+        "ambient_light_energy": 0.55,
         "background_color": (0.08, 0.06, 0.04, 1.0),
+        "interior_light_color": (1.0, 0.7, 0.35),
+        "interior_light_energy": 1.8,
         "fog_color": (0.35, 0.28, 0.2, 1.0),
         "fog_density": 0.012,
         "fog_light_energy": 0.6,
@@ -478,9 +491,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "blacksmith": {
         "directional_color": (1.0, 0.7, 0.4),
-        "directional_energy": 3.5,
-        "ambient_color": (0.2, 0.12, 0.06, 1.0),
+        "directional_energy": 1.8,
+        "ambient_color": (0.24, 0.16, 0.1, 1.0),
+        "ambient_light_energy": 0.55,
         "background_color": (0.1, 0.05, 0.02, 1.0),
+        "interior_light_color": (1.0, 0.6, 0.2),
+        "interior_light_energy": 2.2,
         "fog_color": (0.45, 0.22, 0.08, 1.0),
         "fog_density": 0.02,
         "fog_light_energy": 0.8,
@@ -488,9 +504,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "wizard": {
         "directional_color": (0.6, 0.7, 1.0),
-        "directional_energy": 2.0,
-        "ambient_color": (0.1, 0.1, 0.2, 1.0),
+        "directional_energy": 1.0,
+        "ambient_color": (0.14, 0.14, 0.24, 1.0),
+        "ambient_light_energy": 0.5,
         "background_color": (0.04, 0.04, 0.1, 1.0),
+        "interior_light_color": (0.5, 0.6, 1.0),
+        "interior_light_energy": 1.5,
         "fog_color": (0.12, 0.14, 0.35, 1.0),
         "fog_density": 0.015,
         "fog_light_energy": 0.5,
@@ -498,9 +517,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "kitchen": {
         "directional_color": (1.0, 0.95, 0.8),
-        "directional_energy": 2.8,
-        "ambient_color": (0.2, 0.18, 0.14, 1.0),
+        "directional_energy": 1.4,
+        "ambient_color": (0.24, 0.22, 0.18, 1.0),
+        "ambient_light_energy": 0.6,
         "background_color": (0.08, 0.07, 0.05, 1.0),
+        "interior_light_color": (1.0, 0.8, 0.45),
+        "interior_light_energy": 2.0,
         "fog_color": (0.3, 0.25, 0.18, 1.0),
         "fog_density": 0.008,
         "fog_light_energy": 0.7,
@@ -508,9 +530,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "noble": {
         "directional_color": (1.0, 0.85, 0.65),
-        "directional_energy": 3.0,
-        "ambient_color": (0.15, 0.12, 0.08, 1.0),
+        "directional_energy": 1.5,
+        "ambient_color": (0.18, 0.16, 0.12, 1.0),
+        "ambient_light_energy": 0.55,
         "background_color": (0.06, 0.04, 0.02, 1.0),
+        "interior_light_color": (1.0, 0.7, 0.3),
+        "interior_light_energy": 2.4,
         "fog_color": (0.25, 0.2, 0.1, 1.0),
         "fog_density": 0.01,
         "fog_light_energy": 0.6,
@@ -518,9 +543,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "dungeon": {
         "directional_color": (0.5, 0.55, 0.7),
-        "directional_energy": 1.2,
-        "ambient_color": (0.06, 0.06, 0.1, 1.0),
-        "background_color": (0.02, 0.02, 0.04, 1.0),
+        "directional_energy": 0.6,
+        "ambient_color": (0.1, 0.1, 0.14, 1.0),
+        "ambient_light_energy": 0.4,
+        "background_color": (0.03, 0.03, 0.06, 1.0),
+        "interior_light_color": (0.6, 0.5, 0.35),
+        "interior_light_energy": 1.2,
         "fog_color": (0.08, 0.08, 0.13, 1.0),
         "fog_density": 0.03,
         "fog_light_energy": 0.3,
@@ -528,9 +556,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "attic": {
         "directional_color": (0.9, 0.85, 0.8),
-        "directional_energy": 1.8,
-        "ambient_color": (0.12, 0.11, 0.1, 1.0),
+        "directional_energy": 1.0,
+        "ambient_color": (0.16, 0.15, 0.14, 1.0),
+        "ambient_light_energy": 0.45,
         "background_color": (0.05, 0.04, 0.03, 1.0),
+        "interior_light_color": (0.95, 0.7, 0.35),
+        "interior_light_energy": 1.4,
         "fog_color": (0.25, 0.22, 0.15, 1.0),
         "fog_density": 0.018,
         "fog_light_energy": 0.5,
@@ -538,9 +569,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "ship": {
         "directional_color": (0.7, 0.8, 1.0),
-        "directional_energy": 2.2,
-        "ambient_color": (0.1, 0.13, 0.18, 1.0),
+        "directional_energy": 1.1,
+        "ambient_color": (0.14, 0.16, 0.22, 1.0),
+        "ambient_light_energy": 0.5,
         "background_color": (0.04, 0.06, 0.1, 1.0),
+        "interior_light_color": (0.75, 0.7, 0.5),
+        "interior_light_energy": 1.6,
         "fog_color": (0.15, 0.2, 0.3, 1.0),
         "fog_density": 0.014,
         "fog_light_energy": 0.55,
@@ -549,9 +583,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     # EB-6: New themes
     "crypt": {
         "directional_color": (0.3, 0.35, 0.5),
-        "directional_energy": 0.8,
-        "ambient_color": (0.03, 0.04, 0.07, 1.0),
-        "background_color": (0.01, 0.01, 0.03, 1.0),
+        "directional_energy": 0.4,
+        "ambient_color": (0.08, 0.09, 0.13, 1.0),
+        "ambient_light_energy": 0.4,
+        "background_color": (0.02, 0.02, 0.05, 1.0),
+        "interior_light_color": (0.4, 0.35, 0.5),
+        "interior_light_energy": 0.9,
         "fog_color": (0.04, 0.05, 0.1, 1.0),
         "fog_density": 0.04,
         "fog_light_energy": 0.2,
@@ -559,9 +596,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "armory": {
         "directional_color": (0.9, 0.75, 0.5),
-        "directional_energy": 3.0,
-        "ambient_color": (0.12, 0.08, 0.05, 1.0),
+        "directional_energy": 1.5,
+        "ambient_color": (0.16, 0.12, 0.09, 1.0),
+        "ambient_light_energy": 0.5,
         "background_color": (0.06, 0.03, 0.02, 1.0),
+        "interior_light_color": (1.0, 0.55, 0.2),
+        "interior_light_energy": 2.0,
         "fog_color": (0.35, 0.18, 0.08, 1.0),
         "fog_density": 0.018,
         "fog_light_energy": 0.7,
@@ -569,9 +609,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "workshop": {
         "directional_color": (1.0, 0.9, 0.7),
-        "directional_energy": 2.2,
-        "ambient_color": (0.18, 0.14, 0.1, 1.0),
+        "directional_energy": 1.1,
+        "ambient_color": (0.22, 0.18, 0.14, 1.0),
+        "ambient_light_energy": 0.55,
         "background_color": (0.07, 0.05, 0.03, 1.0),
+        "interior_light_color": (1.0, 0.75, 0.4),
+        "interior_light_energy": 2.0,
         "fog_color": (0.28, 0.22, 0.14, 1.0),
         "fog_density": 0.012,
         "fog_light_energy": 0.6,
@@ -579,9 +622,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "tavern": {
         "directional_color": (1.0, 0.8, 0.55),
-        "directional_energy": 2.6,
-        "ambient_color": (0.16, 0.1, 0.06, 1.0),
+        "directional_energy": 1.3,
+        "ambient_color": (0.2, 0.14, 0.1, 1.0),
+        "ambient_light_energy": 0.55,
         "background_color": (0.07, 0.04, 0.02, 1.0),
+        "interior_light_color": (1.0, 0.6, 0.25),
+        "interior_light_energy": 2.2,
         "fog_color": (0.3, 0.18, 0.1, 1.0),
         "fog_density": 0.01,
         "fog_light_energy": 0.65,
@@ -589,9 +635,12 @@ LIGHTING_TABLE: Dict[str, dict] = {
     },
     "*": {
         "directional_color": (1.0, 0.95, 0.85),
-        "directional_energy": 2.5,
-        "ambient_color": (0.15, 0.15, 0.2, 1.0),
+        "directional_energy": 1.2,
+        "ambient_color": (0.2, 0.2, 0.24, 1.0),
+        "ambient_light_energy": 0.5,
         "background_color": (0.05, 0.05, 0.1, 1.0),
+        "interior_light_color": (1.0, 0.7, 0.35),
+        "interior_light_energy": 1.8,
         "fog_color": (0.2, 0.18, 0.22, 1.0),
         "fog_density": 0.015,
         "fog_light_energy": 0.5,

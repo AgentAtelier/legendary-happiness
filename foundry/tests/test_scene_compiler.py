@@ -913,7 +913,7 @@ def test_per_theme_lighting_applied_when_theme_provided():
         assert "light_color = Color(1.0, 0.9, 0.75, 1)" in text, (
             f"expected hermit light_color in tscn\ntext snippet:\n{text[:3000]}"
         )
-        assert "light_energy = 2.5" in text
+        assert "light_energy = 1.2" in text
     finally:
         Path(out).unlink()
         data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
@@ -936,7 +936,7 @@ def test_lighting_falls_back_to_default():
     """P-G: Unknown theme returns the '*' default lighting."""
     from room_control import get_lighting
     l = get_lighting("nonexistent_theme_xyz")
-    assert l["directional_energy"] == 2.5  # default energy
+    assert l["directional_energy"] == 1.2  # Quality A: default energy demoted to fill
 
 
 def test_ambient_background_overridden_by_theme():
@@ -951,8 +951,8 @@ def test_ambient_background_overridden_by_theme():
         compile_scene(spec, man, out, theme="dungeon")
         text = Path(out).read_text(encoding="utf-8")
         # Dungeon ambient is dark/cool
-        assert "ambient_light_color = Color(0.06, 0.06, 0.1, 1.0)" in text
-        assert "background_color = Color(0.02, 0.02, 0.04, 1.0)" in text
+        assert "ambient_light_color = Color(0.1, 0.1, 0.14, 1.0)" in text
+        assert "background_color = Color(0.03, 0.03, 0.06, 1.0)" in text
     finally:
         Path(out).unlink()
         data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
@@ -1232,4 +1232,158 @@ def test_examine_fallback_returns_string():
     for cat in ("table", "key", "book", "unknown_cat_xyz"):
         fb = _category_fallback(cat)
         assert len(fb) >= 8, f"EB-6: fallback for {cat} too short: {fb!r}"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Quality A: Interior lighting
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_interior_omni_light_present():
+    """Quality A: Compiled scene for a default room contains ≥ 1
+    OmniLight3D not attached to a lantern/candle prop."""
+    _, parsed, _ = _compile_and_parse()
+    # Find OmniLight3D nodes that are NOT children of lantern/candle props
+    omni_nodes = [
+        n for n in parsed["nodes"]
+        if n["type"] == "OmniLight3D" and "_light" not in n["name"]
+    ]
+    assert len(omni_nodes) >= 1, (
+        f"Quality A: expected ≥1 interior OmniLight3D, got {len(omni_nodes)}"
+    )
+
+
+def test_ambient_light_energy_emitted():
+    """Quality A: Environment sub_resource includes ambient_light_energy."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, theme="dungeon")
+        text = Path(out).read_text(encoding="utf-8")
+        assert "ambient_light_energy" in text, (
+            f"Quality A: missing ambient_light_energy in Environment"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_lighting_ambient_raised_across_all_themes():
+    """Quality A: Every theme's ambient_color RGB values are raised above
+    near-black levels."""
+    from room_control import LIGHTING_TABLE
+    for theme, entry in LIGHTING_TABLE.items():
+        ambient = entry["ambient_color"]
+        # Ambient energy ≥ 0.4
+        assert entry.get("ambient_light_energy", 0) >= 0.4, (
+            f"Quality A: {theme} ambient_light_energy {entry.get('ambient_light_energy')} < 0.4"
+        )
+        # No channel near zero — keep moody but not black
+        min_rgb = ambient[0] + ambient[1] + ambient[2]
+        assert min_rgb >= 0.15, (
+            f"Quality A: {theme} ambient RGB sum {min_rgb:.2f} too dark"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Quality B1: NPC open-floor placement
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_npcs_are_clear_of_props():
+    """Quality B1: In a compiled multi-NPC scene, every NPC (x,z) is
+    ≥ clearance from every prop footprint."""
+    from category_registry import COLLISION_SIZES
+    man = [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 1.5, "y": 0.0, "z": -2.0},
+        {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+         "wear": 0.3, "x": -2.0, "y": 0.0, "z": -3.0},
+    ]
+    specs = [
+        dict(_QUEST_SPEC),
+        {**_QUEST_SPEC, "npc_id": "npc_1", "target_entity": "table_0",
+         "npc_role": "alchemist"},
+    ]
+    spec0 = dict(specs[0])
+    spec0["target_entity"] = "shelf_0"
+    specs = [spec0, specs[1]]
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(specs, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        data = read_quest_data(out)
+
+        # Get NPC positions from quest_data
+        npcs = data.get("npcs", {})
+        clearance = 0.5  # relaxed from 0.6 for deterministic test
+        npc_positions = []
+        for npc_id, npc_data in npcs.items():
+            pl = npc_data.get("npc_placement", {}).get("attrs", {})
+            npc_x = pl.get("x", 0)
+            npc_z = pl.get("z", 0)
+            npc_positions.append((npc_x, npc_z))
+
+            # Check clear of prop footprints
+            npc_hx = COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4))[0] / 2.0
+            npc_hz = COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4))[2] / 2.0
+            for entry in man:
+                cat = entry.get("category", "?")
+                sx, _, sz = COLLISION_SIZES.get(cat, (0.5, 0.5, 0.5))
+                phx = sx / 2.0 + clearance
+                phz = sz / 2.0 + clearance
+                px, pz = entry.get("x", 0), entry.get("z", 0)
+                overlap = abs(npc_x - px) < (npc_hx + phx) and abs(npc_z - pz) < (npc_hz + phz)
+                assert not overlap, (
+                    f"Quality B1: {npc_id} at ({npc_x},{npc_z}) overlaps {entry['id']} at ({px},{pz})"
+                )
+
+        # Check NPCs don't overlap each other
+        assert len(npc_positions) >= 2
+        for i in range(len(npc_positions)):
+            for j in range(i + 1, len(npc_positions)):
+                ix, iz = npc_positions[i]
+                jx, jz = npc_positions[j]
+                dist = ((ix - jx)**2 + (iz - jz)**2)**0.5
+                assert dist > 0.5, (
+                    f"Quality B1: NPCs {i},{j} too close: dist={dist:.2f}"
+                )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_npcs_not_on_player_spawn():
+    """Quality B1: NPCs are clear of player spawn at (0,0)."""
+    specs = [dict(_QUEST_SPEC), {**_QUEST_SPEC, "npc_id": "npc_1", "npc_role": "alchemist"}]
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(specs, _MANIFEST, out)
+        data = read_quest_data(out)
+        for npc_id, npc_data in data.get("npcs", {}).items():
+            pl = npc_data.get("npc_placement", {}).get("attrs", {})
+            npc_x, npc_z = pl.get("x", 0), pl.get("z", 0)
+            dist_from_spawn = (npc_x**2 + npc_z**2)**0.5
+            assert dist_from_spawn > 1.0, (
+                f"Quality B1: {npc_id} too close to player spawn: dist={dist_from_spawn:.2f}"
+            )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
 

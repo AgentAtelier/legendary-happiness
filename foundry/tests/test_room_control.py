@@ -213,3 +213,50 @@ def test_apply_rules_decor_clamped_to_palette():
     mat = rug[0]["material"]
     kitchen_palette = ["worn_oak", "wrought_iron", "linen"]
     assert mat in kitchen_palette, f"rug material {mat} not in kitchen palette"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Quality C: Rug always fabric, never stone/metal
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_rug_is_fabric_in_workshop_theme():
+    """Quality C: Workshop theme has no fabric in palette, but rug
+    must still resolve to a fabric material (never rough_granite)."""
+    from room_control import apply_rules
+    plan = {"room_size": {"w": 8, "d": 8}, "props": [
+        {"category": "table", "material": "worn_oak", "count": 2},
+        {"category": "shelf", "material": "worn_oak", "count": 1},
+        {"category": "rug", "material": "rough_granite", "count": 1},
+    ]}
+    clamped, decisions = apply_rules(plan, "a workshop")
+    rug = [p for p in clamped["props"] if p["category"] == "rug"]
+    assert rug, "rug should still be present"
+    mat = rug[0]["material"]
+    assert mat in ("linen", "wool", "silk"), (
+        f"Quality C: workshop rug should be fabric, got {mat}"
+    )
+    assert any(d.code == "room.fabric_on_decor" for d in decisions), (
+        "Quality C: should emit fabric_on_decor DP"
+    )
+
+
+def test_rug_is_fabric_across_all_themes():
+    """Quality C: For every THEME_TABLE theme, a room containing a rug
+    yields the rug with a material in the fabric family."""
+    from room_control import apply_rules, THEME_TABLE
+    _FABRIC = frozenset({"linen", "wool", "silk"})
+    for row in THEME_TABLE:
+        theme = row["theme"]
+        # Build a minimal plan with rug + required furniture
+        props = [{"category": "rug", "material": row["allowed_palette"][0], "count": 1}]
+        for cat in list(row["required_categories"])[:3]:
+            if cat != "rug":
+                props.append({"category": cat, "material": row["allowed_palette"][0], "count": 1})
+        plan = {"room_size": {"w": 8, "d": 8}, "props": props}
+        clamped, _ = apply_rules(plan, f"a {theme}")
+        rug = [p for p in clamped["props"] if p["category"] == "rug"]
+        assert rug, f"Quality C: {theme}: rug should still be present"
+        mat = rug[0]["material"]
+        assert mat in _FABRIC, (
+            f"Quality C: {theme} rug material {mat} not in fabric family"
+        )

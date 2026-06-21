@@ -122,3 +122,103 @@ def test_layout_npc_count_default_1():
     manifest, _, _ = layout_room(plan)  # no npc_count arg
     carry = [e for e in manifest if e["category"] in CARRYABLES and not e.get("decor")]
     assert len(carry) >= 1, "backward-compat: should inject at least 1 carryable"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Quality B2: Chair offset, carryable surface-snap, prop distribution
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_chair_not_under_table():
+    """Quality B2: Chair offset ≥ table_half_depth + chair_half_depth
+    so chairs tuck to table edge, not under it."""
+    from category_registry import COLLISION_SIZES
+    table_size = COLLISION_SIZES.get("table", (1.2, 0.6, 0.8))
+    chair_size = COLLISION_SIZES.get("chair", (0.5, 0.9, 0.5))
+    table_half_z = table_size[2] / 2.0  # 0.4
+    chair_half_z = chair_size[2] / 2.0  # 0.25
+    min_standoff = table_half_z + chair_half_z  # 0.65
+
+    plan = {"room_size": {"w": 10.0, "d": 10.0},
+            "props": [
+                {"category": "table", "material": "worn_oak", "count": 1},
+                {"category": "chair", "material": "worn_oak", "count": 2},
+            ]}
+    manifest, _, _ = layout_room(plan)
+    tables = [e for e in manifest if e["category"] == "table"]
+    chairs = [e for e in manifest if e["category"] == "chair"]
+    assert tables, "expected at least 1 table"
+    assert len(chairs) == 2, f"expected 2 chairs, got {len(chairs)}"
+    for chair in chairs:
+        # Find assigned table (nearest)
+        nearest = min(tables, key=lambda t: (chair["x"] - t["x"])**2 + (chair["z"] - t["z"])**2)
+        dist = ((chair["x"] - nearest["x"])**2 + (chair["z"] - nearest["z"])**2)**0.5
+        assert dist >= min_standoff - 0.01, (
+            f"Quality B2: chair at ({chair['x']},{chair['z']}) is {dist:.3f}m "
+            f"from table at ({nearest['x']},{nearest['z']}), need ≥{min_standoff:.2f}"
+        )
+
+
+def test_carryables_on_real_surface_or_floor():
+    """Quality B2: Every carryable's y equals a real host-surface top
+    with (x,z) inside that host's footprint, OR it's a floor item at
+    floor height."""
+    from category_registry import COLLISION_SIZES, FURNITURE_TOP_Y, CARRYABLES as _CARR
+    plan = {"room_size": {"w": 8.0, "d": 8.0},
+            "props": [
+                {"category": "table", "material": "worn_oak", "count": 2},
+                {"category": "shelf", "material": "rough_granite", "count": 1},
+                {"category": "key", "material": "wrought_iron", "count": 2},
+                {"category": "book", "material": "worn_oak", "count": 1},
+            ]}
+    manifest, _, _ = layout_room(plan)
+    furniture = [e for e in manifest if e["category"] not in ("rug", "painting", "key", "book", "gem", "cup", "bottle", "scroll", "coin-pouch", "candle", "dagger", "ring")]
+    carryables = [e for e in manifest if e.get("category") in _CARR and not e.get("decor")]
+    for carry in carryables:
+        if carry.get("surface") == "floor":
+            # Floor items should be near y=0
+            assert carry["y"] < 0.1, (
+                f"Quality B2: floor carryable {carry['id']} at y={carry['y']}, expected <0.1"
+            )
+        elif carry.get("surface") == "on":
+            # Find the host furniture
+            cx, cz = carry["x"], carry["z"]
+            found_host = False
+            for furn in furniture:
+                pcat = furn["category"]
+                psx, _, psz = COLLISION_SIZES.get(pcat, (1.0, 1.0, 1.0))
+                phx, phz = psx / 2.0, psz / 2.0
+                if abs(cx - furn["x"]) <= phx and abs(cz - furn["z"]) <= phz:
+                    expected_y = FURNITURE_TOP_Y.get(pcat, 0.8) + 0.02
+                    assert abs(carry["y"] - expected_y) < 0.01, (
+                        f"Quality B2: {carry['id']} on '{furn['id']}' at y={carry['y']}, "
+                        f"expected y≈{expected_y}"
+                    )
+                    found_host = True
+                    break
+            assert found_host, (
+                f"Quality B2: {carry['id']} at ({cx},{cz}) has surface='on' "
+                f"but not inside any furniture footprint"
+            )
+
+
+def test_props_distributed_across_room():
+    """Quality B2: Placed props occupy cells in ≥ 3 of the 4 room
+    quadrants (not all clustered in one quadrant)."""
+    plan = {"room_size": {"w": 8.0, "d": 8.0},
+            "props": [
+                {"category": "table", "material": "worn_oak", "count": 2},
+                {"category": "chair", "material": "worn_oak", "count": 2},
+                {"category": "shelf", "material": "rough_granite", "count": 1},
+            ]}
+    manifest, _, _ = layout_room(plan)
+    # Non-decor, non-underlay furniture props
+    props = [e for e in manifest if not e.get("decor") and e.get("surface") != "underlay"]
+    # Count quadrants (NE, NW, SE, SW)
+    quadrants = set()
+    for e in props:
+        qx = "E" if e["x"] >= 0 else "W"
+        qz = "S" if e["z"] >= 0 else "N"
+        quadrants.add(f"{qz}{qx}")
+    assert len(quadrants) >= 3, (
+        f"Quality B2: props occupy {len(quadrants)} quadrants ({sorted(quadrants)}), need ≥3"
+    )
