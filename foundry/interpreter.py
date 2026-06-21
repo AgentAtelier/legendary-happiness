@@ -5,12 +5,17 @@ the user never learns a secret grammar.  Mirrors the planner pattern:
 injectable LLM, build_prompt (injects closed vocabularies), parse
 (raw_decode — never json.loads on a slice), interpret (never raises).
 
-Two hard-won lessons baked in:
+Three hard-won lessons baked in:
   1. Never ``llm(prompt, None)`` — ``None`` applies the default asset
-     grammar.  Pass ``""`` for free-form output.
+     grammar.  Pass ``""`` for free-form output, or ``json_schema=...``
+     for structured-output constraint (Spine Fix).
   2. Never ``json.loads(text[start:])`` — use
      ``json.JSONDecoder().raw_decode(text[start:])`` so trailing prose /
      unclosed ``<think>`` blocks don't blow up the parse.
+  3. The json_schema path (Spine Fix) is preferred for structured JSON
+     output: constraining the model prevents verbose thinkers (14B/27B)
+     from rambling in prose, which made ``parse()`` fail and souls
+     never engage.
 """
 
 from __future__ import annotations
@@ -19,7 +24,7 @@ import json
 import re
 from typing import Callable, List, Optional, Tuple
 
-from brief import THEMES, CATEGORIES, VALID_SCALES, minimal, validate_brief
+from brief import THEMES, CATEGORIES, VALID_SCALES, minimal, validate_brief, brief_json_schema
 from decisions import Choice, DecisionPoint, make_decision
 
 
@@ -151,11 +156,15 @@ class Interpreter:
         """
         decisions: List[DecisionPoint] = []
 
-        # Call the LLM with grammar="" (empty string, NOT None).
-        # None would apply the default asset-spec GBNF, silently
-        # straitjacketing the model into {asset_id, generator, params}.
+        # Call the LLM with json_schema to constrain output to the Brief
+        # shape (json_schema wins over grammar).  This replaces the old
+        # grammar="" pattern — verbose thinkers (14B/27B) rambled in prose
+        # without constraint, making parse() fail and souls never engage.
         try:
-            raw_text = llm(self.build_prompt(prompt), "")
+            raw_text = llm(
+                self.build_prompt(prompt),
+                json_schema=brief_json_schema(),
+            )
         except Exception as exc:
             decisions.append(
                 make_decision(

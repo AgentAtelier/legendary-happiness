@@ -121,7 +121,8 @@ def test_interpret_valid_json_passthrough():
     from interpreter import Interpreter
     from brief import THEMES
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return json.dumps({
             "theme_tag": "blacksmith",
             "scale": "medium",
@@ -153,7 +154,8 @@ def test_interpret_parse_fallback():
     from interpreter import Interpreter
     from brief import THEMES
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return "not json at all"
 
     interp = Interpreter()
@@ -169,16 +171,19 @@ def test_interpret_parse_fallback():
     assert dp.severity == "error"
 
 
-def test_interpret_passes_empty_string_as_grammar():
-    """interpret() MUST pass \"\" (not None) as the grammar argument
-    so the LLM produces free-form output.  None would trigger the
-    default asset-spec GBNF, silently straitjacketing every model."""
+def test_interpret_passes_json_schema_to_llm():
+    """Spine Fix: interpret() MUST pass json_schema=brief_json_schema()
+    to constrain structured output.  The old grammar="" path let verbose
+    thinkers (14B/27B) ramble in prose, making parse() fail and souls
+    never engage."""
     from interpreter import Interpreter
+    from brief import brief_json_schema
 
-    seen: list[Optional[str]] = []
+    seen_schemas: list = []
 
-    def capturing_llm(prompt: str, grammar: Optional[str]) -> str:
-        seen.append(grammar)
+    def capturing_llm(prompt: str, grammar: Optional[str] = None,
+                      json_schema: Optional[dict] = None) -> str:
+        seen_schemas.append(json_schema)
         return json.dumps({
             "theme_tag": "wizard",
             "scale": "medium",
@@ -187,18 +192,21 @@ def test_interpret_passes_empty_string_as_grammar():
     interp = Interpreter()
     interp.interpret("mystical study", capturing_llm)
 
-    assert len(seen) == 1
-    assert seen[0] == "", (
-        f"interpret() must pass \"\" for free-form output, got {seen[0]!r}. "
-        f"None would apply the default asset grammar."
+    assert len(seen_schemas) == 1
+    assert seen_schemas[0] is not None, (
+        f"interpret() must pass a json_schema to constrain output, "
+        f"got {seen_schemas[0]!r}"
     )
+    assert seen_schemas[0]["type"] == "object"
+    assert "theme_tag" in seen_schemas[0]["properties"]
 
 
 def test_interpret_llm_exception_handled():
     """LLM raises an exception → Brief.minimal + parse_fallback, no raise."""
     from interpreter import Interpreter
 
-    def crashing_llm(prompt: str, grammar: Optional[str]) -> str:
+    def crashing_llm(prompt: str, grammar: Optional[str] = None,
+                     json_schema: Optional[dict] = None) -> str:
         raise RuntimeError("LLM server down")
 
     interp = Interpreter()
@@ -213,7 +221,8 @@ def test_interpret_valid_with_unmapped_features():
     """Stub returns features with unknown categories → unmapped in Brief."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return json.dumps({
             "theme_tag": "kitchen",
             "scale": "large",
@@ -236,7 +245,8 @@ def test_interpret_star_theme_passthrough():
     """Valid Brief with theme_tag=\"*\" is accepted without error."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return json.dumps({
             "theme_tag": "*",
             "scale": "large",
@@ -256,7 +266,8 @@ def test_interpret_extracts_characters():
     from interpreter import Interpreter
     from soul import default_soul
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return json.dumps({
             "theme_tag": "blacksmith",
             "scale": "medium",
@@ -284,7 +295,8 @@ def test_interpret_no_characters_stays_empty():
     """Interpreter returns no characters → characters stays []."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return json.dumps({
             "theme_tag": "tavern",
             "scale": "medium",
@@ -299,7 +311,8 @@ def test_interpret_character_with_soul():
     """Interpreter stub returns a character with soul → soul survives into Brief."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str]) -> str:
+    def fake_llm(prompt: str, grammar: Optional[str] = None,
+                 json_schema: Optional[dict] = None) -> str:
         return json.dumps({
             "theme_tag": "blacksmith",
             "scale": "medium",

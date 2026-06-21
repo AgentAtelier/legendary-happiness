@@ -174,7 +174,8 @@ def test_parse_no_json_raises():
 
 # ── Fake LLMs ────────────────────────────────────────────────────
 
-def _fake_llm_valid(prompt: str, grammar: str | None) -> str:
+def _fake_llm_valid(prompt: str, grammar: str | None = None,
+                     json_schema: dict | None = None) -> str:
     """Returns a valid quest spec with good dialogue referencing shelf_0."""
     return json.dumps({
         "npc_role": "hermit",
@@ -193,7 +194,8 @@ def _fake_llm_valid(prompt: str, grammar: str | None) -> str:
     })
 
 
-def _fake_llm_dangling(prompt: str, grammar: str | None) -> str:
+def _fake_llm_dangling(prompt: str, grammar: str | None = None,
+                       json_schema: dict | None = None) -> str:
     """Returns a quest spec with a target_entity NOT in the manifest."""
     return json.dumps({
         "npc_role": "hermit",
@@ -212,7 +214,8 @@ def _fake_llm_dangling(prompt: str, grammar: str | None) -> str:
     })
 
 
-def _fake_llm_junk_dialogue(prompt: str, grammar: str | None) -> str:
+def _fake_llm_junk_dialogue(prompt: str, grammar: str | None = None,
+                            json_schema: dict | None = None) -> str:
     """Returns a quest spec with invalid dialogue lines."""
     return json.dumps({
         "npc_role": "hermit",
@@ -231,7 +234,8 @@ def _fake_llm_junk_dialogue(prompt: str, grammar: str | None) -> str:
     })
 
 
-def _fake_llm_short_dialogue(prompt: str, grammar: str | None) -> str:
+def _fake_llm_short_dialogue(prompt: str, grammar: str | None = None,
+                              json_schema: dict | None = None) -> str:
     """Returns a quest spec with dialogue lines that pass length but
     fail quest-relevance (no quest word, no category mention)."""
     return json.dumps({
@@ -838,7 +842,7 @@ def test_plan_multi_recovers_from_malformed_json():
     """C-4 robustness: a weak model's malformed multi-NPC JSON must not crash —
     every NPC still gets a winnable quest with a distinct target."""
     planner = QuestBehaviourPlanner()
-    bad_llm = lambda prompt, grammar=None: "{not valid json at all"
+    bad_llm = lambda prompt, grammar=None, **kw: "{not valid json at all"
     specs, decisions = planner.plan_multi("a tavern", _MANIFEST_4, bad_llm, npc_count=2)
     assert len(specs) == 2
     targets = [s["target_entity"] for s in specs]
@@ -846,32 +850,33 @@ def test_plan_multi_recovers_from_malformed_json():
     assert len(set(targets)) == 2  # distinct targets per NPC
 
 
-def test_plan_multi_calls_llm_with_no_grammar_not_none():
-    """plan_multi MUST pass an empty-string grammar (== no grammar), NOT None.
+def test_plan_multi_calls_llm_with_json_schema_not_empty_grammar():
+    """Spine Fix: plan_multi MUST pass a json_schema to constrain output,
+    NOT grammar="" (the old ungrammared path let verbose thinkers ramble
+    in prose, collapsing every model to canned fallbacks).
 
-    FoundryLLM expands grammar=None to its default ASSET-spec GBNF, which
-    straitjackets the model into {asset_id, generator, params} and made every
-    model's multi-NPC dialogue collapse to canned fallbacks. The contract is:
-    multi-NPC generation is ungrammared, expressed as grammar="".
-
-    Spine Slice 2: the grammared fallback also calls plan() with _GRAMMAR,
-    so there may be two LLM calls.  We only verify the multi-call was
-    ungrammared.
+    The contract is: multi-NPC generation is constrained via json_schema,
+    whose 'required' lists all npc_ids.
     """
     planner = QuestBehaviourPlanner()
-    seen: list = []
+    seen_calls: list = []
 
-    def capturing(prompt, grammar=None):
-        seen.append(grammar)
+    def capturing(prompt, grammar=None, json_schema=None):
+        seen_calls.append((grammar, json_schema))
         return "{}"
 
     planner.plan_multi("a tavern", _MANIFEST_4, capturing, npc_count=2)
 
-    # The first call (multi-NPC) MUST be grammar=""
-    assert len(seen) >= 1
-    assert seen[0] == "", (
-        f"expected first call grammar='' (no grammar), got {seen[0]!r} — "
-        "None would trigger FoundryLLM's default asset grammar"
+    # The first call (multi-NPC) MUST pass a json_schema
+    assert len(seen_calls) >= 1
+    grammar_arg, schema_arg = seen_calls[0]
+    assert schema_arg is not None, (
+        f"expected json_schema to be set, got {schema_arg!r}"
+    )
+    assert schema_arg["type"] == "object"
+    # required must list all npc_ids
+    assert set(schema_arg["required"]) == {"npc_0", "npc_1"}, (
+        f"json_schema.required={schema_arg['required']} missing npc_ids"
     )
 
 
@@ -906,7 +911,7 @@ def test_plan_multi_back_compat_string_input():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def fake_multi_llm(prompt, grammar=None):
+    def fake_multi_llm(prompt, grammar=None, json_schema=None, **kw):
         return json.dumps({
             "npc_0": {
                 "npc_role": "tavern_keeper",
@@ -940,7 +945,7 @@ def test_plan_multi_brief_seeded_roles():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def fake_multi_llm(prompt, grammar=None):
+    def fake_multi_llm(prompt, grammar=None, json_schema=None, **kw):
         # Model returns "villager" roles — should be overridden by Brief
         return json.dumps({
             "npc_0": {
@@ -980,7 +985,7 @@ def test_plan_multi_brief_characters_with_empty_model_roles():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def fake_multi_llm(prompt, grammar=None):
+    def fake_multi_llm(prompt, grammar=None, json_schema=None):
         return json.dumps({
             "npc_0": {
                 "npc_role": "",
@@ -1019,7 +1024,7 @@ def test_plan_multi_grammared_fallback_for_missing_npc():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def fake_multi_llm(prompt, grammar=None):
+    def fake_multi_llm(prompt, grammar=None, json_schema=None, **kw):
         # Multi-call returns data only for npc_0, npc_1 is missing
         return json.dumps({
             "npc_0": {
@@ -1030,7 +1035,7 @@ def test_plan_multi_grammared_fallback_for_missing_npc():
             },
         })
 
-    def fake_single_llm(prompt, grammar=None):
+    def fake_single_llm(prompt, grammar=None, json_schema=None, **kw):
         return json.dumps({
             "npc_role": "shopkeeper",
             "target_entity": "gem_0",
@@ -1089,7 +1094,7 @@ def test_plan_multi_both_multi_and_grammared_fail():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def bad_llm(prompt, grammar=None):
+    def bad_llm(prompt, grammar=None, json_schema=None, **kw):
         return "{not valid json at all"
 
     # Both calls fail — this should route through missing_npc
@@ -1151,7 +1156,7 @@ def test_plan_multi_prompt_contains_tone_from_soul():
 
     captured_prompt: list[str] = []
 
-    def capturing_llm(prompt, grammar=None):
+    def capturing_llm(prompt, grammar=None, json_schema=None, **kw):
         captured_prompt.append(prompt)
         return json.dumps({
             "npc_0": {
@@ -1192,7 +1197,7 @@ def test_plan_multi_every_spec_has_soul_key():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def fake_multi_llm(prompt, grammar=None):
+    def fake_multi_llm(prompt, grammar=None, json_schema=None, **kw):
         return json.dumps({
             "npc_0": {
                 "npc_role": "hermit",
@@ -1239,7 +1244,7 @@ def test_plan_multi_different_tones_from_opposite_courage():
 
     captured_prompt: list[str] = []
 
-    def capturing_llm(prompt, grammar=None):
+    def capturing_llm(prompt, grammar=None, json_schema=None, **kw):
         captured_prompt.append(prompt)
         return json.dumps({
             "npc_0": {
@@ -1280,7 +1285,7 @@ def test_plan_multi_default_souls_for_nameless_npcs():
         {"id": "gem_0", "category": "gem", "material": "rough_granite"},
     ]
 
-    def fake_multi_llm(prompt, grammar=None):
+    def fake_multi_llm(prompt, grammar=None, json_schema=None):
         return json.dumps({
             "npc_0": {
                 "npc_role": "villager",

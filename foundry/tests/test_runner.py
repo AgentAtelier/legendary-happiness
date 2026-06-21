@@ -155,7 +155,7 @@ def test_forge_from_request_writes_decisions_into_sidecar(tmp_path, monkeypatch)
         "a wooden coffee table",
         str(lexicon),
         str(library_dir),
-        llm=lambda prompt, grammar: _json.dumps({
+        llm=lambda prompt, grammar=None, json_schema=None, **kw: _json.dumps({
             "asset_id": "table",
             "generator": "table",
             # No material field — resolver drives it
@@ -231,7 +231,7 @@ def test_forge_from_request_specific_keyword_carries_no_decision(tmp_path, monke
         "a wrought-iron storage cabinet",
         str(lexicon),
         str(library_dir),
-        llm=lambda prompt, grammar: _json.dumps({
+        llm=lambda prompt, grammar=None, json_schema=None, **kw: _json.dumps({
             "asset_id": "cabinet",
             "generator": "cabinet",
             "params": {

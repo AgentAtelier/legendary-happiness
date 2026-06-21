@@ -198,6 +198,36 @@ Output JSON now:"""
 # roles and unique targets.  The LLM sees all NPC IDs so it can pick
 # non-overlapping targets.
 
+def _multi_npc_json_schema(npc_ids: list[str]) -> dict:
+    """Build a per-*npc_ids* json_schema so the multi-NPC LLM call is
+    constrained to clean dict-of-dicts JSON (the shape that doesn't fit
+    one GBNF but is expressible as a json_schema)."""
+    npc = {
+        "type": "object",
+        "properties": {
+            "npc_role": {"type": "string"},
+            "target_entity": {"type": "string"},
+            "dialogue": {
+                "type": "object",
+                "properties": {
+                    "greet": {"type": "string"},
+                    "ask": {"type": "string"},
+                    "wrong": {"type": "string"},
+                    "thank": {"type": "string"},
+                },
+                "required": ["greet", "ask", "wrong", "thank"],
+            },
+            "idle_barks": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["npc_role", "target_entity", "dialogue"],
+    }
+    return {
+        "type": "object",
+        "properties": {nid: npc for nid in npc_ids},
+        "required": list(npc_ids),
+    }
+
+
 _MULTI_NPC_PROMPT = """You are a quest designer for a small RPG. This room has {npc_count} NPCs, each needing their own fetch quest. Create ONE quest per NPC.
 
 NPC IDs: {npc_ids}
@@ -644,14 +674,14 @@ class QuestBehaviourPlanner:
                 f"{'; '.join(tone_hints)}. "
             )
 
-        # Call LLM with NO grammar — the multi-NPC output is a dict-of-dicts
-        # which doesn't fit a single GBNF schema easily.
-        # ⚠ Pass "" (empty), NOT None: FoundryLLM treats grammar=None as
-        # "use my default grammar" (= the ASSET-spec GBNF), which silently
-        # straitjacketed every model into {asset_id, generator, params} and
-        # made all multi-NPC dialogue collapse to canned fallbacks. An empty
-        # string is falsy → no grammar is sent → the model answers freely.
-        response = llm(prompt, "")
+        # Constrain the multi-NPC call via json_schema so capable models
+        # reliably emit clean dict-of-dicts JSON (the old grammar="" path
+        # let verbose thinkers ramble in prose, collapsing to canned).
+        # json_schema wins over grammar — no grammar key is sent.
+        response = llm(
+            prompt,
+            json_schema=_multi_npc_json_schema(npc_ids),
+        )
 
         # Parse the response. The multi-NPC call is ungrammared (dict-of-dicts
         # doesn't fit one GBNF), so weak/stochastic models often emit malformed

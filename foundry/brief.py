@@ -77,6 +77,59 @@ def minimal(prompt: str) -> dict:
     }
 
 
+# ── json schema (Spine Fix — constrains structured LLM output) ──────
+
+
+def brief_json_schema() -> dict:
+    """Build a json_schema for the Brief shape, importing live vocabularies
+    so it never drifts from the engine's truth."""
+    return {
+        "type": "object",
+        "properties": {
+            "setting": {"type": "string"},
+            "mood": {"type": "array", "items": {"type": "string"}},
+            "scale": {"enum": list(VALID_SCALES)},
+            "theme_tag": {"enum": list(THEMES)},  # 12 themes + "*"
+            "key_features": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"},
+                        "category": {"type": ["string", "null"]},
+                    },
+                    "required": ["text"],
+                },
+            },
+            "characters": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "role": {"type": "string"},
+                        "note": {"type": ["string", "null"]},
+                        "soul": {
+                            "type": "object",
+                            "properties": {
+                                "substrate": {
+                                    "type": "object",
+                                    "properties": {
+                                        "courage": {"type": "number"},
+                                        "generosity": {"type": "number"},
+                                        "stability": {"type": "number"},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "required": ["role"],
+                },
+            },
+        },
+        "required": ["setting", "scale", "theme_tag", "key_features", "characters"],
+    }
+
+
 # ── validate_brief ─────────────────────────────────────────────────
 
 

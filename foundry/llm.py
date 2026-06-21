@@ -66,8 +66,13 @@ class FoundryLLM:
         self._grammar = load_grammar(grammar_path)
         self._seed = seed
 
-    def __call__(self, prompt: str, grammar: Optional[str] = None) -> str:
-        """Generate a response.  Callable signature: (prompt, grammar) -> str.
+    def __call__(
+        self,
+        prompt: str,
+        grammar: Optional[str] = None,
+        json_schema: Optional[dict] = None,
+    ) -> str:
+        """Generate a response.  Callable signature: (prompt, grammar, json_schema) -> str.
 
         Grammar semantics (footgun — read carefully):
           * ``grammar=None``  → fall back to the default asset-spec GBNF.
@@ -77,13 +82,13 @@ class FoundryLLM:
             params} schema.
           * ``grammar=""``    → no grammar sent; the model answers freely.
           * ``grammar="<gbnf>"`` → use that grammar (normalized per-call).
-        """
-        active_grammar = grammar if grammar is not None else self._grammar
-        # Instance grammar is already normalized at load time; only normalize
-        # per-call overrides (which may be raw).
-        if grammar is not None and active_grammar:
-            active_grammar = normalize_gbnf(active_grammar)
 
+        json_schema (new lever — Spine Fix):
+          * When ``json_schema`` is not None, it is set as the
+            ``json_schema`` payload key and NO ``grammar`` key is sent.
+            json_schema wins; they're mutually exclusive.
+          * When ``json_schema=None``: unchanged grammar semantics.
+        """
         payload = {
             "prompt": prompt,
             "temperature": self.temperature,
@@ -92,8 +97,18 @@ class FoundryLLM:
         }
         if self._seed is not None:
             payload["seed"] = self._seed
-        if active_grammar:
-            payload["grammar"] = active_grammar
+
+        # json_schema wins over grammar (mutually exclusive).
+        if json_schema is not None:
+            payload["json_schema"] = json_schema
+        else:
+            active_grammar = grammar if grammar is not None else self._grammar
+            # Instance grammar is already normalized at load time; only normalize
+            # per-call overrides (which may be raw).
+            if grammar is not None and active_grammar:
+                active_grammar = normalize_gbnf(active_grammar)
+            if active_grammar:
+                payload["grammar"] = active_grammar
 
         try:
             response = requests.post(

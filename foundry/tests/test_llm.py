@@ -40,6 +40,20 @@ def _capture_payload(grammar_arg):
     return captured["payload"]
 
 
+def _capture_payload_json_schema(json_schema_arg):
+    """Call FoundryLLM with *json_schema_arg* and return the POSTed JSON payload."""
+    llm = FoundryLLM()
+    captured = {}
+
+    def fake_post(url, json=None, timeout=None):
+        captured["payload"] = json
+        return _FakeResp()
+
+    with patch("llm.requests.post", side_effect=fake_post):
+        llm("a prompt", json_schema=json_schema_arg)
+    return captured["payload"]
+
+
 def test_grammar_none_falls_back_to_default_asset_grammar():
     """grammar=None → the default asset-spec grammar IS sent (documented footgun)."""
     payload = _capture_payload(None)
@@ -61,3 +75,30 @@ def test_grammar_explicit_is_used():
     payload = _capture_payload('root ::= "x"')
     assert "grammar" in payload
     assert payload["grammar"]
+
+
+# ── json_schema tests ───────────────────────────────────────────────
+
+def test_json_schema_sets_json_schema_key_and_no_grammar():
+    """json_schema={'type':'object'} → payload has json_schema, NO grammar."""
+    payload = _capture_payload_json_schema({"type": "object"})
+    assert "json_schema" in payload
+    assert payload["json_schema"] == {"type": "object"}
+    assert "grammar" not in payload
+
+
+def test_json_schema_none_does_not_affect_grammar_paths():
+    """json_schema=None → unchanged: grammar='' sends no grammar key."""
+    llm = FoundryLLM()
+    captured = {}
+
+    def fake_post(url, json=None, timeout=None):
+        captured["payload"] = json
+        return _FakeResp()
+
+    with patch("llm.requests.post", side_effect=fake_post):
+        llm("a prompt", "", json_schema=None)
+
+    payload = captured["payload"]
+    assert "json_schema" not in payload
+    assert "grammar" not in payload  # empty string → no grammar key

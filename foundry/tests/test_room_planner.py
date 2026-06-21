@@ -13,7 +13,7 @@ from room_planner import RoomPlanner
 
 def _stub(plan: dict):
     """Return an llm-shaped callable (prompt, grammar) -> JSON text."""
-    return lambda prompt, grammar=None: json.dumps(plan)
+    return lambda prompt, grammar=None, json_schema=None, **kw: json.dumps(plan)
 
 
 # ── Back-compat: string input still works (wrapped in Brief.minimal) ─
