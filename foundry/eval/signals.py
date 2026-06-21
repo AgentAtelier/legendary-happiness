@@ -381,6 +381,52 @@ def material_conflict_detail(request: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  Spine: brief_valid — Brief schema validation signal (spine slice 1)
+# ═══════════════════════════════════════════════════════════════════════
+
+from brief import THEMES as _BRIEF_THEMES  # noqa: E402
+
+
+def check_brief_valid(brief: dict | None) -> dict:
+    """Return a signal dict for the Brief validity.
+
+    Returns a dict with:
+      - `tag`: "brief_valid" if the Brief passes all checks, else "brief_invalid"
+      - `theme_ok`: bool — theme_tag in THEMES ∪ {"*"}
+      - `scale_ok`: bool — scale in {small, medium, large}
+      - `features_consistent`: bool — every key_feature status matches its category
+    """
+    if not isinstance(brief, dict):
+        return {"tag": "brief_invalid", "theme_ok": False,
+                "scale_ok": False, "features_consistent": False}
+
+    theme_tag = brief.get("theme_tag", "")
+    theme_ok = theme_tag in _BRIEF_THEMES
+
+    scale = brief.get("scale", "")
+    scale_ok = scale in ("small", "medium", "large")
+
+    features_consistent = True
+    for f in brief.get("key_features", []) or []:
+        if not isinstance(f, dict):
+            continue
+        status = f.get("status", "")
+        cat = f.get("category")
+        if status == "mapped" and (cat is None or not isinstance(cat, str)):
+            features_consistent = False
+        if status == "unmapped" and cat is not None:
+            features_consistent = False
+
+    tag = "brief_valid" if (theme_ok and scale_ok and features_consistent) else "brief_invalid"
+    return {
+        "tag": tag,
+        "theme_ok": theme_ok,
+        "scale_ok": scale_ok,
+        "features_consistent": features_consistent,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  P8: quest playability oracle — deterministic quest-level signals
 # ═══════════════════════════════════════════════════════════════════════
 

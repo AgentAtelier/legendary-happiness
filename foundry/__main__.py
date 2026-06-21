@@ -145,25 +145,34 @@ def _cmd_quest(args: list[str]) -> int:
         llm_kwargs["seed"] = parsed.seed
     llm = FoundryLLM(**llm_kwargs)
 
-    # ── Step 0: Plan the room from the prompt (#6) ────────────
+    # ── Spine: Interpret → Brief → RoomPlanner ────────────────
+    from interpreter import Interpreter
     from room_planner import RoomPlanner
     from room_layout import layout_room
     from asset_ensure import ensure_assets
 
-    print(f"[quest] Planning room for: {parsed.request!r}")
+    print(f"[quest] Interpreting prompt: {parsed.request!r}")
     seed = parsed.seed
     if seed is not None:
         print(f"[quest] Seed: {seed}")
-    # T-1: retry-once parse-failure fallback
+
+    interp = Interpreter()
+    brief, interp_decisions = interp.interpret(parsed.request, llm, seed)
+    print(f"[quest] Brief: theme={brief['theme_tag']}  scale={brief['scale']}"
+          f"  features={len(brief['key_features'])}")
+    if brief["unmapped"]:
+        print(f"[quest] Unmapped: {', '.join(brief['unmapped'])}")
+
     room_plan, room_decisions = _plan_room_with_fallback(
-        parsed.request, llm, seed
+        brief, llm, seed
     )
     npc_count = parsed.npc_count
     # C-0: apply theme-based control rules + global guards
     # EB-7: pass npc_count so the multi-NPC carryable guard fires
     from room_control import apply_rules
-    room_plan, control_decisions = apply_rules(room_plan, parsed.request,
-                                                npc_count=npc_count)
+    room_plan, control_decisions = apply_rules(
+        room_plan, f"{brief['setting']} {brief['theme_tag']}", npc_count=npc_count,
+    )
     room_decisions.extend(control_decisions)
     manifest, room_size, layout_decisions = layout_room(room_plan, seed=seed,
                                                          npc_count=npc_count)
@@ -189,7 +198,7 @@ def _cmd_quest(args: list[str]) -> int:
         npc_count=npc_count, seed=seed,
         carryable_ids=carryable_ids,
     )
-    decisions = room_decisions + layout_decisions + ensure_decisions + quest_decisions
+    decisions = interp_decisions + room_decisions + layout_decisions + ensure_decisions + quest_decisions
 
     for spec in specs:
         target = spec.get("target_entity", "?")
@@ -204,9 +213,7 @@ def _cmd_quest(args: list[str]) -> int:
     # P-G: pass the theme to scene_compiler for per-theme lighting.
     from scaffold import scaffold_project
     from pathlib import Path as _Path2
-    from room_control import _match_theme
-    theme_row = _match_theme(parsed.request)
-    room_theme = theme_row.get("theme", "*")
+    room_theme = brief["theme_tag"]
     template_dir = str(_Path2(__file__).resolve().parent / "godot_template")
     build_path = scaffold_project(
         name=parsed.scene,
@@ -230,6 +237,20 @@ def _cmd_quest(args: list[str]) -> int:
     data_path = str(build_path / "scenes" / "main_quest_data.json")
     print(f"[quest] Quest data: {data_path}")
 
+    # ── Spine: Write build report ────────────────────────────
+    from report import render_build_report, build_report_dict
+    report_txt = render_build_report(brief, decisions, manifest)
+    report_dict = build_report_dict(brief, decisions, manifest)
+
+    report_txt_path = build_path / "build_report.txt"
+    report_json_path = build_path / "build_report.json"
+    report_txt_path.write_text(report_txt, encoding="utf-8")
+    report_json_path.write_text(
+        _json.dumps(report_dict, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(report_txt)
+
     # ── Surface any Decision Points ───────────────────────────
     rendered = _render_decisions_cli(decisions)
     if rendered.strip():
@@ -240,7 +261,7 @@ def _cmd_quest(args: list[str]) -> int:
 
 
 def _plan_room_with_fallback(
-    request: str, llm, seed: int | None
+    brief: dict | str, llm, seed: int | None
 ) -> tuple:
     """T-1: Plan a room with retry-once + minimal-default fallback.
 
@@ -254,7 +275,7 @@ def _plan_room_with_fallback(
     planner = RoomPlanner()
 
     try:
-        return planner.plan(request, llm, seed=seed)
+        return planner.plan(brief, llm, seed=seed)
     except ValueError as e:
         print(f"[quest] RoomPlanner parse failure: {e}")
         # T-1: Fall back to minimal default room plan

@@ -1152,6 +1152,86 @@ def test_eb7_signals_in_severity_map():
     assert SIGNAL_SEVERITY.get("fabric_in_fabric_themes") == "low"
 
 
+# ── Spine: brief_valid signal ─────────────────────────────────────────
+
+
+def test_brief_valid_for_clean_minimal_brief():
+    """A Brief.minimal produces brief_valid."""
+    from eval.signals import check_brief_valid
+    from brief import minimal
+
+    b = minimal("a blacksmith's forge")
+    result = check_brief_valid(b)
+    assert result["tag"] == "brief_valid"
+    assert result["theme_ok"] is True
+    assert result["scale_ok"] is True
+    assert result["features_consistent"] is True
+
+
+def test_brief_invalid_for_bad_theme():
+    """A brief with theme_tag outside THEMES → brief_invalid."""
+    from eval.signals import check_brief_valid
+
+    b = {
+        "theme_tag": "lava_cave",
+        "scale": "medium",
+        "key_features": [],
+    }
+    result = check_brief_valid(b)
+    assert result["tag"] == "brief_invalid"
+    assert result["theme_ok"] is False
+
+
+def test_brief_invalid_for_bad_scale():
+    """A brief with invalid scale → brief_invalid."""
+    from eval.signals import check_brief_valid
+
+    b = {
+        "theme_tag": "hermit",
+        "scale": "tiny",
+        "key_features": [],
+    }
+    result = check_brief_valid(b)
+    assert result["tag"] == "brief_invalid"
+    assert result["scale_ok"] is False
+
+
+def test_brief_invalid_for_inconsistent_features():
+    """A mapped feature with null category → features_consistent=False."""
+    from eval.signals import check_brief_valid
+
+    b = {
+        "theme_tag": "wizard",
+        "scale": "medium",
+        "key_features": [
+            {"text": "anvil", "status": "mapped", "category": None},
+        ],
+    }
+    result = check_brief_valid(b)
+    assert result["features_consistent"] is False
+
+
+def test_brief_valid_accepts_star_theme():
+    """'*' theme is valid."""
+    from eval.signals import check_brief_valid
+
+    b = {
+        "theme_tag": "*",
+        "scale": "large",
+        "key_features": [],
+    }
+    result = check_brief_valid(b)
+    assert result["tag"] == "brief_valid"
+
+
+def test_brief_invalid_for_none_brief():
+    """None brief → brief_invalid."""
+    from eval.signals import check_brief_valid
+
+    result = check_brief_valid(None)
+    assert result["tag"] == "brief_invalid"
+
+
 # ── B0: Winnable oracle tests ────────────────────────────────────────
 
 class TestWinnableOracle:
