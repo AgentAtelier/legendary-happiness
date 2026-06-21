@@ -221,6 +221,11 @@ def _cmd_quest(args: list[str]) -> int:
     )
     print(f"[quest] Build scaffolded: {build_path}")
 
+    # B5: Write manifest alongside quest_data for multi-model comparison
+    import json as _json
+    manifest_path = build_path / "scenes" / "main_manifest.json"
+    manifest_path.write_text(_json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
     # Show quest data path
     data_path = str(build_path / "scenes" / "main_quest_data.json")
     print(f"[quest] Quest data: {data_path}")

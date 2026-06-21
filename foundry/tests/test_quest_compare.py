@@ -63,7 +63,7 @@ def test_reset_failed_runs_before_every_swap(monkeypatch):
     monkeypatch.setattr(quest_compare, "_swap_model", fake_swap)
     monkeypatch.setattr(quest_compare, "_wait_for_health", lambda *a, **k: True)
     monkeypatch.setattr(
-        quest_compare, "_run_quest", lambda prompt, scene: (True, "", {})
+        quest_compare, "_run_quest", lambda prompt, scene, npc_count=2: (True, "", {})
     )
 
     rc = quest_compare.run_compare(

@@ -37,6 +37,9 @@ HEALTH_POLL_INTERVAL = 2.0
 
 LLAMA_SERVICE = "forge-llama.service"
 
+# B5: smoke test error cache (populated by _run_godot_smoke on failure)
+_last_smoke_error: str = ""
+
 
 def _get_current_model() -> Optional[str]:
     """Query the hub for the currently-loaded model alias.
@@ -176,7 +179,7 @@ def _wait_for_health(expected_alias: Optional[str] = None) -> bool:
     return False
 
 
-def _run_quest(prompt: str, scene: str) -> Tuple[bool, str, dict]:
+def _run_quest(prompt: str, scene: str, npc_count: int = 2) -> Tuple[bool, str, dict]:
     """Run ``python -m foundry quest`` and capture the spec.
 
     The quest command scaffolds into ``builds/<scene>/``.
@@ -186,6 +189,7 @@ def _run_quest(prompt: str, scene: str) -> Tuple[bool, str, dict]:
         sys.executable, "-m", "foundry", "quest",
         "--request", prompt,
         "--scene", scene,
+        "--npc-count", str(npc_count),
     ]
     print(f"  [quest] running: {' '.join(cmd)}")
     result = subprocess.run(
@@ -229,6 +233,107 @@ def _parse_quest_output(stdout: str) -> dict:
                     spec[key] = line.split(":", 1)[1].strip()
                     break
     return spec
+
+
+
+
+# ── B5: Full-pipeline helpers ────────────────────────────────────
+
+def _compute_quest_signals(scene_name: str) -> dict:
+    """Compute quest eval signals for a generated scene.
+
+    Reads the compiled quest_data.json and manifest from builds/<scene_name>/,
+    constructs a QuestRecord-like dict, and runs compute_quest_signals.
+    Returns {"tags": [...], "ok": bool}.
+    """
+    from types import SimpleNamespace
+
+    builds_dir = Path.cwd() / "builds" / scene_name
+    data_file = builds_dir / "scenes" / "main_quest_data.json"
+    if not data_file.exists():
+        return {"tags": [], "ok": False, "error": "quest_data.json not found"}
+
+    try:
+        from eval.signals import compute_quest_signals
+
+        data = json.loads(data_file.read_text(encoding="utf-8"))
+        manifest = json.loads((builds_dir / "scenes" / "main_manifest.json").read_text(encoding="utf-8")) if (builds_dir / "scenes" / "main_manifest.json").exists() else []
+        quest_specs = [v for _, v in data.get("npcs", {}).items()]
+        qr = SimpleNamespace(
+            error=None, compiled=True, room_theme="", decisions=[],
+            manifest=manifest, quest_specs=quest_specs,
+            quest_spec=quest_specs[0] if quest_specs else None,
+            npc_count=len(quest_specs),
+        )
+
+        tags = compute_quest_signals(qr)
+        return {"tags": sorted(tags), "ok": "quest_build_error" not in tags}
+    except Exception as e:
+        return {"tags": [], "ok": False, "error": str(e)}
+
+
+def _run_godot_smoke(scene_name: str) -> bool:
+    """Run Godot --headless smoke test on the generated scene.
+
+    Uses the probe_playthrough.gd probe (same as test_godot_smoke.py).
+    Returns True if headless loads without script errors.
+    """
+    global _last_smoke_error
+    _last_smoke_error = ""
+
+    builds_dir = Path.cwd() / "builds" / scene_name
+    if not builds_dir.exists():
+        _last_smoke_error = "build dir not found"
+        return False
+
+    tscn = builds_dir / "scenes" / "main.tscn"
+    if not tscn.exists():
+        _last_smoke_error = "main.tscn not found"
+        return False
+
+    result = subprocess.run(
+        ["godot", "--headless", "--path", str(builds_dir), "--quit"],
+        capture_output=True, text=True, timeout=30,
+    )
+    stderr = result.stderr or ""
+    for line in stderr.splitlines():
+        lower = line.lower()
+        if "script error" in lower or "parse error" in lower or "failed to load" in lower:
+            _last_smoke_error = line.strip()[:200]
+            return False
+    return True
+
+
+def _run_playthrough_probe(scene_name: str) -> Tuple[bool, dict]:
+    """Run the Godot headless playthrough probe.
+
+    Uses probe_playthrough.gd to drive a scripted playthrough.
+    Returns (ok, probe_result_dict).
+    """
+    builds_dir = Path.cwd() / "builds" / scene_name
+    tscn = str(builds_dir / "scenes" / "main.tscn")
+    probe = str(Path(__file__).resolve().parent / "godot_template" / "probe_playthrough.gd")
+
+    if not Path(tscn).exists():
+        return False, {"error": "main.tscn not found"}
+    if not Path(probe).exists():
+        return False, {"error": "probe_playthrough.gd not found"}
+
+    result = subprocess.run(
+        ["godot", "--headless", "--path", str(builds_dir), "-s", probe, tscn],
+        capture_output=True, text=True, timeout=60,
+    )
+
+    stdout = result.stdout or ""
+    for line in stdout.splitlines():
+        if line.startswith("PROBE_JSON_OUTPUT:"):
+            try:
+                probe_data = json.loads(line[len("PROBE_JSON_OUTPUT:"):])
+                ok = probe_data.get("ok", False)
+                return ok, probe_data
+            except json.JSONDecodeError:
+                return False, {"error": "probe JSON parse failed", "line": line[:200]}
+    return False, {"error": "no PROBE_JSON_OUTPUT found", "stdout_tail": stdout[-500:]}
 
 
 def _check_model_fit(alias: str) -> dict:
@@ -328,21 +433,28 @@ def _resolve_model_alias(fragment: str) -> str:
     return fragment  # fallback: use fragment as-is
 
 
-def _build_comparison_table(results: list[dict]) -> str:
-    """Build a side-by-side Markdown comparison table from per-model results."""
+def _build_comparison_table(results: list[dict], full_pipeline: bool = False) -> str:
+    """Build a side-by-side Markdown comparison table from per-model results.
+
+    When *full_pipeline* is True, also includes eval signal columns
+    (winnable, distinct_targets, monochrome, fabric, smoke_ok).
+    """
     if not results:
         return "(no results)"
 
     columns = ["npc_role", "target", "greet", "ask", "wrong", "thank"]
+    fp_columns = ["winnable", "targets_distinct", "room_varied", "smoke_ok"]
+    if full_pipeline:
+        columns = columns + fp_columns
     header_cols = ["Model"] + columns
-    col_widths = [max(len(h), 12) for h in header_cols]
+    col_widths = [max(len(h), 8) for h in header_cols]
 
     # Measure column widths
     for r in results:
         spec = r.get("spec", {})
         for i, col in enumerate(columns):
-            width = len(str(spec.get(col, "?")))
-            col_widths[i + 1] = max(col_widths[i + 1], width)
+            val = str(_fp_val(r, col) if full_pipeline and col in fp_columns else spec.get(col, "?"))
+            col_widths[i + 1] = max(col_widths[i + 1], len(val))
 
     divider = "-" * (sum(col_widths) + len(col_widths) * 3 + 1)
 
@@ -357,7 +469,12 @@ def _build_comparison_table(results: list[dict]) -> str:
     for r in results:
         alias = r.get("alias", "?")
         spec = r.get("spec", {})
-        row = [alias] + [str(spec.get(c, "?")) for c in columns]
+        row = [alias]
+        for c in columns:
+            if full_pipeline and c in fp_columns:
+                row.append(str(_fp_val(r, c)))
+            else:
+                row.append(str(spec.get(c, "?")))
         lines.append(fmt_row(row))
 
     lines.append(divider)
@@ -373,12 +490,29 @@ def _build_comparison_table(results: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _fp_val(result: dict, col: str) -> str:
+    """Extract a full-pipeline column value from a result dict."""
+    signals = result.get("signals", {}).get("tags", [])
+    if col == "winnable":
+        return "✓" if "quest_all_npcs_winnable" in signals else "✗"
+    if col == "targets_distinct":
+        return "✓" if "multi_npc_distinct_targets" not in signals else "✗"
+    if col == "room_varied":
+        return "✓" if "room_not_monochrome" in signals else "✗"
+    if col == "smoke_ok":
+        return result.get("smoke_ok", "?")
+    return "?"
+
+
 def run_compare(
     prompt: str,
     fragments: list[str],
     prefix: str,
     dry_run: bool = False,
     original_model: Optional[str] = None,
+    full_pipeline: bool = False,
+    run_playthrough: bool = False,
+    npc_count: int = 2,
 ) -> int:
     """Run the full multi-model comparison.
 
@@ -459,7 +593,7 @@ def run_compare(
             continue
 
         # 2d. Run quest generation
-        ok, stdout, spec = _run_quest(prompt, scene_name)
+        ok, stdout, spec = _run_quest(prompt, scene_name, npc_count=npc_count)
         if not ok:
             result["error"] = "quest generation failed"
             result["spec"] = spec
@@ -468,13 +602,36 @@ def run_compare(
             continue
 
         result["spec"] = spec
+
+        # 2e. Full-pipeline: compute eval signals + Godot smoke test
+        if full_pipeline:
+            signals = _compute_quest_signals(scene_name)
+            result["signals"] = signals
+            try:
+                smoke_ok = _run_godot_smoke(scene_name)
+                result["smoke_ok"] = "✓" if smoke_ok else "✗"
+                if not smoke_ok:
+                    result["smoke_err"] = _last_smoke_error
+            except (FileNotFoundError, OSError) as e:
+                result["smoke_ok"] = "✗"
+                result["smoke_err"] = f"godot not available: {e}"
+            # Optionally run the playthrough probe
+            if run_playthrough:
+                try:
+                    probe_ok, probe_result = _run_playthrough_probe(scene_name)
+                    result["probe_ok"] = "✓" if probe_ok else "✗"
+                    result["probe"] = probe_result
+                except (FileNotFoundError, OSError) as e:
+                    result["probe_ok"] = "✗"
+                    result["probe"] = {"error": f"godot not available: {e}"}
+
         results.append(result)
 
     # ── 3. Print comparison table ──────────────────────────────
     print(f"\n{'=' * 60}")
     print("[quest_compare] COMPARISON TABLE")
     print(f"{'=' * 60}")
-    print(_build_comparison_table(results))
+    print(_build_comparison_table(results, full_pipeline=full_pipeline))
 
     # ── 4. Restore original model ──────────────────────────────
     if original_model:
@@ -536,6 +693,18 @@ def main() -> int:
         "--original", default=None,
         help="Model to restore after run (default: auto-detect from hub)"
     )
+    parser.add_argument(
+        "--full-pipeline", action="store_true",
+        help="Compute eval signals + Godot smoke test per model"
+    )
+    parser.add_argument(
+        "--run-playthrough", action="store_true",
+        help="Run the Godot headless playthrough probe per model (implies --full-pipeline)"
+    )
+    parser.add_argument(
+        "--npc-count", type=int, default=2,
+        help="Number of NPCs for quest generation (default: 2)"
+    )
     args = parser.parse_args()
 
     return run_compare(
@@ -544,6 +713,9 @@ def main() -> int:
         prefix=args.prefix,
         dry_run=args.dry_run,
         original_model=args.original,
+        full_pipeline=args.full_pipeline or args.run_playthrough,
+        run_playthrough=args.run_playthrough,
+        npc_count=args.npc_count,
     )
 
 
