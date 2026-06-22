@@ -35,6 +35,17 @@ _SPECIFIC_KW: dict[str, str] = {
     "iron": "wrought_iron",
     "wrought": "wrought_iron",
     "steel": "wrought_iron",
+    # WS-3.1: new materials
+    "leather": "leather",
+    "hide": "leather",
+    "ceramic": "ceramic",
+    "pottery": "ceramic",
+    "glazed": "glazed",
+    "enamel": "glazed",
+    "bronze": "bronze",
+    "brass": "bronze",
+    "painted": "painted_wood",
+    "lacquered": "painted_wood",
 }
 
 # Family keywords: a keyword → family name in MAT PALETTE.
@@ -60,6 +71,12 @@ _PLAIN_DESCRIPTION: dict[str, str] = {
     "weathered_pine": "pale desaturated wood",
     "rough_granite": "mottled grey stone",
     "wrought_iron": "dark tinted metal",
+    # WS-3.1
+    "leather": "brown cured leather",
+    "ceramic": "terracotta pottery",
+    "glazed": "blue-grey glazed ceramic",
+    "bronze": "warm bronze metal",
+    "painted_wood": "red-brown painted wood",
 }
 
 

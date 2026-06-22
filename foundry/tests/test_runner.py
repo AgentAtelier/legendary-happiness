@@ -195,10 +195,11 @@ def test_forge_from_request_writes_decisions_into_sidecar(tmp_path, monkeypatch)
     assert saved["context"]["family"] == "wood"
     assert saved["context"]["resolved"] == "worn_oak"
     assert isinstance(saved["choices"], list)
-    assert len(saved["choices"]) == 2  # dark_walnut + weathered_pine
+    assert len(saved["choices"]) == 3  # WS-3.1: dark_walnut, weathered_pine, painted_wood
     choice_values = {c["apply"]["value"] for c in saved["choices"]}
     assert "dark_walnut" in choice_values
     assert "weathered_pine" in choice_values
+    assert "painted_wood" in choice_values
     assert "worn_oak" not in choice_values
 
     # Sidecar still schema-valid
