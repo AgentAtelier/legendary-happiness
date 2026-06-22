@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 # Real lexicon: repo_root/engine/devforge/spatial/asset_lexicon.json
 # This file is foundry/library.py → parents[1] is repo root.
@@ -18,7 +19,24 @@ LIVE_LEXICON = str(
 
 def read_envelope(lexicon_path: str, asset_id: str) -> tuple[dict, float]:
     data = json.loads(Path(lexicon_path).read_text(encoding="utf-8"))
-    entry = data["assets"][asset_id]
+    assets = data["assets"]
+    if asset_id in assets:
+        entry = assets[asset_id]
+    else:
+        # WS-3.2: fall back to base category name by stripping _NN suffix.
+        # Also handles asset_ids where hyphens become underscores (e.g.
+        # candle_stand_01 -> candle-stand).
+        base_id = re.sub(r"_\d+$", "", asset_id)
+        # Try hyphenated form (underscore -> hyphen) for categories like "candle-stand"
+        hyphen_id = base_id.replace("_", "-")
+        if hyphen_id != base_id and hyphen_id in assets:
+            entry = assets[hyphen_id]
+        elif base_id != asset_id and base_id in assets:
+            entry = assets[base_id]
+        else:
+            raise KeyError(
+                f"asset_id {asset_id!r} (base {base_id!r}) not in lexicon"
+            ) from None
     fp = entry["footprint"]
     return {"width": fp["width"], "depth": fp["depth"]}, float(entry["height"])
 

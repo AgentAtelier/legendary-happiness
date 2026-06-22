@@ -703,6 +703,112 @@ def test_ladder_builds_and_passes_gate(tmp_path):
     assert topo.is_watertight, "ladder mesh must be watertight"
 
 
+
+# WS-3.2: procedural-breadth new category tests
+
+def test_anvil_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "anvil_01",
+        "generator": "anvil",
+        "material": "wrought_iron",
+        "age": 0.2,
+        "params": {"width": 0.5, "depth": 1.2, "height": 0.4},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_cauldron_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "cauldron_01",
+        "generator": "cauldron",
+        "material": "wrought_iron",
+        "age": 0.2,
+        "params": {"width": 0.75, "depth": 0.75, "height": 0.75},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_bedroll_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "bedroll_01",
+        "generator": "bedroll",
+        "material": "linen",
+        "age": 0.2,
+        "params": {"width": 1.8, "depth": 0.7, "height": 0.15},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_sack_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "sack_01",
+        "generator": "sack",
+        "material": "linen",
+        "age": 0.2,
+        "params": {"width": 0.35, "depth": 0.45, "height": 0.45},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_candle_stand_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "candle_stand_01",
+        "generator": "candle-stand",
+        "material": "wrought_iron",
+        "age": 0.2,
+        "params": {"width": 0.2, "depth": 0.2, "height": 1.2},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_torch_sconce_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "torch_sconce_01",
+        "generator": "torch-sconce",
+        "material": "wrought_iron",
+        "age": 0.2,
+        "params": {"width": 0.15, "depth": 0.12, "height": 0.45},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_tapestry_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "tapestry_01",
+        "generator": "tapestry",
+        "material": "wool",
+        "age": 0.2,
+        "params": {"width": 0.03, "depth": 1.6, "height": 1.2},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
+
+def test_lectern_builds_and_passes_gate(tmp_path):
+    spec = {
+        "asset_id": "lectern_01",
+        "generator": "lectern",
+        "material": "worn_oak",
+        "age": 0.2,
+        "params": {"width": 0.55, "depth": 1.4, "height": 0.6},
+    }
+    topo, result = _build_and_gate(spec, tmp_path)
+    assert result.passed, f"Gate failed: {result.reasons}"
+    assert topo.is_watertight
+
 def test_l_bench_builds_and_passes_gate(tmp_path):
     spec = {"asset_id": "L_bench", "generator": "L_bench", "material": "worn_oak",
             "age": 0.2, "params": {"width": 1.5, "depth": 0.5, "height": 0.45}}
