@@ -48,3 +48,22 @@ def test_validate_non_dict_exterior_is_safe():
                            "exterior": "nonsense", "place_names": 42})
     assert b["exterior"] == {"enabled": False}
     assert b["place_names"] == {"scene_name": "", "landmark_lore": []}
+
+
+def test_lighting_tier_defaults_zero():
+    assert minimal("a cabin")["lighting_tier"] == 0
+    b, _ = validate_brief({"theme_tag": "hermit", "scale": "small", "setting": "x",
+                           "key_features": [], "characters": []})
+    assert b["lighting_tier"] == 0
+
+
+def test_lighting_tier_preserved_and_clamped():
+    base = {"theme_tag": "hermit", "scale": "small", "setting": "x",
+            "key_features": [], "characters": []}
+    assert validate_brief({**base, "lighting_tier": 2})[0]["lighting_tier"] == 2
+    assert validate_brief({**base, "lighting_tier": 9})[0]["lighting_tier"] == 0  # out of range
+    assert validate_brief({**base, "lighting_tier": "x"})[0]["lighting_tier"] == 0  # non-int
+
+
+def test_schema_has_lighting_tier():
+    assert "lighting_tier" in brief_json_schema()["properties"]

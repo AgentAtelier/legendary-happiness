@@ -115,3 +115,35 @@ def test_deterministic():
     a = emit_exterior_layer(_plan(seed=3))
     b = emit_exterior_layer(_plan(seed=3))
     assert a == b
+
+
+# ── lighting_tier routing (bake injected as a stub) ──────────────────
+
+def _stub_baker(desc, out_dir):
+    import os
+    p = os.path.join(out_dir, "baked.glb")
+    with open(p, "w") as f:
+        f.write("glb")
+    return [p]
+
+
+def test_lighting_tier0_emits_realtime_instances():
+    tscn = compile_exterior_build(_BRIEF, 7, lighting_tier=0)
+    assert '[node name="Terrain"' in tscn  # individual realtime instances
+
+
+def test_lighting_tier1_emits_single_baked_scene(tmp_path):
+    tscn = compile_exterior_build(_BRIEF, 7, lighting_tier=1,
+                                  baker=_stub_baker, cache_root=tmp_path)
+    assert '[node name="BakedScene" parent="." instance=ExtResource(' in tscn
+    assert "baked.glb" in tscn
+    assert '[node name="Terrain"' not in tscn  # not individual instances anymore
+
+
+def test_lighting_bake_failure_falls_back_to_realtime(tmp_path):
+    def bad_baker(desc, out_dir):
+        raise RuntimeError("hip oom")
+
+    tscn = compile_exterior_build(_BRIEF, 7, lighting_tier=2,
+                                  baker=bad_baker, cache_root=tmp_path)
+    assert '[node name="Terrain"' in tscn  # degraded to realtime, scene still renders

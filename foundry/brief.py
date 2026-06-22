@@ -76,6 +76,7 @@ def minimal(prompt: str) -> dict:
         "characters": [],
         "exterior": {"enabled": False},
         "place_names": {"scene_name": "", "landmark_lore": []},
+        "lighting_tier": 0,
     }
 
 
@@ -142,6 +143,7 @@ def brief_json_schema() -> dict:
                     "landmark_lore": {"type": "array", "items": {"type": "object"}},
                 },
             },
+            "lighting_tier": {"enum": [0, 1, 2]},
         },
         "required": ["setting", "scale", "theme_tag", "key_features", "characters"],
     }
@@ -373,5 +375,12 @@ def validate_brief(
         }
     else:
         brief["place_names"] = {"scene_name": "", "landmark_lore": []}
+
+    # --- lighting_tier (0 realtime / 1 fast bake / 2 beauty bake; default 0) ---
+    try:
+        lt = int(raw.get("lighting_tier", 0))
+    except (TypeError, ValueError):
+        lt = 0
+    brief["lighting_tier"] = lt if lt in (0, 1, 2) else 0
 
     return brief, decisions

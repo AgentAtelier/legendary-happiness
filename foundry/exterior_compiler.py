@@ -12,6 +12,7 @@ Pure string emission — deterministic, unit-testable without Godot.
 from __future__ import annotations
 
 import math
+import os
 from typing import Dict, List
 
 from exterior_planner import ExteriorPlan
@@ -45,12 +46,16 @@ def _default_interior_plan(ext_plan: ExteriorPlan, *, material: str = "worn_oak"
 
 
 def compile_exterior_build(brief: dict, seed: int, *, plan: dict | None = None,
-                           npc_count: int = 1) -> str:
+                           npc_count: int = 1, lighting_tier: int | None = None,
+                           baker=None, cache_root=None,
+                           assets_subdir: str = "assets") -> str:
     """Live-assembly: Brief → ExteriorPlanner + (RoomPlanner|default) interior →
     one playable exterior ``.tscn`` (terrain + flora + building + furnished interior).
 
     The interior manifest is SOURCED LIVE from ``room_layout.layout_room`` (sized to
-    the building), not hand-fed — this is the prompt→scene wiring.
+    the building). ``lighting_tier`` (else ``brief["lighting_tier"]``): 0 realtime
+    (individual instances); 1/2 bake the static scene's GI in Blender and emit a
+    single baked GLB. Any bake failure falls back to realtime.
     """
     from exterior_planner import plan_exterior
     from room_layout import layout_room
@@ -59,7 +64,114 @@ def compile_exterior_build(brief: dict, seed: int, *, plan: dict | None = None,
     if plan is None:
         plan = _default_interior_plan(ext_plan)
     manifest, _meta, _decisions = layout_room(plan, seed=seed, npc_count=npc_count)
-    return emit_exterior_layer(ext_plan, interior_manifest=manifest)
+
+    tier = int(lighting_tier if lighting_tier is not None else brief.get("lighting_tier", 0) or 0)
+    if tier <= 0:
+        return emit_exterior_layer(ext_plan, interior_manifest=manifest)
+
+    import lighting_bake
+    scene_desc = _scene_desc_from(ext_plan, manifest, tier, assets_subdir)
+    result = lighting_bake.bake_scene(scene_desc, baker=baker or _blender_baker,
+                                      cache_root=cache_root)
+    if result.get("status") in ("baked", "cached") and result.get("artifacts"):
+        res = f"res://{assets_subdir}/{os.path.basename(result['artifacts'][0])}"
+        return emit_baked_scene(ext_plan, res, assets_subdir=assets_subdir)
+    return emit_exterior_layer(ext_plan, interior_manifest=manifest)  # realtime fallback
+
+
+def _xform_list(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 1.0) -> list:
+    c, s = math.cos(yaw), math.sin(yaw)
+    return [c * scale, 0.0, -s * scale, 0.0, scale, 0.0, s * scale, 0.0, c * scale, x, y, z]
+
+
+def _scene_desc_from(ext_plan: ExteriorPlan, manifest: list, tier: int,
+                     assets_subdir: str) -> dict:
+    """Assemble the bake contract from the plan + interior manifest + biome lights."""
+    atm = ext_plan.biome.get("atmosphere", {})
+    placements = [{"glb": f"{assets_subdir}/terrain.glb", "transform": _xform_list(0, 0, 0),
+                   "static": True}]
+    for p in ext_plan.scatter_placements:
+        placements.append({"glb": f"{assets_subdir}/{p['category']}.glb",
+                           "transform": _xform_list(p["x"], p["y"], p["z"],
+                                                    p.get("yaw", 0.0), p.get("scale", 1.0)),
+                           "static": True})
+    py = ext_plan.building["pad_height"]
+    for e in manifest:
+        placements.append({"glb": f"{assets_subdir}/{e['category']}_{e['material']}.glb",
+                           "transform": _xform_list(e["x"], py + e.get("y", 0.0), e["z"],
+                                                    e.get("yaw", 0.0)),
+                           "static": True})
+    return {
+        "placements": placements,
+        "sun": {"direction": list(atm.get("sun_dir", [0.3, -0.6, -0.7])),
+                "energy": float(atm.get("sun_energy", 1.1)),
+                "color": list(atm.get("sun_color", [1.0, 0.97, 0.92]))},
+        "sky": {"top": list(atm.get("sky_tint", [0.6, 0.7, 0.85])),
+                "horizon": list(atm.get("fog_color", [0.6, 0.6, 0.6])),
+                "ambient_energy": float(atm.get("ambient_energy", 0.5))},
+        "tier": tier, "samples": 96 if tier >= 2 else 24,
+    }
+
+
+def emit_baked_scene(ext_plan: ExteriorPlan, baked_glb_res: str, *,
+                     assets_subdir: str = "assets") -> str:
+    """Emit a ``.tscn`` instancing the single BAKED scene GLB (static geometry +
+    baked-GI vertex colors) + a realtime sun (tier-1 direct) + sky + player spawn."""
+    atm = ext_plan.biome.get("atmosphere", {})
+    fog_c = atm.get("fog_color", (0.66, 0.72, 0.7))
+    sun_e = atm.get("sun_energy", 1.1)
+    sky_t = atm.get("sky_tint", (0.62, 0.74, 0.88))
+    ext = [f'[ext_resource type="PackedScene" path="{baked_glb_res}" id="1_baked"]']
+    subs = [
+        '[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]',
+        f"sky_top_color = Color({sky_t[0]}, {sky_t[1]}, {sky_t[2]}, 1)",
+        f"sky_horizon_color = Color({fog_c[0]}, {fog_c[1]}, {fog_c[2]}, 1)",
+        '[sub_resource type="Sky" id="sky"]',
+        'sky_material = SubResource("sky_mat")',
+        '[sub_resource type="Environment" id="world_env"]',
+        "background_mode = 2",
+        'sky = SubResource("sky")',
+        "ambient_light_source = 3",
+        "tonemap_mode = 3",
+    ]
+    n_sub = sum(1 for ln in subs if ln.startswith("[sub_resource"))
+    header = [f"[gd_scene load_steps={len(ext) + n_sub + 1} format=3]"]
+    sp = ext_plan.spawn
+    spawn_y = ext_plan.building["pad_height"]
+    nodes = [
+        '[node name="Root" type="Node3D"]',
+        '[node name="WorldEnvironment" type="WorldEnvironment" parent="."]',
+        'environment = SubResource("world_env")',
+        '[node name="Sun" type="DirectionalLight3D" parent="."]',
+        f"transform = Transform3D({_SUN_XFORM}, 0, 20, 0)",
+        f"light_energy = {sun_e}",
+        "shadow_enabled = true",
+        '[node name="BakedScene" parent="." instance=ExtResource("1_baked")]',
+        '[node name="PlayerSpawn" type="Marker3D" parent="."]',
+        "transform = " + _transform3d(sp["x"], spawn_y, sp["z"], sp.get("yaw", 0.0)),
+    ]
+    return "\n".join(header + [""] + ext + [""] + subs + [""] + nodes) + "\n"
+
+
+def _blender_baker(scene_desc: dict, out_dir: str) -> list:
+    """The real baker: shell out to the headless Blender Cycles bake."""
+    import json
+    import shutil
+    import subprocess
+
+    blender = shutil.which("blender")
+    if not blender:
+        raise RuntimeError("blender not available for bake")
+    bake_py = os.path.join(os.path.dirname(__file__), "blender", "bake_lighting.py")
+    desc_p = os.path.join(out_dir, "scene_desc.json")
+    with open(desc_p, "w") as f:
+        json.dump(scene_desc, f)
+    r = subprocess.run([blender, "-b", "--python", bake_py, "--", desc_p, out_dir],
+                       capture_output=True, text=True, timeout=1800)
+    out = os.path.join(out_dir, "baked.glb")
+    if r.returncode != 0 or not os.path.exists(out):
+        raise RuntimeError(f"bake failed rc={r.returncode}: {(r.stderr or '')[-300:]}")
+    return [out]
 
 
 def _emit_building(plan: ExteriorPlan):
