@@ -302,6 +302,20 @@ def _cmd_visual_eval(args: list[str]) -> int:
         "--no-scenes", action="store_true",
         help="Skip scene regression scan",
     )
+    # WS-5: auto-reroll flagged assets
+    parser.add_argument(
+        "--reroll", action="store_true",
+        help="Auto-reroll flagged assets after batch eval",
+    )
+    parser.add_argument(
+        "--max-rerolls", type=int, default=3,
+        help="Max reroll attempts per flagged asset (default: 3)",
+    )
+    parser.add_argument(
+        "--lexicon",
+        default=None,
+        help="Path to asset lexicon JSON (for --reroll; default: engine/devforge/spatial/asset_lexicon.json)",
+    )
     parsed = parser.parse_args(args)
 
     result = run_batch(
@@ -316,6 +330,25 @@ def _cmd_visual_eval(args: list[str]) -> int:
     wl = result.get("worklist", [])
     if wl:
         print(f"Worklist: {len(wl)} items flagged for regen")
+
+    # WS-5: Auto-reroll flagged assets
+    if parsed.reroll and wl:
+        from visual.batch import reroll_flagged
+        worklist_path = str(Path(parsed.out_dir) / "visual_worklist.json")
+        if parsed.lexicon:
+            lexicon_path = parsed.lexicon
+        else:
+            lexicon_path = str(Path(__file__).resolve().parent.parent / "engine" / "devforge" / "spatial" / "asset_lexicon.json")
+        print(f"[reroll] Auto-rerolling {len(wl)} flagged items (max {parsed.max_rerolls} attempts each)...")
+        outcomes = reroll_flagged(
+            worklist_path=worklist_path,
+            lexicon_path=str(lexicon_path),
+            library_dir=parsed.library_dir or "assets",
+            max_rerolls=parsed.max_rerolls,
+        )
+        for oc in outcomes:
+            status = "PASS" if oc.get("last_result", {}).get("gate_passed") else "FAIL"
+            print(f"  [{status}] {oc['prop_id']} — {oc['rerolls']} attempt(s)")
 
     report = result.get("catalog_report") or result.get("scene_report")
     if report:
