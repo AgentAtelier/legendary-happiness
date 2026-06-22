@@ -46,7 +46,7 @@ func _process(_delta: float) -> void:
 		while current:
 			if current.has_meta("_forge_tag"):
 				var tag: String = current.get_meta("_forge_tag")
-				if tag == "pickup" or tag == "talk":
+				if tag == "pickup" or tag == "talk" or tag == "open" or tag == "door":
 					var prompt_text: String = _build_prompt(current, tag)
 					interact_prompt.emit(true, prompt_text, tag)
 					# P-C-1: highlight the hovered node
@@ -60,6 +60,9 @@ func _process(_delta: float) -> void:
 					return
 			current = current.get_parent()
 
+	# CB-2: Check for place surface when carrying an item (before falling through)
+	if _check_place_surface():
+		return
 	interact_prompt.emit(false, "", "")
 	# P-C-1: clear highlight when not looking at anything interactable
 	_clear_highlight()
@@ -74,6 +77,10 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.physical_keycode == KEY_E:
 		if event.pressed and not event.echo:
+			# CB-2: Check for place-surface first (player carrying item + looking at surface)
+			var player = get_node_or_null("/root/Root/Player")
+			if player and str(player.get_active_item()) != "":
+				_place_item_on_surface()
 			# Check what we're looking at and fire interaction
 			var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 			var origin: Vector3 = _camera.global_position
@@ -88,7 +95,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				while current:
 					if current.has_meta("_forge_tag"):
 						var tag: String = current.get_meta("_forge_tag")
-						if tag == "pickup" or tag == "talk":
+						if tag == "pickup" or tag == "talk" or tag == "open" or tag == "door":
 							if current.has_method("on_interact"):
 								current.on_interact(tag)
 							return
@@ -152,6 +159,10 @@ func _build_prompt(node: Node, tag: String) -> String:
 		if role != "":
 			return "Press E to talk to the %s" % role
 		return "Press E to talk"
+	if tag == "open":
+		return "Press E to open"
+	if tag == "door":
+		return "Press E to open the door"
 	return "Press E"
 
 
@@ -261,6 +272,105 @@ func _cache_quest_data() -> void:
 		var parsed = JSON.parse_string(file.get_as_text())
 		if parsed is Dictionary:
 			_cached_quest_data = parsed
+
+
+# ── CB-2: Place-on-surface detection ─────────────────────────────
+
+func _check_place_surface() -> bool:
+	"""Check if the player is looking at a place surface while carrying.
+
+	Returns true if a place prompt was emitted (preempting other prompts).
+	On E press during a place hover, places the held item on the surface."""
+	var player = get_node_or_null("/root/Root/Player")
+	if not player:
+		return false
+	var held: String = str(player.get_active_item())
+	if held == "":
+		return false
+
+	# Raycast to see if we're looking at a surface-tagged furniture
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var origin: Vector3 = _camera.global_position
+	var end: Vector3 = origin + -_camera.global_transform.basis.z * interact_range
+	var query := PhysicsRayQueryParameters3D.create(origin, end)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.is_empty():
+		return false
+
+	var current: Node = result.collider as Node
+	while current:
+		if current.has_meta("_forge_surface_tag") and current.get_meta("_forge_surface_tag") == "place":
+			var cat: String = str(current.get_meta("_forge_category", "furniture"))
+			var prompt: String = "Press E to place on the %s" % cat.replace("_", " ")
+			interact_prompt.emit(true, prompt, "place")
+			_highlight(current)
+			return true
+		current = current.get_parent()
+
+	return false
+
+
+func _place_item_on_surface() -> void:
+	"""Place the player's held item on the looked-at surface.
+
+	Called from _unhandled_input when a place-surface is hovered."""
+	var player = get_node_or_null("/root/Root/Player")
+	if not player:
+		return
+	var held: String = str(player.get_active_item())
+	if held == "":
+		return
+
+	# Find the target surface
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var origin: Vector3 = _camera.global_position
+	var end: Vector3 = origin + -_camera.global_transform.basis.z * interact_range
+	var query := PhysicsRayQueryParameters3D.create(origin, end)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.is_empty():
+		return
+
+	var current: Node = result.collider as Node
+	while current:
+		if current.has_meta("_forge_surface_tag") and current.get_meta("_forge_surface_tag") == "place":
+			# Get surface Y from metadata
+			var surface_y: float = float(current.get_meta("_forge_surface_y", 0.8))
+			var surface_pos := current.global_position
+
+			# Drop the item on the surface
+			var prop = get_node_or_null("/root/Root/" + held)
+			if not prop:
+				return
+
+			# Restore model to prop
+			var carried = player.get_node_or_null("Camera3D/CarriedItem")
+			var model = carried.get_node_or_null("%s_model" % held) if carried else null
+			if model:
+				model.reparent(prop, false)
+
+			prop.show()
+			prop.global_position = Vector3(surface_pos.x, surface_y, surface_pos.z)
+			prop.set("collision_layer", 1)
+			prop.set("collision_mask", 1)
+
+			# CB-1: Try to complete a place quest
+			var qm = get_node_or_null("/root/QuestManager")
+			if qm and qm.has_method("try_complete_place"):
+				if qm.try_complete_place(held, current.name):
+					var hud = get_node_or_null("/root/Root/HUD")
+					if hud and hud.has_method("set_objective"):
+						hud.set_objective("Placed %s on %s!" % [held.replace("_", " "), current.name.replace("_", " ")])
+
+			# Remove from player inventory
+			if player.has_method("remove_item"):
+				player.remove_item(held)
+
+			return
+		current = current.get_parent()
 
 
 func _collect_all_nodes(node, out: Array) -> void:

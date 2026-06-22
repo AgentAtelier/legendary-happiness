@@ -185,12 +185,16 @@ def test_target_prop_has_pickup_tag():
 
 
 def test_all_props_have_pickup_tag():
-    """FIX-5: All props (not just target) have pickup tag."""
+    """FIX-5/CB-2: All props have pickup or open tag (openable furniture gets open)."""
+    from category_registry import REGISTRY
     _, parsed, _ = _compile_and_parse()
     for entry in _MANIFEST:
         meta = parsed["metadata"].get(entry["id"], {})
-        assert meta.get("_forge_tag") == "pickup", (
-            f"prop {entry['id']!r} should have pickup tag (FIX-5), got {meta}"
+        cat = entry.get("category", "?")
+        ce = REGISTRY.get(cat, {})
+        expected = "open" if ce.get("openable") else "pickup"
+        assert meta.get("_forge_tag") == expected, (
+            f"prop {entry['id']!r} should have {expected} tag (CB-2), got {meta}"
         )
 
 
@@ -223,12 +227,16 @@ def test_npc_has_talk_script():
 
 
 def test_all_props_have_pickup_script():
-    """FIX-5: All props (not just target) get pickup.gd script."""
+    """FIX-5/CB-2: All props get pickup.gd or container.gd (openable gets container)."""
+    from category_registry import REGISTRY
     _, parsed, _ = _compile_and_parse()
     for entry in _MANIFEST:
         node = next(n for n in parsed["nodes"] if n["name"] == entry["id"])
-        assert node.get("script") == "s_pickup", (
-            f"prop {entry['id']!r} should have script=s_pickup (FIX-5), got {node.get('script')!r}"
+        cat = entry.get("category", "?")
+        ce = REGISTRY.get(cat, {})
+        expected = "s_open" if ce.get("openable") else "s_pickup"
+        assert node.get("script") == expected, (
+            f"prop {entry['id']!r} should have script={expected} (CB-2), got {node.get('script')!r}"
         )
 
 
@@ -1387,6 +1395,57 @@ def test_npcs_not_on_player_spawn():
         if data_file.exists():
             data_file.unlink()
 
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-2: Item verbs — openable containers + surface metadata
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_openable_prop_gets_open_tag():
+    """CB-2: Openable furniture (cabinet) gets _forge_tag=open."""
+    _, parsed, _ = _compile_and_parse()
+    meta = parsed["metadata"].get("cabinet_0", {})
+    assert meta.get("_forge_tag") == "open", (
+        f"CB-2: cabinet should have open tag, got {meta}"
+    )
+    assert meta.get("_forge_openable") == "true"
+
+
+def test_furniture_gets_surface_metadata():
+    """CB-2: Furniture with furniture_top_y gets _forge_surface_tag=place."""
+    _, parsed, _ = _compile_and_parse()
+    for entry in _MANIFEST:
+        meta = parsed["metadata"].get(entry["id"], {})
+        from category_registry import REGISTRY
+        ce = REGISTRY.get(entry["category"], {})
+        if ce.get("furniture_top_y") is not None:
+            assert meta.get("_forge_surface_tag") == "place", (
+                f"CB-2: {entry['id']} should have surface_tag=place, got {meta}"
+            )
+            assert "_forge_surface_y" in meta
+        else:
+            # Carryables don't get surface_tag
+            assert meta.get("_forge_surface_tag", "") == ""
+
+
+def test_ext_resources_include_container_and_door():
+    """CB-2: ext_resources includes container.gd when openable props exist.
+    door.gd only appears when a door-category entity is in the manifest."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/container.gd" in paths, "CB-2: container.gd missing"
+    # door.gd is registered but only emitted via used_tags when a door entity exists
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_open" in ids, "CB-2: s_open ext_resource id missing"
+
+
+def test_openable_prop_gets_container_script():
+    """CB-2: Openable prop gets container.gd script via s_open ext_resource."""
+    _, parsed, _ = _compile_and_parse()
+    node = next(n for n in parsed["nodes"] if n["name"] == "cabinet_0")
+    assert node.get("script") == "s_open", (
+        f"CB-2: cabinet should have script=s_open, got {node.get('script')!r}"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -40,6 +40,9 @@ _TAG_TABLE: Dict[str, str | None] = {
     "talk": "res://scripts/npc.gd",
     # "give" is handled by npc.gd (state machine checks carried_item)
     "give": "res://scripts/npc.gd",
+    # CB-2: openable containers + locked doors
+    "open": "res://scripts/container.gd",
+    "door": "res://scripts/door.gd",
     "inert": None,
 }
 
@@ -72,6 +75,12 @@ def _b3_emit_item_metadata(lines: list[str], category: str) -> None:
         lines.append(f'metadata/_forge_durability = {int(dur)}')
     if entry.get("openable"):
         lines.append('metadata/_forge_openable = "true"')
+        # CB-2: empty contents by default (container.gd reads this to spawn items)
+        lines.append('metadata/_forge_contents = ""')
+    # CB-2: place-on-surface — furniture with a top surface for placing items
+    if entry.get("furniture_top_y") is not None:
+        lines.append(f'metadata/_forge_surface_tag = "place"')
+        lines.append(f'metadata/_forge_surface_y = {float(entry["furniture_top_y"])}')
 
 # ── Shell scripts ──────────────────────────────────────────────
 # P4: reusable GDScript files the compiler always attaches.
@@ -85,6 +94,8 @@ _SHELL_SCRIPTS: List[dict] = [
     # B2: day/night cycle runtime
     {"id": "s_day_night", "path": "res://scripts/day_night.gd"},
     # CB-1: quest manager autoload — registered in project.godot
+    # CB-2: container.gd + door.gd are emitted via used_tag_scripts
+    #       (like pickup.gd/npc.gd), not via _SHELL_SCRIPTS.
 ]
 
 # ── Shell node definitions ───────────────────────────────────────
@@ -777,9 +788,19 @@ def compile_scene(
 
     unique_glbs = resolve_unique_glbs_with_npc(manifest)
 
-    # ── Compute unique tag→script mappings (P5) ──────────────────
-    used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
+    # Compute used tags — include open/door if any entity in the manifest
+    # has category.openable=True or category is "door"
     used_tags = {"pickup", "talk"}
+    from category_registry import REGISTRY as _REG
+    for entry in manifest:
+        cat = entry.get("category", "?")
+        if not entry.get("decor"):
+            ce = _REG.get(cat, {})
+            if ce.get("openable"):
+                used_tags.add("open")
+            if cat == "door":
+                used_tags.add("door")
+    used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
     for tag in sorted(used_tags):
         path = _TAG_TABLE.get(tag)
         if path:
@@ -1104,7 +1125,15 @@ def compile_scene(
         y = entry.get("y", 0.0)
         z = entry.get("z", 0.0)
         is_decor = entry.get("decor", False)
-        tag = "inert" if is_decor else "pickup"
+        # CB-2: Determine tag — openable furniture gets "open", others follow decor/pickup
+        from category_registry import REGISTRY
+        entry = REGISTRY.get(cat, {})
+        if not is_decor and entry.get("openable"):
+            tag = "open"
+        elif is_decor:
+            tag = "inert"
+        else:
+            tag = "pickup"
         glb_id = glb_ids.get((cat, mat), "1")
 
         # Guard: push away from player spawn (FIX-1e)
