@@ -1573,7 +1573,59 @@ def _build_shrub_geometry(params):
     return mesh
 
 
+def _build_terrain_geometry(params):
+    """A displaced ground plane from the SHARED ``terrain_field`` heightfield.
+
+    An open surface (not watertight), so ``main()`` skips entropy + bevel for it.
+    Axis convention: Blender (X, Y, Z) → glTF/Godot (X, Z, -Y). To make the mesh
+    height at Godot world (x, gz) equal ``height_at(field, x, gz)`` — i.e. match
+    the planner that places the building/flora — each row's Blender Y is set to
+    ``-gz``.
+    """
+    from terrain_field import make_field, height_at
+    extent = float(params.get("extent", 40.0))
+    res = max(8, int(params.get("resolution", 48)))
+    field = make_field(
+        extent=extent,
+        amplitude=float(params.get("amplitude", 1.5)),
+        base_frequency=float(params.get("base_frequency", 0.05)),
+        octaves=int(params.get("octaves", 4)),
+        lacunarity=float(params.get("lacunarity", 2.0)),
+        persistence=float(params.get("persistence", 0.5)),
+        seed=int(params.get("seed", 0)),
+    )
+    mesh = bpy.data.meshes.new("terrain")
+    obj = bpy.data.objects.new("terrain", mesh)
+    bpy.context.collection.objects.link(obj)
+
+    half = extent / 2.0
+    step = extent / res
+    verts = []
+    for j in range(res + 1):
+        gz = -half + j * step
+        yb = -gz
+        for i in range(res + 1):
+            x = -half + i * step
+            verts.append((x, yb, height_at(field, x, gz)))
+
+    def _idx(i, j):
+        return j * (res + 1) + i
+
+    faces = []
+    for j in range(res):
+        for i in range(res):
+            faces.append((_idx(i, j), _idx(i + 1, j), _idx(i + 1, j + 1), _idx(i, j + 1)))
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    return mesh
+
+
+# Generators that are open surfaces, not props: skip entropy + bevel in main().
+_FLAT_GENERATORS = {"terrain"}
+
+
 _BUILDERS = {
+    "terrain": _build_terrain_geometry,
     "tree": _build_tree_geometry,
     "shrub": _build_shrub_geometry,
     "rock": _build_rock_geometry,
@@ -2267,8 +2319,12 @@ def main():
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     mesh = build_geometry(spec)
-    apply_entropy(mesh, age, entropy_seed)
-    apply_bevel(mesh)
+    # Terrain is a large OPEN ground surface, not a prop: the furniture-shaped
+    # entropy deformations and edge bevel are wrong for it (and would explode the
+    # grid's poly count). Skip them; it still gets UVs + material.
+    if spec.get("generator") not in _FLAT_GENERATORS:
+        apply_entropy(mesh, age, entropy_seed)
+        apply_bevel(mesh)
     # E1 determinism: Triangulate before UV/bake so n-gons don't
     # produce different triangulations across runs.
     _apply_triangulate(mesh)
