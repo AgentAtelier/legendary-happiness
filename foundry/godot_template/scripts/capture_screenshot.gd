@@ -10,7 +10,7 @@ const CAPTURE_SIZE := 512
 
 func _ready() -> void:
 	# Read capture config from project settings
-	var config_str: String = ProjectSettings.get_setting("application/config/_forge_capture", "")
+	var config_str: String = ProjectSettings.get_setting("application/_forge_capture", "")
 	if config_str.is_empty():
 		printerr("_forge_capture not set — nothing to capture")
 		get_tree().quit(1)
@@ -32,7 +32,7 @@ func _ready() -> void:
 
 	for i in angles.size():
 		var angle: float = float(angles[i])
-		var img: Image = _capture_at_angle(angle, config)
+		var img: Image = await _capture_at_angle(angle, config)
 		if img == null or img.is_empty():
 			printerr("capture failed at angle ", angle)
 			continue
@@ -89,7 +89,7 @@ func _capture_at_angle(yaw: float, config: Dictionary) -> Image:
 		var scene_path: String = config.get("scene_path", "res://scenes/main.tscn")
 		var scene_res := load(scene_path)
 		if scene_res:
-			var scene_inst := scene_res.instantiate()
+			var scene_inst: Node = scene_res.instantiate()
 			vp.add_child(scene_inst)
 		else:
 			printerr("failed to load scene ", scene_path)
@@ -98,7 +98,7 @@ func _capture_at_angle(yaw: float, config: Dictionary) -> Image:
 		if not glb_path.is_empty():
 			var glb_res := load(glb_path)
 			if glb_res:
-				var prop_inst := glb_res.instantiate()
+				var prop_inst: Node = glb_res.instantiate()
 				vp.add_child(prop_inst)
 			else:
 				printerr("failed to load prop GLB ", glb_path)

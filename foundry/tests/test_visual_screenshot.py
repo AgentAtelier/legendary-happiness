@@ -218,15 +218,21 @@ def test_ensure_capture_scene_copies_script(tmp_path):
     """Copies the capture script into the build scripts/ dir."""
     build = tmp_path / "build"
     build.mkdir()
+    (build / "project.godot").write_text("[application]\n\nconfig/name=\"Test\"\n")
     dest = _ensure_capture_scene(str(build))
     assert dest
     assert (build / "scripts" / "capture_screenshot.gd").exists()
+    assert (build / "capture.tscn").exists()
+    # run/main_scene should be set to capture.tscn
+    pg = (build / "project.godot").read_text()
+    assert 'run/main_scene="res://capture.tscn"' in pg
 
 
 def test_ensure_capture_scene_idempotent(tmp_path):
     """Second call doesn't fail and returns same path."""
     build = tmp_path / "build"
     build.mkdir()
+    (build / "project.godot").write_text("[application]\n\nconfig/name=\"Test\"\n")
     first = _ensure_capture_scene(str(build))
     second = _ensure_capture_scene(str(build))
     assert first == second

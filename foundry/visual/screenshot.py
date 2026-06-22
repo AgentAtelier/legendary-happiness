@@ -134,12 +134,52 @@ def _find_capture_script() -> str:
 
 
 def _ensure_capture_scene(build_dir: str, script_path: Optional[str] = None) -> str:
-    """Copy the capture script into the build if not already present."""
+    """Copy the capture script into the build and wire it as the main scene.
+
+    Creates (or updates) ``capture.tscn`` which loads the capture script,
+    and sets ``run/main_scene`` in ``project.godot`` so Godot runs it on
+    startup.  The capture script then instances the target scene as a child
+    of its offscreen SubViewport.
+    """
     script = script_path or _find_capture_script()
-    dest = Path(build_dir) / "scripts" / "capture_screenshot.gd"
+    bd = Path(build_dir)
+
+    # Copy the GDScript
+    dest = bd / "scripts" / "capture_screenshot.gd"
     dest.parent.mkdir(parents=True, exist_ok=True)
     if not dest.exists() or _file_changed(script, str(dest)):
         shutil.copy2(script, dest)
+
+    # Write capture.tscn — a minimal scene that runs the capture script
+    tscn = bd / "capture.tscn"
+    tscn.write_text("""[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/capture_screenshot.gd" id="1_script"]
+
+[node name="Root" type="Node"]
+script = ExtResource("1_script")
+""")
+
+    # Point the project's main_scene at capture.tscn
+    pg = bd / "project.godot"
+    text = pg.read_text()
+    capture_line = 'run/main_scene="res://capture.tscn"'
+    if "run/main_scene" in text:
+        text = re.sub(
+            r'^run/main_scene\s*=.*$',
+            capture_line,
+            text,
+            flags=re.MULTILINE,
+        )
+    else:
+        text = re.sub(
+            r'^\[application\]$',
+            f'[application]\n{capture_line}',
+            text,
+            flags=re.MULTILINE,
+        )
+    pg.write_text(text)
+
     return str(dest)
 
 
