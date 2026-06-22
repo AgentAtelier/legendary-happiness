@@ -1483,6 +1483,224 @@ def test_quest_data_has_npc_needs():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  CB-4: Multi-room world — door entities + room_graph integration
+# ═══════════════════════════════════════════════════════════════════════
+
+def _make_room_graph():
+    """Minimal room_graph fixture with one door."""
+    return {
+        "rooms": [(0, 0), (1, 0)],
+        "tree_edges": {((0, 0), (1, 0))},
+        "extra_edges": set(),
+        "doors": [
+            {
+                "door_id": "door_0",
+                "from_room": [0, 0],
+                "to_room": [1, 0],
+                "wall": "east",
+                "locked": False,
+                "key_entity": None,
+            }
+        ],
+        "start": (0, 0),
+        "exit": (1, 0),
+        "start_exit_path_exists": True,
+        "width": 2,
+        "depth": 1,
+    }
+
+
+def test_room_graph_door_entities_emitted():
+    """CB-4: When room_graph is provided, door nodes appear in the scene."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Door node should exist
+        door_nodes = [n for n in parsed["nodes"] if n["name"] == "door_0"]
+        assert len(door_nodes) == 1, f"CB-4: expected door_0 node, got nodes: {[n['name'] for n in parsed['nodes']]}"
+        assert door_nodes[0]["type"] == "StaticBody3D"
+        # Door metadata
+        meta = parsed["metadata"].get("door_0", {})
+        assert meta.get("_forge_tag") == "door"
+        assert meta.get("_forge_target_room") == "1,0"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_has_collision_shape():
+    """CB-4: Door entities have collision shape sub_resources."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Door collision node
+        coll_nodes = [n for n in parsed["nodes"] if n["name"] == "door_0_collision"]
+        assert len(coll_nodes) == 1, f"CB-4: expected door_0_collision, got {[n['name'] for n in parsed['nodes']]}"
+        assert coll_nodes[0]["type"] == "CollisionShape3D"
+        assert coll_nodes[0].get("shape") is not None, (
+            "CB-4: door collision should reference a sub_resource"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_script_attached():
+    """CB-4: Door node gets door.gd script when room_graph is provided."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        door_node = next(n for n in parsed["nodes"] if n["name"] == "door_0")
+        assert door_node.get("script") == "s_door", (
+            f"CB-4: door should have script=s_door, got {door_node.get('script')!r}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_in_ext_resources():
+    """CB-4: When room_graph is provided, door.gd is in ext_resources."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        paths = {r["path"] for r in parsed["ext_resources"]}
+        assert "res://scripts/door.gd" in paths, "CB-4: door.gd missing from ext_resources"
+        ids = {r["id"] for r in parsed["ext_resources"]}
+        assert "s_door" in ids, "CB-4: s_door ext_resource id missing"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_locked_metadata():
+    """CB-4: Locked door gets _forge_key_entity metadata."""
+    rg = _make_room_graph()
+    rg["doors"][0]["locked"] = True
+    rg["doors"][0]["key_entity"] = "key_door_0"
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        meta = parsed["metadata"].get("door_0", {})
+        assert meta.get("_forge_key_entity") == "key_door_0", (
+            f"CB-4: locked door should have _forge_key_entity, got {meta}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_no_room_graph_no_door_nodes():
+    """CB-4: Without room_graph, no door nodes are emitted."""
+    _, parsed, _ = _compile_and_parse()
+    door_nodes = [n for n in parsed["nodes"] if n["name"].startswith("door_")]
+    assert len(door_nodes) == 0, (
+        f"CB-4: expected no door nodes without room_graph, got {door_nodes}"
+    )
+
+
+def test_door_has_visual_model():
+    """CB-4: Door entities have a _model child with a BoxMesh."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Door model node
+        model_nodes = [n for n in parsed["nodes"] if n["name"] == "door_0_model"]
+        assert len(model_nodes) == 1, f"CB-4: expected door_0_model, got {[n['name'] for n in parsed['nodes']]}"
+        assert model_nodes[0]["parent"] == "door_0"
+        # Door mesh and material sub_resources
+        sub_ids = {s["id"] for s in parsed.get("sub_resources", [])}
+        assert "door_mesh" in sub_ids, "CB-4: missing door_mesh sub_resource"
+        assert "door_mat" in sub_ids, "CB-4: missing door_mat sub_resource"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_has_world_log_metadata():
+    """CB-4: Door entities carry _forge_world_log metadata for cross-room persistence."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        meta = parsed["metadata"].get("door_0", {})
+        assert "_forge_world_log" in meta, (
+            f"CB-4: door should have _forge_world_log, got {meta}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Fix-Batch-1 Task 4: Shell tiling textures in compiled scene
 # ═══════════════════════════════════════════════════════════════════════
 

@@ -334,6 +334,15 @@ def _build_room_sub_resources(
          "agent_max_climb = 0.3",
          "cell_size = 0.3",
      ]},
+    # CB-4: Door visual mesh + material (shared by all door entities)
+    {"id": "door_mesh", "type": "BoxMesh",
+     "props": ["size = Vector3(0.1, 2.4, 1.8)"]},
+    {"id": "door_mat", "type": "StandardMaterial3D",
+     "props": [
+         "albedo_color = Color(0.35, 0.22, 0.12, 1)",
+         "roughness = 0.8",
+         "metallic = 0.0",
+     ]},
     # Collision shapes for walls
     {"id": "wall_ns_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
@@ -763,6 +772,8 @@ def compile_scene(
     room_size: dict | None = None,
     theme: str | None = None,
     camera_mode: str = "first",
+    room_graph: dict | None = None,  # CB-4: multi-room graph
+    current_room: tuple | None = None,  # CB-4: which room this scene represents
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.
 
@@ -819,6 +830,9 @@ def compile_scene(
                 used_tags.add("open")
             if cat == "door":
                 used_tags.add("door")
+    # CB-4: If room_graph is provided, always include door tag
+    if room_graph:
+        used_tags.add("door")
     used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
     for tag in sorted(used_tags):
         path = _TAG_TABLE.get(tag)
@@ -842,6 +856,25 @@ def compile_scene(
     # ── Compute sub_resource count (FIX-1/FIX-5) ───────────────
     # floor BoxShape3D + player CapsuleShape3D + one BoxShape3D per
     # interactable prop + NPC.
+    # Num interactable = manifest entries + door entities (CB-4)
+    num_interactable = len(interactable_ids)
+    # CB-4: Add door entities from room_graph
+    door_entities: list[dict] = []
+    if room_graph and current_room is not None:
+        from room_graph import get_doors_for_room, door_position_on_wall
+        room_doors = get_doors_for_room(current_room, room_graph.get("doors", []))
+        for dd in room_doors:
+            fr, to = tuple(dd["from_room"]), tuple(dd["to_room"])
+            dx, dy, dz, yaw = door_position_on_wall(fr, to, room_w, room_d)
+            door_id = dd["door_id"]
+            door_entities.append({
+                "id": door_id, "category": "door",
+                "x": dx, "y": dy, "z": dz, "yaw": yaw,
+                "locked": dd.get("locked", False),
+                "key_entity": dd.get("key_entity"),
+                "to_room": dd["to_room"],
+            })
+            interactable_ids.add(door_id)
     num_interactable = len(interactable_ids)
     num_sub_resources = 2 + num_interactable + 1  # +1 for NPC
 
@@ -1017,6 +1050,15 @@ def compile_scene(
         COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4)),
     )
     sub_res_idx += 1
+
+    # CB-4: Door collision shapes — thin boxes on walls
+    for dd in door_entities:
+        door_id = dd["id"]
+        collision_info[door_id] = (
+            f"sub_{sub_res_idx}",
+            (0.1, 2.4, 1.8),  # thin door collision: 10cm thick × 2.4m tall × 1.8m wide
+        )
+        sub_res_idx += 1
 
     # ── Build .tscn content ─────────────────────────────────────
     lines: list[str] = []
@@ -1517,9 +1559,50 @@ def compile_scene(
         lines.append(f'metadata/_forge_theme = "{theme}"')
         lines.append("")
 
-    # QuestData node (no script — P5 reads the JSON resource directly)
+    # ── QuestData node (no script — P5 reads the JSON resource directly)
     lines.append('[node name="QuestData" type="Node" parent="."]')
     lines.append("")
+
+    # ── CB-4: Door entities on room boundaries ───────────────────
+    door_script_path = _TAG_TABLE.get("door")
+    for dd_idx, dd in enumerate(door_entities):
+        door_id = dd["id"]
+        dx, dy, dz = dd["x"], dd["y"], dd["z"]
+        yaw = dd.get("yaw", 0.0)
+        # CB-4: Apply yaw to door transform so doors face the correct direction
+        import math
+        cos_y = math.cos(yaw)
+        sin_y = math.sin(yaw)
+        lines.append(f'[node name="{door_id}" type="StaticBody3D" parent="."]')
+        lines.append(
+            f"transform = Transform3D({_fmt_pos(cos_y)}, 0, {_fmt_pos(-sin_y)}, 0, 1, 0, {_fmt_pos(sin_y)}, 0, {_fmt_pos(cos_y)}, "
+            f"{_fmt_pos(dx)}, {_fmt_pos(dy)}, {_fmt_pos(dz)})"
+        )
+        lines.append('metadata/_forge_tag = "door"')
+        if dd.get("locked"):
+            lines.append(f'metadata/_forge_key_entity = "{dd["key_entity"]}"')
+        # CB-4: neighbour room data for traversal + world log path for persistence
+        to_room = dd.get("to_room", [0, 0])
+        lines.append(f'metadata/_forge_target_room = "{to_room[0]},{to_room[1]}"')
+        lines.append(f'metadata/_forge_world_log = "{world_log_path}"')
+        if door_script_path and door_script_path in used_tag_scripts:
+            lines.append(
+                f'script = ExtResource("{used_tag_scripts[door_script_path]}")'
+            )
+        lines.append("")
+        # Door collision shape (thin box on the wall)
+        if door_id in collision_info:
+            door_sub_id = collision_info[door_id][0]
+            lines.append(f'[node name="{door_id}_collision" type="CollisionShape3D" parent="{door_id}"]')
+            lines.append(f'shape = SubResource("{door_sub_id}")')
+            lines.append("")
+        # CB-4: Door visual model — simple BoxMesh so doors are visible
+        lines.append(
+            f'[node name="{door_id}_model" parent="{door_id}"]'
+        )
+        lines.append('mesh = SubResource("door_mesh")')
+        lines.append('surface_material_override/0 = SubResource("door_mat")')
+        lines.append("")
 
     content = "\n".join(lines)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
