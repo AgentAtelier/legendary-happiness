@@ -74,6 +74,8 @@ def minimal(prompt: str) -> dict:
         "key_features": [],
         "unmapped": [],
         "characters": [],
+        "exterior": {"enabled": False},
+        "place_names": {"scene_name": "", "landmark_lore": []},
     }
 
 
@@ -123,6 +125,21 @@ def brief_json_schema() -> dict:
                         },
                     },
                     "required": ["role"],
+                },
+            },
+            "exterior": {
+                "type": "object",
+                "properties": {
+                    "enabled": {"type": "boolean"},
+                    "structure": {"type": "string"},
+                    "biome_recipe": {"type": "object"},
+                },
+            },
+            "place_names": {
+                "type": "object",
+                "properties": {
+                    "scene_name": {"type": "string"},
+                    "landmark_lore": {"type": "array", "items": {"type": "object"}},
                 },
             },
         },
@@ -332,5 +349,29 @@ def validate_brief(
                 brief["unmapped"].append(text)
 
     brief["key_features"] = validated_features
+
+    # --- exterior (light normalize; heavy validation lives in biome_recipe /
+    #     exterior_planner, which consume the raw biome_recipe downstream) ---
+    ext = raw.get("exterior")
+    if isinstance(ext, dict):
+        norm_ext: dict = {"enabled": bool(ext.get("enabled", False))}
+        if ext.get("structure"):
+            norm_ext["structure"] = str(ext["structure"])
+        if isinstance(ext.get("biome_recipe"), dict):
+            norm_ext["biome_recipe"] = ext["biome_recipe"]
+        brief["exterior"] = norm_ext
+    else:
+        brief["exterior"] = {"enabled": False}
+
+    # --- place_names (text flavor; normalized pass-through) ---
+    pn = raw.get("place_names")
+    if isinstance(pn, dict):
+        lore = pn.get("landmark_lore")
+        brief["place_names"] = {
+            "scene_name": str(pn.get("scene_name", "") or ""),
+            "landmark_lore": [x for x in lore if isinstance(x, dict)] if isinstance(lore, list) else [],
+        }
+    else:
+        brief["place_names"] = {"scene_name": "", "landmark_lore": []}
 
     return brief, decisions
