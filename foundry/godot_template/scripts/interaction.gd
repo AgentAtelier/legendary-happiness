@@ -339,7 +339,7 @@ func _place_item_on_surface() -> void:
 		if current.has_meta("_forge_surface_tag") and current.get_meta("_forge_surface_tag") == "place":
 			# Get surface Y from metadata
 			var surface_y: float = float(current.get_meta("_forge_surface_y", 0.8))
-			var surface_pos := current.global_position
+			var surface_pos: Vector3 = current.global_position
 
 			# Drop the item on the surface
 			var prop = get_node_or_null("/root/Root/" + held)

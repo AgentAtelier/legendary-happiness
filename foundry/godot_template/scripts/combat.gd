@@ -61,7 +61,7 @@ func _swing() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + forward)
 	query.collision_mask = 1  # layer 1 = default
 	query.exclude = [get_parent().get_rid()]  # don't hit self
-	var result := space_state.intersect_ray(query)
+	var result: Dictionary = space_state.intersect_ray(query)
 
 	if result and result.has("collider"):
 		var target = result["collider"]

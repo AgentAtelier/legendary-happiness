@@ -563,17 +563,12 @@ func _pick_wander_target() -> Vector3:
 
 	# CB-3: derive bounds from current position offset (stays within the room)
 	# Default room is ~20×20 with wall margins; keep targets within 8 m radius
+	# Synchronous pick (no await → not a coroutine, so callers don't need
+	# await). The wander state machine re-checks reachability as it paths there.
 	var spread := 7.0
-	for _i in range(10):
-		var tx := global_position.x + randf_range(-spread, spread)
-		var tz := global_position.z + randf_range(-spread, spread)
-		var target := Vector3(tx, 0.0, tz)
-		_nav_agent.target_position = target
-		# Brief check: if the agent started computing, the target is likely valid
-		await get_tree().process_frame
-		if not _nav_agent.is_navigation_finished():
-			return target
-	return global_position  # fallback
+	var tx := global_position.x + randf_range(-spread, spread)
+	var tz := global_position.z + randf_range(-spread, spread)
+	return Vector3(tx, 0.0, tz)
 
 
 func _wander_move(delta: float) -> void:

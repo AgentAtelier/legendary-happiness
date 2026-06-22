@@ -101,7 +101,7 @@ func _fire_event(ev: Dictionary) -> void:
 	# Register spawned quest
 	var quest_id := str(consequences.get("spawned_quest_id", ""))
 	if quest_id != "":
-		var quest_spec := ev.get("spawned_quest", null)
+		var quest_spec: Variant = ev.get("spawned_quest", null)
 		if quest_spec != null:
 			var qm = get_node_or_null("/root/QuestManager")
 			if qm and qm.has_method("register_emergent_quest"):
