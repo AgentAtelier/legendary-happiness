@@ -4,6 +4,20 @@ These are the **always-on** rules for any AI implementer working in this repo. A
 adds *what* to build; this file is the *how*, and it does not get repeated in every prompt. If a task
 prompt contradicts this file, the task prompt wins — but call out the conflict before proceeding.
 
+## 🔴 Always run the FULL test suite — never a subset
+
+**Every** implementation turn must end with:
+
+```
+cd foundry && .venv/bin/python -m pytest tests/ -q        # ALL tests
+cd foundry && .venv/bin/python -m pytest tests/test_godot_smoke.py -q
+```
+
+Report the **total** count (e.g. "816 passed") — never a hand-picked subset like "133 key tests
+pass".  A green subset over a red full suite is how bugs (AO not wired, missing imports, material
+drift) ship undetected.  If a specific file group is worth checking mid-stride, that is fine — but
+the **final** report MUST include the full `pytest tests/` output.
+
 ## Working discipline
 
 - **TDD, in small slices.** Write the failing test, watch it fail, write the minimal code, watch it

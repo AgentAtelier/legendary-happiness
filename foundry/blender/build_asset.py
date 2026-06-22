@@ -474,7 +474,17 @@ def apply_roughness_bake(
               noise_rr, mapping_rr, tex_coord_rr):
         nodes.remove(n)
 
-    # 9 ── Pack so the GLB carries the metallicRoughness image.
+    # 9 ── Fix-Batch-2: Normalise the roughness-channel mean to
+    # baseline_roughness by additive shift (preserves noise shape,
+    # corrects for colour-management compression of the EMIT bake).
+    g_values = [out[4 * i + 1] for i in range(px_count)]
+    g_mean = sum(g_values) / px_count
+    if g_mean > 0.001:
+        g_shift = baseline_roughness - g_mean
+        for i in range(px_count):
+            out[4 * i + 1] = min(1.0, max(0.0, out[4 * i + 1] + g_shift))
+        rough_image.pixels[:] = out
+    # Pack so the GLB carries the metallicRoughness image.
     rough_image.pack()
 
     # Restore prior selection state (apply_material does not bake again).
