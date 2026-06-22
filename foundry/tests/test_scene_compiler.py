@@ -1701,6 +1701,59 @@ def test_door_has_world_log_metadata():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  CB-5: Emergent events — event_manager + events in quest_data
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_quest_data_has_events_key():
+    """CB-5: quest_data.json includes an 'events' list."""
+    _, _, data = _compile_and_parse()
+    assert "events" in data, f"CB-5: quest_data missing 'events' key, got keys: {list(data.keys())}"
+    assert isinstance(data["events"], list)
+
+
+def test_event_has_schema():
+    """CB-5: Each event in quest_data follows the event-consequence schema."""
+    _, _, data = _compile_and_parse()
+    events = data.get("events", [])
+    for ev in events:
+        assert "event_id" in ev
+        assert "event_type" in ev
+        assert ev["event_type"] in (
+            "flood", "earthquake", "wildfire", "blizzard", "drought", "landslide", "blight"
+        )
+        assert "precursors" in ev
+        assert "spatial_origin" in ev
+        assert "consequences" in ev
+        assert "tick_fired" in ev
+
+
+def test_event_manager_shell_node():
+    """CB-5: Scene has an EventManager node."""
+    _, parsed, _ = _compile_and_parse()
+    em_nodes = [n for n in parsed["nodes"] if n["name"] == "EventManager"]
+    assert len(em_nodes) == 1, f"CB-5: expected EventManager node, got {[n['name'] for n in parsed['nodes']]}"
+    assert em_nodes[0]["type"] == "Node"
+
+
+def test_event_manager_in_ext_resources():
+    """CB-5: event_manager.gd is in ext_resource block."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/event_manager.gd" in paths, "CB-5: event_manager.gd missing from ext_resources"
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_event_mgr" in ids, "CB-5: s_event_mgr ext_resource id missing"
+
+
+def test_event_manager_has_script():
+    """CB-5: EventManager node has event_manager.gd script attached."""
+    _, parsed, _ = _compile_and_parse()
+    em = next(n for n in parsed["nodes"] if n["name"] == "EventManager")
+    assert em.get("script") == "s_event_mgr", (
+        f"CB-5: EventManager should have script=s_event_mgr, got {em.get('script')!r}"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Fix-Batch-1 Task 4: Shell tiling textures in compiled scene
 # ═══════════════════════════════════════════════════════════════════════
 

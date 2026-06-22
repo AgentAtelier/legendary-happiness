@@ -93,6 +93,8 @@ _SHELL_SCRIPTS: List[dict] = [
     {"id": "s_win", "path": "res://scripts/win_screen.gd"},
     # B2: day/night cycle runtime
     {"id": "s_day_night", "path": "res://scripts/day_night.gd"},
+    # CB-5: event_manager.gd — reads/writes events from quest_data
+    {"id": "s_event_mgr", "path": "res://scripts/event_manager.gd"},
     # CB-1: quest manager autoload — registered in project.godot
     # CB-2: container.gd + door.gd are emitted via used_tag_scripts
     #       (like pickup.gd/npc.gd), not via _SHELL_SCRIPTS.
@@ -111,6 +113,8 @@ _SHELL_NODES: List[dict] = [
     {"name": "WinScreen", "type": "Control", "parent": ".", "script": "s_win"},
     # B2: day/night cycle runtime node
     {"name": "DayNight", "type": "Node", "parent": ".", "script": "s_day_night"},
+    # CB-5: emergent events runtime
+    {"name": "EventManager", "type": "Node", "parent": ".", "script": "s_event_mgr"},
 ]
 
 # ── NPC body (P7: procedurally generated humanoid GLB) ──────────
@@ -1004,10 +1008,32 @@ def compile_scene(
         cat = entry.get("category", "?")
         examine_flavour[eid] = _category_fallback(cat)
 
+    # CB-5: Generate emergent events for this room
+    events_data: list[dict] = []
+    from world_events import fire_events
+    npc_ids = [spec.get("npc_id", f"npc_{i}") for i, spec in enumerate(quest_specs)]
+    all_rooms = [(0, 0)]
+    if room_graph:
+        all_rooms = [tuple(r) for r in room_graph.get("rooms", [(0, 0)])]
+    epicentre = current_room if current_room else (0, 0)
+    manifest_entity_ids = [e.get("id", "") for e in manifest if not e.get("decor")]
+    events_data = fire_events(
+        num_events=1,
+        time_of_day="day",  # default; runtime may override
+        tick_count=0,
+        needs=npc_needs_list[0] if npc_needs_list else None,
+        epicentre=epicentre,
+        all_rooms=all_rooms,
+        existing_npc_ids=npc_ids,
+        manifest_entities=manifest_entity_ids,
+        seed=42,
+    )
+
     quest_data: dict = {
         "npcs": npcs_data,
         "world_log_path": world_log_path,
         "examine": examine_flavour,
+        "events": events_data,  # CB-5: emergent events
     }
     Path(data_path).write_text(
         json.dumps(quest_data, indent=2, ensure_ascii=False) + "\n",
