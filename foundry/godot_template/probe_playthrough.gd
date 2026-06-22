@@ -425,14 +425,21 @@ func _find_nodes():
 				var npcs = parsed["npcs"]
 				if npcs is Dictionary:
 					var idx := 0
+					var valid_quests := 0
 					for k in npcs.keys():
 						var td = str(npcs[k].get("target_entity", ""))
 						npc_targets[k] = td
 						if idx == 0:
 							_target_entity = td
+						# B1: Count quests with valid objective entries
+						var obj = npcs[k].get("objective")
+						if obj is Dictionary and obj.has("target"):
+							valid_quests += 1
 						idx += 1
 					if npcs.size() >= 2:
 						_multi_npc = true
+					# B1: quest-log is populated if ≥1 NPC has a valid quest objective
+					_result["quest_log_populated"] = valid_quests >= 1
 
 	# B0: Collect all NPC nodes mapped by _forge_npc_id
 	var talk_nodes: Array = []

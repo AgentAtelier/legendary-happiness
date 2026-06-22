@@ -405,6 +405,13 @@ def test_scripted_playthrough_talk_right_win():
         f"Checks: {checks}"
     )
 
+    # B1: Quest-log should be populated (quest_data has valid NPC entries)
+    assert result.get("quest_log_populated", False), (
+        f"B1: quest_log_populated should be true\n"
+        f"quest_log_populated={result.get('quest_log_populated')}\n"
+        f"Checks: {checks}"
+    )
+
     # B2: Atmosphere — post-processing + day/night nodes must be present
     assert result.get("world_env_found", False), (
         f"B2: WorldEnvironment node should exist in scene\n"

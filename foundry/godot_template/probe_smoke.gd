@@ -33,6 +33,7 @@ var _result := {
 	"player_body": false,
 	"player_grounded": false,
 	"audio_synth": false,
+	"audio_ambient": false,
 	"checks": []
 }
 
@@ -379,3 +380,22 @@ func _check_audio_synth(_all_nodes: Array[Node]):
 		_result["checks"].append("PASS: Audio autoload play_footstep() called without error")
 	else:
 		_result["checks"].append("WARNING: Audio autoload not found (may not be registered)")
+
+	# B2: Test ambient bed start
+	var ambient_ok := false
+	if audio_autoload and audio_autoload.has_method("start_ambient"):
+		# start_ambient creates an AudioStreamPlayer + add_child synchronously
+		audio_autoload.start_ambient("default")
+		# Verify the ambient player was created (child of Audio autoload)
+		for child in audio_autoload.get_children():
+			if child is AudioStreamPlayer:
+				ambient_ok = true
+				break
+		if ambient_ok:
+			_result["audio_ambient"] = true
+			_result["checks"].append("PASS: Audio ambient bed started + player created")
+		else:
+			_result["checks"].append("FAIL: Audio ambient player not created after start_ambient()")
+	else:
+		_result["checks"].append("WARNING: Audio autoload missing start_ambient method")
+	_result["audio_ambient"] = ambient_ok
