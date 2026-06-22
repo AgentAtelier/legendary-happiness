@@ -19,17 +19,36 @@ prompt contradicts this file, the task prompt wins — but call out the conflict
 
 ## 🔴 Always run the FULL test suite — never a subset
 
-**Every** implementation turn must end with:
+**Every** implementation turn must end with BOTH commands, and you must **paste the literal final
+result line of EACH** into your report:
 
 ```
-cd foundry && .venv/bin/python -m pytest tests/ -q        # ALL tests
-cd foundry && .venv/bin/python -m pytest tests/test_godot_smoke.py -q
+cd foundry && .venv/bin/python -m pytest tests/ -q                     # ALL unit tests
+cd foundry && .venv/bin/python -m pytest tests/test_godot_smoke.py -q  # THE Godot-in-the-loop gate
 ```
 
 Report the **total** count (e.g. "816 passed") — never a hand-picked subset like "133 key tests
 pass".  A green subset over a red full suite is how bugs (AO not wired, missing imports, material
-drift) ship undetected.  If a specific file group is worth checking mid-stride, that is fine — but
-the **final** report MUST include the full `pytest tests/` output.
+drift) ship undetected.
+
+### 🛑 The Godot gate is non-negotiable (this has been a recurring false-green)
+
+`pytest tests/ -q` reporting "0 failed" is **NOT** sufficient and is **NOT** "done". The Godot-in-the-
+loop tests (`test_godot_smoke.py`) are THE gate, and **the last three delegated bundles each reported
+"0 failed" while these were RED** — GDScript parse errors that pass every Python unit test but load
+*nothing* in Godot, and a multi-NPC regression. You MUST:
+
+- **Paste the literal `test_godot_smoke.py -q` result line** (e.g. `8 passed in 31s`). A report without
+  it is rejected, regardless of the unit count.
+- Treat **"skipped" / "no tests ran" / `TimeoutExpired`** as a **FAILURE** — if Godot isn't found, or a
+  probe hangs, the gate did NOT pass and you may not claim green. (A GDScript parse error makes the
+  probe hang → timeout; that is a red gate, not a slow machine.)
+- After any change under `foundry/godot_template/` or to `scene_compiler.py`: also do a plain headless
+  launch and grep stderr for `SCRIPT ERROR|Parse Error|Failed to load` = **0**, and **regenerate
+  builds** (old builds keep old scripts).
+
+If you cannot run Godot in your environment, say so explicitly and hand the Godot gate to the
+orchestrator — do **not** report "0 failed / done".
 
 ## Working discipline
 
