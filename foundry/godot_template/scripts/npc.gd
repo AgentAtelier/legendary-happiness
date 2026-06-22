@@ -8,6 +8,8 @@
 # B1: Idle micro-animation — breath scale + sway via Tween.
 # CB-3: NavigationAgent3D + idle-wander — NPCs path to random points
 #       on the navmesh and pause between moves.
+# CB-7: Skeleton3D + AnimationPlayer — procedural humanoid rig with
+#       idle/walk skeletal animations.
 extends Node3D
 
 enum State { IDLE, QUEST_GIVEN, DONE }
@@ -28,7 +30,7 @@ var _idle_bark_index: int = -1
 var _idle_bark_timer: float = 0.0
 const _IDLE_BARK_INTERVAL: float = 12.0  # seconds between barks
 
-# B1: idle anim
+# B1: idle anim (fallback when no Skeleton3D)
 var _idle_tween: Tween = null
 var _breath_scale_high: float = 1.03
 var _breath_period: float = 3.5  # seconds for one breath cycle
@@ -38,12 +40,20 @@ var _breath_scale_low: float = 1.0
 var _sway_angle: float = 0.02
 var _sway_direction_sign: float = 1.0
 
+# CB-7: Skeleton + AnimationPlayer refs
+var _skeleton: Skeleton3D = null
+var _anim_player: AnimationPlayer = null
+var _has_skeletal_rig: bool = false
+var _last_wander_state: int = -1  # CB-7: track state transitions for animation
+
 
 func _ready() -> void:
 	_load_quest_data()
 	# C-3: Restore NPC state from the world log (survives reload)
 	_restore_state_from_log()
-	# B1: Start idle micro-animation (breath + sway)
+	# CB-7: Set up skeletal rig first (before animation)
+	_setup_skeleton()
+	# B1: Start idle micro-animation (breath + sway) — fallback if no skeleton
 	_start_idle_anim()
 	# CB-3: Set up NavigationAgent3D for idle-wander
 	_setup_navigation()
@@ -318,6 +328,201 @@ func _push_subtitle(line_key: String) -> void:
 		hud.push_subtitle(prefix + ": " + line)
 
 
+# ── CB-7: Skeletal rig + procedural animations ───────────────────
+
+# Bone hierarchy (mirrors _BONE_DEFS in scene_compiler.py):
+# (bone_name, parent_index, rest_x, rest_y, rest_z)
+const _BONE_HIERARCHY: Array = [
+	{"name": "Hips",        "parent": -1, "rest": Vector3(0.0, 1.0, 0.0)},
+	{"name": "Spine",       "parent": 0,  "rest": Vector3(0.0, 1.3, 0.0)},
+	{"name": "Chest",       "parent": 1,  "rest": Vector3(0.0, 1.6, 0.0)},
+	{"name": "Neck",        "parent": 2,  "rest": Vector3(0.0, 1.85, 0.0)},
+	{"name": "Head",        "parent": 3,  "rest": Vector3(0.0, 2.0, 0.0)},
+	{"name": "UpperArm.L",  "parent": 2,  "rest": Vector3(0.35, 1.55, 0.0)},
+	{"name": "LowerArm.L",  "parent": 5,  "rest": Vector3(0.35, 1.25, 0.0)},
+	{"name": "Hand.L",      "parent": 6,  "rest": Vector3(0.35, 0.95, 0.0)},
+	{"name": "UpperArm.R",  "parent": 2,  "rest": Vector3(-0.35, 1.55, 0.0)},
+	{"name": "LowerArm.R",  "parent": 8,  "rest": Vector3(-0.35, 1.25, 0.0)},
+	{"name": "Hand.R",      "parent": 9,  "rest": Vector3(-0.35, 0.95, 0.0)},
+	{"name": "UpperLeg.L",  "parent": 0,  "rest": Vector3(0.15, 0.8, 0.0)},
+	{"name": "LowerLeg.L",  "parent": 11, "rest": Vector3(0.15, 0.4, 0.0)},
+	{"name": "Foot.L",      "parent": 12, "rest": Vector3(0.15, 0.05, 0.1)},
+	{"name": "UpperLeg.R",  "parent": 0,  "rest": Vector3(-0.15, 0.8, 0.0)},
+	{"name": "LowerLeg.R",  "parent": 14, "rest": Vector3(-0.15, 0.4, 0.0)},
+	{"name": "Foot.R",      "parent": 15, "rest": Vector3(-0.15, 0.05, 0.1)},
+]
+
+# Animation params
+const _WALK_PERIOD: float = 1.0       # seconds for one walk cycle
+const _IDLE_BREATH_PERIOD: float = 4.0 # seconds for one idle breath cycle
+const _LEG_SWING_ANGLE: float = 0.4    # radians leg swing during walk
+const _ARM_SWING_ANGLE: float = 0.3    # radians arm swing during walk
+const _BODY_BOB_HEIGHT: float = 0.04   # metres body bob during walk
+
+
+func _setup_skeleton() -> void:
+	"""CB-7: Build the bone hierarchy on the Skeleton3D child node."""
+	_skeleton = get_node_or_null("Skeleton")
+	if not _skeleton or not (_skeleton is Skeleton3D):
+		return
+
+	# Add bones
+	for b in _BONE_HIERARCHY:
+		var bone_idx = _skeleton.get_bone_count()
+		_skeleton.add_bone(str(b["name"]))
+		_skeleton.set_bone_parent(bone_idx, int(b["parent"]))
+		# Set rest pose
+		var rest_xform = Transform3D.IDENTITY
+		rest_xform.origin = b["rest"] as Vector3
+		_skeleton.set_bone_rest(bone_idx, rest_xform)
+
+	# Find AnimationPlayer
+	_anim_player = get_node_or_null("AnimationPlayer")
+	if _anim_player and (_anim_player is AnimationPlayer):
+		_anim_player.root_node = NodePath("../Skeleton")
+		_setup_animations()
+		_has_skeletal_rig = true
+
+
+func _setup_animations() -> void:
+	"""CB-7: Create procedural idle and walk animation libraries."""
+	if not _anim_player:
+		return
+
+	# Create animation library
+	var lib = AnimationLibrary.new()
+
+	# --- idle animation: subtle breathing on spine + gentle arm sway ---
+	var idle_anim = Animation.new()
+	idle_anim.length = _IDLE_BREATH_PERIOD
+	idle_anim.loop_mode = Animation.LOOP_LINEAR
+
+	var spine_idx = _skeleton.find_bone("Spine")
+	var chest_idx = _skeleton.find_bone("Chest")
+	var arm_l_idx = _skeleton.find_bone("UpperArm.L")
+	var arm_r_idx = _skeleton.find_bone("UpperArm.R")
+
+	# Spine scale breathing (Y scale oscillates)
+	if spine_idx >= 0:
+		var track_idx = idle_anim.add_track(Animation.TYPE_POSITION_3D)
+		idle_anim.track_set_path(track_idx, "Spine")
+		idle_anim.position_track_insert_key(track_idx, 0.0, Vector3(0, 1.3, 0))
+		idle_anim.position_track_insert_key(track_idx, _IDLE_BREATH_PERIOD * 0.5, Vector3(0, 1.32, 0))
+		idle_anim.position_track_insert_key(track_idx, _IDLE_BREATH_PERIOD, Vector3(0, 1.3, 0))
+
+	# Chest scale breathing
+	if chest_idx >= 0:
+		var track_idx = idle_anim.add_track(Animation.TYPE_POSITION_3D)
+		idle_anim.track_set_path(track_idx, "Chest")
+		idle_anim.position_track_insert_key(track_idx, 0.0, Vector3(0, 1.6, 0))
+		idle_anim.position_track_insert_key(track_idx, _IDLE_BREATH_PERIOD * 0.5, Vector3(0, 1.62, 0))
+		idle_anim.position_track_insert_key(track_idx, _IDLE_BREATH_PERIOD, Vector3(0, 1.6, 0))
+
+	# Arms gentle sway during idle
+	if arm_l_idx >= 0:
+		var track_idx = idle_anim.add_track(Animation.TYPE_ROTATION_3D)
+		idle_anim.track_set_path(track_idx, "UpperArm.L")
+		idle_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion.IDENTITY)
+		idle_anim.rotation_track_insert_key(track_idx, _IDLE_BREATH_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), 0.04))
+		idle_anim.rotation_track_insert_key(track_idx, _IDLE_BREATH_PERIOD, Quaternion.IDENTITY)
+
+	if arm_r_idx >= 0:
+		var track_idx = idle_anim.add_track(Animation.TYPE_ROTATION_3D)
+		idle_anim.track_set_path(track_idx, "UpperArm.R")
+		idle_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion.IDENTITY)
+		idle_anim.rotation_track_insert_key(track_idx, _IDLE_BREATH_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), -0.04))
+		idle_anim.rotation_track_insert_key(track_idx, _IDLE_BREATH_PERIOD, Quaternion.IDENTITY)
+
+	lib.add_animation("idle", idle_anim)
+
+	# --- walk animation: leg/arm swing + body bob ---
+	var walk_anim = Animation.new()
+	walk_anim.length = _WALK_PERIOD
+	walk_anim.loop_mode = Animation.LOOP_LINEAR
+
+	var hip_idx = _skeleton.find_bone("Hips")
+	var uleg_l_idx = _skeleton.find_bone("UpperLeg.L")
+	var lleg_l_idx = _skeleton.find_bone("LowerLeg.L")
+	var uleg_r_idx = _skeleton.find_bone("UpperLeg.R")
+	var lleg_r_idx = _skeleton.find_bone("LowerLeg.R")
+
+	# Hips vertical bob
+	if hip_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_POSITION_3D)
+		walk_anim.track_set_path(track_idx, "Hips")
+		walk_anim.position_track_insert_key(track_idx, 0.0, Vector3(0, 1.0, 0))
+		walk_anim.position_track_insert_key(track_idx, _WALK_PERIOD * 0.25, Vector3(0, 1.0 + _BODY_BOB_HEIGHT, 0))
+		walk_anim.position_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Vector3(0, 1.0, 0))
+		walk_anim.position_track_insert_key(track_idx, _WALK_PERIOD * 0.75, Vector3(0, 1.0 + _BODY_BOB_HEIGHT, 0))
+		walk_anim.position_track_insert_key(track_idx, _WALK_PERIOD, Vector3(0, 1.0, 0))
+
+	# Left leg swing (forward at t=0, back at t=0.5)
+	if uleg_l_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_ROTATION_3D)
+		walk_anim.track_set_path(track_idx, "UpperLeg.L")
+		walk_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion(Vector3(1, 0, 0), _LEG_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), -_LEG_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD, Quaternion(Vector3(1, 0, 0), _LEG_SWING_ANGLE))
+
+	# Left lower leg follow-through
+	if lleg_l_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_ROTATION_3D)
+		walk_anim.track_set_path(track_idx, "LowerLeg.L")
+		walk_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion(Vector3(1, 0, 0), -0.2))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.25, Quaternion(Vector3(1, 0, 0), -0.1))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), -0.3))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.75, Quaternion(Vector3(1, 0, 0), -0.1))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD, Quaternion(Vector3(1, 0, 0), -0.2))
+
+	# Right leg swing (opposite phase — back at t=0, forward at t=0.5)
+	if uleg_r_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_ROTATION_3D)
+		walk_anim.track_set_path(track_idx, "UpperLeg.R")
+		walk_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion(Vector3(1, 0, 0), -_LEG_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), _LEG_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD, Quaternion(Vector3(1, 0, 0), -_LEG_SWING_ANGLE))
+
+	if lleg_r_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_ROTATION_3D)
+		walk_anim.track_set_path(track_idx, "LowerLeg.R")
+		walk_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion(Vector3(1, 0, 0), -0.3))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.25, Quaternion(Vector3(1, 0, 0), -0.1))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), -0.2))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.75, Quaternion(Vector3(1, 0, 0), -0.1))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD, Quaternion(Vector3(1, 0, 0), -0.3))
+
+	# Arms swing opposite to legs
+	if arm_l_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_ROTATION_3D)
+		walk_anim.track_set_path(track_idx, "UpperArm.L")
+		walk_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion(Vector3(1, 0, 0), -_ARM_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), _ARM_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD, Quaternion(Vector3(1, 0, 0), -_ARM_SWING_ANGLE))
+
+	if arm_r_idx >= 0:
+		var track_idx = walk_anim.add_track(Animation.TYPE_ROTATION_3D)
+		walk_anim.track_set_path(track_idx, "UpperArm.R")
+		walk_anim.rotation_track_insert_key(track_idx, 0.0, Quaternion(Vector3(1, 0, 0), _ARM_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD * 0.5, Quaternion(Vector3(1, 0, 0), -_ARM_SWING_ANGLE))
+		walk_anim.rotation_track_insert_key(track_idx, _WALK_PERIOD, Quaternion(Vector3(1, 0, 0), _ARM_SWING_ANGLE))
+
+	lib.add_animation("walk", walk_anim)
+
+	# Add library and start idle
+	_anim_player.add_animation_library("npc_anim", lib)
+	_anim_player.play("npc_anim/idle")
+
+
+func _get_body_node():
+	"""CB-7: Find the Body GLB instance — now under HipsAttachment when rig exists."""
+	if _has_skeletal_rig:
+		var ha = get_node_or_null("HipsAttachment")
+		if ha:
+			return ha.get_node_or_null("Body")
+		return null
+	return get_node_or_null("Body")
+
+
 # ── CB-3: Navigation + idle-wander ─────────────────────────────
 
 # Idle-wander states
@@ -381,8 +586,8 @@ func _wander_move(delta: float) -> void:
 	if dir.length() > 0.01:
 		# CB-3 fix: move self (the NPC StaticBody3D), not the parent (Root)
 		global_position += dir * _wander_speed * delta
-		# Rotate Body child to face movement direction
-		var body := get_node_or_null("Body")
+		# CB-7: Rotate the Body (under HipsAttachment) to face movement direction
+		var body = _get_body_node()
 		if body:
 			var look_dir := Vector3(dir.x, 0, dir.z).normalized()
 			if look_dir.length() > 0.01:
@@ -415,6 +620,14 @@ func _process(delta: float) -> void:
 			_wander_state = WanderState.PAUSE
 			_wander_timer = 1.0
 
+	# CB-7: Play skeletal animation on state transition (not every frame)
+	if _has_skeletal_rig and _anim_player and _wander_state != _last_wander_state:
+		_last_wander_state = _wander_state
+		if _wander_state == WanderState.WANDER:
+			_anim_player.play("npc_anim/walk")
+		elif _wander_state == WanderState.PAUSE:
+			_anim_player.play("npc_anim/idle")
+
 	# EB-6: Idle bark timer
 	if _idle_barks.is_empty():
 		return
@@ -437,12 +650,17 @@ func _push_subtitle_line(line: String) -> void:
 
 func _start_idle_anim() -> void:
 	"""Start a looping Tween that animates breath scale + slight sway.
-	
+
 	Spine Slice 3: timid NPCs (courage <= -0.33) get slower breathing,
-	subtler sway — a small visible cue of their personality."""
+	subtler sway — a small visible cue of their personality.
+
+	CB-7: When skeletal rig exists, the AnimationPlayer handles idle
+	animation. This Tween is a fallback for scenes without Skeleton3D."""
+	if _has_skeletal_rig:
+		return  # Skeletal animation handles idle/walk
 	if _idle_tween and _idle_tween.is_valid():
 		_idle_tween.kill()
-	
+
 	# Spine Slice 3: adjust animation params from soul
 	var anim_period := _breath_period
 	var anim_scale_high := _breath_scale_high
@@ -462,7 +680,7 @@ func _start_idle_anim() -> void:
 	_idle_tween.set_loops(0)  # infinite
 	# Breath: scale oscillates between 1.0 and anim_scale_high
 	# Sway: slight rotation on Z axis (timid NPCs sway opposite direction)
-	var body = get_node_or_null("Body")
+	var body = _get_body_node()
 	if body:
 		var half_period := anim_period / 2.0
 		# Breath in

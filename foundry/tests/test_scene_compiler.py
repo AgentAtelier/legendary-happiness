@@ -362,11 +362,12 @@ def test_default_position_zero():
 # ── NPC body (P7: generated humanoid GLB) ───────────────────────
 
 def test_npc_has_glb_body():
-    """NPC Body node instances a GLB via header-line instance= (FIX-1a)."""
+    """NPC Body node instances a GLB via header-line instance= (FIX-1a).
+    CB-7: Body is now a child of HipsAttachment (BoneAttachment3D)."""
     _, parsed, _ = _compile_and_parse()
     body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
     assert len(body_nodes) == 1
-    assert body_nodes[0]["parent"] == "npc_0"
+    assert "HipsAttachment" in body_nodes[0]["parent"]
     # FIX-1a: type= is omitted when instance= is on the [node] header line
     assert body_nodes[0].get("instance") is not None, (
         "Body node should instance a GLB via ExtResource (on header line)"
@@ -1903,4 +1904,209 @@ def test_shell_material_references_textures():
         assert "roughness_texture" in props, (
             f"Task 4: {mat_id} missing roughness_texture"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-7: Skeletal NPC — Skeleton3D + AnimationPlayer + BoneAttachment3D
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_npc_has_skeleton_node():
+    """CB-7: NPC has a Skeleton3D child node."""
+    _, parsed, _ = _compile_and_parse()
+    skel_nodes = [n for n in parsed["nodes"] if n["name"] == "Skeleton"]
+    assert len(skel_nodes) == 1, f"CB-7: expected 1 Skeleton node, got {len(skel_nodes)}"
+    assert skel_nodes[0]["type"] == "Skeleton3D"
+    assert skel_nodes[0]["parent"] == "npc_0"
+
+
+def test_npc_has_animation_player():
+    """CB-7: NPC has an AnimationPlayer child node."""
+    _, parsed, _ = _compile_and_parse()
+    anim_nodes = [n for n in parsed["nodes"] if n["name"] == "AnimationPlayer"]
+    assert len(anim_nodes) == 1, f"CB-7: expected 1 AnimationPlayer node, got {len(anim_nodes)}"
+    assert anim_nodes[0]["type"] == "AnimationPlayer"
+    assert anim_nodes[0]["parent"] == "npc_0"
+
+
+def test_npc_has_hips_attachment():
+    """CB-7: NPC has a BoneAttachment3D for the Hips bone."""
+    _, parsed, _ = _compile_and_parse()
+    ha_nodes = [n for n in parsed["nodes"] if n["name"] == "HipsAttachment"]
+    assert len(ha_nodes) == 1, f"CB-7: expected 1 HipsAttachment node, got {len(ha_nodes)}"
+    assert ha_nodes[0]["type"] == "BoneAttachment3D"
+    assert ha_nodes[0]["parent"] == "npc_0"
+
+
+def test_body_attached_to_hips():
+    """CB-7: Body GLB is now a child of HipsAttachment."""
+    _, parsed, _ = _compile_and_parse()
+    body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
+    assert len(body_nodes) == 1, f"CB-7: expected 1 Body node, got {len(body_nodes)}"
+    # Body parent should be "npc_0/HipsAttachment"
+    assert "HipsAttachment" in body_nodes[0]["parent"]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-7: Outdoor room — no walls/ceiling, GroundPlane, biome atmosphere
+# ═══════════════════════════════════════════════════════════════════════
+
+def _make_exterior_plan():
+    """Minimal exterior plan fixture for outdoor rooms."""
+    return {
+        "field": {
+            "extent": 80.0, "amplitude": 1.2, "base_frequency": 0.045,
+            "octaves": 4, "lacunarity": 2.0, "persistence": 0.5,
+            "base_height": 0.0, "seed": 42,
+        },
+        "biome": {
+            "biome": "temperate_forest",
+            "terrain": {"amplitude": 2.2, "base_frequency": 0.05, "octaves": 5,
+                        "lacunarity": 2.0, "persistence": 0.5},
+            "ground_materials": ["grass", "dirt"],
+            "flora_set": [
+                {"category": "tree", "weight": 0.6, "density": 0.07},
+                {"category": "shrub", "weight": 0.3, "density": 0.06},
+            ],
+            "atmosphere": {
+                "fog_color": [0.6, 0.68, 0.6], "fog_density": 0.012,
+                "sun_energy": 1.1, "sky_tint": [0.6, 0.72, 0.85],
+            },
+        },
+        "building": {
+            "center": [0.0, 0.0], "half_w": 10.0, "half_d": 10.0,
+            "pad_height": 0.0, "door_side": "+z", "door_center": [0.0, 10.0],
+            "structure": "cabin",
+        },
+        "spawn": {"x": 0.0, "z": 13.0, "yaw": 3.1416},
+        "scatter_placements": [
+            {"category": "tree", "x": 15.0, "y": 0.3, "z": 10.0, "yaw": 0.5, "scale": 1.0},
+            {"category": "shrub", "x": -12.0, "y": 0.1, "z": -8.0, "yaw": 1.2, "scale": 0.9},
+        ],
+        "names": {}, "decisions": [], "extent": 80.0,
+    }
+
+
+def test_outdoor_room_no_walls():
+    """CB-7: Outdoor rooms have NO wall nodes."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        wall_names = {"WallN", "WallS", "WallE", "WallW"}
+        node_names = {n["name"] for n in parsed["nodes"]}
+        for wn in wall_names:
+            assert wn not in node_names, f"CB-7: outdoor room should not have {wn}"
+        assert "Ceiling" not in node_names, "CB-7: outdoor room should not have Ceiling"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_room_has_ground_plane():
+    """CB-7: Outdoor rooms have a GroundPlane MeshInstance3D."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        gp_nodes = [n for n in parsed["nodes"] if n["name"] == "GroundPlane"]
+        assert len(gp_nodes) == 1, f"CB-7: expected GroundPlane node, got {[n['name'] for n in parsed['nodes']]}"
+        assert gp_nodes[0]["type"] == "MeshInstance3D"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_room_has_scatter_vegetation():
+    """CB-7: Outdoor rooms include scatter vegetation as decor nodes."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        node_names = {n["name"] for n in parsed["nodes"]}
+        # Scatter placements should appear as scatter_{cat}_{idx}
+        assert "scatter_tree_0" in node_names, f"CB-7: missing scatter_tree_0 in {sorted(node_names)}"
+        assert "scatter_shrub_1" in node_names, f"CB-7: missing scatter_shrub_1"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_scatter_is_decor():
+    """CB-7: Scatter vegetation is decor-only (no collision, no pickup tag)."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Scatter nodes should be type Node3D (decor), not StaticBody3D
+        tree_node = next(n for n in parsed["nodes"] if n["name"] == "scatter_tree_0")
+        assert tree_node["type"] == "Node3D", (
+            f"CB-7: scatter decor should be Node3D, got {tree_node['type']}"
+        )
+        # Should NOT have collision or tag metadata
+        meta = parsed["metadata"].get("scatter_tree_0", {})
+        assert meta.get("_forge_tag", "") == "", (
+            f"CB-7: scatter decor should not have _forge_tag, got {meta}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_atmosphere_applied():
+    """CB-7: Outdoor room uses biome atmosphere for fog/sky."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        # Biome fog color should be in the environment
+        assert "fog_light_color = Color(0.6, 0.68, 0.6, 1.0)" in text, (
+            f"CB-7: outdoor fog color not applied\ntext:\n{text[:3000]}"
+        )
+        assert "fog_density = 0.012" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_indoor_room_still_has_walls():
+    """CB-7: Indoor rooms (default) still have walls and ceiling."""
+    _, parsed, _ = _compile_and_parse()
+    node_names = {n["name"] for n in parsed["nodes"]}
+    for wn in ("WallN", "WallS", "WallE", "WallW"):
+        assert wn in node_names, f"CB-7: indoor room should have {wn}"
+    assert "Ceiling" in node_names, "CB-7: indoor room should have Ceiling"
 
