@@ -1469,7 +1469,114 @@ def _build_bench_geometry(params):
     return mesh
 
 
+# ── Exterior flora (pure-generative; each builder yields a closed,
+#    position-welded watertight mesh so the gate passes) ───────────
+
+def _det_noise(x, y, z):
+    """Deterministic ``[0, 1)`` hash of a quantized point (no RNG → byte-stable)."""
+    ix = int(round(x * 1000.0))
+    iy = int(round(y * 1000.0))
+    iz = int(round(z * 1000.0))
+    h = (ix * 374761393 + iy * 668265263 + iz * 2147483647) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    h = (h ^ (h >> 16)) & 0xFFFFFFFF
+    return h / 4294967296.0
+
+
+def _build_tree_geometry(params):
+    """Conifer: a trunk cylinder + stacked tapering cones.
+
+    Each primitive is a closed solid; overlapping them is fine for the
+    watertight check (every edge still shares exactly two faces). One canonical
+    mesh — the scatter system supplies per-instance scale/yaw variation.
+    """
+    trunk_h = float(params.get("trunk_height", 0.6))
+    trunk_r = float(params.get("trunk_radius", 0.08))
+    foliage_h = float(params.get("foliage_height", 1.5))
+    foliage_r = float(params.get("foliage_radius", 0.55))
+    tiers = max(2, int(params.get("tiers", 3)))
+    seg = 12
+
+    mesh = bpy.data.meshes.new("tree")
+    obj = bpy.data.objects.new("tree", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+
+    _add_cylinder(bm, 0.0, 0.0, trunk_h / 2.0, trunk_r, trunk_h, segments=seg)
+
+    tier_h = foliage_h / tiers
+    for t in range(tiers):
+        frac = t / tiers
+        r = foliage_r * (1.0 - 0.7 * frac)        # taper toward the top
+        depth = tier_h * 1.7                       # overlap the tier below
+        base = trunk_h + tier_h * t - tier_h * 0.3
+        cz = base + depth / 2.0
+        res = bmesh.ops.create_cone(
+            bm, cap_ends=True, cap_tris=False, segments=seg,
+            radius1=r, radius2=r * 0.12, depth=depth,
+        )
+        for v in res["verts"]:
+            v.co.z += cz
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_rock_geometry(params):
+    """Boulder: a deterministically displaced icosphere (closed → watertight)."""
+    radius = float(params.get("radius", 0.4))
+    roughness = float(params.get("roughness", 0.22))
+    subdiv = max(1, int(params.get("subdivisions", 2)))
+
+    mesh = bpy.data.meshes.new("rock")
+    obj = bpy.data.objects.new("rock", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=radius)
+    for v in bm.verts:
+        f = 1.0 + roughness * (2.0 * _det_noise(v.co.x, v.co.y, v.co.z) - 1.0)
+        v.co.x *= f
+        v.co.y *= f
+        v.co.z *= f
+    minz = min(v.co.z for v in bm.verts)
+    for v in bm.verts:
+        v.co.z = (v.co.z - minz) * 0.8             # squash a touch + sit on ground
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_shrub_geometry(params):
+    """Bush: a small cluster of icospheres (each closed → watertight)."""
+    radius = float(params.get("radius", 0.32))
+    lobes = max(2, int(params.get("lobes", 4)))
+    lobe_r = radius * 0.6
+
+    mesh = bpy.data.meshes.new("shrub")
+    obj = bpy.data.objects.new("shrub", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    for i in range(lobes):
+        ang = 2.0 * math.pi * i / lobes
+        ox = 0.55 * radius * math.cos(ang)
+        oy = 0.55 * radius * math.sin(ang)
+        res = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=lobe_r)
+        for v in res["verts"]:
+            v.co.x += ox
+            v.co.y += oy
+            v.co.z += lobe_r * 0.9
+    res = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=lobe_r * 1.1)
+    for v in res["verts"]:
+        v.co.z += lobe_r * 1.4
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
+    "tree": _build_tree_geometry,
+    "shrub": _build_shrub_geometry,
+    "rock": _build_rock_geometry,
     "table": _build_table_geometry,
     "chair": _build_chair_geometry,
     "shelf": _build_shelf_geometry,
