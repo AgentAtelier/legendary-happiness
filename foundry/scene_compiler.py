@@ -318,6 +318,22 @@ def _build_room_sub_resources(
      "props": ["radius = 0.3", "height = 1.8"]},
     {"id": "player_body_mat", "type": "StandardMaterial3D",
      "props": ["albedo_color = Color(0.2, 0.3, 0.5, 1)"]},
+    # CB-3: NavigationMesh for NPC pathfinding — covers the walkable floor
+    # area (room_w × room_d, minus wall margins), at y=0.
+    {"id": "nav_mesh", "type": "NavigationMesh",
+     "props": [
+         "vertices = PackedVector3Array("
+         + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
+         + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
+         + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)}, "
+         + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)})",
+         "polygons = [\nPackedInt32Array(0, 1, 2),\nPackedInt32Array(0, 2, 3)\n]",
+         "agent_radius = 0.3",
+         "agent_height = 2.0",
+         "agent_max_slope = 45.0",
+         "agent_max_climb = 0.3",
+         "cell_size = 0.3",
+     ]},
     # Collision shapes for walls
     {"id": "wall_ns_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
@@ -402,6 +418,9 @@ def _build_room_nodes(
          "props": dl_props}
     )
     return light_nodes + [
+    # CB-3: NavigationRegion3D for NPC pathfinding
+    {"name": "NavigationRegion3D", "type": "NavigationRegion3D", "parent": ".",
+     "props": ['navmesh = SubResource("nav_mesh")']},
     # Visible floor mesh (child of existing Floor StaticBody3D)
     {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
      "props": [
@@ -913,11 +932,17 @@ def compile_scene(
         quest_specs, separated_manifest, room_w, room_d,
     )
     
+    # CB-3: Generate per-NPC needs from npc_sim
+    from npc_sim import generate_npc_needs
+    npc_needs_list = generate_npc_needs(len(quest_specs))
+    
     for i, spec in enumerate(quest_specs):
         npc_id = spec.get("npc_id", f"npc_{i}")
         npc_pos_x, npc_pos_z = npc_positions[i]
         # Spine Slice 3: bake soul into quest_data
         npc_soul = spec.get("soul", default_soul())
+        # CB-3: attach needs to NPC data
+        npc_needs = npc_needs_list[i]
         placement: dict = {
             "id": npc_id,
             "asset_hash": f"{_NPC_BODY_CATEGORY}_{_NPC_BODY_MATERIAL}",
@@ -933,6 +958,7 @@ def compile_scene(
             **spec,
             "soul": npc_soul,
             "npc_placement": placement,
+            "needs": npc_needs,  # CB-3: per-NPC needs
         }
         # C-3: Initialise the world log with this NPC's starting state
         _init_world_log(world_log_path, placement)
@@ -1525,7 +1551,7 @@ def _parse_scene_text(tscn_text: str) -> dict:
         "layout_mode ", "anchors_preset ",
         "anchor_", "offset_", "grow_", "text ",
         "horizontal_alignment ",
-        "environment ", "shadow_enabled ",
+        "environment ", "shadow_enabled ", "navmesh ",
         "mesh ", "surface_material_override/",
     )
 

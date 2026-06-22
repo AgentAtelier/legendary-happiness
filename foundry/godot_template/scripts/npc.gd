@@ -6,6 +6,8 @@
 #       On state change, appends a "replace" event to the log.
 # B1: Emits quest_state_changed signal so HUD can track multi-quest progress.
 # B1: Idle micro-animation — breath scale + sway via Tween.
+# CB-3: NavigationAgent3D + idle-wander — NPCs path to random points
+#       on the navmesh and pause between moves.
 extends Node3D
 
 enum State { IDLE, QUEST_GIVEN, DONE }
@@ -43,6 +45,8 @@ func _ready() -> void:
 	_restore_state_from_log()
 	# B1: Start idle micro-animation (breath + sway)
 	_start_idle_anim()
+	# CB-3: Set up NavigationAgent3D for idle-wander
+	_setup_navigation()
 
 
 func _load_quest_data() -> void:
@@ -314,10 +318,104 @@ func _push_subtitle(line_key: String) -> void:
 		hud.push_subtitle(prefix + ": " + line)
 
 
+# ── CB-3: Navigation + idle-wander ─────────────────────────────
+
+# Idle-wander states
+enum WanderState { IDLE, WANDER, PAUSE }
+var _wander_state: int = WanderState.IDLE
+var _wander_timer: float = 0.0
+var _wander_pause_time: float = 4.0  # seconds between moves
+var _wander_speed: float = 1.2       # NPC walk speed (m/s)
+var _nav_agent: NavigationAgent3D = null
+var _needs: Dictionary = {}          # CB-3: per-NPC needs
+
+
+func _setup_navigation() -> void:
+	"""CB-3: Create a NavigationAgent3D child and set up wander params."""
+	_nav_agent = NavigationAgent3D.new()
+	_nav_agent.radius = 0.3
+	_nav_agent.height = 2.0
+	_nav_agent.max_speed = _wander_speed
+	_nav_agent.path_desired_distance = 0.5
+	_nav_agent.target_desired_distance = 0.3
+	add_child(_nav_agent)
+
+	# Read needs from quest_data
+	var raw_needs = _quest_data.get("needs", {})
+	if raw_needs is Dictionary:
+		_needs = raw_needs
+
+	# Start wandering after a short delay
+	_wander_state = WanderState.PAUSE
+	_wander_timer = 2.0
+
+
+func _pick_wander_target() -> Vector3:
+	"""Pick a random reachable point on the navmesh within the room bounds."""
+	var nav_region = get_node_or_null("/root/Root/NavigationRegion3D")
+	if not nav_region:
+		return global_position  # fallback: stay put
+
+	# CB-3: derive bounds from current position offset (stays within the room)
+	# Default room is ~20×20 with wall margins; keep targets within 8 m radius
+	var spread := 7.0
+	for _i in range(10):
+		var tx := global_position.x + randf_range(-spread, spread)
+		var tz := global_position.z + randf_range(-spread, spread)
+		var target := Vector3(tx, 0.0, tz)
+		_nav_agent.target_position = target
+		# Brief check: if the agent started computing, the target is likely valid
+		await get_tree().process_frame
+		if not _nav_agent.is_navigation_finished():
+			return target
+	return global_position  # fallback
+
+
+func _wander_move(delta: float) -> void:
+	"""Move the NPC toward the nav target.  npc.gd is attached to
+	the NPC StaticBody3D, so self IS the NPC node."""
+	if _nav_agent.is_navigation_finished():
+		return
+	var next_pos := _nav_agent.get_next_path_position()
+	var dir := (next_pos - global_position).normalized()
+	if dir.length() > 0.01:
+		# CB-3 fix: move self (the NPC StaticBody3D), not the parent (Root)
+		global_position += dir * _wander_speed * delta
+		# Rotate Body child to face movement direction
+		var body := get_node_or_null("Body")
+		if body:
+			var look_dir := Vector3(dir.x, 0, dir.z).normalized()
+			if look_dir.length() > 0.01:
+				body.look_at(body.global_position + look_dir, Vector3.UP)
+
+
 # ── EB-6: Idle bark process ──────────────────────────────────
 
 func _process(delta: float) -> void:
-	"""Drive the idle bark timer."""
+	"""Drive the idle bark timer + CB-3 idle-wander."""
+	# CB-3: Idle-wander state machine
+	_wander_timer -= delta
+	match _wander_state:
+		WanderState.PAUSE:
+			if _wander_timer <= 0.0:
+				# Pick a new wander target
+				var target := _pick_wander_target()
+				if target != global_position:
+					_nav_agent.target_position = target
+					_wander_state = WanderState.WANDER
+		WanderState.WANDER:
+			if _nav_agent.is_navigation_finished():
+				# Reached target — pause before next move
+				_wander_state = WanderState.PAUSE
+				_wander_timer = _wander_pause_time + randf_range(-1.5, 1.5)
+			else:
+				_wander_move(delta)
+		WanderState.IDLE:
+			# Initial state — transition to pause
+			_wander_state = WanderState.PAUSE
+			_wander_timer = 1.0
+
+	# EB-6: Idle bark timer
 	if _idle_barks.is_empty():
 		return
 	_idle_bark_timer -= delta

@@ -1449,6 +1449,40 @@ def test_openable_prop_gets_container_script():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  CB-3: Navigation mesh + idle-wander
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_nav_mesh_sub_resource_exists():
+    """CB-3: Room sub_resources include a NavigationMesh."""
+    _, parsed, _ = _compile_and_parse()
+    sub_types = {s["type"] for s in parsed.get("sub_resources", [])}
+    assert "NavigationMesh" in sub_types, "CB-3: missing NavigationMesh sub_resource"
+    nav_subs = [s for s in parsed["sub_resources"] if s["type"] == "NavigationMesh"]
+    assert len(nav_subs) >= 1
+
+
+def test_navigation_region_node_exists():
+    """CB-3: Scene has a NavigationRegion3D node."""
+    _, parsed, _ = _compile_and_parse()
+    nav_nodes = [n for n in parsed["nodes"] if n["name"] == "NavigationRegion3D"]
+    assert len(nav_nodes) == 1, "CB-3: missing NavigationRegion3D node"
+    assert nav_nodes[0]["type"] == "NavigationRegion3D"
+
+
+def test_quest_data_has_npc_needs():
+    """CB-3: quest_data.json includes per-NPC needs dict."""
+    _, _, data = _compile_and_parse()
+    npcs = data.get("npcs", {})
+    for npc_id, npc_data in npcs.items():
+        assert "needs" in npc_data, f"CB-3: {npc_id} missing needs"
+        needs = npc_data["needs"]
+        assert isinstance(needs, dict)
+        for n in ("food", "water", "shelter", "safety", "sleep", "companionship", "joy"):
+            assert n in needs, f"CB-3: {npc_id} needs missing '{n}'"
+            assert 0.0 <= needs[n] <= 100.0, f"CB-3: {npc_id} need '{n}' out of range: {needs[n]}"
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Fix-Batch-1 Task 4: Shell tiling textures in compiled scene
 # ═══════════════════════════════════════════════════════════════════════
 
