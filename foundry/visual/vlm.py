@@ -1,8 +1,15 @@
 """V Task 2: Qwen3-VL structured visual checks via llama.cpp multimodal API.
 
-Sends a PNG image + prompt + json_schema to the llama.cpp /completion
-endpoint, parses the structured response, and returns a typed dict.
-Malformed responses fall back to safe defaults with a ``_parse_error`` flag.
+Sends a PNG image + prompt + json_schema to the llama.cpp OpenAI-compatible
+``/v1/chat/completions`` endpoint, parses the structured response, and returns
+a typed dict.  Malformed responses fall back to safe defaults with a
+``_parse_error`` flag.
+
+NOTE: images MUST go through ``/v1/chat/completions`` with an ``image_url``
+content part.  Modern llama.cpp (libmtmd, build ≥ b9500) ignores the legacy
+``/completion`` + ``image_data`` array — the model never sees the pixels and
+hallucinates from text priors.  This was the bug that made every prop read
+"good condition" regardless of the actual render (incl. blank frames).
 """
 
 from __future__ import annotations
@@ -127,13 +134,13 @@ def check_image(
 
     try:
         response = requests.post(
-            f"{endpoint.rstrip('/')}/completion",
+            f"{endpoint.rstrip('/')}/v1/chat/completions",
             json=payload,
             timeout=timeout_s,
         )
         response.raise_for_status()
         data = response.json()
-        content = data.get("content", "")
+        content = _extract_content(data)
     except requests.ConnectionError:
         return {**defaults, "_parse_error": True}
     except requests.Timeout:
@@ -162,19 +169,51 @@ def _build_payload(
     max_tokens: int,
     seed: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Construct the multimodal completion request payload."""
-    full_prompt = f"<image>\n{prompt}" if prompt else "<image>\n"
+    """Construct the OpenAI-compatible chat/completions multimodal payload.
+
+    The image is passed as a base64 ``data:`` URI in an ``image_url`` content
+    part — the only path libmtmd actually feeds to the vision encoder.  The
+    schema is enforced via ``response_format: json_schema``.
+    """
+    data_uri = f"data:image/png;base64,{image_b64}"
     payload: Dict[str, Any] = {
-        "prompt": full_prompt,
-        "image_data": [{"data": image_b64, "id": 0}],
-        "json_schema": schema,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt or "Describe what you see in this image."},
+                    {"type": "image_url", "image_url": {"url": data_uri}},
+                ],
+            }
+        ],
         "temperature": temperature,
-        "n_predict": max_tokens,
-        "cache_prompt": True,
+        "max_tokens": max_tokens,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "visual_check", "schema": schema, "strict": True},
+        },
     }
     if seed is not None:
         payload["seed"] = seed
     return payload
+
+
+def _extract_content(data: Dict[str, Any]) -> str:
+    """Pull the generated text from a chat/completions response.
+
+    Prefers the chat shape (``choices[0].message.content``); falls back to a
+    top-level ``content`` field so legacy/mocked responses still parse.
+    """
+    try:
+        choices = data.get("choices")
+        if choices:
+            msg = choices[0].get("message", {})
+            content = msg.get("content")
+            if content is not None:
+                return content
+    except (AttributeError, IndexError, KeyError, TypeError):
+        pass
+    return data.get("content", "")
 
 
 def _pick_defaults(schema: Dict[str, Any]) -> Dict[str, Any]:

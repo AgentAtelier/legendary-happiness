@@ -20,6 +20,7 @@ from visual.vlm import (
     _build_payload,
     _coerce,
     _encode_png,
+    _extract_content,
     _extract_json_from_text,
     _parse_response,
     _pick_defaults,
@@ -83,7 +84,12 @@ def test_encode_png_no_data_uri_prefix(fake_png):
 
 # ── _build_payload ────────────────────────────────────────────────
 
-def test_build_payload_has_image_data():
+def _user_content(payload):
+    """Extract the user message content parts from a chat payload."""
+    return payload["messages"][0]["content"]
+
+
+def test_build_payload_has_image_url():
     payload = _build_payload(
         "Describe this prop.",
         "ZmFrZQ==",
@@ -91,13 +97,12 @@ def test_build_payload_has_image_data():
         temperature=0.1,
         max_tokens=256,
     )
-    assert "image_data" in payload
-    assert len(payload["image_data"]) == 1
-    assert payload["image_data"][0]["data"] == "ZmFrZQ=="
-    assert payload["image_data"][0]["id"] == 0
+    parts = _user_content(payload)
+    img = next(p for p in parts if p["type"] == "image_url")
+    assert img["image_url"]["url"] == "data:image/png;base64,ZmFrZQ=="
 
 
-def test_build_payload_has_json_schema():
+def test_build_payload_has_json_schema_response_format():
     payload = _build_payload(
         "Check for floaters.",
         "ZmFrZQ==",
@@ -105,10 +110,12 @@ def test_build_payload_has_json_schema():
         temperature=0.1,
         max_tokens=256,
     )
-    assert payload["json_schema"] == SCENE_SCHEMA
+    rf = payload["response_format"]
+    assert rf["type"] == "json_schema"
+    assert rf["json_schema"]["schema"] == SCENE_SCHEMA
 
 
-def test_build_payload_prompt_includes_image_tag():
+def test_build_payload_prompt_in_text_part():
     payload = _build_payload(
         "Is this textured?",
         "ZmFrZQ==",
@@ -116,8 +123,9 @@ def test_build_payload_prompt_includes_image_tag():
         temperature=0.1,
         max_tokens=256,
     )
-    assert "<image>" in payload["prompt"]
-    assert "Is this textured?" in payload["prompt"]
+    parts = _user_content(payload)
+    text = next(p for p in parts if p["type"] == "text")
+    assert text["text"] == "Is this textured?"
 
 
 def test_build_payload_empty_prompt():
@@ -128,16 +136,19 @@ def test_build_payload_empty_prompt():
         temperature=0.1,
         max_tokens=256,
     )
-    assert payload["prompt"] == "<image>\n"
+    parts = _user_content(payload)
+    text = next(p for p in parts if p["type"] == "text")
+    # Empty prompt → a sensible default instruction, never empty
+    assert text["text"]
 
 
-def test_build_payload_includes_temperature_and_n_predict():
+def test_build_payload_includes_temperature_and_max_tokens():
     payload = _build_payload(
         "test", "ZmFrZQ==", PROP_SCHEMA,
         temperature=0.7, max_tokens=128,
     )
     assert payload["temperature"] == 0.7
-    assert payload["n_predict"] == 128
+    assert payload["max_tokens"] == 128
 
 
 # ── _pick_defaults ────────────────────────────────────────────────
@@ -319,6 +330,46 @@ def test_parse_scene_schema():
     assert result["ceiling_visible"] is True
     assert result["composition_ok"] is False
     assert result["notes"] == "clipping on left wall"
+
+
+# ── _extract_content ──────────────────────────────────────────────
+
+def test_extract_content_chat_shape():
+    """Reads choices[0].message.content from a chat/completions response."""
+    data = {"choices": [{"message": {"content": '{"textured": true}'}}]}
+    assert _extract_content(data) == '{"textured": true}'
+
+
+def test_extract_content_legacy_fallback():
+    """Falls back to a top-level content field when no choices present."""
+    assert _extract_content({"content": "hello"}) == "hello"
+
+
+def test_extract_content_empty_when_missing():
+    assert _extract_content({}) == ""
+
+
+def test_check_image_reads_chat_response(fake_png, monkeypatch):
+    """check_image parses the real chat/completions response shape."""
+    response = {
+        "choices": [
+            {"message": {"content": json.dumps({
+                "textured": False,
+                "material_reads_right": False,
+                "has_holes_or_deformity": False,
+                "floating_bits": False,
+                "notes": "blank",
+            })}}
+        ]
+    }
+    monkeypatch.setattr(
+        "visual.vlm.requests.post",
+        _fake_post_factory(response),
+    )
+    result = check_image(fake_png, PROP_SCHEMA, "Inspect.")
+    assert result["textured"] is False
+    assert result["notes"] == "blank"
+    assert "_parse_error" not in result
 
 
 # ── check_image (VLM mocked) ──────────────────────────────────────

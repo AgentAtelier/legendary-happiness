@@ -19,6 +19,24 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
+# Inspection prompts. Phrased to make the VLM report what it ACTUALLY sees
+# (rather than rubber-stamp "looks fine"), and to flag an empty/blank frame —
+# the failure mode a broken render produces.
+PROP_PROMPT = (
+    "You are inspecting a single 3D prop render on a plain background. "
+    "Report only what you actually see. If the frame is blank or no object is "
+    "visible, set textured=false and material_reads_right=false and note 'blank'. "
+    "Flag holes or deformities, missing/incorrect texture, and floating "
+    "disconnected bits."
+)
+SCENE_PROMPT = (
+    "You are inspecting a screenshot of a generated 3D room. Report only what "
+    "you actually see. Flag floating objects, geometry clipping through walls or "
+    "floor, a missing or broken ceiling, characters not standing on the floor, "
+    "an incoherent theme, and poor composition."
+)
+
+
 # ── Public API ───────────────────────────────────────────────────
 
 def run_batch(
@@ -168,7 +186,7 @@ def _run_prop_catalog(
 
         # Use first angle for VLM + aesthetic
         primary_png = pngs[0]
-        checks = check_image(primary_png, prop_schema, "Inspect this prop for defects.")
+        checks = check_image(primary_png, prop_schema, PROP_PROMPT)
         aesthetic = aesthetic_score_fn(primary_png)
 
         item["checks"] = checks
@@ -231,7 +249,7 @@ def _run_scene_regression(
             continue
 
         primary_png = pngs[0]
-        checks = check_image(primary_png, scene_schema, "Inspect this scene for issues.")
+        checks = check_image(primary_png, scene_schema, SCENE_PROMPT)
         aesthetic = aesthetic_score_fn(primary_png)
 
         item["checks"] = checks

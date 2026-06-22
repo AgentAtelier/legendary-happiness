@@ -257,18 +257,45 @@ script = ExtResource("1_script")
 """)
 
 
-def _run_godot_capture(build_dir: str, godot_bin: str) -> None:
-    """Run Godot with the capture scene, using software GL + EGL offscreen.
-
-    Raises ``RuntimeError`` if Godot exits non-zero.
-    """
-    env = {
+def _capture_env() -> dict:
+    """Environment for headless Godot: EGL surfaceless, software GL, no X11."""
+    return {
         **os.environ,
         "EGL_PLATFORM": "surfaceless",
         "LIBGL_ALWAYS_SOFTWARE": "1",
         "MESA_GL_VERSION_OVERRIDE": "4.5",
         "DISPLAY": "",  # explicitly no X11
     }
+
+
+def _run_godot_import(build_dir: str, godot_bin: str) -> None:
+    """Import the project's resources (headless) before capture.
+
+    A fresh/disposable project has no ``.godot/imported`` cache, so
+    ``load("res://...glb")`` returns null ("No loader found for resource")
+    until the editor import pass has generated the ``.import`` sidecars and
+    the ``.scn`` for each GLB.  Running the project directly does NOT import
+    new assets — this pass must run first.  Import warnings are tolerated
+    (non-zero exit is not fatal); a genuinely failed import surfaces later
+    as a load error in the capture run.
+    """
+    subprocess.run(
+        [godot_bin, "--headless", "--path", build_dir, "--import"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=_capture_env(),
+    )
+
+
+def _run_godot_capture(build_dir: str, godot_bin: str) -> None:
+    """Run Godot with the capture scene, using software GL + EGL offscreen.
+
+    Imports resources first, then renders.  Raises ``RuntimeError`` if the
+    capture run exits non-zero.
+    """
+    _run_godot_import(build_dir, godot_bin)
+    env = _capture_env()
     result = subprocess.run(
         [
             godot_bin,

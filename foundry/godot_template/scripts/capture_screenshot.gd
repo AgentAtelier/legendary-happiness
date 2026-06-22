@@ -60,13 +60,18 @@ func _capture_at_angle(yaw: float, config: Dictionary) -> Image:
 	# Create an offscreen SubViewport
 	var vp := SubViewport.new()
 	vp.size = Vector2i(CAPTURE_SIZE, CAPTURE_SIZE)
-	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	vp.transparent_bg = true
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Solid neutral background (not transparent) so a failed/empty render is
+	# visibly distinct and the VLM sees the prop against a clean backdrop.
+	vp.transparent_bg = false
 	add_child(vp)
 
-	# Add a Camera3D at the requested angle
+	# Add a Camera3D at the requested angle. It MUST be inside the tree
+	# before look_at() — look_at uses the global transform, which is only
+	# valid once the node is parented (otherwise: "Node not inside tree").
 	var cam := Camera3D.new()
 	cam.current = true
+	vp.add_child(cam)
 	# Position: orbit at radius, looking at origin
 	var radius: float = config.get("radius", 4.0)
 	var height: float = config.get("height", 1.5)
@@ -76,7 +81,6 @@ func _capture_at_angle(yaw: float, config: Dictionary) -> Image:
 		cos(yaw) * radius,
 	)
 	cam.look_at(Vector3(0, 0.5, 0))
-	vp.add_child(cam)
 
 	# Add a directional light so props aren't just silhouettes
 	var light := DirectionalLight3D.new()
@@ -103,9 +107,14 @@ func _capture_at_angle(yaw: float, config: Dictionary) -> Image:
 			else:
 				printerr("failed to load prop GLB ", glb_path)
 
-	# Wait a frame for the SubViewport to render
+	# Wait for the SubViewport to actually draw before reading it back.
+	# process_frame alone fires at the START of the idle frame — before the
+	# GPU has drawn the viewport — so get_image() would grab a cleared/empty
+	# texture. frame_post_draw fires after the draw completes; await it twice
+	# so the UPDATE_ALWAYS viewport has a fully rendered frame.
 	await get_tree().process_frame
-	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
 
 	# Capture the SubViewport texture
 	var tex: Texture2D = vp.get_texture()
