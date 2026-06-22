@@ -31,6 +31,46 @@ def _transform3d(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 
     return "Transform3D(" + ", ".join(f"{v:.4f}" for v in vals) + ")"
 
 
+def _emit_building(plan: ExteriorPlan):
+    """The building shell on the pad: 4 walls (a door gap on the door side) + a
+    flat roof, each a StaticBody3D with BoxMesh + BoxShape3D collision so the
+    player is blocked by walls and enters through the gap. Returns
+    ``(sub_resource_lines, node_lines)``.
+    """
+    b = plan.building
+    hw, hd = b["half_w"], b["half_d"]
+    py = b["pad_height"]
+    wt, wh, door_w = 0.2, 2.6, 1.4
+    full_w, full_d = hw * 2.0, hd * 2.0
+    subs: List[str] = []
+    nodes: List[str] = []
+    n = [0]
+
+    def box_body(name, cx, cz, sx, sz, h=wh, cy=None):
+        cy = (py + h / 2.0) if cy is None else cy
+        mid, cid = f"bm_{n[0]}", f"bs_{n[0]}"
+        n[0] += 1
+        subs.append(f'[sub_resource type="BoxMesh" id="{mid}"]')
+        subs.append(f"size = Vector3({sx:.3f}, {h:.3f}, {sz:.3f})")
+        subs.append(f'[sub_resource type="BoxShape3D" id="{cid}"]')
+        subs.append(f"size = Vector3({sx:.3f}, {h:.3f}, {sz:.3f})")
+        nodes.append(f'[node name="{name}" type="StaticBody3D" parent="."]')
+        nodes.append("transform = " + _transform3d(cx, cy, cz))
+        nodes.append(f'[node name="{name}_mesh" type="MeshInstance3D" parent="{name}"]')
+        nodes.append(f'mesh = SubResource("{mid}")')
+        nodes.append(f'[node name="{name}_col" type="CollisionShape3D" parent="{name}"]')
+        nodes.append(f'shape = SubResource("{cid}")')
+
+    box_body("WallBack", 0.0, -hd, full_w, wt)     # -Z
+    box_body("WallE", hw, 0.0, wt, full_d)          # +X
+    box_body("WallW", -hw, 0.0, wt, full_d)         # -X
+    seg = (full_w - door_w) / 2.0                   # +Z door side: two segments
+    box_body("WallFrontL", -(door_w / 2.0 + seg / 2.0), hd, seg, wt)
+    box_body("WallFrontR", (door_w / 2.0 + seg / 2.0), hd, seg, wt)
+    box_body("Roof", 0.0, 0.0, full_w + 0.4, full_d + 0.4, h=0.2, cy=py + wh + 0.1)
+    return subs, nodes
+
+
 def emit_exterior_layer(plan: ExteriorPlan, *, assets_subdir: str = "assets") -> str:
     """Return the full exterior-layer ``.tscn`` text for *plan*."""
     biome = plan.biome
@@ -69,8 +109,11 @@ def emit_exterior_layer(plan: ExteriorPlan, *, assets_subdir: str = "assets") ->
         f"fog_light_color = Color({fog_c[0]}, {fog_c[1]}, {fog_c[2]}, 1)",
         "tonemap_mode = 3",
     ]
+    building_subs, building_nodes = _emit_building(plan)
+    sub_lines += building_subs
 
-    load_steps = len(ext_lines) + 4  # 3 sub_resources + 1
+    n_sub = sum(1 for ln in sub_lines if ln.startswith("[sub_resource"))
+    load_steps = len(ext_lines) + n_sub + 1
     header = [f"[gd_scene load_steps={load_steps} format=3]"]
 
     # ── nodes ─────────────────────────────────────────────────────
@@ -84,6 +127,7 @@ def emit_exterior_layer(plan: ExteriorPlan, *, assets_subdir: str = "assets") ->
         "shadow_enabled = true",
         '[node name="Terrain" parent="." instance=ExtResource("1_terrain")]',
     ]
+    nodes += building_nodes
     for i, p in enumerate(plan.scatter_placements):
         rid = ext_ids[p["category"]]
         nodes.append(f'[node name="flora_{i}" parent="." instance=ExtResource("{rid}")]')

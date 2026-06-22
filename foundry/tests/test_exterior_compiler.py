@@ -55,6 +55,23 @@ def test_player_spawn_outside_at_spawn_position():
     assert f"{plan.spawn['z']:.4f}" in tscn
 
 
+def test_building_shell_with_door_gap_and_roof():
+    tscn = emit_exterior_layer(_plan())
+    for wall in ("WallBack", "WallE", "WallW", "WallFrontL", "WallFrontR", "Roof"):
+        assert f'[node name="{wall}" type="StaticBody3D"' in tscn or f'[node name="{wall}"' in tscn
+    # door gap: the +Z (front) wall is two segments, not one solid wall
+    assert '"WallFrontL"' in tscn and '"WallFrontR"' in tscn
+    # walls are collidable (player blocked) — CollisionShape3D + BoxShape3D
+    assert "CollisionShape3D" in tscn and 'type="BoxShape3D"' in tscn
+
+
+def test_load_steps_counts_all_resources():
+    tscn = emit_exterior_layer(_plan())
+    declared = int(tscn.split("load_steps=", 1)[1].split(" ", 1)[0])
+    actual = tscn.count("[ext_resource") + tscn.count("[sub_resource") + 1
+    assert declared == actual
+
+
 def test_deterministic():
     a = emit_exterior_layer(_plan(seed=3))
     b = emit_exterior_layer(_plan(seed=3))
