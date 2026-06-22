@@ -1754,6 +1754,98 @@ def test_event_manager_has_script():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  CB-6: Combat + skills — enemy nodes, health/combat shells, enemy data
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_health_node_attached_to_player():
+    """CB-6: Player has a Health child node."""
+    _, parsed, _ = _compile_and_parse()
+    health_nodes = [n for n in parsed["nodes"] if n["name"] == "Health"]
+    assert len(health_nodes) == 1, f"CB-6: expected Health node, got {[n['name'] for n in parsed['nodes']]}"
+    assert health_nodes[0]["parent"] == "Player"
+
+
+def test_combat_node_attached_to_player():
+    """CB-6: Player has a Combat child node."""
+    _, parsed, _ = _compile_and_parse()
+    combat_nodes = [n for n in parsed["nodes"] if n["name"] == "Combat"]
+    assert len(combat_nodes) == 1, f"CB-6: expected Combat node, got {[n['name'] for n in parsed['nodes']]}"
+    assert combat_nodes[0]["parent"] == "Player"
+
+
+def test_health_combat_in_ext_resources():
+    """CB-6: health.gd and combat.gd are in ext_resources."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/health.gd" in paths, "CB-6: health.gd missing"
+    assert "res://scripts/combat.gd" in paths, "CB-6: combat.gd missing"
+
+
+def test_enemy_entity_node_type():
+    """CB-6: Enemy entities are CharacterBody3D with enemy tag."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    text, parsed, _ = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    enemy = next(n for n in parsed["nodes"] if n["name"] == "enemy_0")
+    assert enemy["type"] == "CharacterBody3D", (
+        f"CB-6: enemy should be CharacterBody3D, got {enemy['type']}"
+    )
+    meta = parsed["metadata"].get("enemy_0", {})
+    assert meta.get("_forge_tag") == "enemy", f"CB-6: enemy tag missing, got {meta}"
+
+
+def test_enemy_script_attached():
+    """CB-6: Enemy node gets enemy.gd script."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    _, parsed, _ = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    enemy = next(n for n in parsed["nodes"] if n["name"] == "enemy_0")
+    assert enemy.get("script") == "s_enemy", (
+        f"CB-6: enemy should have script=s_enemy, got {enemy.get('script')!r}"
+    )
+
+
+def test_enemy_in_ext_resources():
+    """CB-6: When enemy entity exists, enemy.gd is in ext_resources."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    _, parsed, _ = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/enemy.gd" in paths, "CB-6: enemy.gd missing from ext_resources"
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_enemy" in ids, "CB-6: s_enemy ext_resource id missing"
+
+
+def test_quest_data_has_enemies():
+    """CB-6: quest_data.json includes an 'enemies' list."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    _, _, data = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    assert "enemies" in data, f"CB-6: quest_data missing 'enemies', got keys: {list(data.keys())}"
+    enemies = data["enemies"]
+    assert len(enemies) == 1
+    assert enemies[0]["enemy_id"] == "enemy_0"
+    assert enemies[0]["archetype"] == "golem"
+    assert enemies[0]["health"] == 50.0
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Fix-Batch-1 Task 4: Shell tiling textures in compiled scene
 # ═══════════════════════════════════════════════════════════════════════
 

@@ -43,6 +43,8 @@ _TAG_TABLE: Dict[str, str | None] = {
     # CB-2: openable containers + locked doors
     "open": "res://scripts/container.gd",
     "door": "res://scripts/door.gd",
+    # CB-6: enemy entity (NOT npc.gd — separate entity type)
+    "enemy": "res://scripts/enemy.gd",
     "inert": None,
 }
 
@@ -95,8 +97,13 @@ _SHELL_SCRIPTS: List[dict] = [
     {"id": "s_day_night", "path": "res://scripts/day_night.gd"},
     # CB-5: event_manager.gd — reads/writes events from quest_data
     {"id": "s_event_mgr", "path": "res://scripts/event_manager.gd"},
+    # CB-6: health.gd — player health component (attached to Player)
+    {"id": "s_health", "path": "res://scripts/health.gd"},
+    # CB-6: combat.gd — melee combat system (attached to Player)
+    {"id": "s_combat", "path": "res://scripts/combat.gd"},
     # CB-1: quest manager autoload — registered in project.godot
     # CB-2: container.gd + door.gd are emitted via used_tag_scripts
+    # CB-6: enemy.gd is emitted via used_tag_scripts
     #       (like pickup.gd/npc.gd), not via _SHELL_SCRIPTS.
 ]
 
@@ -115,6 +122,10 @@ _SHELL_NODES: List[dict] = [
     {"name": "DayNight", "type": "Node", "parent": ".", "script": "s_day_night"},
     # CB-5: emergent events runtime
     {"name": "EventManager", "type": "Node", "parent": ".", "script": "s_event_mgr"},
+    # CB-6: player health component
+    {"name": "Health", "type": "Node", "parent": "Player", "script": "s_health"},
+    # CB-6: melee combat system
+    {"name": "Combat", "type": "Node", "parent": "Player", "script": "s_combat"},
 ]
 
 # ── NPC body (P7: procedurally generated humanoid GLB) ──────────
@@ -837,6 +848,11 @@ def compile_scene(
     # CB-4: If room_graph is provided, always include door tag
     if room_graph:
         used_tags.add("door")
+    # CB-6: If any enemy entity appears in manifest, include enemy tag
+    for entry in manifest:
+        if entry.get("category") == "enemy" and not entry.get("decor"):
+            used_tags.add("enemy")
+            break
     used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
     for tag in sorted(used_tags):
         path = _TAG_TABLE.get(tag)
@@ -1034,6 +1050,12 @@ def compile_scene(
         "world_log_path": world_log_path,
         "examine": examine_flavour,
         "events": events_data,  # CB-5: emergent events
+        "enemies": [
+            {"enemy_id": e["id"], "archetype": "golem",
+             "health": 50.0, "damage": 8.0,
+             "x": e.get("x", 0), "z": e.get("z", 0)}
+            for e in manifest if e.get("category") == "enemy"
+        ],  # CB-6: enemy specs
     }
     Path(data_path).write_text(
         json.dumps(quest_data, indent=2, ensure_ascii=False) + "\n",
@@ -1219,10 +1241,12 @@ def compile_scene(
         y = entry.get("y", 0.0)
         z = entry.get("z", 0.0)
         is_decor = entry.get("decor", False)
-        # CB-2: Determine tag — openable furniture gets "open", others follow decor/pickup
+        # CB-2/CB-6: Determine tag — openable→open, enemy→enemy, others→decor/pickup
         from category_registry import REGISTRY
         entry = REGISTRY.get(cat, {})
-        if not is_decor and entry.get("openable"):
+        if cat == "enemy":
+            tag = "enemy"
+        elif not is_decor and entry.get("openable"):
             tag = "open"
         elif is_decor:
             tag = "inert"
@@ -1233,8 +1257,10 @@ def compile_scene(
         # Guard: push away from player spawn (FIX-1e)
         x, z = _guard_player_spawn(x, z)
 
-        # Decor entries: Node3D (no physics), no tag, no script
-        if is_decor:
+        # CB-6: Enemy entities are CharacterBody3D (moveable)
+        if cat == "enemy":
+            lines.append(f'[node name="{eid}" type="CharacterBody3D" parent="."]')
+        elif is_decor:
             lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
         elif eid in interactable_ids:
             lines.append(f'[node name="{eid}" type="StaticBody3D" parent="."]')
