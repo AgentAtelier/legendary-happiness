@@ -105,8 +105,42 @@ func on_interact(tag: String) -> void:
 			var carried: String = ""
 			if player.has_method("get_active_item"):
 				carried = player.get_active_item()
+
+			# CB-1: Check if this NPC's quest is locked by depends_on chain
+			var quest_id: String = _quest_data.get("quest_id", "")
+			var qm = get_node_or_null("/root/QuestManager")
+			if qm and quest_id != "" and qm.has_method("is_quest_locked"):
+				if qm.is_quest_locked(quest_id):
+					_show_line(hud, "greet")  # friendly but no quest yet
+					if hud.has_method("set_objective"):
+						hud.set_objective("This quest is not yet available.")
+					return
+
+			# CB-1: Try deliver first (player carrying item to recipient NPC)
+			var matched := false
+			if qm and qm.has_method("try_complete_deliver"):
+				if qm.try_complete_deliver(_npc_id, carried):
+					matched = true
+			# CB-1: Try talk (player speaking to target NPC)
+			if not matched and qm and qm.has_method("try_complete_talk"):
+				if qm.try_complete_talk(_npc_id):
+					matched = true
+
+			if matched:
+				_show_line(hud, "thank")
+				_state = State.DONE
+				quest_state_changed.emit(_npc_id, _state)
+				_append_state_to_log("done")
+				_push_subtitle("thank")
+				_try_emit_win()
+				return
+
+			# Default: fetch — check if carried item matches target
 			var target: String = _quest_data.get("target_entity", "")
 			if carried == target:
+				# CB-1: Mark quest complete via QuestManager
+				if qm and quest_id != "" and qm.has_method("complete_quest"):
+					qm.complete_quest(quest_id)
 				_show_line(hud, "thank")
 				_state = State.DONE
 				# B1: Emit signal for HUD quest tracking

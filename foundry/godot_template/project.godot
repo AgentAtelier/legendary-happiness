@@ -13,3 +13,4 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 [autoload]
 
 Audio="*res://scripts/audio.gd"
+QuestManager="*res://scripts/quest_manager.gd"

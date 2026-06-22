@@ -244,6 +244,25 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The ungrammared multi-NPC call failed for one NPC, so I retried that NPC through the reliable single-NPC path to get themed dialogue.",
     ),
+    # ── CB-1: quest depth (objective types + chains) ──
+    "quest.objective_not_winnable": (
+        # technical
+        "{npc_id}: objective type={original_type} is not winnable ({reason}); downgraded to fetch.",
+        # plain
+        "The model created a {original_type} quest that can't be completed, so it was changed to a simple fetch quest.",
+    ),
+    "quest.fallback_unwinnable": (
+        # technical
+        "{npc_id}: fetch fallback also not winnable ({reason}).",
+        # plain
+        "Even the fallback fetch quest can't be completed for one NPC — this may need room layout adjustment.",
+    ),
+    "quest.chain_unsolvable": (
+        # technical
+        "quest dependency chain is unsolvable ({reason}); flattened to independent quests.",
+        # plain
+        "The quest dependencies would make some quests impossible to start, so all quests were made independent.",
+    ),
     # ── Soul (spine slice 3) ──
     "soul.clamped": (
         # technical

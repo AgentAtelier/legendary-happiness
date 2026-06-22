@@ -84,6 +84,7 @@ _SHELL_SCRIPTS: List[dict] = [
     {"id": "s_win", "path": "res://scripts/win_screen.gd"},
     # B2: day/night cycle runtime
     {"id": "s_day_night", "path": "res://scripts/day_night.gd"},
+    # CB-1: quest manager autoload — registered in project.godot
 ]
 
 # ── Shell node definitions ───────────────────────────────────────

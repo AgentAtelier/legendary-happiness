@@ -201,12 +201,29 @@ Output JSON now:"""
 def _multi_npc_json_schema(npc_ids: list[str]) -> dict:
     """Build a per-*npc_ids* json_schema so the multi-NPC LLM call is
     constrained to clean dict-of-dicts JSON (the shape that doesn't fit
-    one GBNF but is expressible as a json_schema)."""
+    one GBNF but is expressible as a json_schema).
+
+    CB-1: objective now supports fetch | deliver | place | talk, with
+    optional recipient/location/depends_on.  quest_id is a stable
+    identifier for chain references."""
+    objective_schema = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "enum": ["fetch", "deliver", "place", "talk"]},
+            "target": {"type": "string"},
+            "giver": {"type": "string", "const": "npc"},
+            "recipient": {"type": "string"},
+            "location": {"type": "string"},
+            "depends_on": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["type", "target", "giver"],
+    }
     npc = {
         "type": "object",
         "properties": {
             "npc_role": {"type": "string"},
             "target_entity": {"type": "string"},
+            "quest_id": {"type": "string"},
             "dialogue": {
                 "type": "object",
                 "properties": {
@@ -218,8 +235,9 @@ def _multi_npc_json_schema(npc_ids: list[str]) -> dict:
                 "required": ["greet", "ask", "wrong", "thank"],
             },
             "idle_barks": {"type": "array", "items": {"type": "string"}},
+            "objective": objective_schema,
         },
-        "required": ["npc_role", "target_entity", "dialogue"],
+        "required": ["npc_role", "target_entity", "dialogue", "objective"],
     }
     return {
         "type": "object",
@@ -228,7 +246,7 @@ def _multi_npc_json_schema(npc_ids: list[str]) -> dict:
     }
 
 
-_MULTI_NPC_PROMPT = """You are a quest designer for a small RPG. This room has {npc_count} NPCs, each needing their own fetch quest. Create ONE quest per NPC.
+_MULTI_NPC_PROMPT = """You are a quest designer for a small RPG. This room has {npc_count} NPCs, each needing their own quest. Create ONE quest per NPC.
 
 NPC IDs: {npc_ids}
 
@@ -245,11 +263,22 @@ Important rules:
 - EB-7b: You MUST choose [CARRYABLE] items as quest targets. Only fall back to furniture if there aren't enough carryables.
 - EB-6: Also generate 3 short idle-bark lines per NPC — things they might mutter to themselves when the player is nearby but not talking to them. These should be atmospheric, not quest-related. Put them in an "idle_barks" list inside each NPC's object.
 
+CB-1: Each NPC's "objective" can be one of these types:
+- "fetch" — player must find and pick up the target item, then bring it to the giver NPC.
+- "deliver" — player must pick up the target item and bring it to a DIFFERENT NPC (set "recipient" to that NPC's id, e.g. "npc_1").
+- "place" — player must pick up the target item and place it on a furniture surface (set "location" to a furniture entity id).
+- "talk" — player must speak with another NPC (set "target" to that NPC's id, e.g. "npc_1").
+
+Default to "fetch" unless the room theme strongly suggests a different type. If using "deliver" or "talk", make sure the recipient/target NPC actually exists in the NPC IDs list.
+
+You MAY also set "depends_on" (a list of quest_id strings) to chain quests — a quest with depends_on is locked until its prereqs are complete. Also include a "quest_id" field (e.g. "q_npc_0") for chain references.
+
 Output ONLY a JSON object — no prose, no explanation. The JSON MUST be keyed by NPC ID:
 {{
   "npc_0": {{
     "npc_role": "<role>",
     "target_entity": "<prop_id>",
+    "quest_id": "q_npc_0",
     "dialogue": {{
       "greet": "...",
       "ask": "...",
@@ -267,6 +296,7 @@ Example with 2 NPCs in a blacksmith's forge:
   "npc_0": {{
     "npc_role": "blacksmith",
     "target_entity": "key_0",
+    "quest_id": "q_npc_0",
     "dialogue": {{
       "greet": "Hail, traveler! Welcome to my forge.",
       "ask": "I've misplaced my brass key. Could you find it among these shelves?",
@@ -279,6 +309,7 @@ Example with 2 NPCs in a blacksmith's forge:
   "npc_1": {{
     "npc_role": "apprentice",
     "target_entity": "gem_0",
+    "quest_id": "q_npc_1",
     "dialogue": {{
       "greet": "Oh, a customer! The master is busy at the anvil.",
       "ask": "I dropped a gem somewhere. Can you find it for me?",
@@ -287,6 +318,14 @@ Example with 2 NPCs in a blacksmith's forge:
     }},
     "objective": {{"type": "fetch", "target": "gem_0", "giver": "npc"}},
     "idle_barks": ["The master works so fast...", "I hope I don't drop anything else.", "The bellows need more strength."]
+  }}
+}}
+
+Example with a deliver quest (npc_0 asks player to bring item to npc_1):
+{{
+  "npc_0": {{
+    "quest_id": "q_npc_0",
+    "objective": {{"type": "deliver", "target": "gem_0", "giver": "npc", "recipient": "npc_1"}}
   }}
 }}
 
@@ -891,15 +930,35 @@ class QuestBehaviourPlanner:
             idle_barks, idle_decisions = validate_idle_barks(raw_idle, theme=room_theme)
             decisions.extend(idle_decisions)
 
-            # Build objective
+            # Build objective from model output, defaulting to fetch
+            raw_obj = raw.get("objective", {})
+            if not isinstance(raw_obj, dict):
+                raw_obj = {}
+            otype = raw_obj.get("type", "fetch")
+            otarget = raw_obj.get("target", target_entity)
+            ogiver = raw_obj.get("giver", "npc")
             objective = {
-                "type": "fetch",
-                "target": target_entity,
-                "giver": "npc",
+                "type": otype,
+                "target": otarget,
+                "giver": ogiver,
             }
+            # CB-1: Carry optional fields for deliver/place/talk
+            if otype == "deliver" and raw_obj.get("recipient"):
+                objective["recipient"] = str(raw_obj["recipient"])
+            if otype == "place" and raw_obj.get("location"):
+                objective["location"] = str(raw_obj["location"])
+            depends = raw_obj.get("depends_on", [])
+            if isinstance(depends, list):
+                objective["depends_on"] = [str(d) for d in depends]
+
+            # CB-1: Extract quest_id from model output
+            quest_id = raw.get("quest_id", f"q_{npc_id}")
+            if not isinstance(quest_id, str) or quest_id.strip() == "":
+                quest_id = f"q_{npc_id}"
 
             spec: dict = {
                 "npc_id": npc_id,
+                "quest_id": quest_id,
                 "npc_role": npc_role,
                 "target_entity": target_entity,
                 "dialogue": validated_dialogue,
@@ -908,5 +967,69 @@ class QuestBehaviourPlanner:
                 "soul": npc_soul,
             }
             specs.append(spec)
+
+        # ── CB-1: Validate every objective + chain via quest_validator ──
+        from quest_validator import objective_winnable, chain_solvable
+        npc_id_set: set[str] = set(npc_ids)
+        for i, spec in enumerate(specs):
+            obj = spec.get("objective", {})
+            winnable, reason = objective_winnable(
+                obj, manifest=manifest, npc_ids=npc_id_set,
+            )
+            if not winnable:
+                # Fall back to a winnable fetch objective
+                decisions.append(
+                    make_decision(
+                        code="quest.objective_not_winnable",
+                        stage="planner",
+                        severity="assumption",
+                        context={
+                            "npc_id": spec["npc_id"],
+                            "original_type": obj.get("type", "?"),
+                            "reason": reason,
+                        },
+                        choices=(),
+                    )
+                )
+                spec["objective"] = {
+                    "type": "fetch",
+                    "target": spec["target_entity"],
+                    "giver": "npc",
+                }
+                # Re-validate the fallback (must be winnable)
+                w2, _r2 = objective_winnable(
+                    spec["objective"], manifest=manifest, npc_ids=npc_id_set,
+                )
+                if not w2:
+                    decisions.append(
+                        make_decision(
+                            code="quest.fallback_unwinnable",
+                            stage="planner",
+                            severity="error",
+                            context={
+                                "npc_id": spec["npc_id"],
+                                "reason": _r2,
+                            },
+                            choices=(),
+                        )
+                    )
+
+        # CB-1: Validate chain solvability
+        solvable, chain_reason = chain_solvable(specs)
+        if not solvable:
+            decisions.append(
+                make_decision(
+                    code="quest.chain_unsolvable",
+                    stage="planner",
+                    severity="assumption",
+                    context={"reason": chain_reason},
+                    choices=(),
+                )
+            )
+            # Flatten: remove all depends_on to make chain solvable
+            for spec in specs:
+                obj = spec.get("objective", {})
+                if isinstance(obj, dict) and "depends_on" in obj:
+                    del obj["depends_on"]
 
         return specs, decisions
