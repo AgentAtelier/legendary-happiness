@@ -52,6 +52,13 @@ def _cache_dir(root: Path, key: str) -> Path:
     return root / "lighting" / key
 
 
+def is_cached(scene_desc: dict, *, cache_root: Optional[str | Path] = None) -> bool:
+    """True if this scene's bake is already cached."""
+    root = Path(cache_root) if cache_root else DEFAULT_ROOT
+    cd = _cache_dir(root, bake_key(scene_desc))
+    return cd.exists() and any(cd.iterdir())
+
+
 def bake_scene(scene_desc: dict, *, baker: Baker,
                cache_root: Optional[str | Path] = None) -> dict:
     """Return ``{tier, status, artifacts}``.
