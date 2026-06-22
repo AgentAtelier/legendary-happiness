@@ -9,6 +9,10 @@ Orchestrates one session that:
 Amortizes the VLM by loading Qwen3-VL once.  Flags → regen worklist
 (``visual_worklist.json``).
 
+CB-8 / V Task 6: ``reroll_flagged()`` reads the worklist and regenerates
+flagged props through the forge pipeline, creating a closed auto-reroll
+loop (each rerun reduces the worklist until max_rerolls is hit).
+
 CLI entry: ``python -m foundry visual-eval``
 """
 
@@ -264,4 +268,84 @@ def _run_scene_regression(
     return items
 
 
+# ── V Task 6: Closed auto-reroll ──────────────────────────────
 
+def reroll_flagged(
+    worklist_path: str,
+    *,
+    lexicon_path: str,
+    library_dir: str,
+    max_rerolls: int = 3,
+) -> list:
+    """CB-8 / V Task 6: Regenerate props flagged in the visual worklist.
+
+    Reads ``visual_worklist.json`` from a previous ``run_batch()``,
+    filters to prop IDs (skip scene-only IDs), and re-runs the forge
+    pipeline for each.  Returns a list of reroll outcomes.
+
+    The caller is expected to run ``run_batch()`` again afterward to
+    verify the re-generated props now pass.
+
+    Args:
+        worklist_path: Path to ``visual_worklist.json`` from ``run_batch()``.
+        lexicon_path: Path to the asset lexicon for forge.
+        library_dir: Asset library dir (where GLBs live).
+        max_rerolls: Maximum attempts per prop (default 3).
+
+    Returns:
+        List of ``{"prop_id": ..., "rerolls": N, "last_result": ...}``
+        per flagged prop.
+    """
+    wl_path = Path(worklist_path)
+    if not wl_path.exists():
+        return []
+
+    worklist = json.loads(wl_path.read_text())
+    if not worklist:
+        return []
+
+    from runner import forge_from_request
+
+    outcomes = []
+    for prop_id in worklist:
+        if not isinstance(prop_id, str):
+            continue
+        # CB-8: Skip scene IDs — they don't map to forgeable props.
+        # Prop IDs follow the `category_material` convention (contain underscore);
+        # scene IDs are build directory names without this pattern.
+        if "_" not in prop_id:
+            outcomes.append({
+                "prop_id": prop_id,
+                "rerolls": 0,
+                "last_result": {"skipped": "not a forgeable prop — scene IDs require full quest re-scaffold"},
+            })
+            continue
+        # Map prop ID → NL request — use the prop_id as a stand-in
+        # (the forge pipeline requires an NL request; we use the ID
+        # as a minimal description for re-generation).
+        request = prop_id.replace("_", " ")
+
+        attempt = 0
+        last_result = None
+        while attempt < max_rerolls:
+            attempt += 1
+            try:
+                result = forge_from_request(request, lexicon_path, library_dir)
+                last_result = {
+                    "glb_path": result.glb_path,
+                    "gate_passed": result.gate.passed,
+                    "gate_reasons": list(result.gate.reasons),
+                    "attempt": attempt,
+                }
+                if result.gate.passed:
+                    break
+            except Exception as e:
+                last_result = {"error": str(e), "attempt": attempt}
+
+        outcomes.append({
+            "prop_id": prop_id,
+            "rerolls": attempt,
+            "last_result": last_result,
+        })
+
+    return outcomes
