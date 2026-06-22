@@ -81,16 +81,18 @@ _SYNTHETIC_MULTI_QUEST_SPECS = [
     },
     {
         "npc_role": "alchemist",
-        "target_entity": "cabinet_0",
+        # CB-2 made cabinets openable CONTAINERS (tag "open", not "pickup"), so a
+        # cabinet can no longer be a fetch target. Target a pickable prop instead.
+        "target_entity": "table_1",
         "dialogue": {
             "greet": "Greetings, traveler.",
-            "ask": "Bring me the bottle from the cabinet.",
+            "ask": "Bring me the vial from the far table.",
             "wrong": "That is not what I asked for.",
             "thank": "Perfect! This is exactly what I needed.",
         },
         "objective": {
             "type": "fetch",
-            "target": "cabinet_0",
+            "target": "table_1",
             "giver": "npc_1",
         },
         "npc_id": "npc_1",
