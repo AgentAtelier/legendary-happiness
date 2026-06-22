@@ -71,8 +71,13 @@ def _emit_building(plan: ExteriorPlan):
     return subs, nodes
 
 
-def emit_exterior_layer(plan: ExteriorPlan, *, assets_subdir: str = "assets") -> str:
-    """Return the full exterior-layer ``.tscn`` text for *plan*."""
+def emit_exterior_layer(plan: ExteriorPlan, interior_manifest=None, *,
+                        assets_subdir: str = "assets") -> str:
+    """Return the full exterior-layer ``.tscn`` text for *plan*.
+
+    *interior_manifest* (optional): placed props/NPCs ``{id, category, material,
+    x, y, z, yaw}`` emitted INSIDE the building, on the pad floor.
+    """
     biome = plan.biome
     atm = biome.get("atmosphere", {})
     fog_c = atm.get("fog_color", (0.66, 0.72, 0.7))
@@ -92,6 +97,20 @@ def emit_exterior_layer(plan: ExteriorPlan, *, assets_subdir: str = "assets") ->
         ext_lines.append(
             f'[ext_resource type="PackedScene" path="res://{assets_subdir}/{cat}.glb" id="{rid}"]'
         )
+
+    # interior props (INSIDE the building): one PackedScene per (category, material)
+    interior = interior_manifest or []
+    interior_ids: Dict[str, str] = {}
+    nxt = len(flora_cats) + 2
+    for e in interior:
+        key = f"{e['category']}_{e['material']}"
+        if key not in interior_ids:
+            rid = f"{nxt}_{key}"
+            interior_ids[key] = rid
+            ext_lines.append(
+                f'[ext_resource type="PackedScene" path="res://{assets_subdir}/{key}.glb" id="{rid}"]'
+            )
+            nxt += 1
 
     # ── sub_resources: procedural open sky + biome environment ────
     sub_lines = [
@@ -133,6 +152,16 @@ def emit_exterior_layer(plan: ExteriorPlan, *, assets_subdir: str = "assets") ->
         nodes.append(f'[node name="flora_{i}" parent="." instance=ExtResource("{rid}")]')
         nodes.append(
             "transform = " + _transform3d(p["x"], p["y"], p["z"], p.get("yaw", 0.0), p.get("scale", 1.0))
+        )
+
+    # interior props/NPCs, on the building's pad floor (y = pad_height + offset)
+    py = plan.building["pad_height"]
+    for j, e in enumerate(interior):
+        rid = interior_ids[f"{e['category']}_{e['material']}"]
+        eid = e.get("id", f"prop_{j}")
+        nodes.append(f'[node name="{eid}" parent="." instance=ExtResource("{rid}")]')
+        nodes.append(
+            "transform = " + _transform3d(e["x"], py + e.get("y", 0.0), e["z"], e.get("yaw", 0.0))
         )
 
     # Player spawn marker (outside, on the door side, at terrain height there).

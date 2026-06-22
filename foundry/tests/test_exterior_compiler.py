@@ -72,6 +72,24 @@ def test_load_steps_counts_all_resources():
     assert declared == actual
 
 
+def test_interior_props_emitted_inside_building():
+    plan = _plan()
+    manifest = [
+        {"id": "table_0", "category": "table", "material": "worn_oak", "x": 0.0, "y": 0.0, "z": 0.0, "yaw": 0.0},
+        {"id": "npc_0", "category": "humanoid", "material": "rough_granite", "x": 1.5, "y": 0.0, "z": -1.0, "yaw": 1.0},
+    ]
+    tscn = emit_exterior_layer(plan, interior_manifest=manifest)
+    assert 'path="res://assets/table_worn_oak.glb"' in tscn
+    assert 'path="res://assets/humanoid_rough_granite.glb"' in tscn
+    assert '[node name="table_0" parent="." instance=ExtResource(' in tscn
+    assert '[node name="npc_0" parent="." instance=ExtResource(' in tscn
+
+
+def test_no_interior_is_fine():
+    tscn = emit_exterior_layer(_plan(), interior_manifest=None)
+    assert "[gd_scene" in tscn  # still a valid scene with no interior
+
+
 def test_deterministic():
     a = emit_exterior_layer(_plan(seed=3))
     b = emit_exterior_layer(_plan(seed=3))
