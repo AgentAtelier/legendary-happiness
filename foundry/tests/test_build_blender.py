@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import struct
 import subprocess
 from pathlib import Path
 
