@@ -328,243 +328,801 @@
     },
     "key": {
       "path": "",
-      "category": ["carryable", "metal"],
-      "footprint": {"width": 0.15, "depth": 0.07},
+      "category": [
+        "carryable",
+        "metal"
+      ],
+      "footprint": {
+        "width": 0.15,
+        "depth": 0.07
+      },
       "height": 0.07,
-      "greybox": {"mesh": "box", "color": [0.5, 0.45, 0.3]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.45,
+          0.3
+        ]
+      },
       "label": "Key"
     },
     "book": {
       "path": "",
-      "category": ["carryable", "wood"],
-      "footprint": {"width": 0.25, "depth": 0.2},
+      "category": [
+        "carryable",
+        "wood"
+      ],
+      "footprint": {
+        "width": 0.25,
+        "depth": 0.2
+      },
       "height": 0.06,
-      "greybox": {"mesh": "box", "color": [0.4, 0.25, 0.15]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.4,
+          0.25,
+          0.15
+        ]
+      },
       "label": "Book"
     },
     "cup": {
       "path": "",
-      "category": ["carryable", "metal"],
-      "footprint": {"width": 0.18, "depth": 0.18},
+      "category": [
+        "carryable",
+        "metal"
+      ],
+      "footprint": {
+        "width": 0.18,
+        "depth": 0.18
+      },
       "height": 0.15,
-      "greybox": {"mesh": "cylinder", "color": [0.5, 0.45, 0.3]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.5,
+          0.45,
+          0.3
+        ]
+      },
       "label": "Cup"
     },
     "gem": {
       "path": "",
-      "category": ["carryable", "stone"],
-      "footprint": {"width": 0.08, "depth": 0.08},
+      "category": [
+        "carryable",
+        "stone"
+      ],
+      "footprint": {
+        "width": 0.08,
+        "depth": 0.08
+      },
       "height": 0.08,
-      "greybox": {"mesh": "box", "color": [0.3, 0.6, 0.9]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.3,
+          0.6,
+          0.9
+        ]
+      },
       "label": "Gem"
     },
     "bottle": {
       "path": "",
-      "category": ["carryable", "stone"],
-      "footprint": {"width": 0.15, "depth": 0.15},
+      "category": [
+        "carryable",
+        "stone"
+      ],
+      "footprint": {
+        "width": 0.15,
+        "depth": 0.15
+      },
       "height": 0.22,
-      "greybox": {"mesh": "cylinder", "color": [0.55, 0.7, 0.55]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.55,
+          0.7,
+          0.55
+        ]
+      },
       "label": "Bottle"
     },
     "scroll": {
       "path": "",
-      "category": ["carryable", "wood"],
-      "footprint": {"width": 0.12, "depth": 0.3},
+      "category": [
+        "carryable",
+        "wood"
+      ],
+      "footprint": {
+        "width": 0.12,
+        "depth": 0.3
+      },
       "height": 0.3,
-      "greybox": {"mesh": "cylinder", "color": [0.75, 0.7, 0.55]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.75,
+          0.7,
+          0.55
+        ]
+      },
       "label": "Scroll"
     },
     "coin-pouch": {
       "path": "",
-      "category": ["carryable", "wood"],
-      "footprint": {"width": 0.15, "depth": 0.12},
+      "category": [
+        "carryable",
+        "wood"
+      ],
+      "footprint": {
+        "width": 0.15,
+        "depth": 0.12
+      },
       "height": 0.1,
-      "greybox": {"mesh": "box", "color": [0.45, 0.3, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.45,
+          0.3,
+          0.2
+        ]
+      },
       "label": "Coin Pouch"
     },
     "candle": {
       "path": "",
-      "category": ["carryable", "wood"],
-      "footprint": {"width": 0.1, "depth": 0.1},
+      "category": [
+        "carryable",
+        "wood"
+      ],
+      "footprint": {
+        "width": 0.1,
+        "depth": 0.1
+      },
       "height": 0.15,
-      "greybox": {"mesh": "cylinder", "color": [0.9, 0.85, 0.7]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.9,
+          0.85,
+          0.7
+        ]
+      },
       "label": "Candle"
     },
     "dagger": {
       "path": "",
-      "category": ["carryable", "metal"],
-      "footprint": {"width": 0.25, "depth": 0.06},
+      "category": [
+        "carryable",
+        "metal"
+      ],
+      "footprint": {
+        "width": 0.25,
+        "depth": 0.06
+      },
       "height": 0.04,
-      "greybox": {"mesh": "box", "color": [0.4, 0.4, 0.45]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.4,
+          0.4,
+          0.45
+        ]
+      },
       "label": "Dagger"
     },
     "ring": {
       "path": "",
-      "category": ["carryable", "metal"],
-      "footprint": {"width": 0.07, "depth": 0.07},
+      "category": [
+        "carryable",
+        "metal"
+      ],
+      "footprint": {
+        "width": 0.07,
+        "depth": 0.07
+      },
       "height": 0.03,
-      "greybox": {"mesh": "box", "color": [0.75, 0.65, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.75,
+          0.65,
+          0.2
+        ]
+      },
       "label": "Ring"
     },
     "barrel": {
       "path": "",
-      "category": ["furniture", "storage"],
-      "footprint": {"width": 0.55, "depth": 0.55},
+      "category": [
+        "furniture",
+        "storage"
+      ],
+      "footprint": {
+        "width": 0.55,
+        "depth": 0.55
+      },
       "height": 1.05,
-      "greybox": {"mesh": "cylinder", "color": [0.5, 0.35, 0.2]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.5,
+          0.35,
+          0.2
+        ]
+      },
       "label": "Barrel"
     },
     "crate": {
       "path": "",
-      "category": ["furniture", "storage"],
-      "footprint": {"width": 0.85, "depth": 0.85},
+      "category": [
+        "furniture",
+        "storage"
+      ],
+      "footprint": {
+        "width": 0.85,
+        "depth": 0.85
+      },
       "height": 0.85,
-      "greybox": {"mesh": "box", "color": [0.55, 0.4, 0.25]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.55,
+          0.4,
+          0.25
+        ]
+      },
       "label": "Crate"
     },
     "chest": {
       "path": "",
-      "category": ["furniture", "storage"],
-      "footprint": {"width": 0.75, "depth": 0.55},
+      "category": [
+        "furniture",
+        "storage"
+      ],
+      "footprint": {
+        "width": 0.75,
+        "depth": 0.55
+      },
       "height": 0.55,
-      "greybox": {"mesh": "box", "color": [0.4, 0.25, 0.15]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.4,
+          0.25,
+          0.15
+        ]
+      },
       "label": "Chest"
     },
     "stool": {
       "path": "",
-      "category": ["furniture", "seating"],
-      "footprint": {"width": 0.35, "depth": 0.35},
+      "category": [
+        "furniture",
+        "seating"
+      ],
+      "footprint": {
+        "width": 0.35,
+        "depth": 0.35
+      },
       "height": 0.65,
-      "greybox": {"mesh": "cylinder", "color": [0.45, 0.3, 0.2]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.45,
+          0.3,
+          0.2
+        ]
+      },
       "label": "Stool"
     },
     "bench": {
       "path": "",
-      "category": ["furniture", "seating"],
-      "footprint": {"width": 2.1, "depth": 0.45},
+      "category": [
+        "furniture",
+        "seating"
+      ],
+      "footprint": {
+        "width": 2.1,
+        "depth": 0.45
+      },
       "height": 0.6,
-      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.35,
+          0.2
+        ]
+      },
       "label": "Bench"
     },
     "wardrobe": {
       "path": "",
-      "category": ["furniture", "storage"],
-      "footprint": {"width": 1.25, "depth": 0.75},
+      "category": [
+        "furniture",
+        "storage"
+      ],
+      "footprint": {
+        "width": 1.25,
+        "depth": 0.75
+      },
       "height": 2.6,
-      "greybox": {"mesh": "box", "color": [0.45, 0.3, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.45,
+          0.3,
+          0.2
+        ]
+      },
       "label": "Wardrobe"
     },
     "desk": {
       "path": "",
-      "category": ["furniture", "surface"],
-      "footprint": {"width": 2.1, "depth": 0.85},
+      "category": [
+        "furniture",
+        "surface"
+      ],
+      "footprint": {
+        "width": 2.1,
+        "depth": 0.85
+      },
       "height": 0.95,
-      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.35,
+          0.2
+        ]
+      },
       "label": "Desk"
     },
     "lantern": {
       "path": "",
-      "category": ["furniture", "decor"],
-      "footprint": {"width": 0.28, "depth": 0.28},
+      "category": [
+        "furniture",
+        "decor"
+      ],
+      "footprint": {
+        "width": 0.28,
+        "depth": 0.28
+      },
       "height": 0.85,
-      "greybox": {"mesh": "cylinder", "color": [0.7, 0.6, 0.3]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.7,
+          0.6,
+          0.3
+        ]
+      },
       "label": "Lantern"
     },
     "pot": {
       "path": "",
-      "category": ["furniture", "storage"],
-      "footprint": {"width": 0.45, "depth": 0.45},
+      "category": [
+        "furniture",
+        "storage"
+      ],
+      "footprint": {
+        "width": 0.45,
+        "depth": 0.45
+      },
       "height": 1.15,
-      "greybox": {"mesh": "cylinder", "color": [0.5, 0.4, 0.35]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.5,
+          0.4,
+          0.35
+        ]
+      },
       "label": "Pot"
     },
     "weapon-rack": {
       "path": "",
-      "category": ["furniture", "storage"],
-      "footprint": {"width": 0.85, "depth": 0.35},
+      "category": [
+        "furniture",
+        "storage"
+      ],
+      "footprint": {
+        "width": 0.85,
+        "depth": 0.35
+      },
       "height": 2.3,
-      "greybox": {"mesh": "box", "color": [0.4, 0.3, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.4,
+          0.3,
+          0.2
+        ]
+      },
       "label": "Weapon Rack"
     },
     "pillar": {
       "path": "",
-      "category": ["furniture", "structural"],
-      "footprint": {"width": 0.45, "depth": 0.45},
+      "category": [
+        "furniture",
+        "structural"
+      ],
+      "footprint": {
+        "width": 0.45,
+        "depth": 0.45
+      },
       "height": 3.15,
-      "greybox": {"mesh": "cylinder", "color": [0.55, 0.5, 0.45]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.55,
+          0.5,
+          0.45
+        ]
+      },
       "label": "Pillar"
     },
     "planter": {
       "path": "",
-      "category": ["furniture", "decor"],
-      "footprint": {"width": 0.85, "depth": 0.85},
+      "category": [
+        "furniture",
+        "decor"
+      ],
+      "footprint": {
+        "width": 0.85,
+        "depth": 0.85
+      },
       "height": 0.75,
-      "greybox": {"mesh": "box", "color": [0.4, 0.35, 0.3]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.4,
+          0.35,
+          0.3
+        ]
+      },
       "label": "Planter"
     },
     "huge_table": {
       "path": "",
-      "category": ["furniture", "surface"],
-      "footprint": {"width": 3.15, "depth": 2.1},
+      "category": [
+        "furniture",
+        "surface"
+      ],
+      "footprint": {
+        "width": 3.15,
+        "depth": 2.1
+      },
       "height": 1.3,
-      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.35,
+          0.2
+        ]
+      },
       "label": "Huge Table"
     },
     "tiny_stool": {
       "path": "",
-      "category": ["furniture", "seating"],
-      "footprint": {"width": 0.2, "depth": 0.2},
+      "category": [
+        "furniture",
+        "seating"
+      ],
+      "footprint": {
+        "width": 0.2,
+        "depth": 0.2
+      },
       "height": 0.35,
-      "greybox": {"mesh": "cylinder", "color": [0.45, 0.3, 0.2]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.45,
+          0.3,
+          0.2
+        ]
+      },
       "label": "Tiny Stool"
     },
     "partition": {
       "path": "",
-      "category": ["furniture", "structural"],
-      "footprint": {"width": 3.15, "depth": 0.12},
+      "category": [
+        "furniture",
+        "structural"
+      ],
+      "footprint": {
+        "width": 3.15,
+        "depth": 0.12
+      },
       "height": 3.15,
-      "greybox": {"mesh": "box", "color": [0.5, 0.4, 0.35]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.4,
+          0.35
+        ]
+      },
       "label": "Partition"
     },
     "tall_post": {
       "path": "",
-      "category": ["furniture", "structural"],
-      "footprint": {"width": 0.1, "depth": 0.1},
+      "category": [
+        "furniture",
+        "structural"
+      ],
+      "footprint": {
+        "width": 0.1,
+        "depth": 0.1
+      },
       "height": 4.2,
-      "greybox": {"mesh": "cylinder", "color": [0.45, 0.35, 0.3]},
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.45,
+          0.35,
+          0.3
+        ]
+      },
       "label": "Tall Post"
     },
     "wide_platform": {
       "path": "",
-      "category": ["furniture", "surface"],
-      "footprint": {"width": 4.2, "depth": 4.2},
+      "category": [
+        "furniture",
+        "surface"
+      ],
+      "footprint": {
+        "width": 4.2,
+        "depth": 4.2
+      },
       "height": 0.15,
-      "greybox": {"mesh": "box", "color": [0.55, 0.4, 0.25]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.55,
+          0.4,
+          0.25
+        ]
+      },
       "label": "Wide Platform"
     },
     "many_leg_table": {
       "path": "",
-      "category": ["furniture", "surface"],
-      "footprint": {"width": 2.1, "depth": 1.6},
+      "category": [
+        "furniture",
+        "surface"
+      ],
+      "footprint": {
+        "width": 2.1,
+        "depth": 1.6
+      },
       "height": 0.95,
-      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.35,
+          0.2
+        ]
+      },
       "label": "Many-Leg Table"
     },
     "ladder": {
       "path": "",
-      "category": ["furniture", "structural"],
-      "footprint": {"width": 0.65, "depth": 0.1},
+      "category": [
+        "furniture",
+        "structural"
+      ],
+      "footprint": {
+        "width": 0.65,
+        "depth": 0.1
+      },
       "height": 3.15,
-      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.25]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.35,
+          0.25
+        ]
+      },
       "label": "Ladder"
     },
     "L_bench": {
       "path": "",
-      "category": ["furniture", "seating"],
-      "footprint": {"width": 2.3, "depth": 2.3},
+      "category": [
+        "furniture",
+        "seating"
+      ],
+      "footprint": {
+        "width": 2.3,
+        "depth": 2.3
+      },
       "height": 0.6,
-      "greybox": {"mesh": "box", "color": [0.5, 0.35, 0.2]},
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.5,
+          0.35,
+          0.2
+        ]
+      },
       "label": "L-Bench"
+    },
+    "anvil": {
+      "label": "Anvil",
+      "categories": [
+        "furniture",
+        "crafting"
+      ],
+      "footprint": {
+        "width": 0.6,
+        "depth": 1.2
+      },
+      "height": 0.4,
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.18,
+          0.18,
+          0.2
+        ]
+      },
+      "path": ""
+    },
+    "cauldron": {
+      "label": "Cauldron",
+      "categories": [
+        "furniture",
+        "cooking"
+      ],
+      "footprint": {
+        "width": 0.85,
+        "depth": 0.85
+      },
+      "height": 0.8,
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.18,
+          0.18,
+          0.2
+        ]
+      },
+      "path": ""
+    },
+    "bedroll": {
+      "label": "Bedroll",
+      "categories": [
+        "furniture",
+        "bedding"
+      ],
+      "footprint": {
+        "width": 2.0,
+        "depth": 0.85
+      },
+      "height": 0.15,
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.72,
+          0.68,
+          0.58
+        ]
+      },
+      "path": ""
+    },
+    "sack": {
+      "label": "Sack",
+      "categories": [
+        "carryable",
+        "storage"
+      ],
+      "footprint": {
+        "width": 0.45,
+        "depth": 0.45
+      },
+      "height": 0.55,
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.72,
+          0.68,
+          0.58
+        ]
+      },
+      "path": ""
+    },
+    "candle-stand": {
+      "label": "Candle Stand",
+      "categories": [
+        "furniture",
+        "lighting"
+      ],
+      "footprint": {
+        "width": 0.25,
+        "depth": 0.25
+      },
+      "height": 1.5,
+      "greybox": {
+        "mesh": "cylinder",
+        "color": [
+          0.18,
+          0.18,
+          0.2
+        ]
+      },
+      "path": ""
+    },
+    "torch-sconce": {
+      "label": "Torch Sconce",
+      "categories": [
+        "decor",
+        "lighting"
+      ],
+      "footprint": {
+        "width": 0.2,
+        "depth": 0.18
+      },
+      "height": 0.45,
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.18,
+          0.18,
+          0.2
+        ]
+      },
+      "path": ""
+    },
+    "tapestry": {
+      "label": "Tapestry",
+      "categories": [
+        "decor",
+        "textile"
+      ],
+      "footprint": {
+        "width": 0.05,
+        "depth": 1.6
+      },
+      "height": 1.8,
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.45,
+          0.35,
+          0.25
+        ]
+      },
+      "path": ""
+    },
+    "lectern": {
+      "label": "Lectern",
+      "categories": [
+        "furniture",
+        "reading"
+      ],
+      "footprint": {
+        "width": 0.65,
+        "depth": 0.75
+      },
+      "height": 1.4,
+      "greybox": {
+        "mesh": "box",
+        "color": [
+          0.6,
+          0.4,
+          0.22
+        ]
+      },
+      "path": ""
     }
   }
 }

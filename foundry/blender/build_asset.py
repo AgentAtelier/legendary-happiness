@@ -1176,7 +1176,7 @@ def _build_crate_geometry(params):
 def _build_chest_geometry(params):
     """A chest: box body + slightly wider lid on top."""
     w, d, h = params["width"], params["depth"], params["height"]
-    body_h = h * 0.75
+    body_h = h * 0.60
     lid_h = h * 0.25
     mesh = bpy.data.meshes.new("chest")
     obj = bpy.data.objects.new("chest", mesh)
@@ -1624,6 +1624,190 @@ def _build_terrain_geometry(params):
 _FLAT_GENERATORS = {"terrain"}
 
 
+# WS-3.2: procedural-breadth new category builders
+
+def _build_anvil_geometry(params):
+    """Anvil: heavy block body, tapered horn, stepped base."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("anvil")
+    obj = bpy.data.objects.new("anvil", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Base block (h=vertical, d=depth into Z)
+    base_h = h * 0.2
+    _add_box(bm, 0.0, 0.0, base_h / 2.0, w * 0.9, d, base_h)
+    # Main body block 
+    body_h = h * 0.45
+    _add_box(bm, 0.0, 0.0, base_h + body_h / 2.0, w, d, body_h)
+    # Horn (tapered top, narrower in depth)
+    horn_h = h * 0.35
+    _add_box(bm, 0.0, 0.0, base_h + body_h + horn_h / 2.0, w * 0.3, d * 0.5, horn_h)
+    # Anvil top plate
+    top_h = h * 0.06
+    _add_box(bm, 0.0, 0.0, base_h + body_h + horn_h + top_h / 2.0, w * 0.7, d * 0.9, top_h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_cauldron_geometry(params):
+    """Cauldron: large cylinder body with rim and tripod legs."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    r = (w + d) / 4.0
+    mesh = bpy.data.meshes.new("cauldron")
+    obj = bpy.data.objects.new("cauldron", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Main body
+    body_h = h * 0.60
+    _add_cylinder(bm, 0.0, 0.0, body_h / 2.0, r, body_h, segments=20)
+    # Rim ring
+    rim_h = h * 0.08
+    _add_cylinder(bm, 0.0, 0.0, body_h + rim_h / 2.0, r * 1.08, rim_h, segments=20)
+    # Three legs (simple boxes angled outward)
+    leg_h = h * 0.17
+    leg_w = r * 0.15
+    leg_d = r * 0.8
+    # Three legs placed around the base circumference at Z=0 (body bottom)
+    leg_angles = [0.0, 2.094, 4.189]  # 0, 120, 240 degrees
+    for angle in leg_angles:
+        lx = (r * 0.6) * __import__("math").cos(angle)
+        ly = (r * 0.6) * __import__("math").sin(angle)
+        _add_box(bm, lx, leg_h / 2.0, ly, leg_w, leg_h, leg_d)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_bedroll_geometry(params):
+    """Bedroll: flat rectangular fabric mat with rolled head."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("bedroll")
+    obj = bpy.data.objects.new("bedroll", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Flat mat body: Z=thin(thickness=h*0.12), Y=long(depth=d), X=wide(width=w)
+    _add_box(bm, 0.0, 0.0, h * 0.06, w, d, h * 0.12)
+    # Rolled head (horizontal box at one end of Y)
+    roll_w = w * 0.85
+    roll_h = h * 0.7
+    roll_d = d * 0.15
+    _add_box(bm, 0.0, d / 2.0 - roll_d / 2.0, h * 0.06 + roll_h / 2.0, roll_w, roll_d, roll_h)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_sack_geometry(params):
+    """Sack: bulbous cylinder body with tied top."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    r = (w + d) / 4.0
+    mesh = bpy.data.meshes.new("sack")
+    obj = bpy.data.objects.new("sack", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Main body (cylinder)
+    body_h = h * 0.7
+    _add_cylinder(bm, 0.0, 0.0, body_h / 2.0, r, body_h, segments=12)
+    # Tied neck (narrower cylinder at top)
+    neck_h = h * 0.15
+    _add_cylinder(bm, 0.0, 0.0, body_h + neck_h / 2.0, r * 0.35, neck_h, segments=12)
+    # Puffed top
+    top_h = h * 0.15
+    _add_cylinder(bm, 0.0, 0.0, body_h + neck_h + top_h / 2.0, r * 0.55, top_h, segments=12)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_candle_stand_geometry(params):
+    """Candle-stand: tall thin pole with a small candle fixture at top."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    r = (w + d) / 4.0
+    mesh = bpy.data.meshes.new("candle_stand")
+    obj = bpy.data.objects.new("candle_stand", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Base plate
+    base_h = h * 0.05
+    _add_cylinder(bm, 0.0, 0.0, base_h / 2.0, r * 1.1, base_h, segments=16)
+    # Tall pole
+    pole_h = h * 0.8
+    _add_cylinder(bm, 0.0, 0.0, base_h + pole_h / 2.0, r * 0.18, pole_h, segments=12)
+    # Candle holder cup at top
+    cup_h = h * 0.1
+    _add_cylinder(bm, 0.0, 0.0, base_h + pole_h + cup_h / 2.0, r * 0.45, cup_h, segments=12)
+    # Candle stub
+    stub_h = h * 0.1
+    _add_cylinder(bm, 0.0, 0.0, base_h + pole_h + cup_h + stub_h / 2.0, r * 0.25, stub_h, segments=10)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_torch_sconce_geometry(params):
+    """Torch-sconce: wall bracket with torch head."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("torch_sconce")
+    obj = bpy.data.objects.new("torch_sconce", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Wall plate (against wall in XZ, thin in Y protruding from wall)
+    _add_box(bm, d * 0.25, 0.0, h * 0.5, d * 0.5, w * 0.5, h * 0.12)
+    # Bracket arm (extends out from wall along Y)
+    arm_len = d * 0.8
+    _add_box(bm, arm_len / 2.0, 0.0, h * 0.55, arm_len, d * 0.08, h * 0.08)
+    # Torch head cup
+    cup_r = w * 0.6
+    cup_h = h * 0.25
+    _add_cylinder(bm, arm_len, 0.0, h * 0.55 + cup_h / 2.0, cup_r, cup_h, segments=10)
+    # Flame nub
+    nub_h = h * 0.15
+    _add_cylinder(bm, arm_len, 0.0, h * 0.55 + cup_h + nub_h / 2.0, cup_r * 0.35, nub_h, segments=8)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_tapestry_geometry(params):
+    """Tapestry: flat rectangular wall hanging with slight thickness."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("tapestry")
+    obj = bpy.data.objects.new("tapestry", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Flat rectangle: w=thickness(X), h=vertical height(Y), d=horizontal span(Z)
+    _add_box(bm, 0.0, h / 2.0, 0.0, w, h, d)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
+def _build_lectern_geometry(params):
+    """Lectern: slanted reading surface on a pedestal base."""
+    w, d, h = params["width"], params["depth"], params["height"]
+    mesh = bpy.data.meshes.new("lectern")
+    obj = bpy.data.objects.new("lectern", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Base: w=width(X), d=depth(Z), h=height(Y=vertical)
+    base_h = h * 0.08
+    _add_box(bm, 0.0, base_h / 2.0, 0.0, w * 0.7, base_h, d * 0.6)
+    # Pedestal column (vertical cylinder)
+    col_h = h * 0.55
+    _add_cylinder(bm, 0.0, 0.0, base_h + col_h / 2.0, w * 0.12, col_h, segments=12)
+    # Slanted top surface
+    top_h = h * 0.04
+    top_y = base_h + col_h + top_h / 2.0
+    _add_box(bm, 0.0, top_y, 0.0, w * 0.65, top_h, d * 0.55)
+    # Small lip at bottom of slanted surface
+    lip_h = h * 0.05
+    _add_box(bm, 0.0, base_h + col_h + lip_h / 2.0, -d * 0.2, w * 0.55, lip_h, d * 0.08)
+    bm.to_mesh(mesh)
+    bm.free()
+    return mesh
+
+
 _BUILDERS = {
     "terrain": _build_terrain_geometry,
     "tree": _build_tree_geometry,
@@ -1669,6 +1853,15 @@ _BUILDERS = {
     "many_leg_table": _build_many_leg_table_geometry,
     "ladder": _build_ladder_geometry,
     "L_bench": _build_l_bench_geometry,
+    # WS-3.2: procedural-breadth new categories
+    "anvil": _build_anvil_geometry,
+    "cauldron": _build_cauldron_geometry,
+    "bedroll": _build_bedroll_geometry,
+    "sack": _build_sack_geometry,
+    "candle-stand": _build_candle_stand_geometry,
+    "torch-sconce": _build_torch_sconce_geometry,
+    "tapestry": _build_tapestry_geometry,
+    "lectern": _build_lectern_geometry,
 }
 
 # ── P-G: fabric colour builder — woven cross-hatch pattern ──────

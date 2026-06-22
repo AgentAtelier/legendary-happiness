@@ -75,7 +75,9 @@ def test_stone_keyword_resolves_single_member_family_no_decision():
 
     m, decisions = resolve_material("a small stone side table")
     assert m == "rough_granite"
-    assert decisions == []
+    # WS-3.1: stone family now has multiple members (rough_granite, ceramic, glazed)
+    assert len(decisions) >= 1
+    assert any(d.code == "material.family_defaulted" for d in decisions)
 
 
 def test_metal_keyword_resolves_single_member_family_no_decision():
@@ -83,7 +85,9 @@ def test_metal_keyword_resolves_single_member_family_no_decision():
 
     m, decisions = resolve_material("a small metal side table")
     assert m == "wrought_iron"
-    assert decisions == []
+    # WS-3.1: metal family now has multiple members (wrought_iron, bronze)
+    assert len(decisions) >= 1
+    assert any(d.code == "material.family_defaulted" for d in decisions)
 
 
 # ── Family with >1 member → family_defaulted decision ─────────────
@@ -110,7 +114,7 @@ def test_wooden_table_emits_family_defaulted_decision():
     assert "dark_walnut" in choice_values
     assert "weathered_pine" in choice_values
     assert "worn_oak" not in choice_values
-    assert len(choice_values) == 2  # the two non-resolved wood members
+    assert len(choice_values) == 3  # WS-3.1: dark_walnut, weathered_pine, painted_wood
 
 
 def test_timber_keyword_also_emits_family_defaulted():

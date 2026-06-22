@@ -48,6 +48,9 @@ var _base_fog_density: float = 0.015
 var _base_exposure: float = 1.0
 var _base_sun_color: Color = Color(1.0, 0.95, 0.85, 1.0)
 var _base_sun_energy: float = 2.5
+# WS-4: additional baseline variables for apply_theme()
+var _base_ambient_color: Color = Color(0.15, 0.15, 0.2, 1.0)
+var _base_ambient_energy: float = 0.5
 
 
 func _ready() -> void:
@@ -156,6 +159,27 @@ func _apply_cycle() -> void:
 			1.0
 		).clamp(Color(0, 0, 0, 1), Color(1, 1, 1, 1))
 
+		# WS-4: fog height falloff — mist pools low at dawn/dusk
+		_env.fog_height = 8.0 + 6.0 * (1.0 - warmth_env)
+		_env.fog_height_density = 0.02 + 0.04 * (1.0 - warmth_env)
+		
+		# WS-4: SDFGI / indirect lighting hooks
+		_env.sdfgi_enabled = true
+		_env.sdfgi_bounce_feedback = 0.5 + 0.5 * bright
+		_env.sdfgi_cascade0_distance = 12.0
+		_env.sdfgi_min_cell_size = 0.2
+		
+		# WS-4: glow / bloom
+		_env.glow_enabled = true
+		_env.glow_intensity = 0.3 + 0.3 * (1.0 - bright)
+		_env.glow_bloom = 0.15
+		_env.glow_hdr_threshold = 1.0
+		
+		# WS-4: ambient occlusion
+		_env.ssao_enabled = true
+		_env.ssao_radius = 1.5
+		_env.ssao_intensity = 1.2
+		_env.ssao_light_affect = 0.4
 		# Exposure: dimmer at night
 		_env.adjustment_brightness = lerpf(
 			_base_exposure * 0.5, _base_exposure * 1.1, bright
@@ -210,3 +234,81 @@ func get_phase() -> String:
 	elif h < 19.0:
 		return "dusk"
 	return "night"
+
+# WS-4: per-theme lighting presets — call from scene setup
+const THEME_PRESETS: Dictionary = {
+	"crypt": {
+		"ambient_color": Color(0.08, 0.06, 0.12),
+		"ambient_energy": 0.3,
+		"fog_color": Color(0.05, 0.04, 0.08),
+		"fog_density": 0.04,
+		"sun_color": Color(0.4, 0.35, 0.5),
+		"sun_energy": 0.3,
+		"exposure": 0.6,
+	},
+	"tavern": {
+		"ambient_color": Color(0.25, 0.18, 0.10),
+		"ambient_energy": 0.7,
+		"fog_color": Color(0.30, 0.20, 0.12),
+		"fog_density": 0.008,
+		"sun_color": Color(0.9, 0.7, 0.4),
+		"sun_energy": 0.6,
+		"exposure": 1.1,
+	},
+	"armory": {
+		"ambient_color": Color(0.15, 0.15, 0.18),
+		"ambient_energy": 0.5,
+		"fog_color": Color(0.10, 0.10, 0.12),
+		"fog_density": 0.012,
+		"sun_color": Color(0.7, 0.65, 0.6),
+		"sun_energy": 0.5,
+		"exposure": 0.9,
+	},
+	"workshop": {
+		"ambient_color": Color(0.20, 0.18, 0.15),
+		"ambient_energy": 0.6,
+		"fog_color": Color(0.15, 0.14, 0.10),
+		"fog_density": 0.010,
+		"sun_color": Color(0.85, 0.75, 0.55),
+		"sun_energy": 0.55,
+		"exposure": 1.0,
+	},
+	"default": {
+		"ambient_color": Color(0.2, 0.2, 0.22),
+		"ambient_energy": 0.5,
+		"fog_color": Color(0.15, 0.14, 0.16),
+		"fog_density": 0.015,
+		"sun_color": Color(1.0, 0.95, 0.8),
+		"sun_energy": 0.5,
+		"exposure": 1.0,
+	},
+}
+
+
+func apply_theme(theme_name: String) -> void:
+	"""Apply a named lighting preset, falling back to "default"."""
+	var preset: Dictionary = THEME_PRESETS.get(theme_name, THEME_PRESETS["default"])
+	for key in preset:
+		match key:
+			"ambient_color":
+				_base_ambient_color = preset[key]
+			"ambient_energy":
+				_base_ambient_energy = preset[key]
+			"fog_color":
+				_base_fog_color = preset[key]
+			"fog_density":
+				_base_fog_density = preset[key]
+			"sun_color":
+				_base_sun_color = preset[key]
+			"sun_energy":
+				_base_sun_energy = preset[key]
+			"exposure":
+				_base_exposure = preset[key]
+	# Re-apply cycle with current time to pick up new bases
+	_apply_cycle()
+
+
+func get_theme_names() -> Array:
+	"""Return the list of available theme preset names."""
+	return THEME_PRESETS.keys()
+
