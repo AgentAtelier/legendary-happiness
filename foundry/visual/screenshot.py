@@ -25,12 +25,15 @@ def capture_scene(
     out_dir: str,
     angles: Optional[List[float]] = None,
     *,
-    radius: float = 8.0,
-    height: float = 3.0,
+    radius: float = 5.0,
+    height: float = 1.7,
     godot_bin: str = "godot",
     capture_script: Optional[str] = None,
 ) -> List[str]:
     """Capture screenshots of a compiled Godot scene from fixed camera angles.
+
+    CB-8: Default radius reduced from 8.0→5.0 and height from 3.0→1.7
+    (player-eye framing — stays inside the room instead of seeing through walls).
 
     The *build_dir* must be a valid Godot project (scaffolded by
     ``foundry.scaffold``) with a ``res://scenes/main.tscn``.
@@ -39,8 +42,8 @@ def capture_scene(
         build_dir: Path to the Godot project directory.
         out_dir: Directory to write PNGs into.
         angles: List of yaw angles in radians (default: [0.0, 1.5708, 3.1416]).
-        radius: Camera orbit radius from origin.
-        height: Camera Y height.
+        radius: Camera orbit radius from origin (default 5.0 — player-eye interior).
+        height: Camera Y height (default 1.7 — player eye-level).
         godot_bin: Path to Godot binary.
         capture_script: Path to ``capture_screenshot.gd`` (auto-located if None).
 
@@ -58,8 +61,8 @@ def capture_scene(
         "mode": "scene",
         "out_dir": str(out_path.resolve()),
         "angles": [round(a, 4) for a in angles],
-        "radius": radius,
-        "height": height,
+        "radius": round(radius, 2),
+        "height": round(height, 2),
         "scene_path": "res://scenes/main.tscn",
     }
     _set_capture_config(build_dir, config)
@@ -304,7 +307,7 @@ def _run_godot_capture(build_dir: str, godot_bin: str) -> None:
         ],
         capture_output=True,
         text=True,
-        timeout=60,
+        timeout=120,  # CB-8: raised from 60s for complex props under load
         env=env,
     )
     if result.returncode != 0:

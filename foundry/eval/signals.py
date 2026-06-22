@@ -488,15 +488,23 @@ def compute_quest_signals(record) -> Set[str]:
             if not npc_role or not str(npc_role).strip():
                 tags.add("quest_no_npc")
 
-            # 6. Win reachability: target must have a known tag AND
-            #    NPC must exist.  The compiler maps target_entity → "pickup"
-            #    tag and NPC → "talk" tag.  If either is missing, the quest
-            #    is unwinnable.
+            # 6. Win reachability: use quest_validator to judge each
+            #    objective type by its real win condition (CB-1).
+            #    Non-fetch types (deliver/place/talk) are NOT automatically
+            #    unwinnable — they are evaluated with their own conditions.
             if target_id in manifest_ids and npc_role and str(npc_role).strip():
-                # NPC and target both structurally present → check if the
-                # quest_spec has the required objective shape
                 obj = spec.get("objective", {})
-                if obj.get("type") != "fetch":
+                # CB-1: import hoisted to avoid loop-intern import (reviewer feedback)
+                from quest_validator import objective_winnable
+                npc_ids_for_check = {
+                    s.get("npc_id", f"npc_{j}")
+                    for j, s in enumerate(specs_to_check)
+                    if isinstance(s, dict)
+                }
+                winnable, _reason = objective_winnable(
+                    obj, manifest=manifest, npc_ids=npc_ids_for_check,
+                )
+                if not winnable:
                     tags.add("quest_unwinnable")
 
         # P-K: decor-never-target invariant (decor items must not be targets)

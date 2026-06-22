@@ -1309,3 +1309,243 @@ def test_plan_multi_default_souls_for_nameless_npcs():
 
     for spec in specs:
         assert spec["soul"] == default_soul()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-1: Quest depth — multi-type objectives + chain validation
+# ═══════════════════════════════════════════════════════════════════════
+
+_CARRY_MANIFEST_2: list[dict] = [
+    {"id": "key_0", "category": "key", "material": "wrought_iron"},
+    {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    {"id": "table_0", "category": "table", "material": "worn_oak"},
+]
+
+
+def test_plan_multi_produces_deliver_objective():
+    """CB-1: plan_multi accepts a deliver objective from the LLM and
+    preserves recipient."""
+    planner = QuestBehaviourPlanner()
+
+    def fake_deliver_llm(prompt, grammar=None, json_schema=None, **kw):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "quest_id": "q_npc_0",
+                "dialogue": {"greet": "Hi", "ask": "Take key to alchemist",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "deliver", "target": "key_0", "giver": "npc",
+                             "recipient": "npc_1"},
+            },
+            "npc_1": {
+                "npc_role": "alchemist",
+                "target_entity": "gem_0",
+                "quest_id": "q_npc_1",
+                "dialogue": {"greet": "Hello", "ask": "Find gem",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a lab", _CARRY_MANIFEST_2, fake_deliver_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    deliver_spec = specs[0]
+    assert deliver_spec["objective"]["type"] == "deliver"
+    assert deliver_spec["objective"]["recipient"] == "npc_1"
+    assert deliver_spec["quest_id"] == "q_npc_0"
+
+
+def test_plan_multi_produces_talk_objective():
+    """CB-1: plan_multi accepts a talk objective from the LLM."""
+    planner = QuestBehaviourPlanner()
+
+    def fake_talk_llm(prompt, grammar=None, json_schema=None, **kw):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "guide",
+                "target_entity": "key_0",
+                "quest_id": "q_npc_0",
+                "dialogue": {"greet": "Hi", "ask": "Speak to the alchemist",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "talk", "target": "npc_1", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "alchemist",
+                "target_entity": "gem_0",
+                "quest_id": "q_npc_1",
+                "dialogue": {"greet": "Hello", "ask": "Find gem",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a lab", _CARRY_MANIFEST_2, fake_talk_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    talk_spec = specs[0]
+    assert talk_spec["objective"]["type"] == "talk"
+    assert talk_spec["objective"]["target"] == "npc_1"
+
+
+def test_plan_multi_invalid_objective_falls_back_to_fetch():
+    """CB-1: An objective that fails quest_validator (e.g. deliver with
+    non-existent recipient) → falls back to fetch + DP."""
+    planner = QuestBehaviourPlanner()
+
+    def fake_bad_deliver_llm(prompt, grammar=None, json_schema=None, **kw):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Deliver key",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "deliver", "target": "key_0", "giver": "npc",
+                             # recipient npc_99 doesn't exist
+                             "recipient": "npc_99"},
+            },
+            "npc_1": {
+                "npc_role": "alchemist",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a lab", _CARRY_MANIFEST_2, fake_bad_deliver_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    # First NPC should have been downgraded to fetch
+    assert specs[0]["objective"]["type"] == "fetch"
+    # Should have objective_not_winnable DP
+    winnable_dps = [d for d in decs if d.code == "quest.objective_not_winnable"]
+    assert len(winnable_dps) >= 1
+    assert winnable_dps[0].context["original_type"] == "deliver"
+
+
+def test_plan_multi_chain_with_depends_on():
+    """CB-1: plan_multi preserves depends_on chains from the LLM."""
+    planner = QuestBehaviourPlanner()
+
+    def fake_chain_llm(prompt, grammar=None, json_schema=None, **kw):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "quest_id": "q_npc_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc",
+                             "depends_on": []},
+            },
+            "npc_1": {
+                "npc_role": "alchemist",
+                "target_entity": "gem_0",
+                "quest_id": "q_npc_1",
+                "dialogue": {"greet": "Hello", "ask": "Find gem",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc",
+                             # npc_1's quest depends on npc_0's quest
+                             "depends_on": ["q_npc_0"]},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a lab", _CARRY_MANIFEST_2, fake_chain_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    assert specs[0]["objective"].get("depends_on") == []
+    assert specs[1]["objective"]["depends_on"] == ["q_npc_0"]
+    # quest_id should be on each spec
+    assert specs[0]["quest_id"] == "q_npc_0"
+    assert specs[1]["quest_id"] == "q_npc_1"
+
+
+def test_plan_multi_chain_unsolvable_flattened():
+    """CB-1: A cyclic depends_on chain → flattened to independent quests
+    + quest.chain_unsolvable DP."""
+    planner = QuestBehaviourPlanner()
+
+    def fake_cycle_llm(prompt, grammar=None, json_schema=None, **kw):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "quest_id": "q_npc_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key",
+                            "wrong": "No", "thank": "Thanks"},
+                # npc_0 depends on npc_1 → cycle!
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc",
+                             "depends_on": ["q_npc_1"]},
+            },
+            "npc_1": {
+                "npc_role": "alchemist",
+                "target_entity": "gem_0",
+                "quest_id": "q_npc_1",
+                "dialogue": {"greet": "Hello", "ask": "Find gem",
+                            "wrong": "No", "thank": "Thanks"},
+                # npc_1 depends on npc_0 → cycle!
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc",
+                             "depends_on": ["q_npc_0"]},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a lab", _CARRY_MANIFEST_2, fake_cycle_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    # Chain should have been flattened: no depends_on on either
+    for spec in specs:
+        assert "depends_on" not in spec.get("objective", {})
+    # Should have chain_unsolvable DP
+    chain_dps = [d for d in decs if d.code == "quest.chain_unsolvable"]
+    assert len(chain_dps) == 1
+
+
+def test_plan_multi_quest_id_on_every_spec():
+    """CB-1: Every spec from plan_multi has a quest_id (generated from
+    model or auto-generated from npc_id)."""
+    planner = QuestBehaviourPlanner()
+
+    def fake_no_qid_llm(prompt, grammar=None, json_schema=None, **kw):
+        # Model returns no quest_id — should be auto-generated
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi", "ask": "Find key",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "alchemist",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hello", "ask": "Find gem",
+                            "wrong": "No", "thank": "Thanks"},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a lab", _CARRY_MANIFEST_2, fake_no_qid_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    assert len(specs) == 2
+    assert specs[0]["quest_id"] == "q_npc_0"
+    assert specs[1]["quest_id"] == "q_npc_1"

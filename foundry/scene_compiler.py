@@ -40,6 +40,11 @@ _TAG_TABLE: Dict[str, str | None] = {
     "talk": "res://scripts/npc.gd",
     # "give" is handled by npc.gd (state machine checks carried_item)
     "give": "res://scripts/npc.gd",
+    # CB-2: openable containers + locked doors
+    "open": "res://scripts/container.gd",
+    "door": "res://scripts/door.gd",
+    # CB-6: enemy entity (NOT npc.gd — separate entity type)
+    "enemy": "res://scripts/enemy.gd",
     "inert": None,
 }
 
@@ -72,6 +77,12 @@ def _b3_emit_item_metadata(lines: list[str], category: str) -> None:
         lines.append(f'metadata/_forge_durability = {int(dur)}')
     if entry.get("openable"):
         lines.append('metadata/_forge_openable = "true"')
+        # CB-2: empty contents by default (container.gd reads this to spawn items)
+        lines.append('metadata/_forge_contents = ""')
+    # CB-2: place-on-surface — furniture with a top surface for placing items
+    if entry.get("furniture_top_y") is not None:
+        lines.append(f'metadata/_forge_surface_tag = "place"')
+        lines.append(f'metadata/_forge_surface_y = {float(entry["furniture_top_y"])}')
 
 # ── Shell scripts ──────────────────────────────────────────────
 # P4: reusable GDScript files the compiler always attaches.
@@ -84,6 +95,16 @@ _SHELL_SCRIPTS: List[dict] = [
     {"id": "s_win", "path": "res://scripts/win_screen.gd"},
     # B2: day/night cycle runtime
     {"id": "s_day_night", "path": "res://scripts/day_night.gd"},
+    # CB-5: event_manager.gd — reads/writes events from quest_data
+    {"id": "s_event_mgr", "path": "res://scripts/event_manager.gd"},
+    # CB-6: health.gd — player health component (attached to Player)
+    {"id": "s_health", "path": "res://scripts/health.gd"},
+    # CB-6: combat.gd — melee combat system (attached to Player)
+    {"id": "s_combat", "path": "res://scripts/combat.gd"},
+    # CB-1: quest manager autoload — registered in project.godot
+    # CB-2: container.gd + door.gd are emitted via used_tag_scripts
+    # CB-6: enemy.gd is emitted via used_tag_scripts
+    #       (like pickup.gd/npc.gd), not via _SHELL_SCRIPTS.
 ]
 
 # ── Shell node definitions ───────────────────────────────────────
@@ -99,6 +120,12 @@ _SHELL_NODES: List[dict] = [
     {"name": "WinScreen", "type": "Control", "parent": ".", "script": "s_win"},
     # B2: day/night cycle runtime node
     {"name": "DayNight", "type": "Node", "parent": ".", "script": "s_day_night"},
+    # CB-5: emergent events runtime
+    {"name": "EventManager", "type": "Node", "parent": ".", "script": "s_event_mgr"},
+    # CB-6: player health component
+    {"name": "Health", "type": "Node", "parent": "Player", "script": "s_health"},
+    # CB-6: melee combat system
+    {"name": "Combat", "type": "Node", "parent": "Player", "script": "s_combat"},
 ]
 
 # ── NPC body (P7: procedurally generated humanoid GLB) ──────────
@@ -109,6 +136,10 @@ _SHELL_NODES: List[dict] = [
 
 _NPC_BODY_CATEGORY = "humanoid"
 _NPC_BODY_MATERIAL = "rough_granite"
+
+# CB-7: Outdoor terrain defaults
+_OUTDOOR_GROUND_SIZE = 80.0  # outdoor ground plane extent
+_OUTDOOR_GROUND_THICKNESS = 0.5
 
 # ── Room dimensions (Item 2) ─────────────────────────────────────
 # The visible room shell: floor, 4 walls, ceiling.
@@ -306,6 +337,31 @@ def _build_room_sub_resources(
      "props": ["radius = 0.3", "height = 1.8"]},
     {"id": "player_body_mat", "type": "StandardMaterial3D",
      "props": ["albedo_color = Color(0.2, 0.3, 0.5, 1)"]},
+    # CB-3: NavigationMesh for NPC pathfinding — covers the walkable floor
+    # area (room_w × room_d, minus wall margins), at y=0.
+    {"id": "nav_mesh", "type": "NavigationMesh",
+     "props": [
+         "vertices = PackedVector3Array("
+         + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
+         + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
+         + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)}, "
+         + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)})",
+         "polygons = [\nPackedInt32Array(0, 1, 2),\nPackedInt32Array(0, 2, 3)\n]",
+         "agent_radius = 0.3",
+         "agent_height = 2.0",
+         "agent_max_slope = 45.0",
+         "agent_max_climb = 0.3",
+         "cell_size = 0.3",
+     ]},
+    # CB-4: Door visual mesh + material (shared by all door entities)
+    {"id": "door_mesh", "type": "BoxMesh",
+     "props": ["size = Vector3(0.1, 2.4, 1.8)"]},
+    {"id": "door_mat", "type": "StandardMaterial3D",
+     "props": [
+         "albedo_color = Color(0.35, 0.22, 0.12, 1)",
+         "roughness = 0.8",
+         "metallic = 0.0",
+     ]},
     # Collision shapes for walls
     {"id": "wall_ns_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
@@ -364,12 +420,16 @@ def _build_room_nodes(
     room_h: float = _ROOM_HEIGHT,
     directional_color: tuple | None = None,
     directional_energy: float | None = None,
+    is_outdoor: bool = False,
 ) -> List[dict]:
     """Build the list of room nodes (lights, meshes, walls) for the
     given dimensions.
 
     P-G: *directional_color* and *directional_energy* override the
-    default DirectionalLight3D (per-theme lighting)."""
+    default DirectionalLight3D (per-theme lighting).
+
+    CB-7: When *is_outdoor* is True, skips walls and ceiling, and
+    adds an outdoor ground plane MeshInstance3D."""
     light_nodes: list[dict] = [
     # WorldEnvironment (Item 1)
     {"name": "WorldEnvironment", "type": "WorldEnvironment", "parent": ".",
@@ -389,41 +449,59 @@ def _build_room_nodes(
         {"name": "DirectionalLight3D", "type": "DirectionalLight3D", "parent": ".",
          "props": dl_props}
     )
-    return light_nodes + [
-    # Visible floor mesh (child of existing Floor StaticBody3D)
-    {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
-     "props": [
-         'mesh = SubResource("floor_vis_mesh")',
-         'surface_material_override/0 = SubResource("floor_mat")',
-     ]},
-    # North wall (z = -room_d/2)
-    {"name": "WallN", "type": "StaticBody3D", "parent": ".",
-     "props": [
-         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h / 2)}, {_fmt_pos(-room_d / 2)})",
-     ]},
-    # South wall (z = +room_d/2)
-    {"name": "WallS", "type": "StaticBody3D", "parent": ".",
-     "props": [
-         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h / 2)}, {_fmt_pos(room_d / 2)})",
-     ]},
-    # East wall (x = +room_w/2)
-    {"name": "WallE", "type": "StaticBody3D", "parent": ".",
-     "props": [
-         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
-     ]},
-    # West wall (x = -room_w/2)
-    {"name": "WallW", "type": "StaticBody3D", "parent": ".",
-     "props": [
-         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(-room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
-     ]},
-    # Ceiling
-    {"name": "Ceiling", "type": "MeshInstance3D", "parent": ".",
-     "props": [
-         f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h)}, 0)",
-         'mesh = SubResource("ceiling_mesh")',
-         'surface_material_override/0 = SubResource("ceiling_mat")',
-     ]},
-]
+
+    common_nodes = [
+        # CB-3: NavigationRegion3D for NPC pathfinding
+        {"name": "NavigationRegion3D", "type": "NavigationRegion3D", "parent": ".",
+         "props": ['navmesh = SubResource("nav_mesh")']},
+    ]
+
+    if is_outdoor:
+        # CB-7: Outdoor — ground plane only, no walls or ceiling
+        return light_nodes + common_nodes + [
+            {"name": "GroundPlane", "type": "MeshInstance3D", "parent": ".",
+             "props": [
+                 f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -{_fmt_pos(_OUTDOOR_GROUND_THICKNESS / 2)}, 0)",
+                 'mesh = SubResource("floor_vis_mesh")',
+                 'surface_material_override/0 = SubResource("floor_mat")',
+             ]},
+        ]
+
+    return light_nodes + common_nodes + [
+        # Visible floor mesh (child of existing Floor StaticBody3D)
+        {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
+         "props": [
+             'mesh = SubResource("floor_vis_mesh")',
+             'surface_material_override/0 = SubResource("floor_mat")',
+         ]},
+        # North wall (z = -room_d/2)
+        {"name": "WallN", "type": "StaticBody3D", "parent": ".",
+         "props": [
+             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h / 2)}, {_fmt_pos(-room_d / 2)})",
+         ]},
+        # South wall (z = +room_d/2)
+        {"name": "WallS", "type": "StaticBody3D", "parent": ".",
+         "props": [
+             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h / 2)}, {_fmt_pos(room_d / 2)})",
+         ]},
+        # East wall (x = +room_w/2)
+        {"name": "WallE", "type": "StaticBody3D", "parent": ".",
+         "props": [
+             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
+         ]},
+        # West wall (x = -room_w/2)
+        {"name": "WallW", "type": "StaticBody3D", "parent": ".",
+         "props": [
+             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(-room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
+         ]},
+        # Ceiling
+        {"name": "Ceiling", "type": "MeshInstance3D", "parent": ".",
+         "props": [
+             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, {_fmt_pos(room_h)}, 0)",
+             'mesh = SubResource("ceiling_mesh")',
+             'surface_material_override/0 = SubResource("ceiling_mat")',
+         ]},
+    ]
 
 # ── Wall collision children definitions ───────────────────────────
 
@@ -732,6 +810,10 @@ def compile_scene(
     room_size: dict | None = None,
     theme: str | None = None,
     camera_mode: str = "first",
+    room_graph: dict | None = None,  # CB-4: multi-room graph
+    current_room: tuple | None = None,  # CB-4: which room this scene represents
+    room_type: str = "indoor",  # CB-7: "indoor" | "outdoor"
+    exterior_plan: dict | None = None,  # CB-7: ExteriorPlan data for outdoor rooms
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.
 
@@ -763,6 +845,10 @@ def compile_scene(
                    provided (keeps tests deterministic).
         room_size: Optional dict with ``w`` (width) and ``d`` (depth)
                    keys to size the room shell.  Defaults to 20×20.
+        room_type: "indoor" (walls+ceiling) or "outdoor" (terrain floor,
+                   no walls, biome atmosphere).  CB-7.
+        exterior_plan: For outdoor rooms, the ExteriorPlan dict from
+                       exterior_planner (field, biome, scatter_placements).
 
     Returns:
         The *output_path* (so callers can assert the file was written).
@@ -776,20 +862,42 @@ def compile_scene(
 
     unique_glbs = resolve_unique_glbs_with_npc(manifest)
 
-    # ── Compute unique tag→script mappings (P5) ──────────────────
-    used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
+    # Compute used tags — include open/door if any entity in the manifest
+    # has category.openable=True or category is "door"
     used_tags = {"pickup", "talk"}
+    from category_registry import REGISTRY as _REG
+    for entry in manifest:
+        cat = entry.get("category", "?")
+        if not entry.get("decor"):
+            ce = _REG.get(cat, {})
+            if ce.get("openable"):
+                used_tags.add("open")
+            if cat == "door":
+                used_tags.add("door")
+    # CB-4: If room_graph is provided, always include door tag
+    if room_graph:
+        used_tags.add("door")
+    # CB-6: If any enemy entity appears in manifest, include enemy tag
+    for entry in manifest:
+        if entry.get("category") == "enemy" and not entry.get("decor"):
+            used_tags.add("enemy")
+            break
+    used_tag_scripts: dict[str, str] = {}  # path → ext_resource id
     for tag in sorted(used_tags):
         path = _TAG_TABLE.get(tag)
         if path:
             used_tag_scripts[path] = f"s_{tag}"
 
     # ── Resolve room dimensions from room_size or defaults ─────
+    is_outdoor = (room_type == "outdoor")
     room_w: float = _ROOM_WIDTH
     room_d: float = _ROOM_DEPTH
+    if is_outdoor:
+        room_w = _OUTDOOR_GROUND_SIZE
+        room_d = _OUTDOOR_GROUND_SIZE
     if room_size:
-        room_w = float(room_size.get("w", _ROOM_WIDTH))
-        room_d = float(room_size.get("d", _ROOM_DEPTH))
+        room_w = float(room_size.get("w", room_w))
+        room_d = float(room_size.get("d", room_d))
 
     # ── Identify interactable entities (FIX-5) ──────────────────
     # Decor entries get no collider, no pickup tag.
@@ -801,6 +909,25 @@ def compile_scene(
     # ── Compute sub_resource count (FIX-1/FIX-5) ───────────────
     # floor BoxShape3D + player CapsuleShape3D + one BoxShape3D per
     # interactable prop + NPC.
+    # Num interactable = manifest entries + door entities (CB-4)
+    num_interactable = len(interactable_ids)
+    # CB-4: Add door entities from room_graph
+    door_entities: list[dict] = []
+    if room_graph and current_room is not None:
+        from room_graph import get_doors_for_room, door_position_on_wall
+        room_doors = get_doors_for_room(current_room, room_graph.get("doors", []))
+        for dd in room_doors:
+            fr, to = tuple(dd["from_room"]), tuple(dd["to_room"])
+            dx, dy, dz, yaw = door_position_on_wall(fr, to, room_w, room_d)
+            door_id = dd["door_id"]
+            door_entities.append({
+                "id": door_id, "category": "door",
+                "x": dx, "y": dy, "z": dz, "yaw": yaw,
+                "locked": dd.get("locked", False),
+                "key_entity": dd.get("key_entity"),
+                "to_room": dd["to_room"],
+            })
+            interactable_ids.add(door_id)
     num_interactable = len(interactable_ids)
     num_sub_resources = 2 + num_interactable + 1  # +1 for NPC
 
@@ -848,6 +975,31 @@ def compile_scene(
         shell_wall = get_shell_material(theme, "wall")
         shell_ceiling = get_shell_material(theme, "ceiling")
 
+    # CB-7: Outdoor atmosphere from exterior_plan biome
+    if is_outdoor and exterior_plan:
+        biome = exterior_plan.get("biome", {})
+        atmos = biome.get("atmosphere", {})
+        if atmos:
+            fc = atmos.get("fog_color", (0.66, 0.72, 0.7))
+            fog_color_override = tuple(fc) if len(fc) >= 3 else (fc[0], fc[1], fc[2])
+            if len(fog_color_override) == 3:
+                fog_color_override = (*fog_color_override, 1.0)
+            fog_density_override = float(atmos.get("fog_density", 0.01))
+            fog_light_energy_override = float(atmos.get("fog_light_energy", 0.8))
+            exposure_override = float(atmos.get("exposure", 1.2))
+            se = atmos.get("sun_energy", 1.2)
+            if dir_energy_override is None:
+                dir_energy_override = float(se)
+            st = atmos.get("sky_tint", (0.62, 0.74, 0.88))
+            if background_override is None:
+                background_override = (*tuple(st), 1.0) if len(st) >= 3 else (st[0], st[1], st[2], 1.0)
+            if ambient_override is None:
+                ambient_override = (*tuple(st), 1.0) if len(st) >= 3 else (st[0], st[1], st[2], 1.0)
+            if interior_color_override is None:
+                interior_color_override = (0.9, 0.85, 0.7)
+            if interior_energy_override is None:
+                interior_energy_override = 1.2
+
     room_sub_resources = _build_room_sub_resources(
         room_w, room_d,
         ambient=ambient_override,
@@ -865,12 +1017,29 @@ def compile_scene(
         room_w, room_d,
         directional_color=dir_color_override,
         directional_energy=dir_energy_override,
+        is_outdoor=is_outdoor,
     )
 
     # ── No-clip placement pass (Item 3) ─────────────────────────
     # Deterministic AABB separation so props don't intersect each
     # other or the NPC.  Skips underlay and decor entries.
     separated_manifest = _resolve_prop_overlaps(manifest)
+
+    # CB-7: Append scatter vegetation as decor props for outdoor rooms
+    if is_outdoor and exterior_plan:
+        scatter_placements = exterior_plan.get("scatter_placements", [])
+        for sp_idx, sp in enumerate(scatter_placements):
+            cat = sp.get("category", "rock")
+            # Scatter entries don't carry material — use category as both for GLB path
+            separated_manifest.append({
+                "id": f"scatter_{cat}_{sp_idx}",
+                "category": cat,
+                "material": cat,  # exterior GLBs keyed as {category}_{category}.glb
+                "x": sp.get("x", 0.0),
+                "y": sp.get("y", 0.0),
+                "z": sp.get("z", 0.0),
+                "decor": True,  # no collision, no pickup tag
+            })
 
     # ── Write quest data as a JSON file alongside the .tscn ──────
     output_dir = str(Path(output_path).parent)
@@ -891,11 +1060,17 @@ def compile_scene(
         quest_specs, separated_manifest, room_w, room_d,
     )
     
+    # CB-3: Generate per-NPC needs from npc_sim
+    from npc_sim import generate_npc_needs
+    npc_needs_list = generate_npc_needs(len(quest_specs))
+    
     for i, spec in enumerate(quest_specs):
         npc_id = spec.get("npc_id", f"npc_{i}")
         npc_pos_x, npc_pos_z = npc_positions[i]
         # Spine Slice 3: bake soul into quest_data
         npc_soul = spec.get("soul", default_soul())
+        # CB-3: attach needs to NPC data
+        npc_needs = npc_needs_list[i]
         placement: dict = {
             "id": npc_id,
             "asset_hash": f"{_NPC_BODY_CATEGORY}_{_NPC_BODY_MATERIAL}",
@@ -911,6 +1086,7 @@ def compile_scene(
             **spec,
             "soul": npc_soul,
             "npc_placement": placement,
+            "needs": npc_needs,  # CB-3: per-NPC needs
         }
         # C-3: Initialise the world log with this NPC's starting state
         _init_world_log(world_log_path, placement)
@@ -923,10 +1099,38 @@ def compile_scene(
         cat = entry.get("category", "?")
         examine_flavour[eid] = _category_fallback(cat)
 
+    # CB-5: Generate emergent events for this room
+    events_data: list[dict] = []
+    from world_events import fire_events
+    npc_ids = [spec.get("npc_id", f"npc_{i}") for i, spec in enumerate(quest_specs)]
+    all_rooms = [(0, 0)]
+    if room_graph:
+        all_rooms = [tuple(r) for r in room_graph.get("rooms", [(0, 0)])]
+    epicentre = current_room if current_room else (0, 0)
+    manifest_entity_ids = [e.get("id", "") for e in manifest if not e.get("decor")]
+    events_data = fire_events(
+        num_events=1,
+        time_of_day="day",  # default; runtime may override
+        tick_count=0,
+        needs=npc_needs_list[0] if npc_needs_list else None,
+        epicentre=epicentre,
+        all_rooms=all_rooms,
+        existing_npc_ids=npc_ids,
+        manifest_entities=manifest_entity_ids,
+        seed=42,
+    )
+
     quest_data: dict = {
         "npcs": npcs_data,
         "world_log_path": world_log_path,
         "examine": examine_flavour,
+        "events": events_data,  # CB-5: emergent events
+        "enemies": [
+            {"enemy_id": e["id"], "archetype": "golem",
+             "health": 50.0, "damage": 8.0,
+             "x": e.get("x", 0), "z": e.get("z", 0)}
+            for e in manifest if e.get("category") == "enemy"
+        ],  # CB-6: enemy specs
     }
     Path(data_path).write_text(
         json.dumps(quest_data, indent=2, ensure_ascii=False) + "\n",
@@ -969,6 +1173,15 @@ def compile_scene(
         COLLISION_SIZES.get("humanoid", (0.5, 2.8, 0.4)),
     )
     sub_res_idx += 1
+
+    # CB-4: Door collision shapes — thin boxes on walls
+    for dd in door_entities:
+        door_id = dd["id"]
+        collision_info[door_id] = (
+            f"sub_{sub_res_idx}",
+            (0.1, 2.4, 1.8),  # thin door collision: 10cm thick × 2.4m tall × 1.8m wide
+        )
+        sub_res_idx += 1
 
     # ── Build .tscn content ─────────────────────────────────────
     lines: list[str] = []
@@ -1103,14 +1316,26 @@ def compile_scene(
         y = entry.get("y", 0.0)
         z = entry.get("z", 0.0)
         is_decor = entry.get("decor", False)
-        tag = "inert" if is_decor else "pickup"
+        # CB-2/CB-6: Determine tag — openable→open, enemy→enemy, others→decor/pickup
+        from category_registry import REGISTRY
+        entry = REGISTRY.get(cat, {})
+        if cat == "enemy":
+            tag = "enemy"
+        elif not is_decor and entry.get("openable"):
+            tag = "open"
+        elif is_decor:
+            tag = "inert"
+        else:
+            tag = "pickup"
         glb_id = glb_ids.get((cat, mat), "1")
 
         # Guard: push away from player spawn (FIX-1e)
         x, z = _guard_player_spawn(x, z)
 
-        # Decor entries: Node3D (no physics), no tag, no script
-        if is_decor:
+        # CB-6: Enemy entities are CharacterBody3D (moveable)
+        if cat == "enemy":
+            lines.append(f'[node name="{eid}" type="CharacterBody3D" parent="."]')
+        elif is_decor:
             lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
         elif eid in interactable_ids:
             lines.append(f'[node name="{eid}" type="StaticBody3D" parent="."]')
@@ -1206,9 +1431,24 @@ def compile_scene(
         lines.append(f'shape = SubResource("{npc_collision_sub_id}")')
         lines.append("")
 
-        # NPC body GLB instance
+        # CB-7: Skeleton3D for procedural humanoid rig
+        lines.append(f'[node name="Skeleton" type="Skeleton3D" parent="{npc_id}"]')
+        lines.append("")
+
+        # CB-7: AnimationPlayer for idle/walk animations
+        lines.append(f'[node name="AnimationPlayer" type="AnimationPlayer" parent="{npc_id}"]')
+        lines.append('root_node = NodePath("../Skeleton")')
+        lines.append("")
+
+        # CB-7: BoneAttachment3D on Hips bone — carries the GLB body mesh
+        lines.append(f'[node name="HipsAttachment" type="BoneAttachment3D" parent="{npc_id}"]')
+        lines.append('bone_name = "Hips"')
+        lines.append(f'skeleton = NodePath("../Skeleton")')
+        lines.append("")
+
+        # NPC body GLB instance — now attached to the Hips bone
         lines.append(
-            f'[node name="Body" parent="{npc_id}" instance=ExtResource("{npc_glb_id}")]'
+            f'[node name="Body" parent="{npc_id}/HipsAttachment" instance=ExtResource("{npc_glb_id}")]'
         )
         lines.append("")
 
@@ -1461,9 +1701,50 @@ def compile_scene(
         lines.append(f'metadata/_forge_theme = "{theme}"')
         lines.append("")
 
-    # QuestData node (no script — P5 reads the JSON resource directly)
+    # ── QuestData node (no script — P5 reads the JSON resource directly)
     lines.append('[node name="QuestData" type="Node" parent="."]')
     lines.append("")
+
+    # ── CB-4: Door entities on room boundaries ───────────────────
+    door_script_path = _TAG_TABLE.get("door")
+    for dd_idx, dd in enumerate(door_entities):
+        door_id = dd["id"]
+        dx, dy, dz = dd["x"], dd["y"], dd["z"]
+        yaw = dd.get("yaw", 0.0)
+        # CB-4: Apply yaw to door transform so doors face the correct direction
+        import math
+        cos_y = math.cos(yaw)
+        sin_y = math.sin(yaw)
+        lines.append(f'[node name="{door_id}" type="StaticBody3D" parent="."]')
+        lines.append(
+            f"transform = Transform3D({_fmt_pos(cos_y)}, 0, {_fmt_pos(-sin_y)}, 0, 1, 0, {_fmt_pos(sin_y)}, 0, {_fmt_pos(cos_y)}, "
+            f"{_fmt_pos(dx)}, {_fmt_pos(dy)}, {_fmt_pos(dz)})"
+        )
+        lines.append('metadata/_forge_tag = "door"')
+        if dd.get("locked"):
+            lines.append(f'metadata/_forge_key_entity = "{dd["key_entity"]}"')
+        # CB-4: neighbour room data for traversal + world log path for persistence
+        to_room = dd.get("to_room", [0, 0])
+        lines.append(f'metadata/_forge_target_room = "{to_room[0]},{to_room[1]}"')
+        lines.append(f'metadata/_forge_world_log = "{world_log_path}"')
+        if door_script_path and door_script_path in used_tag_scripts:
+            lines.append(
+                f'script = ExtResource("{used_tag_scripts[door_script_path]}")'
+            )
+        lines.append("")
+        # Door collision shape (thin box on the wall)
+        if door_id in collision_info:
+            door_sub_id = collision_info[door_id][0]
+            lines.append(f'[node name="{door_id}_collision" type="CollisionShape3D" parent="{door_id}"]')
+            lines.append(f'shape = SubResource("{door_sub_id}")')
+            lines.append("")
+        # CB-4: Door visual model — simple BoxMesh so doors are visible
+        lines.append(
+            f'[node name="{door_id}_model" parent="{door_id}"]'
+        )
+        lines.append('mesh = SubResource("door_mesh")')
+        lines.append('surface_material_override/0 = SubResource("door_mat")')
+        lines.append("")
 
     content = "\n".join(lines)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -1495,7 +1776,7 @@ def _parse_scene_text(tscn_text: str) -> dict:
         "layout_mode ", "anchors_preset ",
         "anchor_", "offset_", "grow_", "text ",
         "horizontal_alignment ",
-        "environment ", "shadow_enabled ",
+        "environment ", "shadow_enabled ", "navmesh ",
         "mesh ", "surface_material_override/",
     )
 

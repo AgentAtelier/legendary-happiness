@@ -185,12 +185,16 @@ def test_target_prop_has_pickup_tag():
 
 
 def test_all_props_have_pickup_tag():
-    """FIX-5: All props (not just target) have pickup tag."""
+    """FIX-5/CB-2: All props have pickup or open tag (openable furniture gets open)."""
+    from category_registry import REGISTRY
     _, parsed, _ = _compile_and_parse()
     for entry in _MANIFEST:
         meta = parsed["metadata"].get(entry["id"], {})
-        assert meta.get("_forge_tag") == "pickup", (
-            f"prop {entry['id']!r} should have pickup tag (FIX-5), got {meta}"
+        cat = entry.get("category", "?")
+        ce = REGISTRY.get(cat, {})
+        expected = "open" if ce.get("openable") else "pickup"
+        assert meta.get("_forge_tag") == expected, (
+            f"prop {entry['id']!r} should have {expected} tag (CB-2), got {meta}"
         )
 
 
@@ -223,12 +227,16 @@ def test_npc_has_talk_script():
 
 
 def test_all_props_have_pickup_script():
-    """FIX-5: All props (not just target) get pickup.gd script."""
+    """FIX-5/CB-2: All props get pickup.gd or container.gd (openable gets container)."""
+    from category_registry import REGISTRY
     _, parsed, _ = _compile_and_parse()
     for entry in _MANIFEST:
         node = next(n for n in parsed["nodes"] if n["name"] == entry["id"])
-        assert node.get("script") == "s_pickup", (
-            f"prop {entry['id']!r} should have script=s_pickup (FIX-5), got {node.get('script')!r}"
+        cat = entry.get("category", "?")
+        ce = REGISTRY.get(cat, {})
+        expected = "s_open" if ce.get("openable") else "s_pickup"
+        assert node.get("script") == expected, (
+            f"prop {entry['id']!r} should have script={expected} (CB-2), got {node.get('script')!r}"
         )
 
 
@@ -354,11 +362,12 @@ def test_default_position_zero():
 # ── NPC body (P7: generated humanoid GLB) ───────────────────────
 
 def test_npc_has_glb_body():
-    """NPC Body node instances a GLB via header-line instance= (FIX-1a)."""
+    """NPC Body node instances a GLB via header-line instance= (FIX-1a).
+    CB-7: Body is now a child of HipsAttachment (BoneAttachment3D)."""
     _, parsed, _ = _compile_and_parse()
     body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
     assert len(body_nodes) == 1
-    assert body_nodes[0]["parent"] == "npc_0"
+    assert "HipsAttachment" in body_nodes[0]["parent"]
     # FIX-1a: type= is omitted when instance= is on the [node] header line
     assert body_nodes[0].get("instance") is not None, (
         "Body node should instance a GLB via ExtResource (on header line)"
@@ -1390,6 +1399,454 @@ def test_npcs_not_on_player_spawn():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  CB-2: Item verbs — openable containers + surface metadata
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_openable_prop_gets_open_tag():
+    """CB-2: Openable furniture (cabinet) gets _forge_tag=open."""
+    _, parsed, _ = _compile_and_parse()
+    meta = parsed["metadata"].get("cabinet_0", {})
+    assert meta.get("_forge_tag") == "open", (
+        f"CB-2: cabinet should have open tag, got {meta}"
+    )
+    assert meta.get("_forge_openable") == "true"
+
+
+def test_furniture_gets_surface_metadata():
+    """CB-2: Furniture with furniture_top_y gets _forge_surface_tag=place."""
+    _, parsed, _ = _compile_and_parse()
+    for entry in _MANIFEST:
+        meta = parsed["metadata"].get(entry["id"], {})
+        from category_registry import REGISTRY
+        ce = REGISTRY.get(entry["category"], {})
+        if ce.get("furniture_top_y") is not None:
+            assert meta.get("_forge_surface_tag") == "place", (
+                f"CB-2: {entry['id']} should have surface_tag=place, got {meta}"
+            )
+            assert "_forge_surface_y" in meta
+        else:
+            # Carryables don't get surface_tag
+            assert meta.get("_forge_surface_tag", "") == ""
+
+
+def test_ext_resources_include_container_and_door():
+    """CB-2: ext_resources includes container.gd when openable props exist.
+    door.gd only appears when a door-category entity is in the manifest."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/container.gd" in paths, "CB-2: container.gd missing"
+    # door.gd is registered but only emitted via used_tags when a door entity exists
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_open" in ids, "CB-2: s_open ext_resource id missing"
+
+
+def test_openable_prop_gets_container_script():
+    """CB-2: Openable prop gets container.gd script via s_open ext_resource."""
+    _, parsed, _ = _compile_and_parse()
+    node = next(n for n in parsed["nodes"] if n["name"] == "cabinet_0")
+    assert node.get("script") == "s_open", (
+        f"CB-2: cabinet should have script=s_open, got {node.get('script')!r}"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-3: Navigation mesh + idle-wander
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_nav_mesh_sub_resource_exists():
+    """CB-3: Room sub_resources include a NavigationMesh."""
+    _, parsed, _ = _compile_and_parse()
+    sub_types = {s["type"] for s in parsed.get("sub_resources", [])}
+    assert "NavigationMesh" in sub_types, "CB-3: missing NavigationMesh sub_resource"
+    nav_subs = [s for s in parsed["sub_resources"] if s["type"] == "NavigationMesh"]
+    assert len(nav_subs) >= 1
+
+
+def test_navigation_region_node_exists():
+    """CB-3: Scene has a NavigationRegion3D node."""
+    _, parsed, _ = _compile_and_parse()
+    nav_nodes = [n for n in parsed["nodes"] if n["name"] == "NavigationRegion3D"]
+    assert len(nav_nodes) == 1, "CB-3: missing NavigationRegion3D node"
+    assert nav_nodes[0]["type"] == "NavigationRegion3D"
+
+
+def test_quest_data_has_npc_needs():
+    """CB-3: quest_data.json includes per-NPC needs dict."""
+    _, _, data = _compile_and_parse()
+    npcs = data.get("npcs", {})
+    for npc_id, npc_data in npcs.items():
+        assert "needs" in npc_data, f"CB-3: {npc_id} missing needs"
+        needs = npc_data["needs"]
+        assert isinstance(needs, dict)
+        for n in ("food", "water", "shelter", "safety", "sleep", "companionship", "joy"):
+            assert n in needs, f"CB-3: {npc_id} needs missing '{n}'"
+            assert 0.0 <= needs[n] <= 100.0, f"CB-3: {npc_id} need '{n}' out of range: {needs[n]}"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-4: Multi-room world — door entities + room_graph integration
+# ═══════════════════════════════════════════════════════════════════════
+
+def _make_room_graph():
+    """Minimal room_graph fixture with one door."""
+    return {
+        "rooms": [(0, 0), (1, 0)],
+        "tree_edges": {((0, 0), (1, 0))},
+        "extra_edges": set(),
+        "doors": [
+            {
+                "door_id": "door_0",
+                "from_room": [0, 0],
+                "to_room": [1, 0],
+                "wall": "east",
+                "locked": False,
+                "key_entity": None,
+            }
+        ],
+        "start": (0, 0),
+        "exit": (1, 0),
+        "start_exit_path_exists": True,
+        "width": 2,
+        "depth": 1,
+    }
+
+
+def test_room_graph_door_entities_emitted():
+    """CB-4: When room_graph is provided, door nodes appear in the scene."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Door node should exist
+        door_nodes = [n for n in parsed["nodes"] if n["name"] == "door_0"]
+        assert len(door_nodes) == 1, f"CB-4: expected door_0 node, got nodes: {[n['name'] for n in parsed['nodes']]}"
+        assert door_nodes[0]["type"] == "StaticBody3D"
+        # Door metadata
+        meta = parsed["metadata"].get("door_0", {})
+        assert meta.get("_forge_tag") == "door"
+        assert meta.get("_forge_target_room") == "1,0"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_has_collision_shape():
+    """CB-4: Door entities have collision shape sub_resources."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Door collision node
+        coll_nodes = [n for n in parsed["nodes"] if n["name"] == "door_0_collision"]
+        assert len(coll_nodes) == 1, f"CB-4: expected door_0_collision, got {[n['name'] for n in parsed['nodes']]}"
+        assert coll_nodes[0]["type"] == "CollisionShape3D"
+        assert coll_nodes[0].get("shape") is not None, (
+            "CB-4: door collision should reference a sub_resource"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_script_attached():
+    """CB-4: Door node gets door.gd script when room_graph is provided."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        door_node = next(n for n in parsed["nodes"] if n["name"] == "door_0")
+        assert door_node.get("script") == "s_door", (
+            f"CB-4: door should have script=s_door, got {door_node.get('script')!r}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_in_ext_resources():
+    """CB-4: When room_graph is provided, door.gd is in ext_resources."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        paths = {r["path"] for r in parsed["ext_resources"]}
+        assert "res://scripts/door.gd" in paths, "CB-4: door.gd missing from ext_resources"
+        ids = {r["id"] for r in parsed["ext_resources"]}
+        assert "s_door" in ids, "CB-4: s_door ext_resource id missing"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_locked_metadata():
+    """CB-4: Locked door gets _forge_key_entity metadata."""
+    rg = _make_room_graph()
+    rg["doors"][0]["locked"] = True
+    rg["doors"][0]["key_entity"] = "key_door_0"
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        meta = parsed["metadata"].get("door_0", {})
+        assert meta.get("_forge_key_entity") == "key_door_0", (
+            f"CB-4: locked door should have _forge_key_entity, got {meta}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_no_room_graph_no_door_nodes():
+    """CB-4: Without room_graph, no door nodes are emitted."""
+    _, parsed, _ = _compile_and_parse()
+    door_nodes = [n for n in parsed["nodes"] if n["name"].startswith("door_")]
+    assert len(door_nodes) == 0, (
+        f"CB-4: expected no door nodes without room_graph, got {door_nodes}"
+    )
+
+
+def test_door_has_visual_model():
+    """CB-4: Door entities have a _model child with a BoxMesh."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Door model node
+        model_nodes = [n for n in parsed["nodes"] if n["name"] == "door_0_model"]
+        assert len(model_nodes) == 1, f"CB-4: expected door_0_model, got {[n['name'] for n in parsed['nodes']]}"
+        assert model_nodes[0]["parent"] == "door_0"
+        # Door mesh and material sub_resources
+        sub_ids = {s["id"] for s in parsed.get("sub_resources", [])}
+        assert "door_mesh" in sub_ids, "CB-4: missing door_mesh sub_resource"
+        assert "door_mat" in sub_ids, "CB-4: missing door_mat sub_resource"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_door_has_world_log_metadata():
+    """CB-4: Door entities carry _forge_world_log metadata for cross-room persistence."""
+    rg = _make_room_graph()
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_graph=rg, current_room=(0, 0))
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        meta = parsed["metadata"].get("door_0", {})
+        assert "_forge_world_log" in meta, (
+            f"CB-4: door should have _forge_world_log, got {meta}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-5: Emergent events — event_manager + events in quest_data
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_quest_data_has_events_key():
+    """CB-5: quest_data.json includes an 'events' list."""
+    _, _, data = _compile_and_parse()
+    assert "events" in data, f"CB-5: quest_data missing 'events' key, got keys: {list(data.keys())}"
+    assert isinstance(data["events"], list)
+
+
+def test_event_has_schema():
+    """CB-5: Each event in quest_data follows the event-consequence schema."""
+    _, _, data = _compile_and_parse()
+    events = data.get("events", [])
+    for ev in events:
+        assert "event_id" in ev
+        assert "event_type" in ev
+        assert ev["event_type"] in (
+            "flood", "earthquake", "wildfire", "blizzard", "drought", "landslide", "blight"
+        )
+        assert "precursors" in ev
+        assert "spatial_origin" in ev
+        assert "consequences" in ev
+        assert "tick_fired" in ev
+
+
+def test_event_manager_shell_node():
+    """CB-5: Scene has an EventManager node."""
+    _, parsed, _ = _compile_and_parse()
+    em_nodes = [n for n in parsed["nodes"] if n["name"] == "EventManager"]
+    assert len(em_nodes) == 1, f"CB-5: expected EventManager node, got {[n['name'] for n in parsed['nodes']]}"
+    assert em_nodes[0]["type"] == "Node"
+
+
+def test_event_manager_in_ext_resources():
+    """CB-5: event_manager.gd is in ext_resource block."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/event_manager.gd" in paths, "CB-5: event_manager.gd missing from ext_resources"
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_event_mgr" in ids, "CB-5: s_event_mgr ext_resource id missing"
+
+
+def test_event_manager_has_script():
+    """CB-5: EventManager node has event_manager.gd script attached."""
+    _, parsed, _ = _compile_and_parse()
+    em = next(n for n in parsed["nodes"] if n["name"] == "EventManager")
+    assert em.get("script") == "s_event_mgr", (
+        f"CB-5: EventManager should have script=s_event_mgr, got {em.get('script')!r}"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-6: Combat + skills — enemy nodes, health/combat shells, enemy data
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_health_node_attached_to_player():
+    """CB-6: Player has a Health child node."""
+    _, parsed, _ = _compile_and_parse()
+    health_nodes = [n for n in parsed["nodes"] if n["name"] == "Health"]
+    assert len(health_nodes) == 1, f"CB-6: expected Health node, got {[n['name'] for n in parsed['nodes']]}"
+    assert health_nodes[0]["parent"] == "Player"
+
+
+def test_combat_node_attached_to_player():
+    """CB-6: Player has a Combat child node."""
+    _, parsed, _ = _compile_and_parse()
+    combat_nodes = [n for n in parsed["nodes"] if n["name"] == "Combat"]
+    assert len(combat_nodes) == 1, f"CB-6: expected Combat node, got {[n['name'] for n in parsed['nodes']]}"
+    assert combat_nodes[0]["parent"] == "Player"
+
+
+def test_health_combat_in_ext_resources():
+    """CB-6: health.gd and combat.gd are in ext_resources."""
+    _, parsed, _ = _compile_and_parse()
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/health.gd" in paths, "CB-6: health.gd missing"
+    assert "res://scripts/combat.gd" in paths, "CB-6: combat.gd missing"
+
+
+def test_enemy_entity_node_type():
+    """CB-6: Enemy entities are CharacterBody3D with enemy tag."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    text, parsed, _ = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    enemy = next(n for n in parsed["nodes"] if n["name"] == "enemy_0")
+    assert enemy["type"] == "CharacterBody3D", (
+        f"CB-6: enemy should be CharacterBody3D, got {enemy['type']}"
+    )
+    meta = parsed["metadata"].get("enemy_0", {})
+    assert meta.get("_forge_tag") == "enemy", f"CB-6: enemy tag missing, got {meta}"
+
+
+def test_enemy_script_attached():
+    """CB-6: Enemy node gets enemy.gd script."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    _, parsed, _ = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    enemy = next(n for n in parsed["nodes"] if n["name"] == "enemy_0")
+    assert enemy.get("script") == "s_enemy", (
+        f"CB-6: enemy should have script=s_enemy, got {enemy.get('script')!r}"
+    )
+
+
+def test_enemy_in_ext_resources():
+    """CB-6: When enemy entity exists, enemy.gd is in ext_resources."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    _, parsed, _ = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    paths = {r["path"] for r in parsed["ext_resources"]}
+    assert "res://scripts/enemy.gd" in paths, "CB-6: enemy.gd missing from ext_resources"
+    ids = {r["id"] for r in parsed["ext_resources"]}
+    assert "s_enemy" in ids, "CB-6: s_enemy ext_resource id missing"
+
+
+def test_quest_data_has_enemies():
+    """CB-6: quest_data.json includes an 'enemies' list."""
+    manifest: list[PlacedEntity] = [
+        {"id": "enemy_0", "category": "enemy", "material": "rough_granite",
+         "wear": 0.5, "x": 5.0, "y": 0.0, "z": -3.0},
+    ]
+    spec = dict(_QUEST_SPEC)
+    spec["target_entity"] = "enemy_0"
+    _, _, data = _compile_and_parse(quest_spec=spec, manifest=manifest)
+    assert "enemies" in data, f"CB-6: quest_data missing 'enemies', got keys: {list(data.keys())}"
+    enemies = data["enemies"]
+    assert len(enemies) == 1
+    assert enemies[0]["enemy_id"] == "enemy_0"
+    assert enemies[0]["archetype"] == "golem"
+    assert enemies[0]["health"] == 50.0
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Fix-Batch-1 Task 4: Shell tiling textures in compiled scene
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -1447,4 +1904,209 @@ def test_shell_material_references_textures():
         assert "roughness_texture" in props, (
             f"Task 4: {mat_id} missing roughness_texture"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-7: Skeletal NPC — Skeleton3D + AnimationPlayer + BoneAttachment3D
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_npc_has_skeleton_node():
+    """CB-7: NPC has a Skeleton3D child node."""
+    _, parsed, _ = _compile_and_parse()
+    skel_nodes = [n for n in parsed["nodes"] if n["name"] == "Skeleton"]
+    assert len(skel_nodes) == 1, f"CB-7: expected 1 Skeleton node, got {len(skel_nodes)}"
+    assert skel_nodes[0]["type"] == "Skeleton3D"
+    assert skel_nodes[0]["parent"] == "npc_0"
+
+
+def test_npc_has_animation_player():
+    """CB-7: NPC has an AnimationPlayer child node."""
+    _, parsed, _ = _compile_and_parse()
+    anim_nodes = [n for n in parsed["nodes"] if n["name"] == "AnimationPlayer"]
+    assert len(anim_nodes) == 1, f"CB-7: expected 1 AnimationPlayer node, got {len(anim_nodes)}"
+    assert anim_nodes[0]["type"] == "AnimationPlayer"
+    assert anim_nodes[0]["parent"] == "npc_0"
+
+
+def test_npc_has_hips_attachment():
+    """CB-7: NPC has a BoneAttachment3D for the Hips bone."""
+    _, parsed, _ = _compile_and_parse()
+    ha_nodes = [n for n in parsed["nodes"] if n["name"] == "HipsAttachment"]
+    assert len(ha_nodes) == 1, f"CB-7: expected 1 HipsAttachment node, got {len(ha_nodes)}"
+    assert ha_nodes[0]["type"] == "BoneAttachment3D"
+    assert ha_nodes[0]["parent"] == "npc_0"
+
+
+def test_body_attached_to_hips():
+    """CB-7: Body GLB is now a child of HipsAttachment."""
+    _, parsed, _ = _compile_and_parse()
+    body_nodes = [n for n in parsed["nodes"] if n["name"] == "Body"]
+    assert len(body_nodes) == 1, f"CB-7: expected 1 Body node, got {len(body_nodes)}"
+    # Body parent should be "npc_0/HipsAttachment"
+    assert "HipsAttachment" in body_nodes[0]["parent"]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  CB-7: Outdoor room — no walls/ceiling, GroundPlane, biome atmosphere
+# ═══════════════════════════════════════════════════════════════════════
+
+def _make_exterior_plan():
+    """Minimal exterior plan fixture for outdoor rooms."""
+    return {
+        "field": {
+            "extent": 80.0, "amplitude": 1.2, "base_frequency": 0.045,
+            "octaves": 4, "lacunarity": 2.0, "persistence": 0.5,
+            "base_height": 0.0, "seed": 42,
+        },
+        "biome": {
+            "biome": "temperate_forest",
+            "terrain": {"amplitude": 2.2, "base_frequency": 0.05, "octaves": 5,
+                        "lacunarity": 2.0, "persistence": 0.5},
+            "ground_materials": ["grass", "dirt"],
+            "flora_set": [
+                {"category": "tree", "weight": 0.6, "density": 0.07},
+                {"category": "shrub", "weight": 0.3, "density": 0.06},
+            ],
+            "atmosphere": {
+                "fog_color": [0.6, 0.68, 0.6], "fog_density": 0.012,
+                "sun_energy": 1.1, "sky_tint": [0.6, 0.72, 0.85],
+            },
+        },
+        "building": {
+            "center": [0.0, 0.0], "half_w": 10.0, "half_d": 10.0,
+            "pad_height": 0.0, "door_side": "+z", "door_center": [0.0, 10.0],
+            "structure": "cabin",
+        },
+        "spawn": {"x": 0.0, "z": 13.0, "yaw": 3.1416},
+        "scatter_placements": [
+            {"category": "tree", "x": 15.0, "y": 0.3, "z": 10.0, "yaw": 0.5, "scale": 1.0},
+            {"category": "shrub", "x": -12.0, "y": 0.1, "z": -8.0, "yaw": 1.2, "scale": 0.9},
+        ],
+        "names": {}, "decisions": [], "extent": 80.0,
+    }
+
+
+def test_outdoor_room_no_walls():
+    """CB-7: Outdoor rooms have NO wall nodes."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        wall_names = {"WallN", "WallS", "WallE", "WallW"}
+        node_names = {n["name"] for n in parsed["nodes"]}
+        for wn in wall_names:
+            assert wn not in node_names, f"CB-7: outdoor room should not have {wn}"
+        assert "Ceiling" not in node_names, "CB-7: outdoor room should not have Ceiling"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_room_has_ground_plane():
+    """CB-7: Outdoor rooms have a GroundPlane MeshInstance3D."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        gp_nodes = [n for n in parsed["nodes"] if n["name"] == "GroundPlane"]
+        assert len(gp_nodes) == 1, f"CB-7: expected GroundPlane node, got {[n['name'] for n in parsed['nodes']]}"
+        assert gp_nodes[0]["type"] == "MeshInstance3D"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_room_has_scatter_vegetation():
+    """CB-7: Outdoor rooms include scatter vegetation as decor nodes."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        node_names = {n["name"] for n in parsed["nodes"]}
+        # Scatter placements should appear as scatter_{cat}_{idx}
+        assert "scatter_tree_0" in node_names, f"CB-7: missing scatter_tree_0 in {sorted(node_names)}"
+        assert "scatter_shrub_1" in node_names, f"CB-7: missing scatter_shrub_1"
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_scatter_is_decor():
+    """CB-7: Scatter vegetation is decor-only (no collision, no pickup tag)."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Scatter nodes should be type Node3D (decor), not StaticBody3D
+        tree_node = next(n for n in parsed["nodes"] if n["name"] == "scatter_tree_0")
+        assert tree_node["type"] == "Node3D", (
+            f"CB-7: scatter decor should be Node3D, got {tree_node['type']}"
+        )
+        # Should NOT have collision or tag metadata
+        meta = parsed["metadata"].get("scatter_tree_0", {})
+        assert meta.get("_forge_tag", "") == "", (
+            f"CB-7: scatter decor should not have _forge_tag, got {meta}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_outdoor_atmosphere_applied():
+    """CB-7: Outdoor room uses biome atmosphere for fog/sky."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    ep = _make_exterior_plan()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_type="outdoor", exterior_plan=ep)
+        text = Path(out).read_text(encoding="utf-8")
+        # Biome fog color should be in the environment
+        assert "fog_light_color = Color(0.6, 0.68, 0.6, 1.0)" in text, (
+            f"CB-7: outdoor fog color not applied\ntext:\n{text[:3000]}"
+        )
+        assert "fog_density = 0.012" in text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_indoor_room_still_has_walls():
+    """CB-7: Indoor rooms (default) still have walls and ceiling."""
+    _, parsed, _ = _compile_and_parse()
+    node_names = {n["name"] for n in parsed["nodes"]}
+    for wn in ("WallN", "WallS", "WallE", "WallW"):
+        assert wn in node_names, f"CB-7: indoor room should have {wn}"
+    assert "Ceiling" in node_names, "CB-7: indoor room should have Ceiling"
 

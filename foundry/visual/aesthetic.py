@@ -7,6 +7,15 @@ no dropout, fixed seed).
 
 Typical score range: ~1–10 (higher = more aesthetically pleasing).
 Used for *ranking only* — never for absolute quality thresholds.
+
+CB-8: The LAION aesthetic predictor V2 weights are NOT bundled.
+To enable scoring, download ``sac+logos+ava1-l14-linearMSE.pth``
+from the LAION aesthetic predictor repo and place it at
+``~/.cache/forge/aesthetic_head_{embed_dim}.pth`` (the embed dim
+is auto-detected from the CLIP backbone), or set
+``$FORGE_AESTHETIC_HEAD`` to the weights file path.
+Without weights, scores return ``None`` with ``_load_error=True``
+— ranking is disabled but the rest of the V pipeline functions.
 """
 
 from __future__ import annotations
