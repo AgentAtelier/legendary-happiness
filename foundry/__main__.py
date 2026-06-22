@@ -36,6 +36,9 @@ def main() -> int:
     if len(sys.argv) >= 2 and sys.argv[1] == "quest":
         return _cmd_quest(sys.argv[2:])
 
+    if len(sys.argv) >= 2 and sys.argv[1] == "visual-eval":
+        return _cmd_visual_eval(sys.argv[2:])
+
     if "--request" in sys.argv:
         # --request "<text>" <lexicon.json> <library_dir>
         try:
@@ -257,6 +260,67 @@ def _cmd_quest(args: list[str]) -> int:
         print(rendered)
 
     print(f"[quest] Done. Launch: godot --path {build_path}")
+    return 0
+
+
+def _cmd_visual_eval(args: list[str]) -> int:
+    """Handle ``visual-eval`` subcommand.
+
+    Usage::
+        python -m foundry visual-eval
+            [--out-dir <dir>] [--library-dir <dir>] [--builds-dir <dir>]
+            [--baseline <path>] [--no-catalog] [--no-scenes]
+    """
+    import argparse
+    from visual.batch import run_batch
+
+    parser = argparse.ArgumentParser(
+        prog="python -m foundry visual-eval",
+        description="Visual-eval batch: prop catalog + scene regression.",
+    )
+    parser.add_argument(
+        "--out-dir", default="visual_eval_out",
+        help="Output directory (default: visual_eval_out)",
+    )
+    parser.add_argument(
+        "--library-dir", default=None,
+        help="Prop library directory with .glb files",
+    )
+    parser.add_argument(
+        "--builds-dir", default="builds",
+        help="Directory of Godot scene builds (default: builds/)",
+    )
+    parser.add_argument(
+        "--baseline", default=None,
+        help="Path to visual_baseline.json for regression comparison",
+    )
+    parser.add_argument(
+        "--no-catalog", action="store_true",
+        help="Skip prop catalog scan",
+    )
+    parser.add_argument(
+        "--no-scenes", action="store_true",
+        help="Skip scene regression scan",
+    )
+    parsed = parser.parse_args(args)
+
+    result = run_batch(
+        out_dir=parsed.out_dir,
+        library_dir=parsed.library_dir,
+        builds_dir=None if parsed.no_scenes else parsed.builds_dir,
+        baseline_path=parsed.baseline,
+        catalog=not parsed.no_catalog,
+        scenes=not parsed.no_scenes,
+    )
+
+    wl = result.get("worklist", [])
+    if wl:
+        print(f"Worklist: {len(wl)} items flagged for regen")
+
+    report = result.get("catalog_report") or result.get("scene_report")
+    if report:
+        print(report.get("md", "")[:2000])
+
     return 0
 
 
