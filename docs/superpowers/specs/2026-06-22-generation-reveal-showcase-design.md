@@ -64,6 +64,19 @@ procedural generator → box proxy → voxelize → Hunyuan-Omni (voxel-conditio
         → [runtime] procedural variation/kitbash of the base → placed instances
 ```
 
+### Idle asset server (implemented)
+The slow neural step never blocks the foundry. A content-addressed **queue/cache**
+(`foundry/hunyuan_queue.py`) decouples it: the foundry **enqueues** asset jobs +
+reads the **cache**; the **idle server** drains the queue during free GPU time.
+- **Tested drain logic** (GPU-independent): `foundry/hunyuan_worker.py` —
+  `drain(infer_fn)` = dequeue (priority) → infer → `hunyuan_postprocess`
+  (decimate/scale/sit) → cache → archive. Inference injected → unit-tested with a stub.
+- **GPU glue** (spike venv, py3.10): `/home/mrg/dev/hunyuan-spike/Hunyuan3D-Omni/asset_server.py`
+  loads Hunyuan **once** (amortizing the ~1-min load over the whole queue), injects
+  the validated voxel inference, and swaps `forge-llama` out/in around the run.
+  - `python asset_server.py --dry-run` — plumbing only (no GPU); verified end-to-end.
+  - `python asset_server.py --swap-llama --max N` — real overnight drain.
+
 ## 4. Runtime — the generation-reveal loop (live, seconds)
 ```
 prompt → Interpreter(LLM)→Brief → assemble: RoomPlanner + ExteriorPlanner + behaviour_gen
