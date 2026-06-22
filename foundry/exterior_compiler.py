@@ -31,6 +31,37 @@ def _transform3d(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 
     return "Transform3D(" + ", ".join(f"{v:.4f}" for v in vals) + ")"
 
 
+def _default_interior_plan(ext_plan: ExteriorPlan, *, material: str = "worn_oak") -> dict:
+    """A deterministic interior plan sized to the BUILDING interior (inset for
+    walls). The LLM RoomPlanner can override this by passing its own plan."""
+    b = ext_plan.building
+    w = max(2.0, b["half_w"] * 2.0 - 0.6)
+    d = max(2.0, b["half_d"] * 2.0 - 0.6)
+    props = [
+        {"category": "table", "count": 1, "material": material},
+        {"category": "chair", "count": 2, "material": material},
+    ]
+    return {"room_size": {"w": w, "d": d}, "props": props}
+
+
+def compile_exterior_build(brief: dict, seed: int, *, plan: dict | None = None,
+                           npc_count: int = 1) -> str:
+    """Live-assembly: Brief → ExteriorPlanner + (RoomPlanner|default) interior →
+    one playable exterior ``.tscn`` (terrain + flora + building + furnished interior).
+
+    The interior manifest is SOURCED LIVE from ``room_layout.layout_room`` (sized to
+    the building), not hand-fed — this is the prompt→scene wiring.
+    """
+    from exterior_planner import plan_exterior
+    from room_layout import layout_room
+
+    ext_plan = plan_exterior(brief, seed)
+    if plan is None:
+        plan = _default_interior_plan(ext_plan)
+    manifest, _meta, _decisions = layout_room(plan, seed=seed, npc_count=npc_count)
+    return emit_exterior_layer(ext_plan, interior_manifest=manifest)
+
+
 def _emit_building(plan: ExteriorPlan):
     """The building shell on the pad: 4 walls (a door gap on the door side) + a
     flat roof, each a StaticBody3D with BoxMesh + BoxShape3D collision so the

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from exterior_compiler import emit_exterior_layer
+from exterior_compiler import compile_exterior_build, emit_exterior_layer
 from exterior_planner import plan_exterior
 
 
@@ -88,6 +88,27 @@ def test_interior_props_emitted_inside_building():
 def test_no_interior_is_fine():
     tscn = emit_exterior_layer(_plan(), interior_manifest=None)
     assert "[gd_scene" in tscn  # still a valid scene with no interior
+
+
+_BRIEF = {
+    "scale": "medium", "setting": "snowy cabin", "theme_tag": "hermit",
+    "key_features": [], "characters": [],
+    "exterior": {"enabled": True, "structure": "cabin",
+                 "biome_recipe": {"base_biome": "temperate_forest"}},
+    "place_names": {"scene_name": "Hollowpine", "landmark_lore": []},
+}
+
+
+def test_compile_exterior_build_sources_interior_live():
+    tscn = compile_exterior_build(_BRIEF, seed=7)
+    assert tscn.startswith("[gd_scene")
+    assert '[node name="Terrain"' in tscn          # exterior layer
+    assert '[node name="WallBack"' in tscn          # building shell
+    assert "res://assets/table_worn_oak.glb" in tscn  # interior SOURCED from layout_room
+
+
+def test_compile_exterior_build_deterministic():
+    assert compile_exterior_build(_BRIEF, seed=5) == compile_exterior_build(_BRIEF, seed=5)
 
 
 def test_deterministic():
