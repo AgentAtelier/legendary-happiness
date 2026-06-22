@@ -36,8 +36,10 @@ def test_validate_soul_preserves_valid_values():
     assert soul["substrate"]["courage"] == -0.8
     assert soul["substrate"]["generosity"] == 0.6
     assert soul["substrate"]["stability"] == 0.0
-    assert soul["axes"]["security"] == 0.0  # defaulted
-    assert len(decisions) == 4  # 4 axes defaulted
+    assert soul["axes"]["security"] == 0.0  # defaulted silently
+    # Missing axes default to neutral WITHOUT decisions (axes are optional
+    # initial state until B8; emitting a DP per unset axis was report noise).
+    assert len(decisions) == 0
 
 
 def test_validate_soul_clamps_out_of_range():

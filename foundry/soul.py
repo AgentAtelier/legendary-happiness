@@ -132,22 +132,11 @@ def validate_soul(raw: dict) -> Tuple[dict, List[DecisionPoint]]:
     for axis in AXES:
         raw_val = raw_axes.get(axis)
         if raw_val is None:
+            # Axes are optional initial state, unused until B8 (event-nudging).
+            # A missing axis defaults to neutral SILENTLY — emitting a DP per
+            # unset axis flooded the build report's "Assumed" section with 4
+            # noise lines per character ("No value given for axes.X").
             soul["axes"][axis] = 0.0
-            decisions.append(
-                make_decision(
-                    "soul.defaulted",
-                    stage="interpreter",
-                    severity="assumption",
-                    context={"field": f"axes.{axis}"},
-                    choices=(
-                        Choice(
-                            label="Accept",
-                            plain=f"Use default {axis} (0.0)",
-                            apply={"field": f"axes.{axis}", "value": 0.0},
-                        ),
-                    ),
-                )
-            )
         elif isinstance(raw_val, (int, float)):
             val = float(raw_val)
             if val < -1.0 or val > 1.0:
