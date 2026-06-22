@@ -56,6 +56,18 @@ class DecisionPoint:
 
 
 _TEMPLATES: dict[str, tuple[str, str]] = {
+    "exterior.biome_fallback": (
+        # technical
+        "biome '{requested}' unknown; used '{resolved}'.",
+        # plain
+        "I didn't recognize the biome '{requested}', so I used a generic landscape. You can name a known one.",
+    ),
+    "exterior.recipe_clamped": (
+        # technical
+        "biome recipe adjusted to safe ranges: {changes}.",
+        # plain
+        "I tuned the landscape recipe to stay coherent ({changes}).",
+    ),
     "material.family_defaulted": (
         # technical
         "material family={family} has multiple members; defaulted to {resolved}.",
@@ -243,6 +255,25 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "{npc_id}: multi-call failed; retried via grammar-constrained plan().",
         # plain
         "The ungrammared multi-NPC call failed for one NPC, so I retried that NPC through the reliable single-NPC path to get themed dialogue.",
+    ),
+    # ── CB-1: quest depth (objective types + chains) ──
+    "quest.objective_not_winnable": (
+        # technical
+        "{npc_id}: objective type={original_type} is not winnable ({reason}); downgraded to fetch.",
+        # plain
+        "The model created a {original_type} quest that can't be completed, so it was changed to a simple fetch quest.",
+    ),
+    "quest.fallback_unwinnable": (
+        # technical
+        "{npc_id}: fetch fallback also not winnable ({reason}).",
+        # plain
+        "Even the fallback fetch quest can't be completed for one NPC — this may need room layout adjustment.",
+    ),
+    "quest.chain_unsolvable": (
+        # technical
+        "quest dependency chain is unsolvable ({reason}); flattened to independent quests.",
+        # plain
+        "The quest dependencies would make some quests impossible to start, so all quests were made independent.",
     ),
     # ── Soul (spine slice 3) ──
     "soul.clamped": (
