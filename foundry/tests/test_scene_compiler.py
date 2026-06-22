@@ -1387,3 +1387,64 @@ def test_npcs_not_on_player_spawn():
         if data_file.exists():
             data_file.unlink()
 
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Fix-Batch-1 Task 4: Shell tiling textures in compiled scene
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_shell_texture_sub_resources_present():
+    """Fix-Batch-1 Task 4: The compiled scene's room sub-resources must
+    include CompressedTexture2D entries for floor/wall/ceiling textures,
+    and the StandardMaterial3D entries must reference them."""
+    from scene_compiler import compile_scene, _build_room_sub_resources
+    
+    # Build the room sub-resources directly (no scene compilation needed)
+    room_subs = _build_room_sub_resources(20.0, 20.0)
+    
+    # Find the CompressedTexture2D sub-resources
+    tex_subs = [sr for sr in room_subs if sr["type"] == "CompressedTexture2D"]
+    assert len(tex_subs) >= 9, (
+        f"Task 4: expected ≥9 texture sub-resources, got {len(tex_subs)}"
+    )
+    
+    # Verify each surface (floor, wall, ceiling) has albedo+normal+orm
+    tex_ids = {sr["id"] for sr in tex_subs}
+    for surf in ("floor", "wall", "ceil"):
+        for suffix in ("a", "n", "o"):
+            tex_id = f"tex_{surf}_{suffix}"
+            assert tex_id in tex_ids, (
+                f"Task 4: missing texture sub_resource '{tex_id}'"
+            )
+    
+    # Verify floor/wall/ceiling surfaces have load_path
+    for sr in tex_subs:
+        props = sr.get("props", [])
+        has_load = any("load_path" in p for p in props)
+        assert has_load, f"Task 4: texture {sr['id']} missing load_path"
+
+
+def test_shell_material_references_textures():
+    """Fix-Batch-1 Task 4: The floor/wall/ceiling StandardMaterial3D
+    entries must reference albedo_texture, normal_texture, and
+    ao_texture/roughness_texture from the ORM."""
+    from scene_compiler import _build_room_sub_resources
+    
+    room_subs = _build_room_sub_resources(20.0, 20.0)
+    
+    for surf, mat_id in [("floor", "floor_mat"), ("wall", "wall_mat"), ("ceiling", "ceiling_mat")]:
+        mat = next(sr for sr in room_subs if sr["id"] == mat_id)
+        props = "\n".join(mat.get("props", []))
+        assert "albedo_texture" in props, (
+            f"Task 4: {mat_id} missing albedo_texture"
+        )
+        assert "normal_texture" in props, (
+            f"Task 4: {mat_id} missing normal_texture"
+        )
+        assert "ao_texture" in props, (
+            f"Task 4: {mat_id} missing ao_texture"
+        )
+        assert "roughness_texture" in props, (
+            f"Task 4: {mat_id} missing roughness_texture"
+        )
+

@@ -2135,6 +2135,67 @@ def apply_entropy(mesh_data, age, seed):
     bm.free()
 
 
+def _inject_occlusion_texture(glb_path: str) -> None:
+    """Fix-Batch-1 Task 3: Post-process a GLB so every material that has a
+    ``metallicRoughnessTexture`` also gets an ``occlusionTexture`` pointing
+    to the same image index (glTF ORM convention: occlusion=R, roughness=G,
+    metallic=B).
+    """
+    with open(glb_path, "rb") as f:
+        data = f.read()
+
+    # Validate GLB magic
+    assert data[0:4] == b"glTF", f"not a GLB file: {glb_path}"
+
+    # GLB header: magic(4) version(4) totalLength(4)
+    # Chunks: chunkLength(4) chunkType(4) chunkData(chunkLength)
+    # chunkType 0x4E4F534A = "JSON"
+    json_start = 12  # after header
+    chunk_len = struct.unpack("<I", data[json_start:json_start + 4])[0]
+    json_data = data[json_start + 8:json_start + 8 + chunk_len]
+
+    gltf = json.loads(json_data.decode("utf-8"))
+
+    modified = False
+    for mat in gltf.get("materials", []):
+        if "pbrMetallicRoughness" in mat:
+            pbr = mat["pbrMetallicRoughness"]
+            if "metallicRoughnessTexture" in pbr:
+                mrt = pbr["metallicRoughnessTexture"]
+                if "occlusionTexture" not in mat:
+                    mat["occlusionTexture"] = {
+                        "index": mrt.get("index", 0),
+                        "texCoord": mrt.get("texCoord", 0),
+                    }
+                    modified = True
+
+    if modified:
+        new_json = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
+        # Pad with spaces to match original chunk length (GLB requires
+        # JSON chunk to be padded with 0x20 spaces for alignment).
+        if len(new_json) <= chunk_len:
+            new_json += b" " * (chunk_len - len(new_json))
+        else:
+            # JSON grew — we need to rebuild the GLB with new chunk size.
+            # Align to 4 bytes.
+            padded_len = (len(new_json) + 3) & ~3
+            new_json_padded = new_json + b" " * (padded_len - len(new_json))
+            binary_chunk = data[json_start + 8 + chunk_len:]
+            # Reconstruct GLB
+            total_len = 12 + 8 + padded_len + len(binary_chunk)
+            header = struct.pack("<4sII", data[0:4], data[4:8], total_len)
+            json_header = struct.pack("<II", padded_len, 0x4E4F534A)
+            data = header + json_header + new_json_padded + binary_chunk
+            with open(glb_path, "wb") as f:
+                f.write(data)
+            return
+
+        out = bytearray(data)
+        out[json_start + 8:json_start + 8 + chunk_len] = new_json
+        with open(glb_path, "wb") as f:
+            f.write(out)
+
+
 def main():
     args = _argv()
     spec_path, out_glb = args[0], args[1]
@@ -2158,6 +2219,9 @@ def main():
     bpy.ops.export_scene.gltf(
         filepath=out_glb, export_format="GLB", use_selection=False
     )
+
+    # Fix-Batch-1 Task 3: Inject occlusionTexture into the GLB JSON
+    _inject_occlusion_texture(out_glb)
 
 
 main()

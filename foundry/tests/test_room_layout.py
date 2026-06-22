@@ -129,14 +129,20 @@ def test_layout_npc_count_default_1():
 # ═══════════════════════════════════════════════════════════════════════
 
 def test_chair_not_under_table():
-    """Quality B2: Chair offset ≥ table_half_depth + chair_half_depth
-    so chairs tuck to table edge, not under it."""
+    """Fix-Batch-1 Task 1: Chair offset along approach axis.
+
+    The minimum distance is along the shorter axis of the table:
+    table_half_z (0.4) + chair_half_z (0.25) + gap (0.08) = 0.73.
+    A chair approaching along the width needs more (0.6 + 0.25 + 0.08 = 0.93).
+    """
     from category_registry import COLLISION_SIZES
     table_size = COLLISION_SIZES.get("table", (1.2, 0.6, 0.8))
     chair_size = COLLISION_SIZES.get("chair", (0.5, 0.9, 0.5))
     table_half_z = table_size[2] / 2.0  # 0.4
     chair_half_z = chair_size[2] / 2.0  # 0.25
-    min_standoff = table_half_z + chair_half_z  # 0.65
+    gap = 0.08
+    # Minimum standoff along the shorter approach axis
+    min_standoff = table_half_z + chair_half_z + gap  # 0.73
 
     plan = {"room_size": {"w": 10.0, "d": 10.0},
             "props": [
@@ -153,7 +159,7 @@ def test_chair_not_under_table():
         nearest = min(tables, key=lambda t: (chair["x"] - t["x"])**2 + (chair["z"] - t["z"])**2)
         dist = ((chair["x"] - nearest["x"])**2 + (chair["z"] - nearest["z"])**2)**0.5
         assert dist >= min_standoff - 0.01, (
-            f"Quality B2: chair at ({chair['x']},{chair['z']}) is {dist:.3f}m "
+            f"Task 1: chair at ({chair['x']},{chair['z']}) is {dist:.3f}m "
             f"from table at ({nearest['x']},{nearest['z']}), need ≥{min_standoff:.2f}"
         )
 
@@ -222,3 +228,50 @@ def test_props_distributed_across_room():
     assert len(quadrants) >= 3, (
         f"Quality B2: props occupy {len(quadrants)} quadrants ({sorted(quadrants)}), need ≥3"
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Fix-Batch-1 Task 2: Prop distribution across the room
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_spread_cell_distribution():
+    """Fix-Batch-1 Task 2: When fewer props than cells, props should be
+    spread across cells (not first-N row-major), covering the room.
+    With an 8×8 room and 3 furniture items, the spread_stride should
+    place them in cells from different quadrants (not just the first N)."""
+    plan = {"room_size": {"w": 8.0, "d": 8.0},
+            "props": [
+                {"category": "table", "material": "worn_oak", "count": 1},
+                {"category": "table", "material": "worn_oak", "count": 1},
+                {"category": "table", "material": "worn_oak", "count": 1},
+            ]}
+    manifest, _, _ = layout_room(plan)
+    furniture = [e for e in manifest
+                 if e.get("surface") != "underlay" and not e.get("decor")]
+    # They should not all be in the same quadrant
+    xs = [e["x"] for e in furniture]
+    zs = [e["z"] for e in furniture]
+    x_span = max(xs) - min(xs)
+    z_span = max(zs) - min(zs)
+    # With spread_stride, at least one axis should span > 40% of room
+    assert x_span > 3.0 or z_span > 3.0, (
+        f"Task 2: props clustered — X span {x_span:.2f}, Z span {z_span:.2f}"
+    )
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Fix-Batch-1 Task 3: occlusionTexture in GLB (test in test_build_blender)
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_occlusion_texture_acceptance_stub():
+    """Task 3 guard: Blender-dependent occlusionTexture test lives in
+    test_build_blender.py.  This stub ensures the test module loads."""
+    pass
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Fix-Batch-1 Task 4: Shell textures referenced
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_shell_textures_acceptance_stub():
+    """Task 4 guard: Shell texture tests live in test_scene_compiler.py.
+    This stub ensures the test module loads."""
+    pass

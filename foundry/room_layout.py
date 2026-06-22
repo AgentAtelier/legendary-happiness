@@ -70,7 +70,19 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
     cells = _grid_cells(w, d)
     placed = furniture[: len(cells)]
     dropped = len(furniture) - len(placed)
-    for i, (e, (x, z)) in enumerate(zip(placed, cells)):
+    # Fix-Batch-1 Task 2: Spread furniture across the full cell set
+    # instead of taking the first N row-major cells (props cluster in
+    # one quadrant).  Deterministic shuffle with fixed seed so identical
+    # plans produce identical layouts.
+    if len(placed) < len(cells):
+        import random as _random
+        _rng = _random.Random(42)
+        spread_cells = list(cells)
+        _rng.shuffle(spread_cells)
+        spread_cells = spread_cells[:len(placed)]
+    else:
+        spread_cells = cells
+    for i, (e, (x, z)) in enumerate(zip(placed, spread_cells)):
         manifest.append({"id": f"{e['category']}_{i}", "category": e["category"],
                          "material": e["material"], "x": round(x, 3), "y": 0.0,
                          "z": round(z, 3), "yaw": 0.0, "surface": "floor",
@@ -231,17 +243,19 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
     # ── U-4: Chairs-around-tables relational placement ───────
     # After grid placement, if both chairs and tables are present,
     # cluster chairs around the nearest table, facing inward.
-    # Quality B2: chair offset ≥ table_half_depth + chair_half_depth
-    # so chairs tuck to table edge, not under it.
+    # Fix-Batch-1 Task 1: chair offset along the approach axis.
+    # A table is 1.2 m wide × 0.8 m deep; a chair approaching along the
+    # width needs 0.6 + 0.25 = 0.85 m, not the depth-only 0.65 m.
+    # Solution: use the table half-extent along the approach direction.
     tables_in_manifest = [e for e in manifest if e["category"] == "table"]
     if tables_in_manifest and any(e["category"] == "chair" for e in manifest):
-        # Use collision sizes for proper footprint offsets
         table_size = COLLISION_SIZES.get("table", (1.2, 0.6, 0.8))
         chair_size = COLLISION_SIZES.get("chair", (0.5, 0.9, 0.5))
-        # Chair offset: half the table depth + half the chair depth
-        table_half_depth = table_size[2] / 2.0
-        chair_half_depth = chair_size[2] / 2.0
-        chair_standoff = table_half_depth + chair_half_depth
+        table_half_x = table_size[0] / 2.0  # 0.6
+        table_half_z = table_size[2] / 2.0  # 0.4
+        chair_half_x = chair_size[0] / 2.0  # 0.25
+        chair_half_z = chair_size[2] / 2.0  # 0.25
+        gap = 0.08
         for e in manifest:
             if e["category"] == "chair":
                 nearest = min(tables_in_manifest,
@@ -252,8 +266,14 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
                 dz = e["z"] - tz
                 dist = (dx*dx + dz*dz) ** 0.5
                 if dist > 0.01:
-                    # Pull chair to table edge using collision-aware offset
-                    scale = chair_standoff / dist
+                    # Fix-Batch-1 Task 1: axis-aware standoff.
+                    # If |dx| >= |dz|, chair approaches along X (table width)
+                    # → use table_half_x + chair_half_x; else along Z.
+                    if abs(dx) >= abs(dz):
+                        standoff = table_half_x + chair_half_x + gap
+                    else:
+                        standoff = table_half_z + chair_half_z + gap
+                    scale = standoff / dist
                     e["x"] = round(tx + dx * scale, 3)
                     e["z"] = round(tz + dz * scale, 3)
                     # Chair faces table: yaw = atan2 toward table
