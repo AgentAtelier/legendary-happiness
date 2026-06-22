@@ -1,5 +1,9 @@
 # Execution Roadmap — Bundles (Anvil ports + LIST 3 + remaining)
 
+> **📍 LIVE STATUS lives in `PROJECT-STATE.md`** (updated 2026-06-22). Spine slices 1–3, G1 Soul, the
+> E1 material pipeline, and V (visual-eval, code) are DONE; the backlog below is the *future* work,
+> to be driven through the spine one verified bundle at a time after V's real-run is calibrated.
+>
 > **⚠ DIRECTION UPDATE (2026-06-21): everything below now rides the Interpretation Spine.**
 > See `SPINE-DESIGN.md`. Forge is a *general* embodied-3D-game generator, not this one RPG.
 > The new definition-of-done has **three pillars**: Capability + Interpretation (free prompt →

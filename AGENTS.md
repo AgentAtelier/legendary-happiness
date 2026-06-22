@@ -4,6 +4,19 @@ These are the **always-on** rules for any AI implementer working in this repo. A
 adds *what* to build; this file is the *how*, and it does not get repeated in every prompt. If a task
 prompt contradicts this file, the task prompt wins — but call out the conflict before proceeding.
 
+## Architecture orientation (read `docs/current/PROJECT-STATE.md` first)
+
+- Generation flows through a **spine**: `prompt → Interpreter (LLM) → Brief (shared structured intent)
+  → generators (room/quest/assets) → Godot scene + a Build Report`. New capabilities ride the Brief
+  (add a Brief section + a generator that consumes it + Decision Points + report lines), not bespoke
+  wiring. See `SPINE-DESIGN.md`.
+- **Structured LLM output uses llama.cpp `json_schema`** (pass a schema), NEVER `grammar=None` —
+  `None` applies the default *asset* grammar and silently mangles output. Free-form = `grammar=""`.
+- **Python builds, Godot lives:** decide everything at build time in Python and bake it; Godot
+  renders/loops. Assets are Blender-baked PBR GLBs (albedo/roughness/metallic/normal/AO).
+- **Visual QA** lives in `foundry/visual/` (V): screenshot harness + Qwen3-VL checks + CLIP aesthetic +
+  batch (`python -m foundry visual-eval`). The VLM/Claude never replaces the human as final visual judge.
+
 ## 🔴 Always run the FULL test suite — never a subset
 
 **Every** implementation turn must end with:
