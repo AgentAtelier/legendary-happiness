@@ -55,6 +55,22 @@ MODELS_DIR = HOME / "models"
 DOC_FILE = HOME / "Obsidian Vault" / "forge-stack-chain.md"
 STATIC_DIR = Path(__file__).parent / "static"
 
+# Game Mode: persists across hub restarts so a Steam crash mid-session can't
+# leave the system thinking it's in game mode. Lives in XDG_STATE_HOME-ish dir.
+GAMEMODE_STATE_DIR = HOME / ".local" / "state"
+GAMEMODE_STATE_FILE = GAMEMODE_STATE_DIR / "forge_gamemode.json"
+# Aggressive stop list (USER-CONFIRMED via AskUser 2026-06-23):
+#   * forge-llama       — frees ~14 GB VRAM (the load-bearing reason for the feature)
+#   * forge-godot       — Godot Editor; its MCP reconnects when llama comes back
+# Kept running (deliberately): forge-hub, forge-devforge, forge-godot-ai, odysseus.
+# Non-systemd scripts (hunyuan asset_server, lighting_prebake) are TERM-killed
+# but NOT auto-restarted on resume — see GAME-MODE.md.
+_GAMEMODE_SERVICES = ("forge-llama.service", "forge-godot.service")
+_GAMEMODE_SCRIPT_PATTERNS = (
+    "asset_server.py",        # hunyuan spike-side drainer (when --swap-llama runs)
+    "foundry/lighting_prebake.py",  # python -m lighting_prebake drain
+)
+
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("FORGE_HUB_PORT", "8003"))
 ALLOWED_HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
@@ -178,6 +194,48 @@ async def _job_runner(job: dict, cmd: list[str], action: str = "") -> None:
         job["exit"] = 1
 
 
+# ── Game Mode state (Steam launch line / hub UI toggle) ─────────
+# Persisted to disk so a Steam crash mid-session or a hub restart can't leave
+# the system thinking it's still in game mode.  Idempotent by construction:
+#   mode=game   when already active → no-op (logged, exit 0)
+#   mode=resume when not active     → no-op (logged, exit 0)
+import json as _gamemode_json  # local alias so the rest of the file is unchanged
+
+
+def _gamemode_load() -> Optional[dict]:
+    """Read the on-disk state. Returns the dict if active, else None.
+
+    Treats a corrupt/missing file as "not active" — pkill + restart are safe
+    to retry, but writing a state file with stale contents could mislead
+    ``mode=resume`` into thinking llama was stopped when it wasn't.
+    """
+    try:
+        if not GAMEMODE_STATE_FILE.exists():
+            return None
+        data = _gamemode_json.loads(GAMEMODE_STATE_FILE.read_text())
+        if isinstance(data, dict) and data.get("active") is True:
+            return data
+        return None
+    except Exception:
+        return None
+
+
+def _gamemode_active() -> bool:
+    return _gamemode_load() is not None
+
+
+def _gamemode_set(state: dict) -> None:
+    GAMEMODE_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    GAMEMODE_STATE_FILE.write_text(_gamemode_json.dumps(state, indent=2))
+
+
+def _gamemode_clear() -> None:
+    try:
+        GAMEMODE_STATE_FILE.unlink()
+    except FileNotFoundError:
+        pass
+
+
 # ── routes ───────────────────────────────────────────────────────
 
 
@@ -206,6 +264,7 @@ async def status():
         "busy": _job_lock.locked(),
         "drift": drift_info,
         "build": BUILD_ID,
+        "gamemode_active": _gamemode_active(),
     }
 
 
@@ -1021,29 +1080,34 @@ PERSONA_VAULT = HOME / "Obsidian Vault" / "odysseus-godot-persona.md"
 
 @app.post("/api/mode")
 async def api_mode(request: Request):
-    """One-click Build/Write mode toggle.
+    """One-click mode toggle.
 
-    Body: {"mode": "build"|"write"}
-    - Build: swap to qwen3-14b, set persona temp 0.2, restart Odysseus
-    - Write: swap to Cydonia-22B, set persona temp 1.0, restart Odysseus
+    Body: {"mode": "build"|"write"|"game"|"resume"}
+
+    - build:  swap to qwen3, set persona temp 0.2, restart Odysseus
+    - write:  swap to Cydonia, set persona temp 1.0, restart Odysseus
+    - game:   stop forge-llama (+ forge-godot + hunyuan/bake). Frees ~14 GB
+              VRAM for Steam. hub/devforge/godot-ai/odysseus stay up. Idempotent.
+    - resume: restart the services that ``game`` stopped (scripts NOT
+              auto-restarted — see GAME-MODE.md). Idempotent.
     """
     body = await request.json()
     mode = (body.get("mode") or "").strip()
-    if mode not in ("build", "write"):
-        raise HTTPException(400, "mode must be 'build' or 'write'")
+    if mode not in ("build", "write", "game", "resume"):
+        raise HTTPException(400, "mode must be 'build', 'write', 'game', or 'resume'")
 
     if _job_lock.locked():
         raise HTTPException(409, "another command is still running")
     await _job_lock.acquire()
 
     job_id = uuid.uuid4().hex[:12]
-    job = {
-        "lines": [f"$ mode {mode}"],
-        "done": False,
-        "exit": None,
-        "t": time.time(),
-        "label": f"Mode: {'Build (qwen3)' if mode == 'build' else 'Write (Cydonia)'}",
-    }
+    label = {
+        "build": "Mode: Build (qwen3)",
+        "write": "Mode: Write (Cydonia)",
+        "game": "Mode: Game (free VRAM/CPU for Steam)",
+        "resume": "Mode: Resume Forge stack",
+    }[mode]
+    job = {"lines": [f"$ mode {mode}"], "done": False, "exit": None, "t": time.time(), "label": label}
     _jobs[job_id] = job
 
     async def _runner():
@@ -1052,47 +1116,175 @@ async def api_mode(request: Request):
             def emit(line: str) -> None:
                 job["lines"].append(line)
 
-            fragment = _BUILD_MODEL_FRAGMENT if mode == "build" else _WRITE_MODEL_FRAGMENT
-            temp = 0.2 if mode == "build" else 1.0
+            # ── build / write (unchanged Phase 2d path) ──
+            if mode in ("build", "write"):
+                fragment = _BUILD_MODEL_FRAGMENT if mode == "build" else _WRITE_MODEL_FRAGMENT
+                temp = 0.2 if mode == "build" else 1.0
 
-            # Step 1: swap model
-            emit(f"Step 1/3: swapping to {fragment}...")
-            from forge_ops import swap_model
+                emit(f"Step 1/3: swapping to {fragment}...")
+                from forge_ops import swap_model
 
-            swap_ok = await swap_model(fragment, emit)
-            if swap_ok != 0:
-                emit(f"[mode] swap returned exit {swap_ok}")
-                job["exit"] = 1
+                swap_ok = await swap_model(fragment, emit)
+                if swap_ok != 0:
+                    emit(f"[mode] swap returned exit {swap_ok}")
+                    job["exit"] = 1
+                    return
+
+                emit("Step 2/3: updating persona temperature...")
+                try:
+                    presets = _gamemode_json.loads(PRESETS_PATH.read_text())
+                    if "custom" not in presets:
+                        emit("  persona 'custom' preset missing — skipping temp update")
+                    else:
+                        presets["custom"]["temperature"] = temp
+                        PRESETS_PATH.write_text(_gamemode_json.dumps(presets, indent=2))
+                        emit(f"  persona temp set to {temp}")
+                except Exception as e:
+                    emit(f"  persona update failed: {e}")
+
+                emit("Step 3/3: restarting Odysseus...")
+                code, out = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
+                if code == 0:
+                    emit(f"  Odysseus restarted — mode '{mode}' active")
+                    emit("  ⚠ Tool index is now cold — send ONE agent chat in Odysseus to warm it.")
+                    emit("    (e.g. 'Read the scene hierarchy' in agent mode with the Godot Developer persona)")
+                    job["exit"] = 0
+                else:
+                    emit(f"  Odysseus restart failed (exit {code}): {out[:200]}")
+                    job["exit"] = 1
                 return
 
-            # Step 2: update persona temperature in presets.json
-            emit("Step 2/3: updating persona temperature...")
-            try:
-                import json as _json
+            # ── game: stop heavy services; abort if any non-script stop fails ──
+            if mode == "game":
+                if _gamemode_active():
+                    emit("Already in game mode — nothing to stop")
+                    emit("  (state file at " + str(GAMEMODE_STATE_FILE) + ")")
+                    job["exit"] = 0
+                    return
 
-                presets = _json.loads(PRESETS_PATH.read_text())
-                if "custom" not in presets:
-                    emit("  persona 'custom' preset missing — skipping temp update")
-                else:
-                    presets["custom"]["temperature"] = temp
-                    PRESETS_PATH.write_text(_json.dumps(presets, indent=2))
-                    emit(f"  persona temp set to {temp}")
-            except Exception as e:
-                emit(f"  persona update failed: {e}")
+                failures: list[str] = []
+                for svc in _GAMEMODE_SERVICES:
+                    emit(f"[game] Stopping {svc}...")
+                    code, out = await _run_capture(
+                        ["systemctl", "--user", "stop", svc], timeout=30
+                    )
+                    if code == 0:
+                        emit(f"  {svc} stopped")
+                    else:
+                        msg = out.strip()[:200] or f"exit {code}"
+                        emit(f"  FATAL: {svc} stop failed — {msg}")
+                        emit(f"     (check: journalctl --user -u {svc} -n 50)")
+                        failures.append(svc)
+                        # Don't bother trying more stops once one fails — the
+                        # state file will not be written below, so calling
+                        # resume later is a no-op ("stack is normal").
+                        break
 
-            # Step 3: restart Odysseus to pick up persona change + fresh MCP connections
-            emit("Step 3/3: restarting Odysseus...")
-            code, out = await _run_capture(["docker", "restart", "odysseus-odysseus-1"], timeout=30)
-            if code == 0:
-                emit(f"  Odysseus restarted — mode '{mode}' active")
-                emit("  ⚠ Tool index is now cold — send ONE agent chat in Odysseus to warm it.")
-                emit("    (e.g. 'Read the scene hierarchy' in agent mode with the Godot Developer persona)")
+                if failures:
+                    emit("")
+                    emit("[game] ABORTED — no state file written (resume will be a no-op).")
+                    emit("  Fix the underlying service, then call mode=game again.")
+                    job["exit"] = 1
+                    return
+
+                # pkill the ad-hoc background scripts. These aren't load-bearing
+                # for VRAM — exit 0 (killed something) and exit 1 (no match) are
+                # both fine; exit ≥ 2 means the pkill pattern itself is broken,
+                # which we want to surface but not block the game.
+                killed_scripts: list[str] = []
+                for pattern in _GAMEMODE_SCRIPT_PATTERNS:
+                    emit(f"[game] Killing {pattern} (if running)...")
+                    code, _ = await _run_capture(["pkill", "-f", pattern], timeout=10)
+                    if code == 0:
+                        emit(f"  {pattern} killed")
+                        killed_scripts.append(pattern)
+                    elif code == 1:
+                        emit(f"  {pattern} not running (no-op)")
+                    else:
+                        emit(f"  pkill exit {code} for {pattern} — pattern suspicious?")
+
+                _gamemode_set(
+                    {
+                        "active": True,
+                        "entered_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "stopped_services": list(_GAMEMODE_SERVICES),
+                        "stopped_scripts": killed_scripts,
+                    }
+                )
+                emit("")
+                emit(f"[game] VRAM/CPU freed for Steam. State saved → {GAMEMODE_STATE_FILE}")
+                emit("  hub, devforge, godot-ai, odysseus kept running the whole time.")
+                emit("  ad-hoc scripts auto-restart on resume: NO (per design — see GAME-MODE.md).")
                 job["exit"] = 0
-            else:
-                emit(f"  Odysseus restart failed (exit {code}): {out[:200]}")
-                job["exit"] = 1
+                return
+
+            # ── resume: idempotent restart of what game stopped ──
+            if mode == "resume":
+                state = _gamemode_load()
+                if state is None:
+                    emit("Stack is normal — nothing to resume")
+                    emit("  (no state file at " + str(GAMEMODE_STATE_FILE) + ")")
+                    job["exit"] = 0
+                    return
+
+                stopped = list(state.get("stopped_services", list(_GAMEMODE_SERVICES)))
+
+                # Step 1: llama first — MCP clients (godot-ai, devforge) reconnect
+                # when /health returns. Don't fail the resume if /health lags.
+                emit("[resume] Step 1/2: starting forge-llama.service first...")
+                code, out = await _run_capture(
+                    ["systemctl", "--user", "start", "forge-llama.service"], timeout=60
+                )
+                if code == 0:
+                    emit("  forge-llama start requested")
+                else:
+                    emit(f"  WARNING: forge-llama start exit {code}: {out.strip()[:200]}")
+
+                emit("  waiting for /health (up to 60s)...")
+                env = read_env(ENVFILE)
+                port = env.get("LLAMA_PORT", "8002")
+                import httpx as _httpx_gm
+
+                async with _httpx_gm.AsyncClient(timeout=3.0) as client:
+                    healthy = False
+                    for attempt in range(30):
+                        try:
+                            r = await client.get(f"http://127.0.0.1:{port}/health")
+                            if r.status_code == 200:
+                                emit(f"  llama /health OK after ~{attempt * 2}s")
+                                healthy = True
+                                break
+                        except _httpx_gm.RequestError:
+                            pass
+                        await asyncio.sleep(2)
+                    if not healthy:
+                        emit("  WARNING: /health did not return in 60s — MCPs may not reconnect immediately")
+                        emit("    (check: journalctl --user -u forge-llama -n 50)")
+
+                # Step 2: editor
+                emit("[resume] Step 2/2: starting forge-godot.service...")
+                code, out = await _run_capture(
+                    ["systemctl", "--user", "start", "forge-godot.service"], timeout=60
+                )
+                if code == 0:
+                    emit("  forge-godot start requested")
+                else:
+                    emit(f"  WARNING: forge-godot start exit {code}: {out.strip()[:200]}")
+
+                scripts = state.get("stopped_scripts", [])
+                if scripts:
+                    emit("")
+                    emit(f"[resume] Did NOT auto-restart ad-hoc scripts: {', '.join(scripts)}")
+                    emit("  Restart manually if you want them (avoids surprise zombie processes).")
+
+                _gamemode_clear()
+                emit("")
+                emit(f"[resume] Stack restored. State cleared → {GAMEMODE_STATE_FILE}")
+                job["exit"] = 0
+                return
+
         except Exception as e:
-            job["lines"].append(f"[mode] failed: {e}")
+            job["lines"].append(f"[mode] {mode} failed: {e}")
             job["exit"] = 1
         finally:
             job["done"] = True
