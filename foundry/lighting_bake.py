@@ -34,7 +34,7 @@ def _placements_sig(placements: list) -> list:
 
 
 def bake_key(scene_desc: dict) -> str:
-    """Stable content-address for a lighting bake (layout + sun + sky + tier + samples)."""
+    """Stable content-address for a lighting bake (layout + sun + sky + tier + samples + interior lights)."""
     payload = json.dumps(
         {
             "p": _placements_sig(scene_desc.get("placements", [])),
@@ -42,6 +42,11 @@ def bake_key(scene_desc: dict) -> str:
             "sky": scene_desc.get("sky"),
             "tier": scene_desc.get("tier"),
             "samples": scene_desc.get("samples"),
+            "il": [[l.get("type"),
+                    [round(float(x),4) for x in l.get("pos", ())],
+                    [round(float(c),4) for c in l.get("color", ())],
+                    round(float(l.get("energy",0.0)),4)]
+                   for l in scene_desc.get("interior_lights", [])],
         },
         sort_keys=True,
     )

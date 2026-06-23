@@ -62,3 +62,9 @@ def test_baker_failure_falls_back_to_realtime(tmp_path):
     r = bake_scene(_desc(), baker=baker, cache_root=tmp_path)
     assert r["status"] == "fallback"
     assert r["tier"] == 0  # always renders
+
+
+def test_bake_key_depends_on_interior_lights():
+    base = {"tier":2,"samples":64,"placements":[],"sun":{},"sky":{},"interior_lights":[]}
+    lit  = {**base, "interior_lights":[{"type":"hearth","pos":(0,0.5,-3),"color":(1,0.6,0.3),"energy":6}]}
+    assert bake_key(base) != bake_key(lit)
