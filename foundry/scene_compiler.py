@@ -613,6 +613,12 @@ def _prop_half_extents(category: str) -> Tuple[float, float, float]:
     return (sx / 2.0, sy / 2.0, sz / 2.0)
 
 
+def rest_offset(aabb_min_y: float) -> float:
+    """Y to add to a prop transform so its AABB base rests on the floor (y=0).
+    Props whose origin is at their centre float without this offset."""
+    return -float(aabb_min_y)
+
+
 _NPC_CLEARANCE = 0.6  # Quality B1: min distance from NPC to prop/player/other NPC
 
 
@@ -1323,6 +1329,11 @@ def compile_scene(
         y = entry.get("y", 0.0)
         z = entry.get("z", 0.0)
         is_decor = entry.get("decor", False)
+        # Task 2: rest the prop on the floor (kill floating)
+        prop_y = y
+        if not is_decor and eid in collision_info:
+            _, (_, sy, _) = collision_info[eid]
+            prop_y = y + rest_offset(-sy / 2.0)
         # CB-2/CB-6: Determine tag — openable→open, enemy→enemy, others→decor/pickup
         from category_registry import REGISTRY
         reg_entry = REGISTRY.get(cat, {})
@@ -1350,7 +1361,7 @@ def compile_scene(
             lines.append(f'[node name="{eid}" type="Node3D" parent="."]')
         lines.append(
             f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
-            f"{_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
+            f"{_fmt_pos(x)}, {_fmt_pos(prop_y)}, {_fmt_pos(z)})"
         )
         if not is_decor:
             lines.append(f'metadata/_forge_tag = "{tag}"')

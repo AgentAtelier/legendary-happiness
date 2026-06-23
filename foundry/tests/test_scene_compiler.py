@@ -331,11 +331,16 @@ def test_model_nodes_instance_glbs():
 
 def test_prop_transforms_match_manifest():
     text, _, _ = _compile_and_parse()
+    from category_registry import COLLISION_SIZES
     for entry in _MANIFEST:
         x, y, z = entry.get("x", 0), entry.get("y", 0), entry.get("z", 0)
+        # Task 2: y is adjusted by rest_offset (half the collision y-height)
+        cat = entry.get("category", "?")
+        _, sy, _ = COLLISION_SIZES.get(cat, (0.5, 0.5, 0.5))
+        adj_y = y + sy / 2.0
         expected = (
             f"Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
-            f"{_fmt_pos(x)}, {_fmt_pos(y)}, {_fmt_pos(z)})"
+            f"{_fmt_pos(x)}, {_fmt_pos(adj_y)}, {_fmt_pos(z)})"
         )
         assert expected in text, (
             f"missing transform for {entry['id']}: {expected}"
@@ -352,9 +357,10 @@ def test_default_position_zero():
     spec["target_entity"] = "thing"
     text, _, _ = _compile_and_parse(quest_spec=spec, manifest=manifest_no_pos)
     # (0,0,0) is within PLAYER_CLEAR_RADIUS (1.0) → pushed to (1, 0, 0)
-    expected = "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)"
+    # Task 2: table collision (1.2, 0.6, 0.8) → rest_offset(-0.3) = 0.3
+    expected = "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.3, 0)"
     assert expected in text, (
-        f"default (0,0,0) position should be guarded to (1,0,0), "
+        f"default (0,0,0) position should be guarded to (1,0.3,0), "
         f"text:\n{text[:500]}"
     )
 
