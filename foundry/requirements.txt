@@ -1,4 +1,5 @@
 trimesh
+embreex  # BVH-accelerated mesh.contains() for proxy.py — far faster + lower memory
 pytest
 pygltflib
 requests
