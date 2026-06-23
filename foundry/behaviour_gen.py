@@ -815,7 +815,7 @@ class QuestBehaviourPlanner:
                         available = sorted(valid_ids - used_targets)
                         if available:
                             raw["target_entity"] = available[0]
-                except (ValueError, Exception):
+                except Exception:
                     # plan() itself failed → fall through to canned default
                     pass
 

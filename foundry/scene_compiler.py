@@ -1020,10 +1020,23 @@ def compile_scene(
         is_outdoor=is_outdoor,
     )
 
+    # Quality B1: Compute NPC positions by finding open floor spots
+    # with at least 0.6 m clearance from every prop footprint.  Computed
+    # before the no-clip pass so the separation step below can push props
+    # away from the *actual* NPC location instead of a hardcoded guess.
+    npc_positions = _find_open_npc_positions(
+        quest_specs, manifest, room_w, room_d,
+    )
+
     # ── No-clip placement pass (Item 3) ─────────────────────────
     # Deterministic AABB separation so props don't intersect each
     # other or the NPC.  Skips underlay and decor entries.
-    separated_manifest = _resolve_prop_overlaps(manifest)
+    if npc_positions:
+        separated_manifest = _resolve_prop_overlaps(
+            manifest, npc_x=npc_positions[0][0], npc_z=npc_positions[0][1],
+        )
+    else:
+        separated_manifest = _resolve_prop_overlaps(manifest)
 
     # CB-7: Append scatter vegetation as decor props for outdoor rooms
     if is_outdoor and exterior_plan:
@@ -1053,13 +1066,7 @@ def compile_scene(
     # C-4: Build per-NPC quest data and placements for the shared JSON.
     from soul import default_soul
     npcs_data: dict = {}
-    
-    # Quality B1: Compute NPC positions by finding open floor spots
-    # with at least 0.6 m clearance from every prop footprint.
-    npc_positions = _find_open_npc_positions(
-        quest_specs, separated_manifest, room_w, room_d,
-    )
-    
+
     # CB-3: Generate per-NPC needs from npc_sim
     from npc_sim import generate_npc_needs
     npc_needs_list = generate_npc_needs(len(quest_specs))
@@ -1318,10 +1325,10 @@ def compile_scene(
         is_decor = entry.get("decor", False)
         # CB-2/CB-6: Determine tag — openable→open, enemy→enemy, others→decor/pickup
         from category_registry import REGISTRY
-        entry = REGISTRY.get(cat, {})
+        reg_entry = REGISTRY.get(cat, {})
         if cat == "enemy":
             tag = "enemy"
-        elif not is_decor and entry.get("openable"):
+        elif not is_decor and reg_entry.get("openable"):
             tag = "open"
         elif is_decor:
             tag = "inert"

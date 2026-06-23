@@ -160,9 +160,8 @@ def _wall_between(a: GridRoom, b: GridRoom) -> str:
     """
     ax, az = a
     bx, bz = b
-    assert abs(ax - bx) + abs(az - bz) == 1, (
-        f"rooms not adjacent: {a} -> {b}"
-    )
+    if abs(ax - bx) + abs(az - bz) != 1:
+        raise ValueError(f"rooms are not adjacent: {a} -> {b}")
     if bx > ax:
         return "east"
     if bx < ax:

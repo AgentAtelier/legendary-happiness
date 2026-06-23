@@ -235,13 +235,6 @@ class AssetPlanner:
         if "asset_id" not in spec:
             spec["asset_id"] = spec.get("generator", "table")
 
-        # ── Resolve age BEFORE the LLM call ────────────────────────
-        # Like material, age is now deterministic — qwen no longer
-        # chooses it.  The resolver's verdict is authoritative.
-        age, age_decisions = resolve_age(request)
-        decisions.extend(age_decisions)
-        spec["age"] = age
-
         # Verify the final spec passes compile_spec
         compile_spec(spec)
 

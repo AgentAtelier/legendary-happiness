@@ -24,6 +24,14 @@ from scene_compiler import compile_scene, resolve_unique_glbs_with_npc
 
 def _find_godot() -> str:
     """Locate the Godot 4.x binary.  Returns the path or raises FileNotFoundError."""
+    env_bin = os.environ.get("GODOT_BIN")
+    if env_bin and Path(env_bin).exists():
+        return env_bin
+
+    which_bin = shutil.which("godot")
+    if which_bin:
+        return which_bin
+
     candidates = [
         "/usr/bin/godot",
         "/usr/local/bin/godot",
