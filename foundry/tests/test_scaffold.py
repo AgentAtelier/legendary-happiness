@@ -284,7 +284,7 @@ def test_copy_room_shell_glb(tmp_path):
     dest_assets = tmp_path / "build" / "assets"
     dest_assets.mkdir(parents=True)
     scaffold._copy_room_shell(str(src), str(dest_assets))
-    assert (dest_assets / "room_shell.glb").exists()
+    assert (dest_assets / "shell.glb").exists()
 
 
 def test_copy_room_shell_glb_none_is_noop(tmp_path):
@@ -293,10 +293,116 @@ def test_copy_room_shell_glb_none_is_noop(tmp_path):
     dest_assets = tmp_path / "build" / "assets"
     dest_assets.mkdir(parents=True)
     scaffold._copy_room_shell(None, str(dest_assets))
-    assert not (dest_assets / "room_shell.glb").exists()
+    assert not (dest_assets / "shell.glb").exists()
 
 
 def test_no_ensure_shell_textures_symbol():
     """The broken old _ensure_shell_textures has been removed."""
     import scaffold
     assert not hasattr(scaffold, "_ensure_shell_textures")
+
+
+# ── Import-ordering fix: pass-2 must run after _copy_room_shell ────
+
+def test_scaffold_runs_post_shell_import_pass(tmp_path, monkeypatch):
+    """Showcase2 fix: scaffold_project must run a SECOND headless
+    ``--import`` pass AFTER ``_copy_room_shell`` so shell.glb +
+    its image refs end up with ``.godot/imported/*.ctex`` sidecars.
+
+    Asserts:
+      1. ``_copy_room_shell`` is called at least once.
+      2. ``_pre_import`` is called at least twice (two passes).
+      3. The last ``_copy_room_shell`` invocation precedes the last
+         ``_pre_import`` invocation (second pass imports what
+         just got copied).
+    """
+    import scaffold
+    import room_shell as _room_shell
+    from scene_compiler import compile_scene  # noqa: F401  (used by scaffold)
+    from publish import copy_asset_family
+
+    call_log: list[tuple[str, dict]] = []
+
+    def fake_ensure_room_shell(w, d, wall_height, theme, seed=0, cache_root=None):
+        return tmp_path / "fake" / "shell.glb"
+
+    def fake_copy_room_shell(glb_path, dest_assets_dir):
+        call_log.append(("copy_room_shell", {"path": glb_path}))
+
+    def fake_pre_import(build_path, godot_bin, *, label="first"):
+        call_log.append(("pre_import", {"label": label, "path": str(build_path)}))
+
+    monkeypatch.setattr(_room_shell, "ensure_room_shell", fake_ensure_room_shell)
+    monkeypatch.setattr(scaffold, "_copy_room_shell", fake_copy_room_shell)
+    monkeypatch.setattr(scaffold, "_pre_import", fake_pre_import)
+
+    template = tmp_path / "template"
+    template.mkdir()
+    (template / "project.godot").write_text(
+        "[application]\n\nconfig/name=\"ForgeTemplate\"\n"
+        "config/features=PackedStringArray(\"4.7\", \"Forward Plus\")\n"
+    )
+    (template / "scenes").mkdir()
+    (template / "assets").mkdir()
+    (template / "scripts").mkdir()
+
+    lib = tmp_path / "library"
+    lib.mkdir()
+    (lib / "table_worn_oak.glb").write_text("glb")
+    (lib / "table_worn_oak.glb.import").write_text("imp")
+    (lib / "shelf_rough_granite.glb").write_text("glb")
+    (lib / "shelf_rough_granite.glb.import").write_text("imp")
+    (lib / "humanoid_rough_granite.glb").write_text("glb")
+    (lib / "humanoid_rough_granite.glb.import").write_text("imp")
+
+    manifest = [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 1.5, "y": 0.0, "z": -2.0},
+        {"id": "shelf_0", "category": "shelf", "material": "rough_granite",
+         "wear": 0.3, "x": -2.0, "y": 0.0, "z": -3.0},
+    ]
+    quest = {
+        "npc_role": "hermit",
+        "target_entity": "table_0",
+        "dialogue": {"greet": "Hi.", "ask": "Find.", "wrong": "No.",
+                     "thank": "Thanks."},
+        "objective": {"type": "fetch", "target": "table_0", "giver": "npc"},
+    }
+
+    scaffold.scaffold_project(
+        name="order_check",
+        quest_specs=quest,
+        manifest=manifest,
+        template_dir=str(template),
+        library_dir=str(lib),
+        out_root=str(tmp_path / "builds"),
+        godot_bin="true",
+    )
+
+    copy_calls = [c for c in call_log if c[0] == "copy_room_shell"]
+    import_calls = [c for c in call_log if c[0] == "pre_import"]
+
+    assert len(copy_calls) >= 1, (
+        f"_copy_room_shell was never called — call log: {call_log}"
+    )
+    assert len(import_calls) >= 2, (
+        f"Expected exactly 2 _pre_import calls (first + after-shell); "
+        f"got {len(import_calls)}. call log: {call_log}"
+    )
+
+    # Two import passes with two distinct labels — protects against
+    # someone deleting the second pass and bumping the first label,
+    # without coupling the assertion to literal label strings.
+    labels = [c[1]["label"] for c in import_calls]
+    assert len(set(labels)) == 2, (
+        f"_pre_import must run twice with distinct labels; got {labels}. "
+        f"call log: {call_log}"
+    )
+
+    # The last copy must precede the last import.
+    last_copy_idx = max(i for i, c in enumerate(call_log) if c[0] == "copy_room_shell")
+    last_import_idx = max(i for i, c in enumerate(call_log) if c[0] == "pre_import")
+    assert last_copy_idx < last_import_idx, (
+        f"Order violation: last _copy_room_shell came AFTER last _pre_import. "
+        f"call log: {call_log}"
+    )
