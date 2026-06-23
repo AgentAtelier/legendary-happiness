@@ -2179,6 +2179,30 @@ def test_no_plan_keeps_default_lighting():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  Task 4: Bake scene_desc builder + bake_scene wiring
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_scene_desc_carries_interior_lights():
+    from scene_compiler import build_lighting_scene_desc
+    plan = {"sources": [{"type":"hearth","pos":(0,0.5,-3),"color":(1,0.6,0.3),"energy":6,"range":6,"flicker":True}],
+            "sun": {"color":(0.5,0.6,0.85),"energy":0.8,"direction":(-0.3,-0.6,-0.5)},
+            "sky": {"top":(0.4,0.45,0.6),"ambient_energy":0.4}}
+    desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=64)
+    assert desc["tier"] == 2 and desc["sun"] == plan["sun"]
+    assert desc["interior_lights"] == plan["sources"]
+
+
+def test_tier0_skips_bake(monkeypatch):
+    import scene_compiler as sc, lighting_bake
+    called = []
+    monkeypatch.setattr(lighting_bake, "bake_scene", lambda *a, **k: called.append(1) or {"tier":0,"status":"realtime","artifacts":[]})
+    sc.bake_and_apply(sc.build_lighting_scene_desc(
+        {"sources":[],"sun":{},"sky":{}}, [], tier=0, samples=1), build_dir="/tmp/x")
+    # tier 0 short-circuits inside scene_compiler before calling the baker
+    assert called == []
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Task 6: GLB shell + triplanar + carved navmesh + fallback
 # ═══════════════════════════════════════════════════════════════════════
 
