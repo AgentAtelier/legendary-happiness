@@ -7,3 +7,5 @@ jsonschema
 fastapi
 uvicorn
 httpx
+shapely        # 2D polygon boolean for navmesh carving (foundry/navmesh.py)
+mapbox_earcut  # triangulation of walkable polygon-with-holes
