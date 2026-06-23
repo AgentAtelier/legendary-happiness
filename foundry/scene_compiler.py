@@ -16,6 +16,8 @@ from typing import Dict, List, Tuple, TypedDict
 
 
 from category_registry import COLLISION_SIZES
+import navmesh
+import room_shell
 
 # ── Manifest entry shape ─────────────────────────────────────────
 
@@ -202,6 +204,9 @@ def _build_room_sub_resources(
     shell_floor: dict | None = None,
     shell_wall: dict | None = None,
     shell_ceiling: dict | None = None,
+    nav_vertices = None,
+    nav_polygons = None,
+    shell_glb_path = None,
 ) -> List[dict]:
     """Build the list of room sub-resources for the given dimensions.
 
@@ -219,7 +224,33 @@ def _build_room_sub_resources(
     sf = shell_floor or {"albedo": (0.35, 0.25, 0.15), "roughness": 0.85}
     sw = shell_wall or {"albedo": (0.6, 0.55, 0.5), "roughness": 0.8}
     sc = shell_ceiling or {"albedo": (0.75, 0.7, 0.65), "roughness": 0.75}
-    return [
+    # Task 6: compute navmesh vertices/polygons before building the list
+    if nav_vertices and nav_polygons:
+        _nv = ", ".join(f"{_fmt_pos(v[0])}, 0, {_fmt_pos(v[2])}" for v in nav_vertices)
+        _nav_verts = f"vertices = PackedVector3Array({_nv})"
+        _tri_lines = ",\n".join(
+            f"PackedInt32Array({p[0]}, {p[1]}, {p[2]})" for p in nav_polygons
+        )
+        _nav_polys = f"polygons = [\n{_tri_lines}\n]"
+    else:
+        _nav_verts = (
+            "vertices = PackedVector3Array("
+            + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
+            + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
+            + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)}, "
+            + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)})"
+        )
+        _nav_polys = "polygons = [\nPackedInt32Array(0, 1, 2),\nPackedInt32Array(0, 2, 3)\n]"
+    _nav_props = [
+        _nav_verts,
+        _nav_polys,
+        "agent_radius = 0.3",
+        "agent_height = 2.0",
+        "agent_max_slope = 45.0",
+        "agent_max_climb = 0.3",
+        "cell_size = 0.3",
+    ]
+    resources: list[dict] = [
     # Environment for WorldEnvironment (Item 1)
     # B2: Extended with ACES tonemap, SSAO, bloom, fog, exposure
     {"id": "world_env", "type": "Environment",
@@ -337,22 +368,10 @@ def _build_room_sub_resources(
      "props": ["radius = 0.3", "height = 1.8"]},
     {"id": "player_body_mat", "type": "StandardMaterial3D",
      "props": ["albedo_color = Color(0.2, 0.3, 0.5, 1)"]},
-    # CB-3: NavigationMesh for NPC pathfinding — covers the walkable floor
-    # area (room_w × room_d, minus wall margins), at y=0.
+    # CB-3 / Task 6: NavigationMesh — carved from prop footprints
+    # when available, otherwise the flat-quad fallback
     {"id": "nav_mesh", "type": "NavigationMesh",
-     "props": [
-         "vertices = PackedVector3Array("
-         + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
-         + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(-room_d/2 + 1.2)}, "
-         + f"{_fmt_pos(room_w/2 - 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)}, "
-         + f"{_fmt_pos(-room_w/2 + 1.2)}, 0, {_fmt_pos(room_d/2 - 1.2)})",
-         "polygons = [\nPackedInt32Array(0, 1, 2),\nPackedInt32Array(0, 2, 3)\n]",
-         "agent_radius = 0.3",
-         "agent_height = 2.0",
-         "agent_max_slope = 45.0",
-         "agent_max_climb = 0.3",
-         "cell_size = 0.3",
-     ]},
+     "props": _nav_props},
     # CB-4: Door visual mesh + material (shared by all door entities)
     {"id": "door_mesh", "type": "BoxMesh",
      "props": ["size = Vector3(0.1, 2.4, 1.8)"]},
@@ -367,7 +386,57 @@ def _build_room_sub_resources(
      "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
     {"id": "wall_ew_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
-]
+    ]
+    # Task 6: triplanar shell materials for the Blender-generated GLB shell
+    if shell_glb_path is not None:
+        resources.extend([
+            # Stone textures (walls/ceiling)
+            {"id": "tex_stone_a", "type": "CompressedTexture2D",
+             "props": ['load_path = "res://assets/shell_stone_albedo.png"']},
+            {"id": "tex_stone_n", "type": "CompressedTexture2D",
+             "props": ['load_path = "res://assets/shell_stone_normal.png"']},
+            {"id": "tex_stone_o", "type": "CompressedTexture2D",
+             "props": ['load_path = "res://assets/shell_stone_orm.png"']},
+            # Timber textures (floor/beams)
+            {"id": "tex_timber_a", "type": "CompressedTexture2D",
+             "props": ['load_path = "res://assets/shell_timber_albedo.png"']},
+            {"id": "tex_timber_n", "type": "CompressedTexture2D",
+             "props": ['load_path = "res://assets/shell_timber_normal.png"']},
+            {"id": "tex_timber_o", "type": "CompressedTexture2D",
+             "props": ['load_path = "res://assets/shell_timber_orm.png"']},
+            # Triplanar StandardMaterial3D for stone (material slot 0)
+            {"id": "shell_stone_mat", "type": "StandardMaterial3D",
+             "props": [
+                 "albedo_color = Color(0.6, 0.58, 0.54, 1)",
+                 "albedo_texture = SubResource(\"tex_stone_a\")",
+                 "roughness = 0.75",
+                 "roughness_texture = SubResource(\"tex_stone_o\")",
+                 "roughness_texture_channel = 1",
+                 "ao_texture = SubResource(\"tex_stone_o\")",
+                 "ao_texture_channel = 0",
+                 "normal_texture = SubResource(\"tex_stone_n\")",
+                 "uv1_triplanar = true",
+                 "uv1_world_triplanar = true",
+                 "uv1_scale = Vector3(1, 1, 1)",
+             ]},
+            # Triplanar StandardMaterial3D for timber (material slot 1)
+            {"id": "shell_timber_mat", "type": "StandardMaterial3D",
+             "props": [
+                 "albedo_color = Color(0.4, 0.26, 0.13, 1)",
+                 "albedo_texture = SubResource(\"tex_timber_a\")",
+                 "roughness = 0.85",
+                 "roughness_texture = SubResource(\"tex_timber_o\")",
+                 "roughness_texture_channel = 1",
+                 "ao_texture = SubResource(\"tex_timber_o\")",
+                 "ao_texture_channel = 0",
+                 "normal_texture = SubResource(\"tex_timber_n\")",
+                 "uv1_triplanar = true",
+                 "uv1_world_triplanar = true",
+                 "uv1_scale = Vector3(1, 1, 1)",
+             ]},
+        ])
+    return resources
+
 
 # Quality A: Interior lighting — ceiling-mounted OmniLight3D nodes.
 # Placed evenly across the ceiling to light the room interior.
@@ -622,6 +691,21 @@ def rest_offset(aabb_min_y: float) -> float:
 _NPC_CLEARANCE = 0.6  # Quality B1: min distance from NPC to prop/player/other NPC
 
 
+def _get_prop_footprints(manifest: list[dict], clearance: float = 0.0) -> list[tuple[float, float, float, float]]:
+    """Collect (x, z, half_x + clearance, half_z + clearance) for each
+    separable prop in the manifest.  Skips underlays and decor entries."""
+    footprints: list[tuple[float, float, float, float]] = []
+    for entry in manifest:
+        if entry.get("surface") == "underlay" or entry.get("decor"):
+            continue
+        hx, _, hz = _prop_half_extents(entry.get("category", "?"))
+        footprints.append((
+            entry.get("x", 0.0), entry.get("z", 0.0),
+            hx + clearance, hz + clearance,
+        ))
+    return footprints
+
+
 def _find_open_npc_positions(
     quest_specs: list[dict],
     manifest: list[dict],
@@ -638,16 +722,7 @@ def _find_open_npc_positions(
     npc_hx, _, npc_hz = _prop_half_extents("humanoid")
     clearance = _NPC_CLEARANCE
 
-    # Collect prop footprints: (x, z, half_x, half_z) for separable props
-    prop_footprints: list[tuple[float, float, float, float]] = []
-    for entry in manifest:
-        if entry.get("surface") == "underlay" or entry.get("decor"):
-            continue
-        hx, _, hz = _prop_half_extents(entry.get("category", "?"))
-        prop_footprints.append((
-            entry.get("x", 0.0), entry.get("z", 0.0),
-            hx + clearance, hz + clearance,
-        ))
+    prop_footprints = _get_prop_footprints(manifest, clearance=clearance)
 
     def _overlaps(px: float, pz: float, ox: float, oz: float, ohx: float, ohz: float) -> bool:
         return abs(px - ox) < (npc_hx + ohx) and abs(pz - oz) < (npc_hz + ohz)
@@ -1006,26 +1081,6 @@ def compile_scene(
             if interior_energy_override is None:
                 interior_energy_override = 1.2
 
-    room_sub_resources = _build_room_sub_resources(
-        room_w, room_d,
-        ambient=ambient_override,
-        ambient_energy=ambient_energy_override,
-        background=background_override,
-        fog_color=fog_color_override,
-        fog_density=fog_density_override,
-        fog_light_energy=fog_light_energy_override,
-        exposure=exposure_override,
-        shell_floor=shell_floor,
-        shell_wall=shell_wall,
-        shell_ceiling=shell_ceiling,
-    )
-    room_nodes = _build_room_nodes(
-        room_w, room_d,
-        directional_color=dir_color_override,
-        directional_energy=dir_energy_override,
-        is_outdoor=is_outdoor,
-    )
-
     # Quality B1: Compute NPC positions by finding open floor spots
     # with at least 0.6 m clearance from every prop footprint.  Computed
     # before the no-clip pass so the separation step below can push props
@@ -1059,6 +1114,44 @@ def compile_scene(
                 "z": sp.get("z", 0.0),
                 "decor": True,  # no collision, no pickup tag
             })
+
+    # ── Task 6: Shell GLB + carved navmesh ─────────────────────
+    shell_glb_path = None
+    if not is_outdoor:
+        shell_glb_path = room_shell.ensure_room_shell(room_w, room_d, _ROOM_HEIGHT, theme)
+
+    # Build carved navmesh from settled prop footprints
+    nav_vertices: list = []
+    nav_polygons: list = []
+    footprints = _get_prop_footprints(separated_manifest, clearance=0.0)
+    if footprints:
+        nav_vertices, nav_polygons = navmesh.carve_walkable(room_w, room_d, footprints)
+    if not nav_vertices:
+        nav_vertices, nav_polygons = [], []
+
+    # ── Build room resources + nodes (moved after navmesh compute) ───
+    room_sub_resources = _build_room_sub_resources(
+        room_w, room_d,
+        ambient=ambient_override,
+        ambient_energy=ambient_energy_override,
+        background=background_override,
+        fog_color=fog_color_override,
+        fog_density=fog_density_override,
+        fog_light_energy=fog_light_energy_override,
+        exposure=exposure_override,
+        shell_floor=shell_floor,
+        shell_wall=shell_wall,
+        shell_ceiling=shell_ceiling,
+        nav_vertices=nav_vertices,
+        nav_polygons=nav_polygons,
+        shell_glb_path=shell_glb_path,
+    )
+    room_nodes = _build_room_nodes(
+        room_w, room_d,
+        directional_color=dir_color_override,
+        directional_energy=dir_energy_override,
+        is_outdoor=is_outdoor,
+    )
 
     # ── Write quest data as a JSON file alongside the .tscn ──────
     output_dir = str(Path(output_path).parent)
@@ -1208,6 +1301,7 @@ def compile_scene(
         + len(used_tag_scripts)              # component scripts
         + num_sub_resources                  # collision sub_resources
         + num_room_sub_resources             # Environment + meshes + materials + wall shapes
+        + (1 if shell_glb_path is not None else 0)  # Task 6: shell GLB ext_resource
     )
     header = f"[gd_scene load_steps={total_load_steps} format=3]"
     if scene_uid:
@@ -1219,6 +1313,14 @@ def compile_scene(
     ext_block = _ext_resource_block(unique_glbs, assets_subdir)
     if ext_block:
         lines.append(ext_block)
+    # Task 6: Shell GLB ext_resource (when Blender-generated room shell is available)
+    shell_glb_ext_id = None
+    if shell_glb_path is not None:
+        shell_glb_ext_id = str(len(unique_glbs) + 1)
+        shell_name = Path(shell_glb_path).name
+        lines.append(
+            f'[ext_resource type="PackedScene" path="res://assets/{shell_name}" id="{shell_glb_ext_id}"]'
+        )
     # ExtResources: shell scripts (P4)
     for entry in _SHELL_SCRIPTS:
         lines.append(

@@ -2116,3 +2116,59 @@ def test_indoor_room_still_has_walls():
         assert wn in node_names, f"CB-7: indoor room should have {wn}"
     assert "Ceiling" in node_names, "CB-7: indoor room should have Ceiling"
 
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Task 6: GLB shell + triplanar + carved navmesh + fallback
+# ═══════════════════════════════════════════════════════════════════════
+
+def _minimal_manifest():
+    """Minimal manifest for Task 6 tests."""
+    return [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 1.0, "y": 0.0, "z": -1.5},
+    ]
+
+
+def _compile_with_shell(manifest=None, room_size=None, theme=None):
+    """Helper: compile with room_size + theme, return text and parsed."""
+    spec = dict(_QUEST_SPEC)
+    man = manifest or _minimal_manifest()
+    spec["target_entity"] = man[0]["id"]
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out, room_size=room_size, theme=theme)
+        text = Path(out).read_text(encoding="utf-8")
+        return text
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_shell_glb_path_emits_instance_and_triplanar(monkeypatch, tmp_path):
+    import room_shell
+    glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    assert "shell.glb" in tscn
+    assert "uv1_triplanar = true" in tscn and "uv1_world_triplanar = true" in tscn
+
+
+def test_no_glb_falls_back_to_box_shell(monkeypatch):
+    import room_shell
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: None)
+    tscn = _compile_with_shell()
+    assert "floor_vis_mesh" in tscn  # inline box shell still present
+
+
+def test_navmesh_uses_carved_vertices(monkeypatch):
+    import navmesh
+    monkeypatch.setattr(navmesh, "carve_walkable",
+                        lambda *a, **k: ([(1.0, 0.0, 1.0), (2.0, 0.0, 1.0), (1.5, 0.0, 2.0)], [[0, 1, 2]]))
+    tscn = _compile_with_shell()
+    assert "1, 0, 1" in tscn  # carved vertex present in NavigationMesh
+
