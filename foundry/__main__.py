@@ -182,6 +182,12 @@ def _cmd_quest(args: list[str]) -> int:
     print(f"[quest] Room: {room_size['w']}x{room_size['d']} m, "
           f"{len(manifest)} entities")
 
+    # ── Task 6: Plan lighting BEFORE the shell (windows drive openings) ──
+    from lighting_planner import plan_lighting
+    lighting_plan = plan_lighting(brief, room_size, manifest, seed=seed or 0)
+    print(f"[quest] Lighting: {len(lighting_plan['sources'])} sources, "
+          f"{len(lighting_plan['windows'])} windows")
+
     # Build any (category, material) the room needs that isn't in the library.
     ensure_decisions = ensure_assets(manifest, parsed.library_dir, parsed.lexicon)
 
@@ -228,6 +234,7 @@ def _cmd_quest(args: list[str]) -> int:
         room_size=room_size,
         theme=room_theme,
         camera_mode=parsed.camera,
+        lighting_plan=lighting_plan,
     )
     print(f"[quest] Build scaffolded: {build_path}")
 

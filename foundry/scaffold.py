@@ -134,6 +134,7 @@ def scaffold_project(
     room_size: dict | None = None,
     theme: str | None = None,
     camera_mode: str = "first",
+    lighting_plan: dict | None = None,  # Task 6: generative lighting plan
 ) -> Path:
     """Scaffold a fresh, disposable Godot project.
 
@@ -174,7 +175,8 @@ def scaffold_project(
     # C-4: Handle both single dict (backward compat) and list
     specs = quest_specs if isinstance(quest_specs, list) else [quest_specs]
     compile_scene(specs, manifest, scene_path, assets_subdir="assets",
-                  room_size=room_size, theme=theme, camera_mode=camera_mode)
+                  room_size=room_size, theme=theme, camera_mode=camera_mode,
+                  lighting_plan=lighting_plan)
     print(f"[scaffold] Scene compiled → {scene_path}")
 
     # ── 3. Set main_scene ───────────────────────────────────────
@@ -205,13 +207,20 @@ def scaffold_project(
     # Resolve the cached shell GLB via room_shell (same args
     # compile_scene uses internally).  Cache hit is cheap; Blender
     # runs only on first use for a given (w,d,theme) tuple.
+    # Task 6: pass windows= from the lighting plan (Task 2 adds the kwarg).
     _room_w = 20.0
     _room_d = 20.0
     _room_h = 3.0
     if room_size:
         _room_w = float(room_size.get("w", _room_w))
         _room_d = float(room_size.get("d", _room_d))
-    shell_path = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme)
+    _windows = lighting_plan.get("windows", []) if lighting_plan else []
+    try:
+        shell_path = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme,
+                                                   windows=_windows)
+    except TypeError:
+        # windows= kwarg not accepted yet (Task 2 adds it)
+        shell_path = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme)
     _copy_room_shell(str(shell_path) if shell_path else None, str(assets_dir))
 
     # ── 5. Pre-import pass 1 ─────────────────────────────────────
@@ -229,5 +238,21 @@ def scaffold_project(
     # corrupt".  Idempotent: Godot skips already-imported files.
     _pre_import(build_path, gb, label="after-shell")
     print(f"[scaffold] Pre-imports done → {build_path}")
+
+    # ── Task 6: Bake-and-apply lighting (tier ≥ 1) ────────────────
+    if lighting_plan:
+        from scene_compiler import build_lighting_scene_desc, bake_and_apply
+        _blender_available = shutil.which("blender") is not None
+        _tier = 2 if _blender_available else 0
+        placements = [{"glb": f"{e.get('category','?')}_{e.get('material','?')}.glb",
+                       "transform": [1, 0, 0, 0, 1, 0, 0, 0, 1,
+                                     e.get("x", 0), e.get("y", 0), e.get("z", 0)],
+                       "static": not e.get("decor", False)}
+                      for e in manifest]
+        scene_desc = build_lighting_scene_desc(
+            lighting_plan, placements, tier=_tier, samples=64,
+        )
+        result = bake_and_apply(scene_desc, str(build_path))
+        print(f"[scaffold] Lighting bake: tier={result['tier']} status={result['status']}")
 
     return build_path

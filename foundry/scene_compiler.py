@@ -2236,13 +2236,10 @@ def bake_and_apply(scene_desc: dict, build_dir: str) -> dict:
 
 
 def _apply_bake_artifacts(bake_result: dict, build_dir: str) -> None:
-    """Apply bake artifacts to the build directory.
+    """Placeholder — orchestrator wires the real artifact copy.
 
-    Honours the COLOR_0 gotcha (render-active color attribute) for
-    tier 1; references the lightmap for tier 2.
-    (Orchestrator validates the actual artifact application.)
+    The contract: bake_and_apply calls this after a successful bake,
+    and the artifacts dict carries the file paths.  Tier 1 needs
+    COLOR_0 render-active vertex colours; tier 2 needs lightmap.
     """
-    # Placeholder: orchestrator wires the real artifact copy.
-    # The key contract is that bake_and_apply calls this after a
-    # successful bake, and the artifacts dict carries the file paths.
     pass
