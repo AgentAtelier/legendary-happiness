@@ -39,18 +39,28 @@ def process_job(job: dict, infer_fn: InferFn, *, root=None,
 
 
 def drain(infer_fn: InferFn, *, root=None, max_jobs: int = 0,
-          on_done: Optional[Callable[[dict, str], None]] = None) -> int:
+          on_done: Optional[Callable[[dict, str], None]] = None,
+          on_error: Optional[Callable[[dict, Exception], None]] = None) -> int:
     """Drain the queue (highest priority first) until empty or *max_jobs* reached.
-    Returns the number of jobs processed."""
+    Returns the number of jobs processed.
+
+    Per-job failures are ISOLATED: a job that raises is archived (so it is never
+    retried or able to loop) and draining continues — essential for unattended
+    overnight runs where one bad asset must not halt the batch."""
     done = 0
     while True:
         job = q.next_job(root=root)
         if job is None:
             break
-        out = process_job(job, infer_fn, root=root)
-        done += 1
-        if on_done is not None:
-            on_done(job, str(out))
+        try:
+            out = process_job(job, infer_fn, root=root)
+            done += 1
+            if on_done is not None:
+                on_done(job, str(out))
+        except Exception as e:  # isolate: archive the bad job, keep going
+            q.complete(job.get("key", ""), root=root)
+            if on_error is not None:
+                on_error(job, e)
         if max_jobs and done >= max_jobs:
             break
     return done

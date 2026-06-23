@@ -60,3 +60,19 @@ def test_drain_respects_max_jobs(tmp_path):
 
 def test_drain_empty_queue_is_zero(tmp_path):
     assert drain(_stub_infer, root=tmp_path) == 0
+
+
+def test_drain_isolates_a_failing_job(tmp_path):
+    q.enqueue(_spec("bad.ply", prio=10), root=tmp_path)
+    q.enqueue(_spec("good.ply", prio=20), root=tmp_path)
+    errors = []
+
+    def flaky(job):
+        if "bad" in job["proxy_path"]:
+            raise RuntimeError("boom")
+        return trimesh.creation.icosphere(subdivisions=2)
+
+    n = drain(flaky, root=tmp_path, on_error=lambda job, e: errors.append(job["proxy_path"]))
+    assert n == 1  # the good one
+    assert errors == ["bad.ply"]  # bad one isolated, logged
+    assert q.next_job(root=tmp_path) is None  # both archived, no infinite loop
