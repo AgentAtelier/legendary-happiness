@@ -115,6 +115,19 @@ def main():
     direction = mathutils.Vector(sd.get("direction", [0.3, -1.0, 0.4])).normalized()
     sun.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
+    # Interior emitters (hearth/torch/candle) so GI bounces warm interior light,
+    # not just sky. POINT lamps at the planned positions; wattage scales the plan's
+    # relative energy. (Same desc coordinate space as placements.)
+    for li in desc.get("interior_lights", []):
+        il = bpy.data.lights.new(str(li.get("type", "point")), type="POINT")
+        il.energy = float(li.get("energy", 1.0)) * 60.0
+        ic = li.get("color", [1, 1, 1])
+        il.color = (ic[0], ic[1], ic[2])
+        il.shadow_soft_size = 0.15
+        iob = bpy.data.objects.new(il.name, il)
+        bpy.context.collection.objects.link(iob)
+        iob.location = tuple(li.get("pos", [0, 0, 0]))
+
     # Objects + UV2 + a colour attribute to bake into
     objs = []
     for p in desc.get("placements", []):
