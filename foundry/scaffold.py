@@ -202,8 +202,9 @@ def scaffold_project(
     print(f"[scaffold] Total asset files copied: {total_copied}")
 
     # ── 4b. Task 7: Copy per-room shell GLB if available ─────────
-    # The shell textures (shell_{stone,timber}_*.png) ride in with the
-    # template copy automatically.
+    # The shell textures (shell_{stone,timber}_*.png) AND class
+    # textures (class_{stone,wood}_*.png) ride in with the template
+    # copy automatically — they live in godot_template/assets/.
     # Resolve the cached shell GLB via room_shell (same args
     # compile_scene uses internally).  Cache hit is cheap; Blender
     # runs only on first use for a given (w,d,theme) tuple.
