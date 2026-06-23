@@ -2279,7 +2279,7 @@ def test_navmesh_uses_carved_vertices(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _default_box_shell(monkeypatch):
+def _default_box_shell():
     """Default ``room_shell.ensure_room_shell`` to None so tests that
     DON'T explicitly request a GLB take the box-shell fallback branch
     (their old assertions about floor_mat/wall_mat/ceiling_mat/FloorMesh
@@ -2287,9 +2287,18 @@ def _default_box_shell(monkeypatch):
 
     Tests that want the GLB branch re-monkeypatch with a Path and
     win — last monkeypatch.setattr wins within a single test.
+
+    Uses manual patch/restore (not pytest monkeypatch) so the original
+    function is ALWAYS restored — prevents state leaking into other
+    test modules when monkeypatch teardown ordering is unlucky.
     """
-    monkeypatch.setattr("room_shell.ensure_room_shell", lambda *a, **k: None)
-    yield
+    import room_shell
+    _orig = room_shell.ensure_room_shell
+    room_shell.ensure_room_shell = lambda *a, **k: None
+    try:
+        yield
+    finally:
+        room_shell.ensure_room_shell = _orig
 
 
 def test_glb_shell_emits_shell_instance_node(monkeypatch, tmp_path):
@@ -2474,6 +2483,138 @@ def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
     assert "res://assets/shell.glb" in paths, (
         f"GLB shell branch missing ext_resource for shell.glb; paths: {sorted(paths)}"
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Palette contract — assembly-time per-class material override
+# ═══════════════════════════════════════════════════════════════════════
+
+def _manifest_with(pairs: list[tuple[str, str]]) -> list[dict]:
+    """Build a manifest from (category, material) pairs."""
+    out: list[dict] = []
+    for i, (cat, mat) in enumerate(pairs):
+        out.append({
+            "id": f"{cat}_{i}",
+            "category": cat,
+            "material": mat,
+            "wear": 0.5,
+            "x": float(i + 1) * 1.5,
+            "y": 0.0,
+            "z": -float(i + 1) * 1.2,
+        })
+    return out
+
+
+def test_palette_emits_one_material_per_class(monkeypatch):
+    """When a palette is provided, compile_scene emits one
+    StandardMaterial3D per material class present, triplanar,
+    with albedo_color tinted by the palette role colour, and
+    textures referenced as ext_resource Texture2D (never
+    CompressedTexture2D sub_resource)."""
+    import scene_compiler as sc
+    from palette import build_palette
+    pal = build_palette("stone_keep", 0)
+    m = _manifest_with([("table", "worn_oak"), ("shelf", "rough_granite")])
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], m, out,
+                         room_size={"w": 8, "d": 6},
+                         theme="stone_keep", palette=pal)
+        t = Path(out).read_text(encoding="utf-8")
+        # At least 2 per-class StandardMaterial3D sub_resources
+        # (wood for worn_oak → table, stone for rough_granite → shelf).
+        # The box-shell fallback also emits floor_mat/wall_mat/ceiling_mat
+        # and player_body_mat/door_mat, so the total is well above 2.
+        assert t.count('type="StandardMaterial3D"') >= 2
+        assert "uv1_triplanar = true" in t
+        # wood class → midtone role
+        midtone = pal["roles"]["midtone"]
+        assert f"albedo_color = Color({midtone[0]}" in t
+        # ext_resource Texture2D for class textures
+        assert 'ext_resource type="Texture2D" path="res://assets/class_wood_albedo.png"' in t
+        # Never CompressedTexture2D near class_wood
+        assert "CompressedTexture2D" not in t.split("class_wood")[0][-400:]
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_no_palette_unchanged():
+    """Without palette, compile_scene keeps existing behaviour."""
+    import scene_compiler as sc
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], _minimal_manifest(), out,
+                         room_size={"w": 8, "d": 6}, theme="stone_keep")
+        t = Path(out).read_text(encoding="utf-8")
+        assert "StandardMaterial3D" in t  # existing path still works
+        # No palette class ext_resources
+        assert "class_wood" not in t
+        assert "class_stone" not in t
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_palette_override_on_model_nodes(monkeypatch):
+    """When palette is provided, model nodes get surface_material_override."""
+    import scene_compiler as sc
+    from palette import build_palette
+    pal = build_palette("stone_keep", 0)
+    m = _manifest_with([("table", "worn_oak")])
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], m, out,
+                         room_size={"w": 8, "d": 6},
+                         theme="stone_keep", palette=pal)
+        t = Path(out).read_text(encoding="utf-8")
+        # worn_oak → wood → mat_wood
+        assert 'surface_material_override/0 = SubResource("mat_wood")' in t
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_palette_glb_shell_overrides_use_class_materials(monkeypatch, tmp_path):
+    """When palette is provided AND a GLB shell is available, the shell
+    stone/timber children use the palette class materials."""
+    import room_shell
+    import scene_compiler as sc
+    from palette import build_palette
+    pal = build_palette("stone_keep", 0)
+    glb = tmp_path / "shell.glb"
+    glb.write_bytes(b"GLB-fake")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    spec = dict(_QUEST_SPEC)
+    m = _minimal_manifest()
+    spec["target_entity"] = m[0]["id"]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene(spec, m, out,
+                         room_size={"w": 8, "d": 6},
+                         theme="stone_keep", palette=pal)
+        t = Path(out).read_text(encoding="utf-8")
+        # Shell stone/timber children use palette class materials
+        assert 'material_override = SubResource("mat_stone")' in t
+        assert 'material_override = SubResource("mat_wood")' in t
+        # Class materials exist as sub_resources
+        assert 'sub_resource type="StandardMaterial3D" id="mat_stone"' in t
+        assert 'sub_resource type="StandardMaterial3D" id="mat_wood"' in t
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
 
 
 def test_glb_shell_branch_keeps_navigation_and_lights(monkeypatch, tmp_path):

@@ -18,6 +18,7 @@ from typing import Dict, List, Tuple, TypedDict
 from category_registry import COLLISION_SIZES
 import navmesh
 import room_shell
+from material_classes import CLASSES, class_for
 
 # ── Manifest entry shape ─────────────────────────────────────────
 
@@ -944,6 +945,7 @@ def compile_scene(
     room_type: str = "indoor",  # CB-7: "indoor" | "outdoor"
     exterior_plan: dict | None = None,  # CB-7: ExteriorPlan data for outdoor rooms
     lighting_plan: dict | None = None,  # Generative lighting plan (hearth/torch/candle/window + env)
+    palette: dict | None = None,          # Scene palette for per-class material override
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.
 
@@ -1215,6 +1217,20 @@ def compile_scene(
     if not is_outdoor:
         shell_glb_path = room_shell.ensure_room_shell(room_w, room_d, _ROOM_HEIGHT, theme)
 
+    # ── Palette-driven material classes ─────────────────────────
+    # When a palette is provided, compute the set of material classes
+    # present in the scene (from manifest material → class_for).
+    palette_classes: list[str] = []
+    if palette is not None:
+        class_set: set[str] = set()
+        for entry in manifest:
+            cls = class_for(entry.get("material", "default"))
+            class_set.add(cls)
+        if shell_glb_path is not None:
+            class_set.add("stone")
+            class_set.add("wood")
+        palette_classes = sorted(class_set)
+
     # Build carved navmesh from settled prop footprints
     nav_vertices: list = []
     nav_polygons: list = []
@@ -1406,6 +1422,8 @@ def compile_scene(
         + num_room_sub_resources             # Environment + meshes + materials + wall shapes
         + num_texture_ext_resources          # shell texture ext_resources (Texture2D)
         + (1 if shell_glb_path is not None else 0)  # Task 6: shell GLB ext_resource
+        + (2 * len(palette_classes))         # palette class texture ext_resources
+        + len(palette_classes)               # palette class material sub_resources
     )
     header = f"[gd_scene load_steps={total_load_steps} format=3]"
     if scene_uid:
@@ -1443,6 +1461,15 @@ def compile_scene(
         lines.append(
             f'[ext_resource type="Script" path="{path}" id="{script_id}"]'
         )
+    # Palette class texture ext_resources (Texture2D .png references)
+    if palette is not None:
+        for cls in palette_classes:
+            lines.append(
+                f'[ext_resource type="Texture2D" path="res://assets/class_{cls}_albedo.png" id="tex_class_{cls}_a"]'
+            )
+            lines.append(
+                f'[ext_resource type="Texture2D" path="res://assets/class_{cls}_normal.png" id="tex_class_{cls}_n"]'
+            )
     lines.append("")
 
     # ── SubResources: collision shapes (FIX-1) ──────────────────
@@ -1469,6 +1496,24 @@ def compile_scene(
         for prop in sr["props"]:
             lines.append(prop)
         lines.append("")
+
+    # ── Palette class material sub_resources ────────────────────
+    if palette is not None:
+        roles = palette.get("roles", {})
+        for cls in palette_classes:
+            ci = CLASSES.get(cls, CLASSES["stone"])
+            role_color = roles.get(ci["role"], roles.get("base", (0.5, 0.5, 0.5)))
+            r, g, b = role_color
+            lines.append(f'[sub_resource type="StandardMaterial3D" id="mat_{cls}"]')
+            lines.append(f"albedo_color = Color({r}, {g}, {b}, 1)")
+            lines.append(f'albedo_texture = ExtResource("tex_class_{cls}_a")')
+            lines.append("normal_enabled = true")
+            lines.append(f'normal_texture = ExtResource("tex_class_{cls}_n")')
+            lines.append(f"roughness = {ci['roughness']}")
+            lines.append(f"metallic = {ci['metallic']}")
+            lines.append("uv1_triplanar = true")
+            lines.append("uv1_world_triplanar = true")
+            lines.append("")
 
     # Root (no parent attribute — Godot 4 convention)
     lines.append('[node name="Root" type="Node3D"]')
@@ -1550,12 +1595,21 @@ def compile_scene(
         # the override behaviour is undefined, and the `material_override`
         # line below lands on a child whose declared type may not match
         # the imported GLB root's first child.  Drop it.
-        lines.append('[node name="stone" parent="Shell"]')
-        lines.append('material_override = SubResource("shell_stone_mat")')
-        lines.append("")
-        lines.append('[node name="timber" parent="Shell"]')
-        lines.append('material_override = SubResource("shell_timber_mat")')
-        lines.append("")
+        if palette is not None:
+            # Palette-driven: use per-class materials instead of hardcoded shell_*_mat
+            lines.append('[node name="stone" parent="Shell"]')
+            lines.append('material_override = SubResource("mat_stone")')
+            lines.append("")
+            lines.append('[node name="timber" parent="Shell"]')
+            lines.append('material_override = SubResource("mat_wood")')
+            lines.append("")
+        else:
+            lines.append('[node name="stone" parent="Shell"]')
+            lines.append('material_override = SubResource("shell_stone_mat")')
+            lines.append("")
+            lines.append('[node name="timber" parent="Shell"]')
+            lines.append('material_override = SubResource("shell_timber_mat")')
+            lines.append("")
 
     # Quality A: Interior OmniLight3D ceiling lights (after shell, before props)
     for il_node in interior_lights:
@@ -1640,6 +1694,10 @@ def compile_scene(
         lines.append(
             f'[node name="{eid}_model" parent="{eid}" instance=ExtResource("{glb_id}")]'
         )
+        # Palette material_override on the model node (strips GLB materials)
+        if palette is not None and not is_decor:
+            cls = class_for(mat)
+            lines.append(f'surface_material_override/0 = SubResource("mat_{cls}")')
         lines.append("")
 
         # B2: Light-emitting prop child (OmniLight3D)
