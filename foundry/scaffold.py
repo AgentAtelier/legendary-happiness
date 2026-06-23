@@ -93,55 +93,19 @@ def _pre_import(build_path: Path, godot_bin: str) -> None:
             print(f"[scaffold]   {stderr_tail}")
 
 
-def _ensure_shell_textures(library_dir: str, dest_assets_dir: str) -> None:
-    """Fix-Batch-1 Task 4: Generate or copy shell tiling textures.
 
-    If shell textures don't exist in *library_dir*, invokes
-    build_shell_textures.py via Blender to bake them (tiling
-    albedo/normal/ORM for floor/wall/ceiling).  Then copies them
-    to *dest_assets_dir* for the build.
 
-    Cached: if the PNGs already exist in library_dir, skips Blender.
+
+def _copy_room_shell(glb_path: str | None, dest_assets_dir: str) -> None:
+    """Copy the per-room shell GLB into the build's assets as room_shell.glb.
+
+    No-op when glb_path is None (compiler falls back to the inline box shell).
     """
-    shell_files = [
-        'shell_floor_albedo.png', 'shell_floor_normal.png', 'shell_floor_orm.png',
-        'shell_wall_albedo.png', 'shell_wall_normal.png', 'shell_wall_orm.png',
-        'shell_ceiling_albedo.png', 'shell_ceiling_normal.png', 'shell_ceiling_orm.png',
-    ]
-    lib = Path(library_dir)
+    if not glb_path:
+        return
     dest = Path(dest_assets_dir)
     dest.mkdir(parents=True, exist_ok=True)
-
-    # Check if already baked in the library (cached)
-    all_exist = all((lib / f).exists() for f in shell_files)
-    if not all_exist:
-        # Generate via Blender
-        import subprocess as _sp
-        blender_bin = os.environ.get('BLENDER_BIN', 'blender')
-        script = str(Path(__file__).resolve().parent / 'blender' / 'build_shell_textures.py')
-        print(f'[scaffold] Baking shell textures via Blender -> {lib}')
-        result = _sp.run(
-            [blender_bin, '--background', '--python', script, '--', str(lib)],
-            capture_output=True, text=True, timeout=300,
-        )
-        if result.returncode != 0:
-            print(f'[scaffold] WARNING: shell texture bake failed (rc={result.returncode})')
-            print(f'[scaffold]   stderr: {result.stderr[-500:]}')
-            # Fall through — flat-colour fallback is better than crash.
-            return
-        print(result.stdout.strip()[-300:])
-
-    # Copy to the build's assets
-    copied = 0
-    for f in shell_files:
-        src = lib / f
-        if src.exists():
-            shutil.copy2(src, dest / f)
-            copied += 1
-    if copied:
-        print(f'[scaffold] Shell textures copied: {copied} files')
-    else:
-        print('[scaffold] WARNING: no shell textures available — using flat colour fallback')
+    shutil.copy(glb_path, str(dest / "room_shell.glb"))
 
 
 def scaffold_project(
@@ -221,8 +185,10 @@ def scaffold_project(
         total_copied += len(copied)
     print(f"[scaffold] Total asset files copied: {total_copied}")
 
-    # ── 4b. Fix-Batch-1 Task 4: Shell tiling textures ────────────
-    _ensure_shell_textures(str(Path(library_dir)), str(assets_dir))
+    # ── 4b. Task 7: Copy per-room shell GLB if available ─────────
+    # The shell textures (shell_{stone,timber}_*.png) ride in with the
+    # template copy automatically.
+    _copy_room_shell(None, str(assets_dir))  # GLB path from compiler later
 
     # ── 5. Pre-import ───────────────────────────────────────────
     gb = godot_bin or _find_godot()

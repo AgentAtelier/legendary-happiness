@@ -271,3 +271,32 @@ def test_scaffold_project_preserves_gitignore(tmp_path):
     gi = build / ".gitignore"
     assert gi.exists()
     assert ".godot/" in gi.read_text()
+
+
+# ── Task 7: room-shell GLB copy + obsolete texture bake removal ────
+
+def test_copy_room_shell_glb(tmp_path):
+    """_copy_room_shell copies the shell GLB into build assets."""
+    import scaffold
+    src = tmp_path / "cache" / "shell.glb"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"GLB")
+    dest_assets = tmp_path / "build" / "assets"
+    dest_assets.mkdir(parents=True)
+    scaffold._copy_room_shell(str(src), str(dest_assets))
+    assert (dest_assets / "room_shell.glb").exists()
+
+
+def test_copy_room_shell_glb_none_is_noop(tmp_path):
+    """_copy_room_shell with None path is a no-op."""
+    import scaffold
+    dest_assets = tmp_path / "build" / "assets"
+    dest_assets.mkdir(parents=True)
+    scaffold._copy_room_shell(None, str(dest_assets))
+    assert not (dest_assets / "room_shell.glb").exists()
+
+
+def test_no_ensure_shell_textures_symbol():
+    """The broken old _ensure_shell_textures has been removed."""
+    import scaffold
+    assert not hasattr(scaffold, "_ensure_shell_textures")
