@@ -51,3 +51,20 @@ def test_truss_count_scales_with_depth(tmp_path):
         geos = list(scene.geometry.values()) if hasattr(scene, "geometry") else [scene]
         counts[depth] = sum(len(g.vertices) for g in geos)
     assert counts["10"] > counts["4"]  # deeper room -> more trusses -> more verts
+
+
+def test_window_opening_builds(tmp_path):
+    import json
+    out = tmp_path / "shellw.glb"
+    windows = json.dumps([{"wall": "E", "center": 0.5, "width": 1.2, "height": 1.4, "sill": 1.2}])
+    subprocess.run(
+        [blender, "--background", "--python", str(GEN), "--",
+         str(out), "8", "6", "3", "study", "0", windows],
+        check=True, capture_output=True, timeout=300,
+    )
+    assert out.exists() and out.stat().st_size > 0
+    import trimesh
+    scene = trimesh.load(str(out))
+    geos = list(scene.geometry.values()) if hasattr(scene, "geometry") else [scene]
+    mats = {getattr(getattr(g.visual, "material", None), "name", None) for g in geos}
+    assert {"stone", "timber"} <= mats

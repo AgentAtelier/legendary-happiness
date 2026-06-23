@@ -22,9 +22,11 @@ _DEFAULTS = dict(pitch_ratio=0.4, beam=0.15, wall_t=0.2, floor_t=0.1,
 
 
 def _args():
+    import json
     a = sys.argv
     a = a[a.index("--") + 1:]
-    return a[0], float(a[1]), float(a[2]), float(a[3]), a[4], float(a[5])
+    windows = json.loads(a[6]) if len(a) > 6 and a[6] else []
+    return a[0], float(a[1]), float(a[2]), float(a[3]), a[4], float(a[5]), windows
 
 
 def _mat(name, rgb):
@@ -42,7 +44,48 @@ def _beam(bm, center, size, ry=0.0):
     bmesh.ops.create_cube(bm, size=1.0, matrix=M)
 
 
-def build_shell(w, d, wall_h, seed=0.0, **kw):
+def _emit_wall(bm, wall, w, d, wall_h, wall_t, win):
+    """Emit one stone wall; if `win` (a Window dict) is given, frame a rectangular
+    opening (below band + above band + two side jambs) instead of a solid box.
+    N/S run along X (at y=∓d/2); E/W run along Z-height at x=±w/2 (along Y)."""
+    along_x = wall in ("N", "S")
+    y0 = (-d / 2 if wall == "N" else d / 2) if along_x else 0.0
+    x0 = 0.0 if along_x else (w / 2 if wall == "E" else -w / 2)
+    length = w if along_x else d
+
+    if not win:
+        size = (w, wall_t, wall_h) if along_x else (wall_t, d, wall_h)
+        _beam(bm, (x0, y0, wall_h / 2), size)
+        return
+
+    win_w = float(win["width"]); sill = float(win["sill"])
+    head = sill + float(win["height"])
+    c = (float(win.get("center", 0.5)) - 0.5) * length   # opening centre along wall axis
+    half = win_w / 2.0
+    lo, hi = -length / 2, length / 2
+
+    # below + above full-width bands
+    if along_x:
+        _beam(bm, (x0, y0, sill / 2), (w, wall_t, sill))
+        _beam(bm, (x0, y0, (head + wall_h) / 2), (w, wall_t, wall_h - head))
+    else:
+        _beam(bm, (x0, y0, sill / 2), (wall_t, d, sill))
+        _beam(bm, (x0, y0, (head + wall_h) / 2), (wall_t, d, wall_h - head))
+
+    # side jambs spanning sill..head
+    band_h = head - sill
+    for seg_lo, seg_hi in ((lo, c - half), (c + half, hi)):
+        seg_len = seg_hi - seg_lo
+        if seg_len <= 1e-3:
+            continue
+        mid = (seg_lo + seg_hi) / 2
+        if along_x:
+            _beam(bm, (x0 + mid, y0, (sill + head) / 2), (seg_len, wall_t, band_h))
+        else:
+            _beam(bm, (x0, y0 + mid, (sill + head) / 2), (wall_t, seg_len, band_h))
+
+
+def build_shell(w, d, wall_h, seed=0.0, windows=(), **kw):
     p = {**_DEFAULTS, **kw}
     beam, wall_t, floor_t, board_t = p["beam"], p["wall_t"], p["floor_t"], p["board_t"]
     apex = wall_h + w * p["pitch_ratio"]
@@ -56,11 +99,12 @@ def build_shell(w, d, wall_h, seed=0.0, **kw):
     # floor (timber): top at z=0
     _beam(timber, (0, 0, -floor_t / 2), (w, d, floor_t))
 
-    # 4 walls (stone) to plate height
-    _beam(stone, (0,  d / 2, wall_h / 2), (w, wall_t, wall_h))
-    _beam(stone, (0, -d / 2, wall_h / 2), (w, wall_t, wall_h))
-    _beam(stone, ( w / 2, 0, wall_h / 2), (wall_t, d, wall_h))
-    _beam(stone, (-w / 2, 0, wall_h / 2), (wall_t, d, wall_h))
+    # 4 walls (stone) to plate height — framed openings where windows are planned
+    win_by_wall = {}
+    for win in (windows or []):
+        win_by_wall.setdefault(win.get("wall"), win)   # first window per wall
+    for wall in ("N", "S", "E", "W"):
+        _emit_wall(stone, wall, w, d, wall_h, wall_t, win_by_wall.get(wall))
 
     # trusses (timber) along Y
     span = d - 2 * wall_t
@@ -84,10 +128,10 @@ def build_shell(w, d, wall_h, seed=0.0, **kw):
 
 
 def main():
-    out, w, d, wall_h, theme, seed = _args()
+    out, w, d, wall_h, theme, seed, windows = _args()
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
-    stone_bm, timber_bm = build_shell(w, d, wall_h, seed=seed)
+    stone_bm, timber_bm = build_shell(w, d, wall_h, seed=seed, windows=windows)
 
     for bm, name, rgb in [(stone_bm, "stone", (0.6, 0.58, 0.54)),
                           (timber_bm, "timber", (0.4, 0.26, 0.13))]:
