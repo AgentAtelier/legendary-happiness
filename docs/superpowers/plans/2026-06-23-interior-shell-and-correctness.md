@@ -252,6 +252,11 @@ git commit -m "fix(scene): rest props on the floor via -aabb_min_y (no more floa
 
 ### Task 3: `foundry/blender/shell_materials.py` — stone + timber PBR (fixes texture quality)
 
+> **STATUS: DONE (orchestrator, committed `0873c46`). Do not re-implement.** Textures baked at
+> 1024² and committed to `foundry/godot_template/assets/shell_{stone,timber}_*.png`
+> (luminance spread 0.65/0.51). Implementation differs from the sketch below (Blender 5.1
+> socket names: "Factor" not "Fac"); the committed file is authoritative.
+
 **Files:**
 - Create: `foundry/blender/shell_materials.py`
 - Create: `foundry/tests/test_shell_materials.py` (Blender-gated)
@@ -402,6 +407,11 @@ git commit -m "feat(shell): procedural stone+timber PBR with structure/contrast 
 ---
 
 ### Task 4: `foundry/blender/build_room_shell.py` — king-post truss geometry
+
+> **STATUS: DONE (orchestrator, committed `c17b60b`). Do not re-implement.** The committed file
+> uses clean `mathutils.Matrix` + `create_cube(matrix=...)` beams (not the manual-trig sketch
+> below) and exports a Y-up GLB with `stone`/`timber` slots, verified at 8×6×3. Interface for
+> Task 5: `blender --background --python build_room_shell.py -- <out_glb> <w> <d> <wall_h> <theme> <seed>`.
 
 **Files:**
 - Create: `foundry/blender/build_room_shell.py`
@@ -717,7 +727,10 @@ In `scene_compiler.py`:
    `uv1_triplanar = true`, `uv1_world_triplanar = true`, `uv1_scale = Vector3(s, s, s)` (s≈1.0),
    and the `shell_{stone,timber}_*` textures; assign per material slot. **Remove** the inline
    `*_vis_mesh`/`ceiling_mesh` emission on this branch.
-2. If `None`: keep the existing inline box-shell emission exactly as today.
+2. If `None`: emit the inline box shell, but point its materials at the **committed** textures
+   — floor → `res://assets/shell_timber_*`, walls + ceiling → `res://assets/shell_stone_*`
+   (triplanar too). This improves the fallback and lets the old
+   `shell_{floor,wall,ceiling}_*.png` be deleted (they are obsolete).
 3. Replace the hardcoded flat 2-triangle `nav_mesh` `vertices`/`polygons` with the output of
    `navmesh.carve_walkable(room_w, room_d, _prop_footprints(manifest))`, where `_prop_footprints`
    maps each collidable (non-decor) entity to `(cx, cz, half_x, half_z)` from its placement +
@@ -738,54 +751,83 @@ git commit -m "feat(scene): GLB shell + triplanar materials + carved navmesh (bo
 
 ---
 
-### Task 7: `scaffold.py` — copy new shell textures from the cache
+### Task 7: `scaffold.py` — copy the per-room shell GLB; drop obsolete texture bake
+
+**Context (read this):** The two texture sets are already baked and **committed** in
+`foundry/godot_template/assets/shell_{stone,timber}_*.png` (Task 3, done). They ride into each
+build automatically with the template copy — no scaffold bake needed. The old
+`_ensure_shell_textures` baked the *old* `shell_{floor,wall,ceiling}_*` via the now-deleted
+`build_shell_textures.py`, so it is **broken and must be removed**. What scaffold DOES still need:
+copy the *per-room* shell **GLB** (from the `room_shell` cache) into the build's `assets/` so the
+compiled scene can reference `res://assets/room_shell.glb`.
 
 **Files:**
-- Modify: `foundry/scaffold.py` (`_ensure_shell_textures`, ~`:96-115`)
-- Modify: `foundry/tests/test_scaffold.py` (or create if absent)
+- Modify: `foundry/scaffold.py` (remove `_ensure_shell_textures` + its call; add GLB copy)
+- Modify/Create: `foundry/tests/test_scaffold.py`
 
 **Interfaces:**
-- Consumes: the room-shell cache dir holding `shell_{stone,timber}_{albedo,normal,orm}.png`.
-- Produces: those 6 PNGs copied into the build's `assets/`.
+- Consumes: a room-shell GLB path (from `room_shell.ensure_room_shell`, may be `None`).
+- Produces: `room_shell.glb` present in the build's `assets/` when a path was given; the 6
+  committed `shell_{stone,timber}_*` PNGs present via the normal template copy.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
 
 ```python
 # foundry/tests/test_scaffold.py
-def test_ensure_shell_textures_copies_stone_and_timber(tmp_path):
-    import scaffold
-    src = tmp_path / "src"; src.mkdir()
-    names = [f"shell_{s}_{m}.png" for s in ("stone", "timber")
-             for m in ("albedo", "normal", "orm")]
-    for n in names:
-        (src / n).write_bytes(b"png")
-    dest = tmp_path / "assets"; dest.mkdir()
-    scaffold._ensure_shell_textures(str(src), str(dest))
-    for n in names:
-        assert (dest / n).exists()
+import scaffold
+
+def test_copy_room_shell_glb(tmp_path):
+    src = tmp_path / "cache" / "shell.glb"; src.parent.mkdir(parents=True)
+    src.write_bytes(b"GLB")
+    dest_assets = tmp_path / "build" / "assets"; dest_assets.mkdir(parents=True)
+    scaffold._copy_room_shell(str(src), str(dest_assets))
+    assert (dest_assets / "room_shell.glb").exists()
+
+def test_copy_room_shell_glb_none_is_noop(tmp_path):
+    dest_assets = tmp_path / "build" / "assets"; dest_assets.mkdir(parents=True)
+    scaffold._copy_room_shell(None, str(dest_assets))   # must not raise
+    assert not (dest_assets / "room_shell.glb").exists()
+
+def test_no_ensure_shell_textures_symbol():
+    # the broken old baker is gone
+    assert not hasattr(scaffold, "_ensure_shell_textures")
 ```
 
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `cd foundry && .venv/bin/python -m pytest tests/test_scaffold.py -q`
-Expected: FAIL (still copies the old `shell_floor/wall/ceiling_*` names).
+Expected: FAIL (`_copy_room_shell` missing; `_ensure_shell_textures` still present).
 
-- [ ] **Step 3: Update `_ensure_shell_textures`**
+- [ ] **Step 3: Implement**
 
-Change its filename list from `shell_{floor,wall,ceiling}_{albedo,normal,orm}.png` to
-`shell_{stone,timber}_{albedo,normal,orm}.png`, and source them from the room-shell cache dir
-(passed in by the compiler/scaffold) rather than the library dir.
+Remove `_ensure_shell_textures` and its call site entirely. Add:
+```python
+def _copy_room_shell(glb_path, dest_assets_dir):
+    """Copy the per-room shell GLB into the build's assets as room_shell.glb.
+    No-op when glb_path is None (compiler falls back to the inline box shell)."""
+    if not glb_path:
+        return
+    import shutil
+    from pathlib import Path
+    Path(dest_assets_dir).mkdir(parents=True, exist_ok=True)
+    shutil.copy(glb_path, str(Path(dest_assets_dir) / "room_shell.glb"))
+```
+Call `_copy_room_shell(shell_glb_path, dest_assets_dir)` in `scaffold_project` where the shell
+path is known (the compiler passes it through, or scaffold calls `room_shell.ensure_room_shell`
+with the room dims/theme). Also delete the obsolete `foundry/godot_template/assets/shell_floor_*`,
+`shell_wall_*`, `shell_ceiling_*` PNGs (the box fallback now uses stone/timber — Task 6).
 
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `cd foundry && .venv/bin/python -m pytest tests/test_scaffold.py -q`
-Expected: PASS.
+Expected: PASS (3 passed).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add foundry/scaffold.py foundry/tests/test_scaffold.py
-git commit -m "chore(scaffold): copy shell_stone/timber textures from room-shell cache"
+git rm foundry/godot_template/assets/shell_floor_*.png foundry/godot_template/assets/shell_wall_*.png foundry/godot_template/assets/shell_ceiling_*.png 2>/dev/null || true
+git commit -m "chore(scaffold): copy per-room shell GLB; drop obsolete shell-texture bake"
 ```
 
 ---
