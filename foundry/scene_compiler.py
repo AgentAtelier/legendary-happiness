@@ -207,6 +207,7 @@ def _build_room_sub_resources(
     nav_vertices = None,
     nav_polygons = None,
     shell_glb_path = None,
+    tonemap_mode: int = 3,
 ) -> Tuple[List[dict], List[dict]]:
     """Build the list of room sub-resources for the given dimensions.
 
@@ -264,8 +265,8 @@ def _build_room_sub_resources(
          "ambient_light_source = 1",
          f"ambient_light_color = Color({amb[0]}, {amb[1]}, {amb[2]}, {amb[3]})",
          f"ambient_light_energy = {ambient_energy}",
-         # B2: ACES tonemap
-         "tonemap_mode = 3",
+         # B2: ACES tonemap (overridable via tonemap_mode param)
+         f"tonemap_mode = {tonemap_mode}",
          "tonemap_white = 1.0",
          # B2: SSAO
          "ssao_enabled = true",
@@ -942,6 +943,7 @@ def compile_scene(
     current_room: tuple | None = None,  # CB-4: which room this scene represents
     room_type: str = "indoor",  # CB-7: "indoor" | "outdoor"
     exterior_plan: dict | None = None,  # CB-7: ExteriorPlan data for outdoor rooms
+    lighting_plan: dict | None = None,  # Generative lighting plan (hearth/torch/candle/window + env)
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.
 
@@ -1071,29 +1073,75 @@ def compile_scene(
     fog_density_override = 0.015
     fog_light_energy_override = 0.5
     exposure_override = 1.0
+    # Generative lighting plan overrides (Task 3)
+    _plan_tonemap = None
+    if lighting_plan is not None:
+        lpenv = lighting_plan.get("environment", {})
+        lpsun = lighting_plan.get("sun", {})
+        ambient_override = (lpenv.get("ambient_color", (0.40, 0.40, 0.45)))[:3] + (1.0,)
+        ambient_energy_override = float(lpenv.get("ambient_energy", 0.6))
+        fog_color_override = (lpenv.get("fog_color", (0.15, 0.15, 0.20)))[:3] + (1.0,)
+        fog_light_energy_override = float(lpenv.get("fog_energy", 0.1))
+        exposure_override = float(lpenv.get("exposure", 1.2))
+        # sun override: color + energy (keep the existing transform for direction)
+        sun_color = lpsun.get("color", (0.5, 0.6, 0.85))
+        dir_color_override = (sun_color[0], sun_color[1], sun_color[2])
+        dir_energy_override = float(lpsun.get("energy", 0.8))
+        # tonemap from plan
+        _plan_tonemap = int(lpenv.get("tonemap", 2))
+        # Build interior source lights from the plan (instead of grid-based ceiling lights)
+        plan_sources = lighting_plan.get("sources", [])
+        plan_omni_lights: list[dict] = []
+        for i, src in enumerate(plan_sources):
+            pos = src.get("pos", (0, 0, 0))
+            color = src.get("color", (1, 1, 1))
+            light_name = f"PlanLight{i}"
+            plan_omni_lights.append({
+                "name": light_name, "type": "OmniLight3D", "parent": ".",
+                "props": [
+                    f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(pos[0])}, {_fmt_pos(pos[1])}, {_fmt_pos(pos[2])})",
+                    f"light_color = Color({color[0]}, {color[1]}, {color[2]}, 1)",
+                    f"light_energy = {src.get('energy', 1.0)}",
+                    f"omni_range = {src.get('range', 4.0)}",
+                    "shadow_enabled = true",
+                ],
+            })
+        # plan_omni_lights used below in interior_lights replacement
+    else:
+        plan_sources = []
+        plan_omni_lights = []
     if theme:
         from room_control import get_lighting, get_shell_material
         lighting = get_lighting(theme)
-        ambient_override = tuple(lighting["ambient_color"])
-        ambient_energy_override = float(lighting.get("ambient_light_energy", 0.5))
-        background_override = tuple(lighting["background_color"])
-        dir_color_override = tuple(lighting["directional_color"])
-        dir_energy_override = float(lighting["directional_energy"])
-        # Quality A: interior lighting
-        interior_color_override = tuple(lighting.get("interior_light_color", (1.0, 0.7, 0.35)))
-        interior_energy_override = float(lighting.get("interior_light_energy", 1.5))
-        # B2: per-theme fog + exposure
-        fog_color_override = tuple(lighting.get("fog_color", (0.2, 0.18, 0.22, 1.0)))
-        fog_density_override = float(lighting.get("fog_density", 0.015))
-        fog_light_energy_override = float(lighting.get("fog_light_energy", 0.5))
-        exposure_override = float(lighting.get("exposure", 1.0))
+        if ambient_override is None or lighting_plan is None:
+            ambient_override = tuple(lighting["ambient_color"])
+            ambient_energy_override = float(lighting.get("ambient_light_energy", 0.5))
+        if background_override is None or lighting_plan is None:
+            background_override = tuple(lighting["background_color"])
+        if dir_color_override is None or lighting_plan is None:
+            dir_color_override = tuple(lighting["directional_color"])
+            dir_energy_override = float(lighting["directional_energy"])
+        # Quality A: interior lighting (only when no lighting_plan)
+        if lighting_plan is None:
+            interior_color_override = tuple(lighting.get("interior_light_color", (1.0, 0.7, 0.35)))
+            interior_energy_override = float(lighting.get("interior_light_energy", 1.5))
+        # B2: per-theme fog + exposure (only when no lighting_plan override)
+        if fog_color_override is None or lighting_plan is None:
+            fog_color_override = tuple(lighting.get("fog_color", (0.2, 0.18, 0.22, 1.0)))
+            fog_density_override = float(lighting.get("fog_density", 0.015))
+            fog_light_energy_override = float(lighting.get("fog_light_energy", 0.5))
+            exposure_override = float(lighting.get("exposure", 1.0))
 
     # ── Build room resources for resolved dimensions ───────────
     # Quality A: build interior lights from resolved theme params
-    interior_lights = _build_interior_lights(
-        room_w, room_d, _ROOM_HEIGHT,
-        interior_color_override, interior_energy_override,
-    )
+    # Task 3: when lighting_plan is provided, use planned OmniLight3D nodes instead
+    if lighting_plan is not None:
+        interior_lights = plan_omni_lights
+    else:
+        interior_lights = _build_interior_lights(
+            room_w, room_d, _ROOM_HEIGHT,
+            interior_color_override, interior_energy_override,
+        )
     # E1: per-theme shell materials
     shell_floor = None
     shell_wall = None
@@ -1192,6 +1240,7 @@ def compile_scene(
         nav_vertices=nav_vertices,
         nav_polygons=nav_polygons,
         shell_glb_path=shell_glb_path,
+        tonemap_mode=_plan_tonemap if _plan_tonemap is not None else 3,
     )
     room_nodes = _build_room_nodes(
         room_w, room_d,

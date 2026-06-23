@@ -2135,6 +2135,50 @@ def test_indoor_room_still_has_walls():
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  Task 3: Generative lighting plan → realtime rig
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_lighting_plan_emits_one_omni_per_source():
+    import scene_compiler as sc
+    plan = {"sources": [
+              {"type": "hearth", "pos": (0,0.5,-3), "color": (1,0.6,0.3), "energy": 6, "range": 6, "flicker": True},
+              {"type": "torch",  "pos": (2,2.2,-3), "color": (1,0.7,0.4), "energy": 3, "range": 4, "flicker": True}],
+            "windows": [], "sun": {"color": (0.5,0.6,0.85), "energy": 0.8, "direction": (-0.3,-0.6,-0.5)},
+            "sky": {"top": (0.4,0.45,0.6), "ambient_energy": 0.4},
+            "environment": {"ambient_color": (0.4,0.4,0.45), "ambient_energy": 0.6,
+                            "fog_color": (0.15,0.15,0.2), "fog_energy": 0.1, "tonemap": 2, "exposure": 1.2}}
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], _minimal_manifest(), out,
+                         room_size={"w":8,"d":6}, theme="study", lighting_plan=plan)
+        t = Path(out).read_text(encoding="utf-8")
+        assert t.count('type="OmniLight3D"') >= 2  # at least our 2 plan lights
+        assert "ambient_light_energy = 0.6" in t      # readable, not 0.4
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_no_plan_keeps_default_lighting():
+    import scene_compiler as sc
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], _minimal_manifest(), out,
+                         room_size={"w":8,"d":6}, theme="study")  # no lighting_plan
+        t = Path(out).read_text(encoding="utf-8")
+        assert "OmniLight3D" in t  # still emits the existing default rig
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Task 6: GLB shell + triplanar + carved navmesh + fallback
 # ═══════════════════════════════════════════════════════════════════════
 
