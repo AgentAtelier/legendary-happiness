@@ -36,8 +36,13 @@ were diagnosed directly in code:
 - **Interior ceiling = king-post truss** (reads as a pitched roof from inside). Exterior
   pitched roof is a later thread.
 - **Lighting/brightness is OUT** of this thread (separate thread). Scene stays dim until then.
-- **NPC clipping fix = runtime obstacle avoidance** (`NavigationObstacle3D`), not navmesh
-  carving (carving is the future, level-design-branch approach).
+- **NPC clipping fix = build-time navmesh carving** (the long-term approach): the walkable
+  polygon = inset room minus prop footprints, triangulated and emitted into the `NavigationMesh`.
+  This is the first reusable primitive of the future level-design branch (`foundry/navmesh.py`),
+  not a runtime-avoidance stopgap.
+- **Generator tunables default to sensible values.** Every shape/material knob (truss pitch,
+  beam cross-section, bevel, trusses-per-meter, world-space tile size, etc.) is a parameter with
+  a sensible default; callers may omit any of them.
 
 ---
 
@@ -52,6 +57,9 @@ foundry/blender/shell_materials.py    # Blender: procedural stone + timber node 
 foundry/room_shell.py                 # Orchestration: content-addressed cache keyed on
                                       #   (w, d, wall_height, theme, gen_version); calls Blender
                                       #   on miss; returns GLB path. Blender-unavailable → None.
+foundry/navmesh.py                    # Pure-Python: carve_walkable(bounds, obstacles,
+                                      #   agent_radius, ...) -> (vertices, polygons). Inset room
+                                      #   minus inflated prop footprints, triangulated. Reusable.
 foundry/scene_compiler.py            # Consumes the shell GLB (instances it, applies triplanar
                                       #   materials per slot); keeps StaticBody/CollisionShape +
                                       #   NavigationRegion wiring AROUND it; FALLS BACK to the
@@ -88,6 +96,9 @@ Generates a single GLB containing:
   - **Roof planes**: boarded surfaces over the rafters on both slopes so the room is enclosed
     (no open sky), undersides visible from within.
   - Beams beveled (small chamfer) for quality; beam cross-section ~0.12–0.18 m.
+- **Parameters & defaults**: all knobs are keyword params with sensible defaults — e.g.
+  `pitch_ratio=0.4` (apex = wall_height + w·ratio), `beam_size=0.15`, `bevel=0.01`,
+  `trusses_per_m≈0.6` (min 2), `wall_t=0.2`, `floor_t=0.1`. Callers may omit any/all.
 - **Determinism**: seeded; identical params → identical mesh. No wall-clock, no unseeded RNG.
 - **Material slots**: exactly two named materials (`stone`, `timber`) so the consumer can apply
   one triplanar `StandardMaterial3D` per slot. Beams/floor/roof-boards = timber; walls = stone.
@@ -148,14 +159,24 @@ Replace the single-octave grey generator. For each surface kind:
 - Props that are explicitly surface-mounted (e.g. wall paintings) keep their existing placement;
   the rest floor-rest.
 
-### C6 — NPC clipping fix
+### C6 — NPC clipping fix (build-time navmesh carving)
 
-- For each non-decor, collidable prop, emit a child `NavigationObstacle3D` with `radius` (and
-  `height`) derived from its AABB footprint, so `NavigationAgent3D` NPCs steer around it via RVO
-  avoidance at runtime.
-- Decor props (`"decor": True`, no collision) get no obstacle.
-- Documented non-goal: this does not carve the navmesh; stationary edge-cases may still touch a
-  prop. Proper footprint carving is deferred to the level-design branch (#6).
+- New `foundry/navmesh.py`: `carve_walkable(bounds, obstacles, agent_radius=0.3,
+  wall_margin=1.2) -> (vertices, polygons)`.
+  - `bounds` = room `w × d`; walkable base = room rectangle inset by `wall_margin`.
+  - `obstacles` = each collidable prop's XZ footprint (from its AABB), **inflated by
+    `agent_radius`** so agents keep clear.
+  - Walkable region = base polygon **minus** the union of inflated footprints (a polygon with
+    holes), then triangulated into `(vertices @ y=0, polygons)` for the `NavigationMesh`.
+  - Deterministic (sorted inputs, no RNG). Decor props (`"decor": True`, no collision) are not
+    obstacles.
+  - **Recommended libs (confirm in plan):** `shapely` for the 2D boolean/union/difference,
+    `mapbox_earcut` (or `triangle`) for triangulating the polygon-with-holes. Add to
+    `requirements.txt`. A grid-raster fallback is acceptable if we choose to avoid the GEOS dep.
+- `scene_compiler.py`: replace the hardcoded flat 2-triangle `NavigationMesh` quad with the
+  `carve_walkable(...)` output (same `agent_radius`/`agent_height`/`cell_size` settings).
+- If carving fails or yields an empty region (over-furnished), fall back to the existing flat
+  quad so NPCs still have *some* navmesh (logged), never a hard fail.
 
 ---
 
@@ -176,7 +197,10 @@ Replace the single-octave grey generator. For each surface kind:
 
 - **Unit (no Blender):** `room_shell` cache key stability + hit/miss; `scene_compiler` emits the
   GLB-instanced shell when a path is provided and the **inline fallback** when `None`; C5 sets
-  prop Y to `-aabb_min_y`; C6 emits a `NavigationObstacle3D` per collidable prop and none for decor.
+  prop Y to `-aabb_min_y`. **C6 `navmesh.carve_walkable`:** the walkable polygon excludes each
+  inflated prop footprint (a point inside a prop's footprint is not in any output triangle),
+  decor props don't carve, output is deterministic, and an over-furnished room falls back to the
+  flat quad.
 - **Blender-gated:** `build_room_shell.py` produces a GLB with the expected two material slots and
   a truss node count derived from `d` (run only where Blender is available).
 - **Godot headless smoke:** the scaffolded scene loads with the shell GLB without script/parse
