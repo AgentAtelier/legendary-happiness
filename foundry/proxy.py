@@ -14,6 +14,7 @@ The .ply contains only vertex positions (x, y, z) — the voxel centres inside t
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +25,42 @@ try:
     _HAS_TRIMESH = True
 except ImportError:
     _HAS_TRIMESH = False
+
+
+# ── safety bounds (incident 2026-06-23: unbounded contains() OOM-killed the host) ──
+_MAX_RESOLUTION = 96          # 96³ ≈ 884k grid points (~21 MB) — caps the grid array
+_PROXY_FACE_CAP = 20_000      # decimate denser meshes before point-in-mesh testing
+_CONTAINS_BUDGET = 8_000_000  # max (batch × faces) per contains() call (~64 MB peak)
+
+
+def _chunk_size(n_faces: int) -> int:
+    """Points per contains() batch, sized so ``batch × faces`` stays under budget."""
+    return max(256, min(8192, _CONTAINS_BUDGET // max(1, int(n_faces))))
+
+
+def _contains_chunked(mesh, points: np.ndarray) -> np.ndarray:
+    """``mesh.contains()`` in face-aware batches so peak memory is BOUNDED
+    regardless of grid size or mesh complexity. Without embreex, trimesh's
+    fallback allocates O(points × faces); doing the whole grid at once is what
+    OOM-killed the host on 2026-06-23."""
+    n_faces = len(getattr(mesh, "faces", ())) or 1
+    batch = _chunk_size(n_faces)
+    out = np.zeros(len(points), dtype=bool)
+    for i in range(0, len(points), batch):
+        out[i:i + batch] = mesh.contains(points[i:i + batch])
+    return out
+
+
+def _decimate_to_cap(mesh):
+    """Reduce very dense meshes before containment (keeps ``batch × faces`` bounded
+    even in the pathological case); a coarse proxy doesn't need fine detail."""
+    try:
+        if len(mesh.faces) <= _PROXY_FACE_CAP:
+            return mesh
+        out = mesh.simplify_quadric_decimation(face_count=_PROXY_FACE_CAP)
+        return out if out is not None and len(out.faces) > 0 else mesh
+    except Exception:
+        return mesh
 
 
 # ── voxelisation ─────────────────────────────────────────────────
@@ -54,6 +91,11 @@ def voxelize_glb(
         Number of voxel points written to the PLY file.
     """
     _ = seed  # reserved — deterministic by construction
+
+    # Safety clamp: cap the grid so it can never materialize a multi-GB array
+    # (incident 2026-06-23: a huge resolution³ grid + faces OOM-killed the host).
+    resolution = max(2, min(int(resolution), _MAX_RESOLUTION))
+    os.makedirs(os.path.dirname(os.path.abspath(out_ply)) or ".", exist_ok=True)
 
     mesh = _load_watertight(glb_path)
     bbox_lo, bbox_hi, voxel_size = _compute_grid(mesh, resolution, pad)
@@ -93,7 +135,7 @@ def _load_watertight(glb_path: str) -> "trimesh.Trimesh":
         import warnings
         warnings.warn(f"Mesh {glb_path} is not watertight; voxel containment may be unreliable.")
 
-    return mesh
+    return _decimate_to_cap(mesh)
 
 
 def _compute_grid(
@@ -137,7 +179,7 @@ def _sample_voxels(
     gx, gy, gz = np.meshgrid(xs, ys, zs, indexing="ij")
     points = np.column_stack([gx.ravel(), gy.ravel(), gz.ravel()])
 
-    inside = mesh.contains(points)
+    inside = _contains_chunked(mesh, points)
     return points[inside]
 
 
