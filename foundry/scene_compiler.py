@@ -207,7 +207,7 @@ def _build_room_sub_resources(
     nav_vertices = None,
     nav_polygons = None,
     shell_glb_path = None,
-) -> List[dict]:
+) -> Tuple[List[dict], List[dict]]:
     """Build the list of room sub-resources for the given dimensions.
 
     P-G: *ambient* and *background* override the default environment
@@ -250,6 +250,10 @@ def _build_room_sub_resources(
         "agent_max_climb = 0.3",
         "cell_size = 0.3",
     ]
+    # Shared sub-resources — present in BOTH GLB and box-shell branches:
+    # Environment, player body, NavigationMesh, door visual, wall collision
+    # shapes (the wall bodies still get emitted as static colliders even when
+    # their visible mesh comes from the GLB shell).
     resources: list[dict] = [
     # Environment for WorldEnvironment (Item 1)
     # B2: Extended with ACES tonemap, SSAO, bloom, fog, exposure
@@ -290,79 +294,6 @@ def _build_room_sub_resources(
          "adjustment_enabled = true",
          f"adjustment_brightness = {exposure}",
      ]},
-    # BoxMeshes for visible room shell (sized by room_w, room_d)
-    {"id": "floor_vis_mesh", "type": "BoxMesh",
-     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
-    {"id": "wall_ns_mesh", "type": "BoxMesh",
-     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
-    {"id": "wall_ew_mesh", "type": "BoxMesh",
-     "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
-    {"id": "ceiling_mesh", "type": "BoxMesh",
-     "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
-    # Fix-Batch-1 Task 4: Shell tileable texture sub_resources.
-    # Each loads from res://assets/shell_*_*.png at scene-load time.
-    # When the PNGs are missing, Godot falls back to a 1×1 white texture
-    # so the albedo_color tint still renders a readable surface.
-    {"id": "tex_floor_a", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_floor_albedo.png"']},
-    {"id": "tex_floor_n", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_floor_normal.png"']},
-    {"id": "tex_floor_o", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_floor_orm.png"']},
-    {"id": "tex_wall_a", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_wall_albedo.png"']},
-    {"id": "tex_wall_n", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_wall_normal.png"']},
-    {"id": "tex_wall_o", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_wall_orm.png"']},
-    {"id": "tex_ceil_a", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_ceiling_albedo.png"']},
-    {"id": "tex_ceil_n", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_ceiling_normal.png"']},
-    {"id": "tex_ceil_o", "type": "CompressedTexture2D",
-     "props": ['load_path = "res://assets/shell_ceiling_orm.png"']},
-    # StandardMaterial3Ds — E1: per-theme shell materials with roughness
-    # uv1_scale set for tiling when baked textures are wired in.
-    # Fix-Batch-1 Task 4: wire real textures (albedo + normal + ORM)
-    # keeping per-theme albedo_color as a tint multiplier.
-    {"id": "floor_mat", "type": "StandardMaterial3D",
-     "props": [
-         f"albedo_color = Color({sf['albedo'][0]}, {sf['albedo'][1]}, {sf['albedo'][2]}, 1)",
-         "albedo_texture = SubResource(\"tex_floor_a\")",
-         f"roughness = {sf['roughness']}",
-         "roughness_texture = SubResource(\"tex_floor_o\")",
-         "roughness_texture_channel = 1",
-         "ao_texture = SubResource(\"tex_floor_o\")",
-         "ao_texture_channel = 0",
-         "normal_texture = SubResource(\"tex_floor_n\")",
-         "uv1_scale = Vector3(10, 10, 10)",
-     ]},
-    {"id": "wall_mat", "type": "StandardMaterial3D",
-     "props": [
-         f"albedo_color = Color({sw['albedo'][0]}, {sw['albedo'][1]}, {sw['albedo'][2]}, 1)",
-         "albedo_texture = SubResource(\"tex_wall_a\")",
-         f"roughness = {sw['roughness']}",
-         "roughness_texture = SubResource(\"tex_wall_o\")",
-         "roughness_texture_channel = 1",
-         "ao_texture = SubResource(\"tex_wall_o\")",
-         "ao_texture_channel = 0",
-         "normal_texture = SubResource(\"tex_wall_n\")",
-         "uv1_scale = Vector3(10, 10, 10)",
-         "cull_mode = 2",
-     ]},
-    {"id": "ceiling_mat", "type": "StandardMaterial3D",
-     "props": [
-         f"albedo_color = Color({sc['albedo'][0]}, {sc['albedo'][1]}, {sc['albedo'][2]}, 1)",
-         "albedo_texture = SubResource(\"tex_ceil_a\")",
-         f"roughness = {sc['roughness']}",
-         "roughness_texture = SubResource(\"tex_ceil_o\")",
-         "roughness_texture_channel = 1",
-         "ao_texture = SubResource(\"tex_ceil_o\")",
-         "ao_texture_channel = 0",
-         "normal_texture = SubResource(\"tex_ceil_n\")",
-         "uv1_scale = Vector3(10, 10, 10)",
-         "cull_mode = 2",
-     ]},
     # Player visible body (Item 4)
     {"id": "player_body_mesh", "type": "CapsuleMesh",
      "props": ["radius = 0.3", "height = 1.8"]},
@@ -381,61 +312,152 @@ def _build_room_sub_resources(
          "roughness = 0.8",
          "metallic = 0.0",
      ]},
-    # Collision shapes for walls
+    # Collision shapes for walls (always — walls are StaticBody3D in both branches)
     {"id": "wall_ns_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
     {"id": "wall_ew_shape", "type": "BoxShape3D",
      "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
     ]
-    # Task 6: triplanar shell materials for the Blender-generated GLB shell
+    # ── Shell-source branch (Task 6 fix) ───────────────────────────
+    #   GLB path present   → stone/timber triplanar StandardMaterials +
+    #                        Texture2D ext_resources for shell_stone_*/shell_timber_*.
+    #                        NO box-shell BoxMeshes/textures/materials (the
+    #                        scene_compiler used to emit BOTH which stacked
+    #                        the inline box over the GLB → magenta walls).
+    #   GLB path None     → inline box-shell fallback with floor/wall/ceiling
+    #                        BoxMeshes + tileable shell_*_*.png Texture2D
+    #                        ext_resources + the per-theme albedo-color tinted
+    #                        floor_mat/wall_mat/ceiling_mat.  Used when
+    #                        Blender is unavailable.
+    #
+    #   Fix: shell textures are now ext_resource Texture2D references
+    #   (not CompressedTexture2D sub_resources with load_path=).  Godot
+    #   resolves the .png path to the imported .ctex automatically —
+    #   this is how prop GLB textures already work.
+    texture_ext_resources: list[dict] = []
     if shell_glb_path is not None:
+        texture_ext_resources.extend([
+            {"id": "tex_stone_a", "type": "Texture2D",
+             "path": "res://assets/shell_stone_albedo.png"},
+            {"id": "tex_stone_n", "type": "Texture2D",
+             "path": "res://assets/shell_stone_normal.png"},
+            {"id": "tex_stone_o", "type": "Texture2D",
+             "path": "res://assets/shell_stone_orm.png"},
+            {"id": "tex_timber_a", "type": "Texture2D",
+             "path": "res://assets/shell_timber_albedo.png"},
+            {"id": "tex_timber_n", "type": "Texture2D",
+             "path": "res://assets/shell_timber_normal.png"},
+            {"id": "tex_timber_o", "type": "Texture2D",
+             "path": "res://assets/shell_timber_orm.png"},
+        ])
         resources.extend([
-            # Stone textures (walls/ceiling)
-            {"id": "tex_stone_a", "type": "CompressedTexture2D",
-             "props": ['load_path = "res://assets/shell_stone_albedo.png"']},
-            {"id": "tex_stone_n", "type": "CompressedTexture2D",
-             "props": ['load_path = "res://assets/shell_stone_normal.png"']},
-            {"id": "tex_stone_o", "type": "CompressedTexture2D",
-             "props": ['load_path = "res://assets/shell_stone_orm.png"']},
-            # Timber textures (floor/beams)
-            {"id": "tex_timber_a", "type": "CompressedTexture2D",
-             "props": ['load_path = "res://assets/shell_timber_albedo.png"']},
-            {"id": "tex_timber_n", "type": "CompressedTexture2D",
-             "props": ['load_path = "res://assets/shell_timber_normal.png"']},
-            {"id": "tex_timber_o", "type": "CompressedTexture2D",
-             "props": ['load_path = "res://assets/shell_timber_orm.png"']},
-            # Triplanar StandardMaterial3D for stone (material slot 0)
+            # Triplanar StandardMaterial3D applied to the GLB's 'stone' surface
             {"id": "shell_stone_mat", "type": "StandardMaterial3D",
              "props": [
                  "albedo_color = Color(0.6, 0.58, 0.54, 1)",
-                 "albedo_texture = SubResource(\"tex_stone_a\")",
+                 "albedo_texture = ExtResource(\"tex_stone_a\")",
                  "roughness = 0.75",
-                 "roughness_texture = SubResource(\"tex_stone_o\")",
+                 "roughness_texture = ExtResource(\"tex_stone_o\")",
                  "roughness_texture_channel = 1",
-                 "ao_texture = SubResource(\"tex_stone_o\")",
+                 "ao_texture = ExtResource(\"tex_stone_o\")",
                  "ao_texture_channel = 0",
-                 "normal_texture = SubResource(\"tex_stone_n\")",
+                 "normal_texture = ExtResource(\"tex_stone_n\")",
                  "uv1_triplanar = true",
                  "uv1_world_triplanar = true",
                  "uv1_scale = Vector3(1, 1, 1)",
              ]},
-            # Triplanar StandardMaterial3D for timber (material slot 1)
+            # Triplanar StandardMaterial3D applied to the GLB's 'timber' surface
             {"id": "shell_timber_mat", "type": "StandardMaterial3D",
              "props": [
                  "albedo_color = Color(0.4, 0.26, 0.13, 1)",
-                 "albedo_texture = SubResource(\"tex_timber_a\")",
+                 "albedo_texture = ExtResource(\"tex_timber_a\")",
                  "roughness = 0.85",
-                 "roughness_texture = SubResource(\"tex_timber_o\")",
+                 "roughness_texture = ExtResource(\"tex_timber_o\")",
                  "roughness_texture_channel = 1",
-                 "ao_texture = SubResource(\"tex_timber_o\")",
+                 "ao_texture = ExtResource(\"tex_timber_o\")",
                  "ao_texture_channel = 0",
-                 "normal_texture = SubResource(\"tex_timber_n\")",
+                 "normal_texture = ExtResource(\"tex_timber_n\")",
                  "uv1_triplanar = true",
                  "uv1_world_triplanar = true",
                  "uv1_scale = Vector3(1, 1, 1)",
              ]},
         ])
-    return resources
+    else:
+        # Box-shell fallback (Blender unavailable or generation failed).
+        # Floor + 4 walls + ceiling as BoxMesh, tileable albedo/normal/orm
+        # Texture2D ext_resources, and per-theme tinted StandardMaterial3Ds.
+        # When the PNGs are missing Godot falls back to a 1×1 white texture
+        # so the albedo_color tint still renders a readable surface.
+        texture_ext_resources.extend([
+            {"id": "tex_floor_a", "type": "Texture2D",
+             "path": "res://assets/shell_floor_albedo.png"},
+            {"id": "tex_floor_n", "type": "Texture2D",
+             "path": "res://assets/shell_floor_normal.png"},
+            {"id": "tex_floor_o", "type": "Texture2D",
+             "path": "res://assets/shell_floor_orm.png"},
+            {"id": "tex_wall_a", "type": "Texture2D",
+             "path": "res://assets/shell_wall_albedo.png"},
+            {"id": "tex_wall_n", "type": "Texture2D",
+             "path": "res://assets/shell_wall_normal.png"},
+            {"id": "tex_wall_o", "type": "Texture2D",
+             "path": "res://assets/shell_wall_orm.png"},
+            {"id": "tex_ceil_a", "type": "Texture2D",
+             "path": "res://assets/shell_ceiling_albedo.png"},
+            {"id": "tex_ceil_n", "type": "Texture2D",
+             "path": "res://assets/shell_ceiling_normal.png"},
+            {"id": "tex_ceil_o", "type": "Texture2D",
+             "path": "res://assets/shell_ceiling_orm.png"},
+        ])
+        resources.extend([
+            {"id": "floor_vis_mesh", "type": "BoxMesh",
+             "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
+            {"id": "wall_ns_mesh", "type": "BoxMesh",
+             "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(room_h)}, {_fmt_pos(wall_t)})"]},
+            {"id": "wall_ew_mesh", "type": "BoxMesh",
+             "props": [f"size = Vector3({_fmt_pos(wall_t)}, {_fmt_pos(room_h)}, {_fmt_pos(room_d)})"]},
+            {"id": "ceiling_mesh", "type": "BoxMesh",
+             "props": [f"size = Vector3({_fmt_pos(room_w)}, {_fmt_pos(floor_t)}, {_fmt_pos(room_d)})"]},
+            # Per-theme tinted StandardMaterial3Ds (Fix-Batch-1 Task 4 + E1)
+            {"id": "floor_mat", "type": "StandardMaterial3D",
+             "props": [
+                 f"albedo_color = Color({sf['albedo'][0]}, {sf['albedo'][1]}, {sf['albedo'][2]}, 1)",
+                 "albedo_texture = ExtResource(\"tex_floor_a\")",
+                 f"roughness = {sf['roughness']}",
+                 "roughness_texture = ExtResource(\"tex_floor_o\")",
+                 "roughness_texture_channel = 1",
+                 "ao_texture = ExtResource(\"tex_floor_o\")",
+                 "ao_texture_channel = 0",
+                 "normal_texture = ExtResource(\"tex_floor_n\")",
+                 "uv1_scale = Vector3(10, 10, 10)",
+             ]},
+            {"id": "wall_mat", "type": "StandardMaterial3D",
+             "props": [
+                 f"albedo_color = Color({sw['albedo'][0]}, {sw['albedo'][1]}, {sw['albedo'][2]}, 1)",
+                 "albedo_texture = ExtResource(\"tex_wall_a\")",
+                 f"roughness = {sw['roughness']}",
+                 "roughness_texture = ExtResource(\"tex_wall_o\")",
+                 "roughness_texture_channel = 1",
+                 "ao_texture = ExtResource(\"tex_wall_o\")",
+                 "ao_texture_channel = 0",
+                 "normal_texture = ExtResource(\"tex_wall_n\")",
+                 "uv1_scale = Vector3(10, 10, 10)",
+                 "cull_mode = 2",
+             ]},
+            {"id": "ceiling_mat", "type": "StandardMaterial3D",
+             "props": [
+                 f"albedo_color = Color({sc['albedo'][0]}, {sc['albedo'][1]}, {sc['albedo'][2]}, 1)",
+                 "albedo_texture = ExtResource(\"tex_ceil_a\")",
+                 f"roughness = {sc['roughness']}",
+                 "roughness_texture = ExtResource(\"tex_ceil_o\")",
+                 "roughness_texture_channel = 1",
+                 "ao_texture = ExtResource(\"tex_ceil_o\")",
+                 "ao_texture_channel = 0",
+                 "normal_texture = ExtResource(\"tex_ceil_n\")",
+                 "uv1_scale = Vector3(10, 10, 10)",
+                 "cull_mode = 2",
+             ]},
+        ])
+    return resources, texture_ext_resources
 
 
 # Quality A: Interior lighting — ceiling-mounted OmniLight3D nodes.
@@ -490,6 +512,7 @@ def _build_room_nodes(
     directional_color: tuple | None = None,
     directional_energy: float | None = None,
     is_outdoor: bool = False,
+    shell_glb_path = None,
 ) -> List[dict]:
     """Build the list of room nodes (lights, meshes, walls) for the
     given dimensions.
@@ -498,7 +521,15 @@ def _build_room_nodes(
     default DirectionalLight3D (per-theme lighting).
 
     CB-7: When *is_outdoor* is True, skips walls and ceiling, and
-    adds an outdoor ground plane MeshInstance3D."""
+    adds an outdoor ground plane MeshInstance3D.
+
+    Task 6: When *shell_glb_path* is provided, the room's visible
+    floor/walls/ceiling come from the instanced shell.glb (emitted
+    separately in compile_scene).  This function therefore emits the
+    *bodies* for the four walls (so collision still works) but does
+    NOT emit the FloorMesh / Ceiling / Wall*_mesh visible children.
+    The compile_scene wall-loop also short-circuits the wall_mesh
+    emission in this branch so no orphan boxes ship in the .tscn."""
     light_nodes: list[dict] = [
     # WorldEnvironment (Item 1)
     {"name": "WorldEnvironment", "type": "WorldEnvironment", "parent": ".",
@@ -525,24 +556,10 @@ def _build_room_nodes(
          "props": ['navmesh = SubResource("nav_mesh")']},
     ]
 
-    if is_outdoor:
-        # CB-7: Outdoor — ground plane only, no walls or ceiling
-        return light_nodes + common_nodes + [
-            {"name": "GroundPlane", "type": "MeshInstance3D", "parent": ".",
-             "props": [
-                 f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -{_fmt_pos(_OUTDOOR_GROUND_THICKNESS / 2)}, 0)",
-                 'mesh = SubResource("floor_vis_mesh")',
-                 'surface_material_override/0 = SubResource("floor_mat")',
-             ]},
-        ]
-
-    return light_nodes + common_nodes + [
-        # Visible floor mesh (child of existing Floor StaticBody3D)
-        {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
-         "props": [
-             'mesh = SubResource("floor_vis_mesh")',
-             'surface_material_override/0 = SubResource("floor_mat")',
-         ]},
+    # Wall bodies — required for player collision in BOTH branches.
+    # In the GLB shell branch, the visible mesh comes from the GLB
+    # children; the bodies here are collision-only.
+    wall_node_objs = [
         # North wall (z = -room_d/2)
         {"name": "WallN", "type": "StaticBody3D", "parent": ".",
          "props": [
@@ -563,6 +580,35 @@ def _build_room_nodes(
          "props": [
              f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {_fmt_pos(-room_w / 2)}, {_fmt_pos(room_h / 2)}, 0)",
          ]},
+    ]
+
+    if is_outdoor:
+        # CB-7: Outdoor — ground plane only, no walls or ceiling
+        return light_nodes + common_nodes + [
+            {"name": "GroundPlane", "type": "MeshInstance3D", "parent": ".",
+             "props": [
+                 f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -{_fmt_pos(_OUTDOOR_GROUND_THICKNESS / 2)}, 0)",
+                 'mesh = SubResource("floor_vis_mesh")',
+                 'surface_material_override/0 = SubResource("floor_mat")',
+             ]},
+        ]
+
+    if shell_glb_path is not None:
+        # GLB shell branch: walls as collider-only bodies; the
+        # visible shell.glb + stone/timber material overrides are
+        # emitted by compile_scene right after this loop.
+        return light_nodes + common_nodes + wall_node_objs
+
+    # Box-shell fallback: visible FloorMesh + walls (with mesh + collision
+    # children, emitted by compile_scene loop) + Ceiling.
+    return light_nodes + common_nodes + [
+        # Visible floor mesh (child of existing Floor StaticBody3D)
+        {"name": "FloorMesh", "type": "MeshInstance3D", "parent": "Floor",
+         "props": [
+             'mesh = SubResource("floor_vis_mesh")',
+             'surface_material_override/0 = SubResource("floor_mat")',
+         ]},
+    ] + wall_node_objs + [
         # Ceiling
         {"name": "Ceiling", "type": "MeshInstance3D", "parent": ".",
          "props": [
@@ -571,6 +617,7 @@ def _build_room_nodes(
              'surface_material_override/0 = SubResource("ceiling_mat")',
          ]},
     ]
+
 
 # ── Wall collision children definitions ───────────────────────────
 
@@ -594,7 +641,7 @@ _WALL_MESH_NODES: List[dict] = [
      "mesh": "wall_ew_mesh", "mat": "wall_mat"},
     {"name": "WallW_mesh", "type": "MeshInstance3D", "parent": "WallW",
      "mesh": "wall_ew_mesh", "mat": "wall_mat"},
-]
+]   
 
 
 # ── Public helpers ───────────────────────────────────────────────
@@ -1130,7 +1177,7 @@ def compile_scene(
         nav_vertices, nav_polygons = [], []
 
     # ── Build room resources + nodes (moved after navmesh compute) ───
-    room_sub_resources = _build_room_sub_resources(
+    room_sub_resources, texture_ext_resources = _build_room_sub_resources(
         room_w, room_d,
         ambient=ambient_override,
         ambient_energy=ambient_energy_override,
@@ -1151,6 +1198,7 @@ def compile_scene(
         directional_color=dir_color_override,
         directional_energy=dir_energy_override,
         is_outdoor=is_outdoor,
+        shell_glb_path=shell_glb_path,
     )
 
     # ── Write quest data as a JSON file alongside the .tscn ──────
@@ -1292,8 +1340,14 @@ def compile_scene(
     # ── Build .tscn content ─────────────────────────────────────
     lines: list[str] = []
 
-    # Count room shell sub-resources for load_steps
+    # Count room shell sub-resources for load_steps.  Accurately reflects
+    # the branch behaviour since the source list differs between GLB
+    # (2 triplanar materials) and box-shell fallback (4 BoxMeshes + 3
+    # materials) branches.  Shell textures are now ext_resource Texture2D
+    # entries (emitted in the header block), not sub_resource
+    # CompressedTexture2D entries.
     num_room_sub_resources = len(room_sub_resources)
+    num_texture_ext_resources = len(texture_ext_resources)
 
     total_load_steps = (
         len(unique_glbs)                     # GLB ext_resources
@@ -1301,6 +1355,7 @@ def compile_scene(
         + len(used_tag_scripts)              # component scripts
         + num_sub_resources                  # collision sub_resources
         + num_room_sub_resources             # Environment + meshes + materials + wall shapes
+        + num_texture_ext_resources          # shell texture ext_resources (Texture2D)
         + (1 if shell_glb_path is not None else 0)  # Task 6: shell GLB ext_resource
     )
     header = f"[gd_scene load_steps={total_load_steps} format=3]"
@@ -1320,6 +1375,14 @@ def compile_scene(
         shell_name = Path(shell_glb_path).name
         lines.append(
             f'[ext_resource type="PackedScene" path="res://assets/{shell_name}" id="{shell_glb_ext_id}"]'
+        )
+    # Shell texture ext_resources (Texture2D .png references — Godot resolves
+    # to the imported .ctex automatically, same as prop GLB textures).
+    # Emitted as ext_resource header entries, NOT CompressedTexture2D
+    # sub_resources with load_path=.
+    for tex in texture_ext_resources:
+        lines.append(
+            f'[ext_resource type="{tex["type"]}" path="{tex["path"]}" id="{tex["id"]}"]'
         )
     # ExtResources: shell scripts (P4)
     for entry in _SHELL_SCRIPTS:
@@ -1381,7 +1444,9 @@ def compile_scene(
         for prop in room_node.get("props", []):
             lines.append(prop)
         lines.append("")
-        # Emit wall collision child if this is a wall body
+        # Emit wall collision child if this is a wall body (always —
+        # the GLB shell branch still needs invisible StaticBody3D
+        # wall colliders for player physics).
         wall_coll = next(
             (wc for wc in _WALL_COLLISION_NODES if wc["parent"] == room_node["name"]),
             None,
@@ -1393,12 +1458,17 @@ def compile_scene(
             )
             lines.append(f'shape = SubResource("{wall_coll["shape"]}")')
             lines.append("")
-        # Emit wall mesh child if this is a wall body
+        # Task 6 fix: in the GLB shell branch the visible wall mesh comes
+        # from the rendered shell.glb.  Shipping Wall*_mesh children on
+        # top of that stacks invisible boxes over the GLB and was the
+        # root cause of the magenta walls.  Skip wall_mesh emission
+        # entirely when shell_glb_path is provided; the box-shell
+        # fallback below is unchanged.
         wall_mesh = next(
             (wm for wm in _WALL_MESH_NODES if wm["parent"] == room_node["name"]),
             None,
         )
-        if wall_mesh:
+        if wall_mesh and shell_glb_path is None:
             lines.append(
                 f'[node name="{wall_mesh["name"]}" type="{wall_mesh["type"]}" '
                 f'parent="{wall_mesh["parent"]}"]'
@@ -1408,6 +1478,35 @@ def compile_scene(
                 f'surface_material_override/0 = SubResource("{wall_mesh["mat"]}")'
             )
             lines.append("")
+
+    # ── Task 6 fix: Shell instance + stone/timber material overrides ─
+    # When room_shell.ensure_room_shell() returns a Blender-generated
+    # GLB the room's visible geometry comes from that PackedScene.
+    # shell.glb (generated by foundry/blender/build_room_shell.py)
+    # contains two top-level mesh objects named "stone" (walls + roof
+    # boards) and "timber" (floor + rafters + tie-beams + king-post +
+    # ridge).  Instancing shell.glb as `Shell` then redeclaring the
+    # children with `material_override =` propagates the build's
+    # triplanar StandardMaterials per surface — the rest of the GLB's
+    # geometry survives intact.
+    if shell_glb_path is not None and shell_glb_ext_id is not None:
+        lines.append(
+            f'[node name="Shell" parent="." instance=ExtResource("{shell_glb_ext_id}")]'
+        )
+        lines.append("")
+        # Override children of the instanced PackedScene: no `type=` attribute
+        # is emitted because Godot 4 matches children by NAME on the parent
+        # path and inherits the type from the instanced scene's root.  Adding
+        # `type="MeshInstance3D"` was non-standard — Godot parses it but
+        # the override behaviour is undefined, and the `material_override`
+        # line below lands on a child whose declared type may not match
+        # the imported GLB root's first child.  Drop it.
+        lines.append('[node name="stone" parent="Shell"]')
+        lines.append('material_override = SubResource("shell_stone_mat")')
+        lines.append("")
+        lines.append('[node name="timber" parent="Shell"]')
+        lines.append('material_override = SubResource("shell_timber_mat")')
+        lines.append("")
 
     # Quality A: Interior OmniLight3D ceiling lights (after shell, before props)
     for il_node in interior_lights:

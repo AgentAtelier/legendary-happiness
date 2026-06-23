@@ -1857,49 +1857,66 @@ def test_quest_data_has_enemies():
 # ═══════════════════════════════════════════════════════════════════════
 
 def test_shell_texture_sub_resources_present():
-    """Fix-Batch-1 Task 4: The compiled scene's room sub-resources must
-    include CompressedTexture2D entries for floor/wall/ceiling textures,
-    and the StandardMaterial3D entries must reference them."""
-    from scene_compiler import compile_scene, _build_room_sub_resources
+    """Fix-Batch-1 Task 4: The compiled scene's room textures must be
+    emitted as ext_resource Texture2D entries (NOT CompressedTexture2D
+    sub_resources with load_path=).  Godot resolves the .png path to
+    the imported .ctex automatically."""
+    from scene_compiler import _build_room_sub_resources
     
-    # Build the room sub-resources directly (no scene compilation needed)
-    room_subs = _build_room_sub_resources(20.0, 20.0)
+    # Build the room sub-resources directly (no scene compilation needed).
+    # No shell_glb_path → box-shell fallback branch.
+    room_subs, texture_exts = _build_room_sub_resources(20.0, 20.0)
     
-    # Find the CompressedTexture2D sub-resources
+    # There should be ZERO CompressedTexture2D sub-resources.
     tex_subs = [sr for sr in room_subs if sr["type"] == "CompressedTexture2D"]
-    assert len(tex_subs) >= 9, (
-        f"Task 4: expected ≥9 texture sub-resources, got {len(tex_subs)}"
+    assert len(tex_subs) == 0, (
+        f"Task 4: expected 0 CompressedTexture2D sub-resources (textures "
+        f"are now ext_resource Texture2D), got {len(tex_subs)}"
     )
     
-    # Verify each surface (floor, wall, ceiling) has albedo+normal+orm
-    tex_ids = {sr["id"] for sr in tex_subs}
+    # Texture ext_resources must cover each surface (floor, wall, ceiling)
+    # with albedo+normal+orm.
+    tex_ids = {tex["id"] for tex in texture_exts}
+    assert len(texture_exts) >= 9, (
+        f"Task 4: expected ≥9 texture ext_resources, got {len(texture_exts)}"
+    )
     for surf in ("floor", "wall", "ceil"):
         for suffix in ("a", "n", "o"):
             tex_id = f"tex_{surf}_{suffix}"
             assert tex_id in tex_ids, (
-                f"Task 4: missing texture sub_resource '{tex_id}'"
+                f"Task 4: missing texture ext_resource '{tex_id}'"
             )
     
-    # Verify floor/wall/ceiling surfaces have load_path
-    for sr in tex_subs:
-        props = sr.get("props", [])
-        has_load = any("load_path" in p for p in props)
-        assert has_load, f"Task 4: texture {sr['id']} missing load_path"
+    # Each texture ext_resource must have type=Texture2D and a valid .png path
+    for tex in texture_exts:
+        assert tex["type"] == "Texture2D", (
+            f"Task 4: texture {tex['id']} must be type=Texture2D, got {tex['type']!r}"
+        )
+        assert tex["path"].endswith(".png"), (
+            f"Task 4: texture {tex['id']} path must end with .png, got {tex['path']!r}"
+        )
+        assert tex["path"].startswith("res://"), (
+            f"Task 4: texture {tex['id']} path must start with res://, got {tex['path']!r}"
+        )
 
 
 def test_shell_material_references_textures():
     """Fix-Batch-1 Task 4: The floor/wall/ceiling StandardMaterial3D
     entries must reference albedo_texture, normal_texture, and
-    ao_texture/roughness_texture from the ORM."""
+    ao_texture/roughness_texture from the ORM via ExtResource (not
+    SubResource)."""
     from scene_compiler import _build_room_sub_resources
     
-    room_subs = _build_room_sub_resources(20.0, 20.0)
+    room_subs, _texture_exts = _build_room_sub_resources(20.0, 20.0)
     
     for surf, mat_id in [("floor", "floor_mat"), ("wall", "wall_mat"), ("ceiling", "ceiling_mat")]:
         mat = next(sr for sr in room_subs if sr["id"] == mat_id)
         props = "\n".join(mat.get("props", []))
         assert "albedo_texture" in props, (
             f"Task 4: {mat_id} missing albedo_texture"
+        )
+        assert "albedo_texture = ExtResource" in props, (
+            f"Task 4: {mat_id} must reference texture via ExtResource, not SubResource"
         )
         assert "normal_texture" in props, (
             f"Task 4: {mat_id} missing normal_texture"
@@ -2171,4 +2188,253 @@ def test_navmesh_uses_carved_vertices(monkeypatch):
                         lambda *a, **k: ([(1.0, 0.0, 1.0), (2.0, 0.0, 1.0), (1.5, 0.0, 2.0)], [[0, 1, 2]]))
     tscn = _compile_with_shell()
     assert "1, 0, 1" in tscn  # carved vertex present in NavigationMesh
+
+
+# ── Task 6 fix: GLB shell replaces box-shell when Blender emits one ─
+#
+# The previous scene_compiler emitted BOTH:
+#   * the Blender-generated shell.glb (ext_resource registered but
+#     never instanced on a node);
+#   * the inline box-shell floor_mat/wall_mat/ceiling_mat + the
+#     FloorMesh, Wall*_mesh, Ceiling MeshInstance3D nodes.
+# Stacking the box over the GLB produced magenta walls,
+# "Compressed texture file is corrupt" load warnings, and a
+# registered-but-never-loaded GLB ext_resource.
+#
+# These tests pin the corrected contract: the GLB is now actually
+# instanced as a `Shell` node, its `stone` and `timber` child
+# MeshInstance3Ds get the build's triplanar StandardMaterials via
+# `material_override =`, and the box-shell sub_resources + visible
+# nodes are absent in this branch.  The box-shell fallback (when
+# `ensure_room_shell` returns None) is still tested by
+# `test_no_glb_falls_back_to_box_shell` above.
+
+
+@pytest.fixture(autouse=True)
+def _default_box_shell(monkeypatch):
+    """Default ``room_shell.ensure_room_shell`` to None so tests that
+    DON'T explicitly request a GLB take the box-shell fallback branch
+    (their old assertions about floor_mat/wall_mat/ceiling_mat/FloorMesh
+    stay green even when Blender is installed in the test env).
+
+    Tests that want the GLB branch re-monkeypatch with a Path and
+    win — last monkeypatch.setattr wins within a single test.
+    """
+    monkeypatch.setattr("room_shell.ensure_room_shell", lambda *a, **k: None)
+    yield
+
+
+def test_glb_shell_emits_shell_instance_node(monkeypatch, tmp_path):
+    """Task 6 fix: when ``ensure_room_shell`` returns a GLB path, the
+    compiled scene MUST instance shell.glb on a Shell node (not just
+    register it as an unused ext_resource).  Without this assertion
+    the previous bug — registered-but-not-instanced GLB — would slip
+    back in unnoticed.
+    """
+    import room_shell
+    glb = tmp_path / "shell.glb"
+    glb.write_bytes(b"GLB-fake")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    parsed = _parse_scene_text(tscn)
+    shell_nodes = [n for n in parsed["nodes"] if n["name"] == "Shell"]
+    assert len(shell_nodes) == 1, (
+        f"expected exactly 1 Shell node instancing shell.glb, got "
+        f"{len(shell_nodes)}; node names: {[n['name'] for n in parsed['nodes']]}"
+    )
+    assert shell_nodes[0]["parent"] == ".", (
+        f"Shell should be a top-level node (parent='.'), got parent={shell_nodes[0]['parent']!r}"
+    )
+    assert shell_nodes[0]["instance"] is not None, (
+        "Shell node must instance shell.glb via ExtResource (header-line instance=)"
+    )
+
+
+def test_glb_shell_emits_stone_and_timber_children(monkeypatch, tmp_path):
+    """Task 6 fix: shell.glb exposes two top-level meshes named
+    'stone' and 'timber' (built by foundry/blender/build_room_shell.py
+    via ``bpy.data.objects.new(name, me)``).  Overriding them with our
+    triplanar StandardMaterials propagates the right albedo/roughness
+    per surface — stone walls/roof boards, timber floor/rafters/posts.
+    """
+    import room_shell
+    glb = tmp_path / "shell.glb"
+    glb.write_bytes(b"GLB-fake")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    parsed = _parse_scene_text(tscn)
+
+    stone = [n for n in parsed["nodes"] if n["name"] == "stone"]
+    timber = [n for n in parsed["nodes"] if n["name"] == "timber"]
+    assert len(stone) == 1, (
+        f"expected 1 'stone' override child of Shell, got {len(stone)}; "
+        f"node names: {[n['name'] for n in parsed['nodes']]}"
+    )
+    assert len(timber) == 1, (
+        f"expected 1 'timber' override child of Shell, got {len(timber)}"
+    )
+    assert stone[0]["parent"] == "Shell", (
+        f"stone override must be parented to Shell, got {stone[0]['parent']!r}"
+    )
+    assert timber[0]["parent"] == "Shell", (
+        f"timber override must be parented to Shell, got {timber[0]['parent']!r}"
+    )
+    # material_override lines are not parsed by _parse_scene_text
+    # (the prefix isn't in its recognised property list), so verify
+    # the raw text contains the right override + SubResource refs.
+    assert 'material_override = SubResource("shell_stone_mat")' in tscn, (
+        "stone child must apply shell_stone_mat via material_override"
+    )
+    assert 'material_override = SubResource("shell_timber_mat")' in tscn, (
+        "timber child must apply shell_timber_mat via material_override"
+    )
+
+
+def test_glb_shell_drops_box_shell_visible_nodes(monkeypatch, tmp_path):
+    """Task 6 fix: when the GLB shell is present, the inline box-shell
+    visible geometry MUST be absent.  FloorMesh / Ceiling / Wall*_mesh
+    children were the cause of the magenta-wall stacking: the GLB was
+    correctly generated, the box-shell BoxMesh + box-shell tinted
+    StandardMaterials sat on top, and the MagentaMaterial default
+    appeared wherever a box surface received neither the GLB material
+    nor the box-shell material that referenced a 'corrupt' .ctex.
+    """
+    import room_shell
+    glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    parsed = _parse_scene_text(tscn)
+    node_names = {n["name"] for n in parsed["nodes"]}
+
+    # Visible box-shell nodes that MUST disappear in the GLB branch.
+    absent_meshes = [
+        "FloorMesh", "Ceiling",
+        "WallN_mesh", "WallS_mesh", "WallE_mesh", "WallW_mesh",
+    ]
+    for absent in absent_meshes:
+        assert absent not in node_names, (
+            f"GLB shell branch must NOT emit {absent!r} (would stack "
+            f"invisible box over the rendered GLB → magenta walls); "
+            f"got node names: {sorted(node_names)}"
+        )
+    # The wall *bodies* (StaticBody3D) DO stay — they hold the
+    # collision volumes the player walks into.
+    for wall in ("WallN", "WallS", "WallE", "WallW"):
+        assert wall in node_names, (
+            f"GLB shell branch must keep StaticBody3D body {wall!r} "
+            f"for player collision"
+        )
+    assert "Floor" in node_names, (
+        "GLB shell branch must keep the Floor StaticBody3D for player collision"
+    )
+
+
+def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
+    """Task 6 fix: when the GLB shell is present, the box-shell
+    sub_resources (BoxMeshes + tileable textures + tinted
+    StandardMaterials) MUST NOT be in the scene — otherwise
+    godot's importer iterates them, finds missing PNGs, logs
+    ``Compressed texture file is corrupt (Bad header)`` warnings,
+    AND the .import sidecars sit unused in builds/<name>/assets/.
+
+    Only the stone/timber triplanar materials + textures should be
+    emitted in this branch.
+    """
+    import room_shell
+    glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    sub_ids = {sr["id"] for sr in _parse_scene_text(tscn)["sub_resources"]}
+
+    # Box-shell sub_resources that MUST NOT be emitted.
+    absent_subs = [
+        # BoxMeshes
+        "floor_vis_mesh", "wall_ns_mesh", "wall_ew_mesh", "ceiling_mesh",
+        # Tileable shell_*_*.png textures (their absence is what
+        # caused the previous "corrupt" warnings).
+        "tex_floor_a", "tex_floor_n", "tex_floor_o",
+        "tex_wall_a",  "tex_wall_n",  "tex_wall_o",
+        "tex_ceil_a",  "tex_ceil_n",  "tex_ceil_o",
+        # Per-theme tinted StandardMaterials referencing the absent textures.
+        "floor_mat", "wall_mat", "ceiling_mat",
+    ]
+    for sid in absent_subs:
+        assert sid not in sub_ids, (
+            f"GLB shell branch must NOT contain sub_resource {sid!r} "
+            f"(box-shell artifacts from the previous bug); got: {sorted(sub_ids)}"
+        )
+
+    # Stone/timber textures MUST be present — now as ext_resource Texture2D
+    # entries (not sub_resource CompressedTexture2D).  Triplanar
+    # StandardMaterial3Ds remain as sub_resources.
+    parsed = _parse_scene_text(tscn)
+    ext_ids = {r["id"] for r in parsed["ext_resources"]}
+    for tex_id in ("tex_stone_a", "tex_stone_n", "tex_stone_o",
+                   "tex_timber_a", "tex_timber_n", "tex_timber_o"):
+        assert tex_id in ext_ids, (
+            f"GLB shell branch must contain ext_resource {tex_id!r}; "
+            f"ext_resource ids: {sorted(ext_ids)}"
+        )
+    # Verify the ext_resource paths are correct .png references
+    for ext_id, expected_suffix in [
+        ("tex_stone_a", "shell_stone_albedo.png"),
+        ("tex_stone_n", "shell_stone_normal.png"),
+        ("tex_stone_o", "shell_stone_orm.png"),
+        ("tex_timber_a", "shell_timber_albedo.png"),
+        ("tex_timber_n", "shell_timber_normal.png"),
+        ("tex_timber_o", "shell_timber_orm.png"),
+    ]:
+        matching = [r for r in parsed["ext_resources"] if r["id"] == ext_id]
+        assert len(matching) == 1, f"expected 1 ext_resource with id {ext_id}, got {len(matching)}"
+        assert matching[0]["path"].endswith(expected_suffix), (
+            f"{ext_id} path should end with {expected_suffix}, got {matching[0]['path']}"
+        )
+    for sid in ("shell_stone_mat", "shell_timber_mat"):
+        assert sid in sub_ids, (
+            f"GLB shell branch must contain sub_resource {sid!r}; got: {sorted(sub_ids)}"
+        )
+    # Stone/timber texture IDs must NOT appear as sub_resources.
+    for sid in ("tex_stone_a", "tex_stone_n", "tex_stone_o",
+                "tex_timber_a", "tex_timber_n", "tex_timber_o"):
+        assert sid not in sub_ids, (
+            f"Texture {sid!r} must NOT be a sub_resource (it's an ext_resource); "
+            f"got: {sorted(sub_ids)}"
+        )
+
+    # shell.glb must still be referenced in ext_resources.
+    paths = {r["path"] for r in _parse_scene_text(tscn)["ext_resources"]}
+    assert "res://assets/shell.glb" in paths, (
+        f"GLB shell branch missing ext_resource for shell.glb; paths: {sorted(paths)}"
+    )
+
+
+def test_glb_shell_branch_keeps_navigation_and_lights(monkeypatch, tmp_path):
+    """Sanity: the GLB shell branch must still emit the things the
+    gameplay needs independent of the shell choice — environment,
+    NavigationRegion3D, lights, door visual resources, and the
+    per-collider BoxShape3D sub_resources for walls/floor/player
+    (the player still walks on the invisible Floor body).
+    """
+    import room_shell
+    glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    parsed = _parse_scene_text(tscn)
+    sub_types = {sr["type"] for sr in parsed["sub_resources"]}
+    node_names = {n["name"] for n in parsed["nodes"]}
+    assert "Environment" in sub_types, "world_env sub_resource missing"
+    assert "NavigationMesh" in sub_types, "nav_mesh sub_resource missing"
+    assert "NavigationRegion3D" in node_names, "NavigationRegion3D node missing"
+    assert "WorldEnvironment" in node_names
+    assert "DirectionalLight3D" in node_names
+    # Floor body stays (with its collision shape) so the player has
+    # ground to walk on even though no visible FloorMesh is emitted.
+    assert "Floor" in node_names
+    floor_coll = next(
+        (n for n in parsed["nodes"] if n["name"] == "FloorCollision"), None
+    )
+    assert floor_coll is not None, "FloorCollision must remain in GLB branch"
+    assert "WallN_collision" in node_names, (
+        "WallN collision must remain in GLB branch (player physics)"
+    )
 
