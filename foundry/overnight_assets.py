@@ -101,38 +101,49 @@ def _render_image(glb, out_png_dir):
     return paths[0]
 
 
-def prep(limit=0):
+def prep_one(i: int) -> str:
+    """Prep a single spec (build → proxy → image → enqueue). Run me in my OWN
+    process: a hard crash (e.g. a trimesh containment segfault on a degenerate
+    mesh) then loses only this asset, never the batch."""
     WORK.mkdir(parents=True, exist_ok=True)
-    specs = SPECS[:limit] if limit else SPECS
-    queued = skipped = 0
-    for i, spec in enumerate(specs):
-        aid = f"{spec['category']}_{spec['material']}"
+    spec = SPECS[i]
+    aid = f"{spec['category']}_{spec['material']}"
+    glb = str(WORK / f"{aid}.glb")
+    proxy_ply = str(WORK / f"{aid}.proxy.ply")
+    _build_glb(spec, glb)
+    proxy.voxelize_glb(glb, proxy_ply, resolution=64)
+    img = _render_image(glb, WORK / f"{aid}_img")
+    job = {"proxy_path": proxy_ply, "image": img,
+           "category": spec["category"], "material": spec["material"],
+           "target_dims": spec["target_dims"], "seed": 1234,
+           "model_version": "omni-2.1", "priority": 100 + i}
+    res = q.enqueue(job)
+    _log(f"{i+1}/{len(SPECS)} {aid}: {res['status']}")
+    return res["status"]
+
+
+def prep(limit=0):
+    """In-process prep of all specs (per-asset try/except). NOTE: a hard crash
+    (segfault) bypasses this; the overnight runner uses one-process-per-asset."""
+    n = limit or len(SPECS)
+    for i in range(n):
         try:
-            glb = str(WORK / f"{aid}.glb")
-            proxy_ply = str(WORK / f"{aid}.proxy.ply")
-            img_dir = WORK / f"{aid}_img"
-            _build_glb(spec, glb)
-            proxy.voxelize_glb(glb, proxy_ply, resolution=64)
-            img = _render_image(glb, img_dir)
-            job = {"proxy_path": proxy_ply, "image": img,
-                   "category": spec["category"], "material": spec["material"],
-                   "target_dims": spec["target_dims"], "seed": 1234,
-                   "model_version": "omni-2.1", "priority": 100 + i}
-            res = q.enqueue(job)
-            _log(f"{i+1}/{len(specs)} {aid}: {res['status']}")
-            queued += 1
+            prep_one(i)
         except Exception as e:
-            skipped += 1
-            _log(f"{i+1}/{len(specs)} {aid}: SKIPPED — {e}")
+            _log(f"{i+1}/{len(SPECS)}: SKIPPED — {e}")
             traceback.print_exc()
-    _log(f"prep done: {queued} queued, {skipped} skipped, "
-         f"{len(q.pending_jobs())} pending in queue")
+    _log(f"prep done: {len(q.pending_jobs())} pending")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["prep"])
+    ap.add_argument("cmd", choices=["prep", "one", "count"])
+    ap.add_argument("index", nargs="?", type=int, default=0)
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
-    if a.cmd == "prep":
+    if a.cmd == "count":
+        print(len(SPECS))
+    elif a.cmd == "one":
+        prep_one(a.index)
+    elif a.cmd == "prep":
         prep(limit=a.limit)
