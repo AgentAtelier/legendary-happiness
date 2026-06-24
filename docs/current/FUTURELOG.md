@@ -13,6 +13,7 @@ order.
 | **Exterior (#3)** (procedural-only flora/terrain, unified materials; lands on the decomposed realization layer) | Direction set, spec pending | BACKLOG §C |
 | **CP-3 geometry/scale normalization + CP-4 NPR roof** (later facets of the Cohesion Contract) | Designed in coherence stack | BACKLOG §B |
 | **Capability layer** (general game-logic generator beyond fetch-quest) | Open dead-end | Q1 / BACKLOG §A |
+| **Capture-harness headless-GL fix** (switch software path to llvmpipe GL / surfaceless EGL so unattended `capture_scene` renders without a display) | Diagnosed; honesty fixes landed | ROADMAP 0.11 |
 
 **Discipline:** do not start a futurelog thread while M1 is open. New brainstorms produce a spec +
 a futurelog row, not implementation, unless the item is on the critical path to M1.
