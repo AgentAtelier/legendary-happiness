@@ -519,10 +519,12 @@ func _aim_player_at(target: Node3D) -> void:
 	# Position player near target, facing it
 	var offset: Vector3 = Vector3(0, 0, 1.5)
 	_player.global_position = target_pos + offset
+	_player.force_update_transform()  # propagate before look_at (child camera reads global xform)
 
 	# Aim the camera at the target
 	var camera: Camera3D = _player.get_node_or_null("Camera3D") as Camera3D
 	if camera:
+		camera.force_update_transform()
 		camera.look_at(target_pos, Vector3.UP)
 
 

@@ -194,9 +194,12 @@ func _check_target_reachable(all_nodes: Array[Node]):
 	# Aim the player camera at the target
 	var target_pos: Vector3 = target_node.global_position
 	player.global_position = target_pos + Vector3(0, 0, 1.5)
+	player.force_update_transform()  # propagate before look_at (child camera reads global xform)
 	var camera: Camera3D = player.get_node_or_null("Camera3D") as Camera3D
 	if camera:
+		camera.force_update_transform()
 		camera.look_at(target_pos, Vector3.UP)
+		camera.force_update_transform()
 
 	# Step physics frames so transforms settle
 	for _i in range(3):
@@ -246,6 +249,7 @@ func _check_room_shell(all_nodes: Array[Node]):
 	var has_wall_e := false
 	var has_wall_w := false
 	var has_ceiling := false
+	var has_shell := false  # GLB shell (replaces the old FloorMesh/Ceiling box nodes)
 
 	for n in all_nodes:
 		if n.name == "FloorMesh" and n is MeshInstance3D:
@@ -260,22 +264,25 @@ func _check_room_shell(all_nodes: Array[Node]):
 			has_wall_w = true
 		if n.name == "Ceiling" and n is MeshInstance3D:
 			has_ceiling = true
+		if n.name == "Shell":  # the instanced room-shell GLB
+			has_shell = true
 
+	# Floor+ceiling come EITHER from the GLB Shell OR the old box-shell nodes.
+	var has_floor_and_ceiling := has_shell or (has_floor_mesh and has_ceiling)
 	_result["room_shell_ok"] = (
-		has_floor_mesh and has_wall_n and has_wall_s
-		and has_wall_e and has_wall_w and has_ceiling
+		has_floor_and_ceiling and has_wall_n and has_wall_s
+		and has_wall_e and has_wall_w
 	)
 
 	if _result["room_shell_ok"]:
-		_result["checks"].append("PASS: room shell complete (floor mesh + 4 walls + ceiling)")
+		_result["checks"].append("PASS: room shell complete (GLB shell or box floor/ceiling + 4 walls)")
 	else:
 		var missing := PackedStringArray()
-		if not has_floor_mesh: missing.append("FloorMesh")
+		if not has_floor_and_ceiling: missing.append("Shell-or-FloorMesh/Ceiling")
 		if not has_wall_n: missing.append("WallN")
 		if not has_wall_s: missing.append("WallS")
 		if not has_wall_e: missing.append("WallE")
 		if not has_wall_w: missing.append("WallW")
-		if not has_ceiling: missing.append("Ceiling")
 		_result["checks"].append("FAIL: room shell missing: " + ", ".join(missing))
 
 

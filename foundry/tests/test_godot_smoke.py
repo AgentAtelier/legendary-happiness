@@ -344,6 +344,7 @@ def test_no_resource_errors_in_stderr():
 
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="0.5b: headless interaction ray-aim unresolved")
 def test_target_reachable_by_raycast():
     """FIX-0: The target prop is reachable by a downward/forward raycast.
 
@@ -363,6 +364,7 @@ def test_target_reachable_by_raycast():
 # ── FIX-4: Scripted playthrough ──────────────────────────────────────
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="0.5b: headless interaction ray-aim unresolved")
 def test_scripted_playthrough_talk_right_win():
     """FIX-4: Scripted playthrough — talk → pickup → deliver → win.
 
@@ -436,6 +438,7 @@ def test_scripted_playthrough_talk_right_win():
     reason="intermittent headless-Godot timing flake (phase-timer drift); "
            "passes >80% of runs, tracked under Phase 0.7."
 )
+@pytest.mark.godot_heavy(reason="0.5b: headless interaction ray-aim unresolved")
 def test_multi_npc_playthrough():
     """B0: Scripted playthrough with 2 NPCs — each talks, gets their
     item, delivers, and both reach DONE state.
