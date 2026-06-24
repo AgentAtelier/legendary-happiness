@@ -1011,8 +1011,12 @@ def compile_scene(
             lines.append(f'normal_texture = ExtResource("tex_class_{cls}_n")')
             lines.append(f"roughness = {ci['roughness']}")
             lines.append(f"metallic = {ci['metallic']}")
-            lines.append("uv1_triplanar = true")
-            lines.append("uv1_world_triplanar = true")
+            # Phase 3.1: triplanar gating — only natural large-surface classes
+            # (stone/wood/rock/soil) get world-space triplanar UV; small props
+            # (metal/fabric/foliage) use standard UV to avoid moire and save cost.
+            if ci.get("triplanar", True):
+                lines.append("uv1_triplanar = true")
+                lines.append("uv1_world_triplanar = true")
             lines.append("")
 
     # Root (no parent attribute — Godot 4 convention)

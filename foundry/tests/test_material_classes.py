@@ -22,3 +22,13 @@ def test_material_id_mapping():
 
 def test_unknown_defaults_to_stone():
     assert class_for("nonsense_qux") == "stone"
+
+
+# Phase 3.1: triplanar flag
+
+def test_triplanar_flag_on_classes():
+    """3.1: Stone, wood, rock, soil have triplanar=True; metal, fabric, foliage have False."""
+    for cls in ("stone", "wood", "rock", "soil"):
+        assert CLASSES[cls].get("triplanar") is True, f"{cls} should be triplanar=True"
+    for cls in ("metal", "fabric", "foliage"):
+        assert CLASSES[cls].get("triplanar") is False, f"{cls} should be triplanar=False"
