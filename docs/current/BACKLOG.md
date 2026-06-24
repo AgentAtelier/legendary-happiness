@@ -65,8 +65,12 @@ _Last updated: 2026-06-24._
   verification; A16 `2^31` empty stray file — safe to rm.)
 - **Audit Rounds 2–5** — correctness/determinism/robustness, code-quality/conventions, test health,
   targeted performance. Pending; findings fold into the roadmap.
-- **Flaky test** `test_quest_lighting_wiring::test_plan_runs_before_shell` — isolation bug (CLI
-  prompt C out).
+- **Flaky tests** (roadmap 0.7) — `test_quest_lighting_wiring::test_plan_runs_before_shell`
+  (import-isolation) AND `test_godot_smoke::test_multi_npc_playthrough` (intermittent Godot
+  headless flake; passes standalone). Both = false-green risk.
+- **Bake yaw axis-swap (future audit)** — reviewer flagged that `placements[].transform` rotation
+  may need the same Y/Z handling as C2 for *rotated* placements in the Cycles bake. Same class as
+  C2; not yet confirmed. Track for a follow-up correctness pass.
 - **Test-suite time** — `-m "not blender"` gate added (~110s); optional `pytest-xdist` after the
   flake is fixed.
 - **Small chores** — game-mode wrapper into the repo (hub/bin/forge-gamemode tracked copy).

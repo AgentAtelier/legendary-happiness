@@ -8,13 +8,13 @@ item. (The prior capability roadmap is archived at `ROADMAP-2026-06-14-capabilit
 
 | Tier | Agent | Budget | Owns |
 |---|---|---|---|
-| **O** | **Opus (orchestrator)** | tokens (scarcest) | decisions, design forks, module boundaries, final review of risky/architectural/visual, Blender bakes + heavy/long test runs + Godot visual verification, triage |
-| **D** | **DeepSeek V4 Pro** | 5 h/day | drafts specs + implementation plans from O's direction; first-pass review of M's diffs; reasoning-heavy analysis for O to approve; 2nd implementer if repo-access |
-| **M** | **MiniMax M3** | time (generous) | bulk TDD implementation, mechanical/structural refactors, broad investigation |
+| **O** | **Opus (orchestrator)** | tokens (scarcest) | **writes the specs/prompts**, decisions, design forks, module boundaries, final review of risky/architectural/visual, Blender bakes + heavy/long test runs + Godot visual verification, triage |
+| **D** | **DeepSeek V4 Pro** | 5 h/day (default implementer) | TDD implementation, mechanical/structural refactors, broad investigation |
+| **M** | **MiniMax M3** | time (overflow implementer) | same as D; used when O tags a task as a good fit to take pressure off D's clock |
 
-**Pipeline per thread:** O decides → D drafts spec+plan → O approves → M implements (D in parallel
-on independent streams) → D first-pass reviews → O signs off + verifies. _Heavy Blender/test runs
-are always O — cheap in tokens, frees M/D time._
+**Constraint:** only ONE CLI agent runs at a time (serialized by the user) — so D/M are best-fit
+alternatives, not parallel. **Pipeline:** O writes the prompt → D (or M) implements TDD → O reviews
++ verifies (Blender/visual/heavy tests are always O). O tags a prompt "good for MiniMax" when it fits.
 
 ---
 
