@@ -318,6 +318,25 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The detailed room shell couldn't be built, so a simple box shell was used instead.",
     ),
+    # ── Phase 2.4: Resource caps ──
+    "asset.rss_guard": (
+        # technical
+        "process RSS {rss_mb:.0f} MB exceeds threshold {threshold_mb:.0f} MB; falling back to serial build.",
+        # plain
+        "Memory is running low ({rss_mb:.0f} MB used), so assets are being built one at a time to avoid crashing.",
+    ),
+    "navmesh.too_dense": (
+        # technical
+        "navmesh carve skipped: {reason}.",
+        # plain
+        "The room has too many obstacles for pathfinding — using a simple walkable area instead.",
+    ),
+    "flora.scatter_capped": (
+        # technical
+        "scatter_placements capped from {original} to {kept}.",
+        # plain
+        "The terrain had too many plants ({original}), so only {kept} were placed to keep the scene manageable.",
+    ),
     "quest.llm_retry_failed": (
         # technical
         "{npc_id}: multi-call AND grammared-fallback BOTH failed ({exception_class}); fell back to canned default NPC.",

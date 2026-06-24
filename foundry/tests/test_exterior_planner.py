@@ -78,3 +78,31 @@ def test_names_pass_through():
     p = plan_exterior(_brief(), seed=7)
     assert p.names["scene_name"] == "Hollowpine Rest"
     assert p.names["landmark_lore"][0]["landmark_id"] == "building"
+
+
+# Phase 2.4: Scatter cap
+
+def test_scatter_capped_at_max():
+    """2.4c: When scatter produces more than MAX_SCATTER (64) placements,
+    the plan caps them and emits a DP."""
+    from exterior_planner import MAX_SCATTER
+    # Force a high scatter count with a very dense flora_set
+    b = _brief()
+    b["exterior"]["biome_recipe"]["flora_set"] = [
+        {"category": "grass", "weight": 1.0, "density": 0.5},
+        {"category": "tree", "weight": 1.0, "density": 0.3},
+        {"category": "shrub", "weight": 1.0, "density": 0.3},
+    ]
+    p = plan_exterior(b, seed=42, extent=40.0)
+    assert p is not None
+    assert len(p.scatter_placements) <= MAX_SCATTER
+    assert any(d.code == "flora.scatter_capped" for d in p.decisions)
+
+
+def test_scatter_under_cap_no_dp():
+    """2.4c: When scatter is under MAX_SCATTER, no cap DP is emitted."""
+    p = plan_exterior(_brief(), seed=7, extent=20.0)
+    assert p is not None
+    assert len(p.scatter_placements) <= 64
+    codes = {d.code for d in p.decisions}
+    assert "flora.scatter_capped" not in codes

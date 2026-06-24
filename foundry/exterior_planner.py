@@ -10,6 +10,9 @@ Runs beside RoomPlanner. Given a Brief with an enabled ``exterior`` block, it:
 
 Pure + deterministic: identical (brief, seed) → identical plan, fully captured
 in the seeded spec.
+
+Phase 2.4: scatter_placements capped at MAX_SCATTER to prevent OOM-class
+exterior scenes.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ from dataclasses import dataclass
 from typing import List, Tuple
 
 from biome_recipe import validate_biome_recipe
+from decisions import make_decision
 from scatter import scatter
 from terrain_field import Field, height_at, make_field
 
@@ -28,6 +32,9 @@ _SCALE_FOOTPRINT = {"small": 5.0, "medium": 7.5, "large": 10.5}
 _SPAWN_DIST = 3.0          # metres the player stands out from the door
 _FOOTPRINT_MARGIN = 0.5    # exclusion padding around the shell
 _DEFAULT_EXTENT = 40.0
+
+# Phase 2.4: scatter cap
+MAX_SCATTER = 64
 
 
 @dataclass
@@ -101,6 +108,15 @@ def plan_exterior(
 
     placements = scatter(field, biome, int(seed), extent=extent,
                          exclusions=exclusions, slope_max=slope_max)
+
+    # Phase 2.4: cap scatter placements
+    if len(placements) > MAX_SCATTER:
+        decisions.append(make_decision(
+            "flora.scatter_capped", "planner", "assumption",
+            context={"original": len(placements), "kept": MAX_SCATTER},
+            choices=[],
+        ))
+        placements = placements[:MAX_SCATTER]
 
     names = _normalize_names(brief.get("place_names"))
 

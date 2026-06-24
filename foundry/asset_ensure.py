@@ -5,6 +5,8 @@ generator from prose — that round-trip is lossy for the newer decor generators
 (rug/painting). Never mutates the real lexicon — copies it to /tmp first.
 
 P-L-1: Parallel builds using concurrent.futures.ProcessPoolExecutor.
+Phase 2.4: RSS guard prevents OOM by falling back to serial builds when
+resident memory exceeds a configurable threshold.
 """
 from __future__ import annotations
 
@@ -17,7 +19,29 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import List
 
-from decisions import Choice, DecisionPoint
+from decisions import Choice, DecisionPoint, make_decision
+
+# Phase 2.4: RSS threshold for parallel-build guard (3 GB).
+_RSS_THRESHOLD_MB = 3072  # 3 GB
+
+
+def _process_rss_mb() -> float:
+    """Return current process RSS in MB from /proc/self/status.
+
+    Returns 0.0 on any error (non-Linux, permission denied) so the
+    guard degrades safely — if we can't read RSS we assume OK.
+    """
+    try:
+        with open("/proc/self/status", encoding="ascii") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    # Format: "VmRSS:    123456 kB"
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        return float(parts[1]) / 1024.0  # kB → MB
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0.0
 
 
 def _forge_category(category: str, material: str, library_dir: str, lexicon_path: str):
@@ -52,7 +76,7 @@ def ensure_assets(
     lexicon_path: str,
     *,
     builder: Callable = None,
-    max_workers: int = 1,
+    max_workers: int = 2,
 ) -> List[DecisionPoint]:
     """For each unique (category, material) in *manifest* with no GLB in
     *library_dir*, build it via *builder* (default: deterministic
@@ -83,6 +107,18 @@ def ensure_assets(
 
     if not to_build:
         return decisions
+
+    # Phase 2.4: RSS guard — if resident memory exceeds threshold,
+    # fall back to serial builds to avoid OOM from Blender workers.
+    if max_workers > 1:
+        rss_mb = _process_rss_mb()
+        if rss_mb > _RSS_THRESHOLD_MB:
+            decisions.append(make_decision(
+                "asset.rss_guard", "build", "assumption",
+                context={"rss_mb": rss_mb, "threshold_mb": _RSS_THRESHOLD_MB},
+                choices=[],
+            ))
+            max_workers = 1  # serial fallback
 
     # P-L-1: Parallel builds with bounded process pool.
     # Each forge() is independent — safe to run concurrently.

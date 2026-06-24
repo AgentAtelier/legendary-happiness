@@ -24,7 +24,7 @@ def test_builds_only_missing_glbs(tmp_path):
         {"id": "rug_0", "category": "rug", "material": "worn_oak"},           # missing → build
         {"id": "rug_1", "category": "rug", "material": "worn_oak"},           # dup → build once
     ]
-    ensure_assets(manifest, str(lib), str(lex), builder=fake_builder)
+    ensure_assets(manifest, str(lib), str(lex), builder=fake_builder, max_workers=1)
     pairs = [(b[0], b[1]) for b in built]
     assert ("shelf", "wrought_iron") in pairs       # missing → built
     assert ("rug", "worn_oak") in pairs             # decor built deterministically by category

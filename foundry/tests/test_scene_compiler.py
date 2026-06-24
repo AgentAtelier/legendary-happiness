@@ -2181,11 +2181,11 @@ def test_no_plan_keeps_default_lighting():
 # ═══════════════════════════════════════════════════════════════════════
 
 def test_scene_desc_carries_interior_lights():
-    from scene_compiler import build_lighting_scene_desc
+    from lighting_bake import build_scene_desc
     plan = {"sources": [{"type":"hearth","pos":(0,0.5,-3),"color":(1,0.6,0.3),"energy":6,"range":6,"flicker":True}],
             "sun": {"color":(0.5,0.6,0.85),"energy":0.8,"direction":(-0.3,-0.6,-0.5)},
             "sky": {"top":(0.4,0.45,0.6),"ambient_energy":0.4}}
-    desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=64)
+    desc = build_scene_desc(plan, placements=[], tier=2, samples=64)
     assert desc["tier"] == 2 and desc["sun"] == plan["sun"]
     # C2 (Phase 0.2): interior-light pos is swizzled Godot-Y-up → Blender-Z-up
     # so Cycles bakes emitters at the correct Y-coordinate (hearths used to
@@ -2199,18 +2199,18 @@ def test_scene_desc_carries_interior_lights():
 def test_interior_light_pos_remapped_y_to_z_explicit_case():
     """C2 (Phase 0.2): explicit (2.0, 0.5, -3.0) → (2.0, -3.0, 0.5).
 
-    The user's verification case: ``build_lighting_scene_desc`` must
+    The user's verification case: ``build_scene_desc`` must
     swizzle interior-light pos from Godot-Y-up to Blender-Z-up at the
     bake boundary so Cycles doesn't bury emitters under the floor.
     """
-    from scene_compiler import build_lighting_scene_desc
+    from lighting_bake import build_scene_desc
     plan = {"sources": [{"type": "hearth", "pos": (2.0, 0.5, -3.0),
                          "color": (1.0, 0.6, 0.3), "energy": 6.0,
                          "range": 6.0, "flicker": True}],
             "sun": {"color": (0.5, 0.6, 0.85), "energy": 0.8,
                     "direction": (-0.3, -0.6, -0.5)},
             "sky": {"top": (0.4, 0.45, 0.6), "ambient_energy": 0.4}}
-    desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=64)
+    desc = build_scene_desc(plan, placements=[], tier=2, samples=64)
     assert desc["interior_lights"][0]["pos"] == (2.0, -3.0, 0.5), (
         f"expected (x, z, y) swizzle; got {desc['interior_lights'][0]['pos']}"
     )
@@ -2219,12 +2219,12 @@ def test_interior_light_pos_remapped_y_to_z_explicit_case():
 def test_interior_light_other_fields_preserved_after_remap():
     """C2: the swizzle must only touch 'pos'; other source fields
     (type, color, energy, range, flicker) pass through unchanged."""
-    from scene_compiler import build_lighting_scene_desc
+    from lighting_bake import build_scene_desc
     plan = {"sources": [{"type": "torch", "pos": (4.0, 2.2, -3.5),
                          "color": (1.0, 0.7, 0.4), "energy": 3.0,
                          "range": 4.0, "flicker": True}],
             "sun": {}, "sky": {}}
-    desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=24)
+    desc = build_scene_desc(plan, placements=[], tier=2, samples=24)
     remapped = desc["interior_lights"][0]
     assert remapped["type"] == "torch"
     assert remapped["color"] == (1.0, 0.7, 0.4)
@@ -2236,9 +2236,9 @@ def test_interior_light_other_fields_preserved_after_remap():
 
 def test_interior_light_remap_handles_no_sources_gracefully():
     """C2: empty sources list -> empty interior_lights, no KeyError."""
-    from scene_compiler import build_lighting_scene_desc
+    from lighting_bake import build_scene_desc
     plan = {"sources": [], "sun": {}, "sky": {}}
-    desc = build_lighting_scene_desc(plan, placements=[], tier=1, samples=16)
+    desc = build_scene_desc(plan, placements=[], tier=1, samples=16)
     assert desc["interior_lights"] == []
 
 
@@ -2285,13 +2285,125 @@ def test_realtime_omnilight_transform_uses_y_up_pos():
 
 def test_tier0_skips_bake(monkeypatch):
     import lighting_bake
-    import scene_compiler as sc
     called = []
     monkeypatch.setattr(lighting_bake, "bake_scene", lambda *a, **k: called.append(1) or {"tier":0,"status":"realtime","artifacts":[]})
-    sc.bake_and_apply(sc.build_lighting_scene_desc(
+    lighting_bake.bake_and_apply(lighting_bake.build_scene_desc(
         {"sources":[],"sun":{},"sky":{}}, [], tier=0, samples=1), build_dir="/tmp/x")
-    # tier 0 short-circuits inside scene_compiler before calling the baker
+    # tier 0 short-circuits inside lighting_bake before calling the baker
     assert called == []
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Phase 1.2: Canonical build_scene_desc unit tests
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_canonical_build_scene_desc_remaps_interior_light_pos():
+    """Phase 1.2: build_scene_desc does C2 Y→Z remap on interior lights.
+    (2, 0.5, -3) in the plan → (2, -3, 0.5) in the desc."""
+    from lighting_bake import build_scene_desc
+    plan = {
+        "sources": [{"type": "hearth", "pos": (2, 0.5, -3),
+                     "color": (1, 0.6, 0.3), "energy": 6, "range": 6}],
+        "sun": {}, "sky": {},
+    }
+    desc = build_scene_desc(plan, placements=[], tier=2, samples=64)
+    assert desc["interior_lights"][0]["pos"] == (2, -3, 0.5)
+
+
+def test_canonical_build_scene_desc_has_superset_sky_fields():
+    """Phase 1.2: build_scene_desc sky dict includes horizon even when
+    the lighting_plan sky doesn't set it explicitly."""
+    from lighting_bake import build_scene_desc
+    plan = {
+        "sources": [],
+        "sun": {"color": (0.5, 0.6, 0.85)},
+        "sky": {"top": (0.4, 0.45, 0.6), "ambient_energy": 0.4},
+        "environment": {"fog_color": [0.15, 0.15, 0.2]},
+    }
+    desc = build_scene_desc(plan, placements=[], tier=1, samples=16)
+    assert "horizon" in desc["sky"], (
+        f"sky must have horizon key; got {desc['sky']}"
+    )
+    assert desc["sky"]["horizon"] == [0.15, 0.15, 0.2], (
+        f"horizon should default to environment.fog_color; got {desc['sky']['horizon']}"
+    )
+
+
+def test_canonical_build_scene_desc_preserves_explicit_horizon():
+    """Phase 1.2: When horizon is explicitly set in sky, it is not
+    overwritten by the environment fallback."""
+    from lighting_bake import build_scene_desc
+    plan = {
+        "sources": [],
+        "sun": {},
+        "sky": {"top": (0.6, 0.7, 0.85), "horizon": [0.5, 0.5, 0.5], "ambient_energy": 0.5},
+        "environment": {"fog_color": [0.9, 0.1, 0.1]},  # should be ignored
+    }
+    desc = build_scene_desc(plan, placements=[], tier=1, samples=16)
+    assert desc["sky"]["horizon"] == [0.5, 0.5, 0.5], (
+        f"explicit horizon should be preserved; got {desc['sky']['horizon']}"
+    )
+
+
+def test_canonical_build_scene_desc_has_all_keys():
+    """Phase 1.2: build_scene_desc returns the canonical set of top-level keys."""
+    from lighting_bake import build_scene_desc
+    plan = {"sources": [], "sun": {}, "sky": {}}
+    desc = build_scene_desc(plan, placements=[], tier=1, samples=16)
+    for key in ("tier", "samples", "placements", "sun", "sky", "interior_lights"):
+        assert key in desc, f"canonical desc missing key '{key}'"
+
+
+def test_canonical_build_scene_desc_no_sources_defaults():
+    """Phase 1.2: build_scene_desc handles missing sun/sky/sources gracefully.
+    Sky dict always gets horizon injected (even with empty input)."""
+    from lighting_bake import build_scene_desc
+    desc = build_scene_desc({}, placements=[], tier=0, samples=0)
+    assert desc["sun"] == {}
+    assert desc["sky"] == {"horizon": [0.5, 0.5, 0.5]}
+    assert desc["interior_lights"] == []
+    assert desc["tier"] == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Phase 2.4: Resource caps
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_navmesh_carve_walkable_over_max_footprints_returns_empty():
+    """2.4b: more than MAX_FOOTPRINTS (256) obstacles → empty navmesh + DP."""
+    import navmesh
+    decisions = []
+    big_obs = [(float(i), 0.0, 0.1, 0.1) for i in range(300)]
+    verts, polys = navmesh.carve_walkable(40.0, 40.0, big_obs, decisions_out=decisions)
+    assert verts == [] and polys == []
+    assert any(d.code == "navmesh.too_dense" for d in decisions)
+
+
+def test_navmesh_carve_walkable_over_max_area_returns_empty():
+    """2.4b: walkable area > MAX_AREA_M2 (400) → empty navmesh + DP."""
+    import navmesh
+    decisions = []
+    # 50x50 room with 0 wall margin = 2500 m² > 400
+    verts, polys = navmesh.carve_walkable(100.0, 100.0, [], wall_margin=0.0, decisions_out=decisions)
+    assert verts == [] and polys == []
+    assert any(d.code == "navmesh.too_dense" for d in decisions)
+
+
+def test_navmesh_carve_walkable_under_limits_works():
+    """2.4b: within limits → normal carving result."""
+    import navmesh
+    decisions = []
+    verts, polys = navmesh.carve_walkable(8.0, 6.0, [], decisions_out=decisions)
+    assert verts and polys  # normal result
+    assert len(decisions) == 0
+
+
+def test_navmesh_carve_walkable_decisions_out_is_none_ok():
+    """2.4b: decisions_out=None should not crash when caps are hit."""
+    import navmesh
+    big_obs = [(float(i), 0.0, 0.1, 0.1) for i in range(300)]
+    verts, polys = navmesh.carve_walkable(40.0, 40.0, big_obs)
+    assert verts == [] and polys == []
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -3042,3 +3154,117 @@ def test_glb_shell_branch_keeps_navigation_and_lights(monkeypatch, tmp_path):
         "WallN collision must remain in GLB branch (player physics)"
     )
 
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Phase 3.1: Triplanar gating
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_triplanar_only_for_natural_classes():
+    """3.1: Palette material sub_resources for metal/fabric/foliage
+    do NOT emit uv1_triplanar; stone/wood/rock/soil DO."""
+    import scene_compiler as sc
+    from palette import build_palette
+    # Use a manifest with metal and fabric materials so their classes appear
+    man: list = [
+        {"id": "cup_0", "category": "cup", "material": "wrought_iron",
+         "wear": 0.5, "x": 1.0, "y": 0.0, "z": -1.5},
+        {"id": "rug_0", "category": "rug", "material": "linen",
+         "wear": 0.3, "x": -2.0, "y": 0.0, "z": -3.0, "decor": True},
+        {"id": "plant_0", "category": "plant", "material": "moss",
+         "wear": 0.3, "x": -3.0, "y": 0.0, "z": -2.0, "decor": True},
+    ]
+    palette = build_palette("stone_keep", 0)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], man, out, palette=palette)
+        text = Path(out).read_text(encoding="utf-8")
+        # Metal class should NOT have triplanar
+        assert "mat_metal" in text, (
+            f"3.1: expected mat_metal in palette output; text:\n{text[:500]}"
+        )
+        metal_block = _extract_sub_resource_block(text, "mat_metal")
+        assert "uv1_triplanar" not in metal_block, (
+            f"3.1: mat_metal should NOT have uv1_triplanar. block:\n{metal_block}"
+        )
+        # Should not mention fabric class since rug is decor (not in palette_classes)
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_triplanar_stone_wood_have_uv1():
+    """3.1: mat_wood DOES emit uv1_triplanar."""
+    import scene_compiler as sc
+    from palette import build_palette
+    palette = build_palette("stone_keep", 0)
+    man = _minimal_manifest()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], man, out, palette=palette)
+        text = Path(out).read_text(encoding="utf-8")
+        # Stone class (from rough_granite shelf) should have triplanar
+        assert "mat_wood" in text, (
+            f"3.1: expected mat_wood in palette output; text:\n{text[:500]}"
+        )
+        wood_block = _extract_sub_resource_block(text, "mat_wood")
+        assert "uv1_triplanar = true" in wood_block, (
+            f"3.1: mat_wood should have uv1_triplanar. block:\n{wood_block}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def _extract_sub_resource_block(text: str, sub_id: str) -> str:
+    """Extract a sub_resource block by id from .tscn text."""
+    import re
+    pattern = rf'\[sub_resource type="[^"]+" id="{sub_id}"\](.*?)(?=\[sub_resource|\[node|\Z)'
+    m = re.search(pattern, text, re.DOTALL)
+    return m.group(1) if m else ""
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Phase 2.4: RSS guard for asset_ensure
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_asset_ensure_rss_guard_returns_float():
+    """2.4a: _process_rss_mb returns a float >= 0."""
+    from asset_ensure import _process_rss_mb
+    rss = _process_rss_mb()
+    assert isinstance(rss, float)
+    assert rss >= 0.0
+
+
+def test_asset_ensure_rss_guard_triggers_serial_fallback(monkeypatch):
+    """2.4a: When RSS exceeds threshold, parallel builds fall back to
+    serial and emit a DP."""
+    import asset_ensure as ae
+    # Force RSS to appear above threshold
+    monkeypatch.setattr(ae, "_process_rss_mb", lambda: 5000.0)
+    # Use serial-only builder to avoid pickling issues
+    built = []
+    def track_build(cat, mat, lib, lex):
+        built.append((cat, mat))
+        return None
+    import json as _json, tempfile as _tf
+    _lex = _tf.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    _json.dump({"assets": {"table": {"footprint": {"width":1,"depth":1},"height":1}}}, _lex)
+    _lex.close()
+    decisions = ae.ensure_assets(
+        [{"category": "table", "material": "worn_oak"}],
+        library_dir="/tmp/test_rss_guard_lib",
+        lexicon_path=_lex.name,
+        builder=track_build,
+        max_workers=4,
+    )
+    import os as _os
+    _os.unlink(_lex.name)
+    assert any(d.code == "asset.rss_guard" for d in decisions)
+    assert built == [("table", "worn_oak")]  # built serially despite max_workers=4

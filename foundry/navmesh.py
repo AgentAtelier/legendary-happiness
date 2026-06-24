@@ -4,6 +4,9 @@ carve_walkable() returns the room's walkable floor polygon (inset by the wall
 margin) MINUS each prop footprint (inflated by the agent radius), triangulated
 for a Godot NavigationMesh. Pure Python + deterministic. First reusable
 primitive of the level-design branch.
+
+Phase 2.4: Resource caps — MAX_FOOTPRINTS and MAX_AREA_M2 prevent OOM-class
+pathological inputs.
 """
 from __future__ import annotations
 
@@ -12,15 +15,43 @@ from mapbox_earcut import triangulate_float64
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
+from decisions import DecisionPoint, make_decision
+
 Obstacle = tuple[float, float, float, float]  # (cx, cz, half_x, half_z)
 
+# Phase 2.4: Resource caps
+MAX_FOOTPRINTS = 256
+MAX_AREA_M2 = 400
 
-def carve_walkable(room_w, room_d, obstacles, agent_radius=0.3, wall_margin=1.2):
+
+def carve_walkable(room_w, room_d, obstacles, agent_radius=0.3, wall_margin=1.2,
+                   decisions_out: list[DecisionPoint] | None = None):
+    # Phase 2.4: Resource caps — guard against pathological inputs.
+    if len(obstacles) > MAX_FOOTPRINTS:
+        dp = make_decision(
+            "navmesh.too_dense", "build", "assumption",
+            context={"reason": f"{len(obstacles)} footprints exceeds max {MAX_FOOTPRINTS}"},
+            choices=[],
+        )
+        if decisions_out is not None:
+            decisions_out.append(dp)
+        return [], []
+
     inset_w = room_w / 2.0 - wall_margin
     inset_d = room_d / 2.0 - wall_margin
     if inset_w <= 0 or inset_d <= 0:
         return [], []
     base = box(-inset_w, -inset_d, inset_w, inset_d)
+
+    if base.area > MAX_AREA_M2:
+        dp = make_decision(
+            "navmesh.too_dense", "build", "assumption",
+            context={"reason": f"walkable area {base.area:.1f} m² exceeds max {MAX_AREA_M2}"},
+            choices=[],
+        )
+        if decisions_out is not None:
+            decisions_out.append(dp)
+        return [], []
 
     rects = []
     for cx, cz, hx, hz in sorted(obstacles):  # sorted -> order-independent
