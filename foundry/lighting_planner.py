@@ -68,7 +68,7 @@ def plan_lighting(brief: dict, room_size: dict, manifest: list, seed: int = 0) -
         "sun": {"color": (0.5, 0.6, 0.85), "energy": 0.8,
                 "direction": (-0.3, -0.6, -0.5)},
         "sky": {"top": (0.4, 0.45, 0.6), "ambient_energy": 0.4},
-        "environment": {"ambient_color": (0.40, 0.40, 0.45), "ambient_energy": 0.6,
+        "environment": {"ambient_color": (0.40, 0.40, 0.45), "ambient_energy": 0.4,
                         "fog_color": (0.15, 0.15, 0.20), "fog_energy": 0.1,
                         "tonemap": 2, "exposure": 1.2},
         "_hearth_wall": hearth_wall,

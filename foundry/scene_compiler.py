@@ -216,12 +216,12 @@ def _build_room_sub_resources(
          "ssao_sharpness = 0.98",
          # B2: Bloom
          "glow_enabled = true",
-         "glow_intensity = 0.35",
+         "glow_intensity = 0.2",
          "glow_strength = 1.0",
          "glow_bloom = 0.0",
          "glow_blend_mode = 2",
-         "glow_hdr_bleed_threshold = 1.0",
-         "glow_hdr_bleed_scale = 2.0",
+         "glow_hdr_bleed_threshold = 1.3",
+         "glow_hdr_bleed_scale = 1.0",
          "glow_hdr_luminance_cap = 12.0",
          # B2: Fog (exponential — day_night.gd adjusts at runtime)
          "fog_enabled = true",
