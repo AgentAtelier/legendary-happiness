@@ -13,12 +13,17 @@
 #   3. Player has a CollisionShape3D
 #   4. No "Resource file not found" / "non-existent resource" errors
 #      in the output log (checked by Python harness via stderr)
-#   5. The target prop is reachable by a downward/forward raycast
+#   5. Target prop reachable via interaction.gd's REAL camera raycast
+#      (aim player → step frame → interact_under_crosshair returns target)
 #   6. WorldEnvironment node exists (Item 1)
 #   7. DirectionalLight3D exists (Item 1)
 #   8. Visible room shell: FloorMesh, walls, Ceiling (Item 2)
 #   9. Player body MeshInstance3D exists (Item 4)
 #  10. Player is_on_floor() after physics step (Item 4)
+#
+# Phase 0.5: _check_target_reachable now drives interaction.gd's REAL
+# camera raycast instead of a hand-rolled PhysicsRayQuery.  Reachability
+# is proven by the engine's actual interaction pipeline.
 extends SceneTree
 
 var _result := {
@@ -64,7 +69,7 @@ func _init():
 	await process_frame
 	await process_frame
 
-	_run_checks()
+	await _run_checks()
 	_print_and_quit(0 if _result["ok"] else 1)
 
 
@@ -80,12 +85,12 @@ func _run_checks():
 	_check_mesh_count(all_nodes)
 	_check_floor(all_nodes)
 	_check_player_collision(all_nodes)
-	_check_target_reachable(all_nodes)
+	await _check_target_reachable(all_nodes)
 	_check_lights(all_nodes)
 	_check_room_shell(all_nodes)
 	_check_player_body(all_nodes)
 	_check_player_grounded(all_nodes)
-	_check_audio_synth(all_nodes)
+	await _check_audio_synth(all_nodes)
 
 	_result["ok"] = true
 	for check in _result["checks"]:
@@ -155,6 +160,10 @@ func _check_player_collision(all_nodes: Array[Node]):
 
 
 func _check_target_reachable(all_nodes: Array[Node]):
+	"""Phase 0.5: Aim the player camera at a pickup prop, step
+	physics frames so transforms settle, then call interaction.gd's
+	real interact_under_crosshair().  Reachability is proven by the
+	engine's actual interaction raycast — not a probe-local ray."""
 	var target_node: Node3D = null
 	for n in all_nodes:
 		if n is Node3D and n.has_meta("_forge_tag"):
@@ -167,51 +176,39 @@ func _check_target_reachable(all_nodes: Array[Node]):
 		_result["checks"].append("FAIL: no node with _forge_tag='pickup' found")
 		return
 
-	var space_state = target_node.get_world_3d().direct_space_state
-	if space_state == null:
-		_result["checks"].append("FAIL: no physics space state available")
+	# Find the player and interaction node
+	var player: CharacterBody3D = null
+	for n in all_nodes:
+		if n is CharacterBody3D and n.name == "Player":
+			player = n
+			break
+	if player == null:
+		_result["checks"].append("FAIL: cannot check reachability — Player not found")
 		return
 
-	var target_pos = target_node.global_position
-	var ray_origin = target_pos + Vector3(0, 5.0, 0)
-	var ray_end = target_pos + Vector3(0, -1.0, 0)
+	var interaction = get_root().get_node_or_null("/root/Root/Player/Camera3D/InteractionRaycast")
+	if interaction == null:
+		_result["checks"].append("FAIL: InteractionRaycast node not found")
+		return
 
-	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_end)
-	query.collide_with_areas = true
-	query.collide_with_bodies = true
-	query.collision_mask = 0xFFFFFFFF
+	# Aim the player camera at the target
+	var target_pos: Vector3 = target_node.global_position
+	player.global_position = target_pos + Vector3(0, 0, 1.5)
+	var camera: Camera3D = player.get_node_or_null("Camera3D") as Camera3D
+	if camera:
+		camera.look_at(target_pos, Vector3.UP)
 
-	var hit = space_state.intersect_ray(query)
-	if hit and not hit.is_empty():
+	# Step physics frames so transforms settle
+	for _i in range(3):
+		await process_frame
+
+	# Prove reachability via the real interaction pipeline
+	var hit_node = interaction.interact_under_crosshair()
+	if hit_node == target_node:
 		_result["target_reachable"] = true
-		_result["checks"].append("PASS: target prop reachable by raycast")
+		_result["checks"].append("PASS: target prop reachable via real interact_under_crosshair()")
 	else:
-		var player_pos = Vector3(0, 1.0, 0)
-		for n in all_nodes:
-			if n is CharacterBody3D and n.name == "Player":
-				player_pos = n.global_position
-				break
-
-		var to_target = target_pos - player_pos
-		var dist = to_target.length()
-		if dist < 0.01:
-			_result["checks"].append("FAIL: target too close to player for raycast")
-			return
-
-		var dir = to_target.normalized()
-		var ray_origin2 = player_pos
-		var ray_end2 = target_pos + dir * 0.5
-		var query2 = PhysicsRayQueryParameters3D.create(ray_origin2, ray_end2)
-		query2.collide_with_areas = true
-		query2.collide_with_bodies = true
-		query2.collision_mask = 0xFFFFFFFF
-
-		var hit2 = space_state.intersect_ray(query2)
-		if hit2 and not hit2.is_empty():
-			_result["target_reachable"] = true
-			_result["checks"].append("PASS: target prop reachable by forward raycast")
-		else:
-			_result["checks"].append("FAIL: target prop not reachable by raycast")
+		_result["checks"].append("FAIL: interaction.interact_under_crosshair() did not return target (got=" + str(hit_node) + ")")
 
 
 # ── Item 1: Lights ───────────────────────────────────────────────
