@@ -155,7 +155,31 @@ def _resolve_prop_overlaps(
     npc_z: float = -2.0,
     max_iterations: int = 20,
 ) -> list[dict]:
-    """Deterministic AABB separation pass (Item 3, AUDIT-05 P8 broad-phase grid).
+    """Deterministic AABB separation pass.
+
+    FIX-1: provides the no-clip placement pass complementing the
+    StaticBody3D + CollisionShape3D prop conversion that
+    compile_scene applies upstream.  Without this separation, props
+    would emit intersecting colliders and ``PhysicsServer3D`` would
+    log warnings on every sim tick.  Per FIX-1 sub-fix:
+
+    - **FIX-1a** (GLB instancing on header line): ``instance=ExtResource(...)``
+      lives on the ``[node]`` header rather than as a child property
+      line, so a single PackedScene reference resolves each prop and
+      lets ``_resolve_prop_overlaps`` reason about its collider
+      sibling at well-known paths.
+    - **FIX-1d** (CollisionShape3D on props): prop AABBs derive from
+      ``COLLISION_SIZES``; this function uses those same AABBs to
+      decide when to push a prop.
+    - **FIX-1e** (player-spawn guard): the same AABB-repulsion pass
+      that separates prop-vs-prop and prop-vs-NPC also keeps props
+      clear of the player-spawn origin; ``compile_scene`` calls
+      ``_resolve_prop_overlaps`` with the NPC coordinates at the
+      player-spawn position so one AABB pass covers both.
+
+    Item 3: pushes overlapping props apart so they don't intersect
+    each other or the NPC.  Processes in sorted entity-id order for
+    determinism.
 
     Pushes overlapping props apart so they don't intersect each other
     or the NPC.  Processes in sorted entity-id order for determinism.

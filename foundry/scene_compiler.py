@@ -655,10 +655,45 @@ def compile_scene(
                    provided (keeps tests deterministic).
         room_size: Optional dict with ``w`` (width) and ``d`` (depth)
                    keys to size the room shell.  Defaults to 20×20.
+        theme: Optional theme name (``hermit``, ``blacksmith``,
+               ``dungeon``, ...).  Drives per-theme DirectionalLight
+               colour + ambient/fog tint via room_control.LIGHTING_TABLE.
+        camera_mode: ``"first"`` (eye-level, default) or ``"third"``
+                     (over-the-shoulder).  U-7.
+        room_graph: CB-4 multi-room graph; emit door entities + their
+                    metadata when provided (see ``current_room``).
+        current_room: CB-4 ``(x, z)`` tuple identifying which room this
+                      scene represents within the multi-room graph.
         room_type: "indoor" (walls+ceiling) or "outdoor" (terrain floor,
                    no walls, biome atmosphere).  CB-7.
         exterior_plan: For outdoor rooms, the ExteriorPlan dict from
                        exterior_planner (field, biome, scatter_placements).
+        lighting_plan: Phase 0.3 generative lighting plan.  When
+                       provided, scene emits per-source OmniLight3D
+                       (hearth/torch/candle/window) plus per-theme
+                       ocean/sky/fog plumbing.  Without one, the
+                       default per-theme rig is used.
+        palette: Phase 0.6b scene palette mapping role → base colour.
+                 When provided, prop models override their imported
+                 material with per-class StandardMaterial3D
+                 (texture + albedo + ORM) so the palette wins over the
+                 GLB's baked colours.
+        decisions_out: Phase 0.3 mutable list — scene compiler pushes
+                       Decision Points (e.g. ambiguous lighting,
+                       navmesh.too_dense) here.  The Build Report
+                       consumes it after compile.  *Positional or
+                       keyword* (lies before the ``*,`` separator).
+                       Only ``shell_glb_path`` + ``shell_decisions``
+                       below are keyword-only.
+        shell_glb_path: AUDIT-05 P12 caller-resolved path to the
+                        cached shell GLB.  ``None`` keeps the inline
+                        box-shell fallback.  Resolving the cache is
+                        no longer this function's job (de-dup).
+                        **Keyword-only** — pass by name.
+        shell_decisions: AUDIT-05 P12 decision points emitted by the
+                         cache resolver; forwarded into
+                         ``decisions_out`` when both are supplied.
+                         **Keyword-only** — pass by name.
 
     Returns:
         The *output_path* (so callers can assert the file was written).
