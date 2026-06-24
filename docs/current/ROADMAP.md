@@ -32,7 +32,7 @@ Make the system correct and *loud*. Mostly independent → run M and D in parall
 | 0.6 | **Palette harmony + wiring** — grey anchors stay grey (don't override anchor saturation); pass `palette=` through the build path | prompts A/B | M |
 | 0.7 | **Flaky test + explicit Blender markers** — DI instead of `importlib.reload`; mark the real Blender tests explicitly (retire the source-sniff heuristic) | T10/T11 | M |
 | 0.8 | **Determinism constants + complete cache keys** — `_constants.py` (seed 42, sun bases); add palette + GLB-content hash to `bake_key` / room_shell key | D4/D5/C1/D1/P2 | M |
-| 0.9 | **Hygiene** — `TAG-LEGEND.md`; add `ruff`/`pyflakes` lint (auto-fixes dead imports + hint style); standardize `logging` | Q5/Q6/Q19/Q10/Q12 | M |
+| 0.9 | **Hygiene (FRONT OF QUEUE)** — `ruff` lint + scripts/lint.sh (recurrence-preventer, auto-fixes dead imports/hint-style), `TAG-LEGEND.md`, `ACCEPTED.md` won't-fix register, quarantine the red lavapipe test. *(0.9b print→logging is a separate later task.)* | Q5/Q6/Q12/Q16/Q19 | **good-for-M** |
 | 0.10 | **Brief+seed+plan persistence** — write the Brief/seed/plan as a re-loadable artifact per build (insurance for iterative editing) | BACKLOG §A | D drafts · M implements |
 | 0.11 | **Capture-harness reliability.** Landed: room-aware AABB camera, `process_frame` (headless hang), Parse-Error stderr guard, loud dummy-renderer error, missing class-texture stopgap. **Remaining headless-GL fix (Vulkan-lavapipe → llvmpipe GL/surfaceless) PARKED → FUTURELOG** — its main consumer (Cohesion auto-correct probe) is parked, and M1's visual gate is the user opening builds in real Godot. | parked | — |
 
@@ -88,5 +88,7 @@ under two palettes). **Step back here and choose direction.**
 ---
 
 **Sequencing:** Phase 0 is parallel and unblocks judgment; Phase 1 is the keystone, gated on
-0.4+0.5; Phase 2 overlaps Phase 1; Phase 3 gates M1. Fix-first within Phase 0: **0.1 (C4)** and
-**0.2 (C2)** ship correct gameplay/lighting immediately.
+0.4+0.5; Phase 2 overlaps Phase 1; Phase 3 gates M1. Fix-first within Phase 0: **0.1 (C4)** and **0.2 (C2)** shipped correct gameplay/lighting. **0.9
+(hygiene/lint) pulled to the front** — the linter prevents recurrence (less future-audit noise) and
+auto-cleans every later agent commit (better AI output). After Phase 1's decompose, a quick
+second mini-audit mops up what the refactor didn't absorb.
