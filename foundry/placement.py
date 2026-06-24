@@ -83,20 +83,24 @@ def _find_open_npc_positions(
 
     prop_footprints = _get_prop_footprints(manifest, clearance=clearance)
 
-    def _overlaps(px: float, pz: float, ox: float, oz: float, ohx: float, ohz: float) -> bool:
-        return abs(px - ox) < (npc_hx + ohx) and abs(pz - oz) < (npc_hz + ohz)
+    def _overlaps(npc_x: float, npc_z: float,
+                  other_x: float, other_z: float,
+                  other_hx: float, other_hz: float) -> bool:
+        return (abs(npc_x - other_x) < (npc_hx + other_hx)
+                and abs(npc_z - other_z) < (npc_hz + other_hz))
 
     def _valid_npc_spot(x: float, z: float, placed: list[tuple[float, float]]) -> bool:
         # Clear of player spawn
         if abs(x) < (_PLAYER_CLEAR_RADIUS + npc_hx) and abs(z) < (_PLAYER_CLEAR_RADIUS + npc_hz):
             return False
         # Clear of prop footprints
-        for (px, pz, phx, phz) in prop_footprints:
-            if _overlaps(x, z, px, pz, phx, phz):
+        for (prop_x, prop_z, prop_hx, prop_hz) in prop_footprints:
+            if _overlaps(x, z, prop_x, prop_z, prop_hx, prop_hz):
                 return False
         # Clear of other NPCs
-        for (ox, oz) in placed:
-            if _overlaps(x, z, ox, oz, npc_hx + clearance, npc_hz + clearance):
+        for (other_x, other_z) in placed:
+            if _overlaps(x, z, other_x, other_z,
+                         npc_hx + clearance, npc_hz + clearance):
                 return False
         return True
 
