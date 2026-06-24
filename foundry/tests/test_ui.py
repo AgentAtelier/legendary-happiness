@@ -12,7 +12,7 @@ Tests cover:
 from __future__ import annotations
 
 import json
-import time
+import threading
 
 import pytest
 from fastapi.testclient import TestClient
@@ -54,9 +54,23 @@ def _fake_forge(spec: dict, decisions: list, library_dir: str) -> dict:
 
 
 @pytest.fixture
-def client(tmp_path):
-    """Create a TestClient wired with the fake forge pipeline."""
+def client(tmp_path, monkeypatch):
+    """Create a TestClient wired with the fake forge pipeline.
+
+    Forge jobs run on a daemon background thread in production, but the
+    fakes are instant — replacing ``Thread.start`` with a synchronous
+    ``Thread.run`` lets the POST /forge call return *after* the job
+    completes, so test assertions can read state directly with no
+    ``time.sleep`` and no poll loop (P21 audit).
+    """
     from ui.app import app, configure_forge
+
+    def _sync_start(self: threading.Thread) -> None:
+        # Run the target inline so the background job finishes before
+        # POST /forge returns; tests assert on state immediately.
+        self.run()
+
+    monkeypatch.setattr(threading.Thread, "start", _sync_start)
 
     # Reset app-level injectables between tests
     configure_forge(
@@ -94,20 +108,18 @@ def test_forge_empty_request_returns_422(client):
 
 
 def test_job_poll_reaches_done(client):
-    """POST /forge then poll GET /jobs/{id} → eventually 'done'."""
+    """POST /forge then GET /jobs/{id} → 'done'.
+
+    The ``client`` fixture monkey-patches ``Thread.start`` to run
+    synchronously, so the job has already completed by the time POST
+    returns — we can read the state directly without polling.
+    """
     r = client.post("/forge", json={"request": "an old table"})
+    assert r.status_code == 200
     job_id = r.json()["job_id"]
 
-    # Poll until done (fakes are fast, should be done almost instantly)
-    for _ in range(20):
-        r2 = client.get(f"/jobs/{job_id}")
-        assert r2.status_code == 200
-        if r2.json()["status"] == "done":
-            break
-        time.sleep(0.05)
-    else:
-        pytest.fail("Job did not reach 'done' state")
-
+    r2 = client.get(f"/jobs/{job_id}")
+    assert r2.status_code == 200
     result = r2.json()
     assert result["status"] == "done"
     assert result["result"]["glb_path"] != ""
@@ -134,21 +146,20 @@ def test_decisions_endpoint_returns_list(client):
 
 
 def test_decisions_populated_after_forge(client):
-    """After a forge job completes, /decisions includes the fired decisions."""
-    # Forge something
+    """After a forge job completes, /decisions includes the fired decisions.
+
+    The ``client`` fixture runs the background job synchronously, so
+    the forge has already completed by the time we hit ``/decisions``.
+    """
     r = client.post("/forge", json={"request": "a wooden table"})
+    assert r.status_code == 200
     job_id = r.json()["job_id"]
 
-    # Wait for completion
-    for _ in range(20):
-        r2 = client.get(f"/jobs/{job_id}")
-        if r2.json()["status"] == "done":
-            break
-        time.sleep(0.05)
-    else:
-        pytest.fail("Job did not reach 'done' state")
+    # Confirm job is done (sync thread fixture makes this immediate).
+    r2 = client.get(f"/jobs/{job_id}")
+    assert r2.status_code == 200
+    assert r2.json()["status"] == "done"
 
-    # Check decisions
     r3 = client.get("/decisions")
     decisions = r3.json()["decisions"]
     assert len(decisions) >= 1
