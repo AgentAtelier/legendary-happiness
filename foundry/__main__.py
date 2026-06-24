@@ -435,4 +435,5 @@ def _plan_room_with_fallback(
 
 
 
-sys.exit(main())
+if __name__ == "__main__":
+    sys.exit(main())

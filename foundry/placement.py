@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from _constants import DEFAULT_RNG_SEED
 from category_registry import COLLISION_SIZES
+from decisions import make_decision
 
 # ── Constants ─────────────────────────────────────────────────────
 
@@ -154,6 +155,7 @@ def _resolve_prop_overlaps(
     npc_x: float = 0.0,
     npc_z: float = -2.0,
     max_iterations: int = 20,
+    decisions_out: list | None = None,
 ) -> list[dict]:
     """Deterministic AABB separation pass.
 
@@ -212,6 +214,11 @@ def _resolve_prop_overlaps(
     if len(separable) == 0:
         return result  # no separable props to check
 
+    # AUDIT-03 Q17: track unique prop ids the NPC pushed so we can
+    # emit one summary Decision Point at the end (vs one per
+    # intersection, which fires repeatedly across max_iterations).
+    npc_pushed_ids: set = set()
+
     # NPC half-extents (humanoid)
     npc_hx, _, npc_hz = _prop_half_extents("humanoid")
 
@@ -231,6 +238,7 @@ def _resolve_prop_overlaps(
         return _resolve_overlaps_bruteforce(
             result, separable, prop_data,
             npc_x, npc_z, npc_hx, npc_hz, max_iterations,
+            npc_pushed_ids,
         )
 
     for _iteration in range(max_iterations):
@@ -294,6 +302,7 @@ def _resolve_prop_overlaps(
             oz = (hz + npc_hz) - abs(pz - npc_z)
             if ox > 0 and oz > 0:
                 moved = True
+                npc_pushed_ids.add(entry.get("id", ""))
                 if ox < oz:
                     push = ox + 0.01
                     if px <= npc_x:
@@ -350,6 +359,19 @@ def _resolve_prop_overlaps(
         if not moved:
             break
 
+    # AUDIT-03 Q17: emit one summary placement.npc_clamp_triggered DP
+    # if any prop was pushed by the NPC across all iterations.  Only
+    # the broad-phase grid path reaches this emission (the bruteforce
+    # fallback returns early above).
+    if decisions_out is not None and npc_pushed_ids:
+        decisions_out.append(make_decision(
+            code="placement.npc_clamp_triggered",
+            stage="placement",
+            severity="warning",
+            context={"count": len(npc_pushed_ids)},
+            choices=(),
+        ))
+
     return result
 
 
@@ -362,6 +384,7 @@ def _resolve_overlaps_bruteforce(
     npc_hx: float,
     npc_hz: float,
     max_iterations: int,
+    npc_pushed_ids: set,
 ) -> list[dict]:
     """O(N^2) AABB separation — P8 fallback for trivially small N (≤2).
 
@@ -381,6 +404,7 @@ def _resolve_overlaps_bruteforce(
             oz = (hz + npc_hz) - abs(pz - npc_z)
             if ox > 0 and oz > 0:
                 moved = True
+                npc_pushed_ids.add(entry.get("id", ""))
                 if ox < oz:
                     push = ox + 0.01
                     if px <= npc_x:

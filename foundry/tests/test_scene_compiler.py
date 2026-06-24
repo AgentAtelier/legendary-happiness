@@ -920,6 +920,114 @@ def test_resolve_prop_overlaps_falls_back_for_tiny_n():
     )
 
 
+# ════════════════════════════════════════════════════════════════════════
+#  AUDIT-03 Q17: placement.npc_clamp_triggered Decision Point emission
+# ════════════════════════════════════════════════════════════════════════
+
+def test_npc_clamp_emits_decision_point_when_pushed():
+    """Q17: _resolve_prop_overlaps emits ONE summary
+    placement.npc_clamp_triggered DP per call when the NPC pushes props.
+
+    The prop is placed exactly at the NPC position so the NPC-vs-prop
+    AABB branch fires.  Three props ensure we take the broad-phase
+    grid path (≥3 separable), so the post-iteration DP emission runs
+    (the bruteforce fallback returns early without emitting).
+    """
+    decisions_out: list = []
+    manifest: list[PlacedEntity] = [
+        {"id": "p0", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+        {"id": "p1", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+        {"id": "p2", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+    ]
+    _resolve_prop_overlaps(
+        manifest, npc_x=0.0, npc_z=-2.0, decisions_out=decisions_out,
+    )
+    codes = [d.code for d in decisions_out]
+    assert "placement.npc_clamp_triggered" in codes, (
+        f"expected placement.npc_clamp_triggered DP, got codes: {codes}"
+    )
+    dp = next(d for d in decisions_out if d.code == "placement.npc_clamp_triggered")
+    assert dp.stage == "placement"
+    assert dp.severity == "warning"
+    assert dp.context["count"] >= 1, (
+        f"DP context.count should be ≥1, got {dp.context.get('count')!r}"
+    )
+
+
+def test_npc_clamp_silent_when_no_push():
+    """Q17: when no prop overlaps the NPC AABB, no DP is emitted.
+    Mirror of the 'emits' test using props placed far from the NPC.
+    """
+    decisions_out: list = []
+    manifest: list[PlacedEntity] = [
+        {"id": "p_far_0", "category": "table", "material": "worn_oak",
+         "x": 10.0, "y": 0.0, "z": 10.0},
+        {"id": "p_far_1", "category": "shelf", "material": "rough_granite",
+         "x": -10.0, "y": 0.0, "z": -10.0},
+        {"id": "p_far_2", "category": "cabinet", "material": "wrought_iron",
+         "x": 10.0, "y": 0.0, "z": -10.0},
+    ]
+    _resolve_prop_overlaps(
+        manifest, npc_x=0.0, npc_z=-2.0, decisions_out=decisions_out,
+    )
+    assert decisions_out == [], (
+        f"unexpected DPs when props are far from NPC: "
+        f"{[d.code for d in decisions_out]}"
+    )
+
+
+def test_npc_clamp_decisions_out_is_none_does_not_crash():
+    """Q17: caller can omit decisions_out (the default).  Function still
+    returns the separated manifest and does not raise.
+    """
+    decisions_out: list = []
+    manifest: list[PlacedEntity] = [
+        {"id": "p0", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+        {"id": "p1", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+        {"id": "p2", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+    ]
+    result = _resolve_prop_overlaps(
+        manifest, npc_x=0.0, npc_z=-2.0,  # no decisions_out
+    )
+    assert len(result) == 3
+    # Proves the function still completes its work without list emission.
+    assert decisions_out == []
+
+
+def test_npc_clamp_dp_is_deduplicated_per_call():
+    """Q17: even when the NPC pushes the same props across multiple
+    iterations, only ONE DP is emitted per call (unique-prop-id set).
+    """
+    decisions_out: list = []
+    # Cluster near the NPC — same overlap persists across all iterations,
+    # so without dedup we'd emit many DPs.
+    manifest: list[PlacedEntity] = [
+        {"id": "p_clus_0", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+        {"id": "p_clus_1", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+        {"id": "p_clus_2", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": -2.0},
+    ]
+    _resolve_prop_overlaps(
+        manifest, npc_x=0.0, npc_z=-2.0,
+        max_iterations=20, decisions_out=decisions_out,
+    )
+    npc_clamp_dps = [
+        d for d in decisions_out
+        if d.code == "placement.npc_clamp_triggered"
+    ]
+    assert len(npc_clamp_dps) == 1, (
+        f"expected exactly 1 npc_clamp DP per call, got {len(npc_clamp_dps)}"
+    )
+
+
 # ── Item 4: Player body ─────────────────────────────────────────
 
 def test_player_body_mesh_node_exists():

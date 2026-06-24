@@ -263,4 +263,6 @@ def main():
         _save(albedo, normal, orm, out_dir, prefix)
 
 
-main()
+if __name__ == "__main__":
+    main()
+

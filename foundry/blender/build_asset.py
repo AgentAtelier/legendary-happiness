@@ -2532,4 +2532,6 @@ def main():
     _inject_occlusion_texture(out_glb)
 
 
-main()
+if __name__ == "__main__":
+    main()
+

@@ -353,6 +353,19 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The quest generator failed completely for one NPC, so a default NPC with canned dialogue was used.",
     ),
+    # AUDIT-03 Q17: surface NPC-prop clearance pushes from the
+    # placement pass. _resolve_prop_overlaps pushes props away from
+    # the NPC when their AABBs intersect; we collect the *unique* prop
+    # ids that got pushed across all max_iterations and emit ONE
+    # summary Decision Point per function call (instead of one per
+    # intersection, which can fire repeatedly across iterations and
+    # drown the build report).
+    "placement.npc_clamp_triggered": (
+        # technical
+        "npc_clamp pushed {count} prop(s) in placement pass.",
+        # plain
+        "The NPC position was nudged into some prop placements ({count} adjusted) so they don't intersect.",
+    ),
 }
 
 
