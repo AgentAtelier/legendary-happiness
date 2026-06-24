@@ -17,6 +17,21 @@ prompt contradicts this file, the task prompt wins — but call out the conflict
 - **Visual QA** lives in `foundry/visual/` (V): screenshot harness + Qwen3-VL checks + CLIP aesthetic +
   batch (`python -m foundry visual-eval`). The VLM/Claude never replaces the human as final visual judge.
 
+## Lint gate (Phase 0.9 — recurrence-preventer)
+
+Run **before** every commit that touches Python under `foundry/` or `hub/`:
+
+```bash
+scripts/lint.sh                # ruff check only
+scripts/lint.sh --fix          # apply safe auto-fixes first, then re-check
+```
+
+The linter is `ruff` (installed via `foundry/requirements-dev.txt`); rule selection is
+`E + F + I + UP + B` (with project-specific ignores enumerated in `docs/current/ACCEPTED.md`).
+**Safe auto-fixes only** — `UP006`/`UP007`/`UP024` are deferred to the Phase 1.4
+`scene_compiler.py` decompose (see `AUDIT-03 Q12`).  Distinct from `scripts/check.sh`,
+which adds `ruff format --check` + the 500-line file-length gate.
+
 ## 🔴 Always run the FULL test suite — never a subset
 
 **Every** implementation turn must end with BOTH commands, and you must **paste the literal final
