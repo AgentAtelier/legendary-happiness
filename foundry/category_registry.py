@@ -174,6 +174,8 @@ REGISTRY: Dict[str, dict] = {
             "radius": (0.08, 0.2),
             "height": (0.3, 0.8),
         },
+        # Phase 1.4: relocated from _LIGHT_EMITTING in scene_compiler
+        "emitter": {"color": (1.0, 0.7, 0.3), "energy": 2.5, "range": 4.0, "negative": False},
     },
     "pot": {
         "kind": "furniture",
@@ -405,6 +407,8 @@ REGISTRY: Dict[str, dict] = {
             "radius": (0.02, 0.05),
             "height": (0.06, 0.15),
         },
+        # Phase 1.4: relocated from _LIGHT_EMITTING in scene_compiler
+        "emitter": {"color": (1.0, 0.8, 0.4), "energy": 1.2, "range": 2.0, "negative": False},
     },
     "dagger": {
         "kind": "carryable",
