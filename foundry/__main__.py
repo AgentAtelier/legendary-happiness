@@ -249,6 +249,22 @@ def _cmd_quest(args: list[str]) -> int:
     manifest_path = build_path / "scenes" / "main_manifest.json"
     manifest_path.write_text(_json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
+    # Phase 0.10 — Brief + seed + plan persistence (insurance for the
+    # future "adjust the scene with a follow-up prompt" loop). One
+    # deterministic, re-loadable artifact per build.
+    from build_state import save_build_state
+    save_build_state(
+        build_path,
+        brief=brief,
+        seed=seed,
+        theme=room_theme,
+        room_size=room_size,
+        lighting_plan=lighting_plan,
+        palette=palette,
+        manifest_ref=str(manifest_path.relative_to(build_path)),
+    )
+    print(f"[quest] Build state saved: {build_path / 'build_state.json'}")
+
     # Show quest data path
     data_path = str(build_path / "scenes" / "main_quest_data.json")
     print(f"[quest] Quest data: {data_path}")
