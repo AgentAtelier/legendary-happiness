@@ -128,6 +128,17 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model's '{field}' line was unusable, so I used a template instead.",
     ),
+    "quest.dialogue_target_mismatch": (
+        # technical
+        "dialogue field {field} failed category-ref check (original: {original!r}); "
+        "the ask/thank line should mention '{category}' (or a known synonym) so "
+        "the player knows what to fetch. C4: winnable-by-manifest, "
+        "unplayable-by-text.",
+        # plain
+        "The model's '{field}' line didn't name the requested item ({category}); "
+        "a template line is used instead — otherwise the quest would be "
+        "winnable-by-manifest but unplayable-by-text.",
+    ),
     "quest.no_eligible_target": (
         # technical
         "manifest has no eligible target props for a fetch quest.",

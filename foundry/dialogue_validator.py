@@ -33,6 +33,48 @@ _QUEST_WORDS: set[str] = {
     "visitor", "traveler", "stranger", "friend",
 }
 
+# ── C4: Category synonyms (Phase 0.1) ──────────────────────────
+# A quest cue line (ask/thank) must reference the TARGET CATEGORY — its
+# word OR a known synonym — so the player is told which physical thing
+# to fetch.  Without this, "Find my treasure." passes for category="book"
+# (verb-only match) and the resulting quest is winnable-by-manifest but
+# unplayable-by-text.  Lookup uses ``.get(default=[])`` so unknown
+# categories fall back to the bare-word check only — no KeyError.
+_CATEGORY_SYNONYMS: dict[str, list[str]] = {
+    "book":         ["tome", "volume", "manuscript", "ledger", "scroll"],
+    "chest":        ["trunk", "coffer", "footlocker"],
+    "weapon-rack":  ["rack", "armory stand"],
+    "coin-pouch":   ["pouch", "purse", "sack", "coinpurse"],
+    "cup":          ["goblet", "chalice", "mug", "tankard"],
+    "gem":          ["jewel", "stone", "crystal"],
+    "bottle":       ["flask", "vial", "phial", "jug"],
+    "scroll":       ["parchment", "document", "scroll"],
+    "dagger":       ["knife", "blade", "dirk"],
+    "candle":       ["taper", "candlestick"],
+    "key":          ["skeleton key", "passkey"],
+    "ring":         ["band", "signet", "circlet"],
+    "barrel":       ["cask", "keg", "tun"],
+    "crate":        ["box", "case", "carton"],
+    "shelf":        ["bookshelf", "shelving", "mantel"],
+    "chair":        ["seat"],
+    "stool":        ["seat"],
+    "bench":        ["seat", "pew"],
+    "table":        ["desk", "counter"],
+    "desk":         ["bureau", "table"],
+    "cabinet":      ["cupboard", "dresser", "commode"],
+    "wardrobe":     ["closet", "armoire"],
+    "lantern":      ["lamp", "light"],
+    "pot":          ["cauldron", "kettle", "urn", "jar", "bowl", "vase"],
+    "planter":      ["pot", "flowerpot"],
+    "pillar":       ["column", "post", "obelisk"],
+    "partition":    ["screen", "divider"],
+    "ladder":       ["stepladder", "stairs"],
+    "rug":          ["carpet", "mat", "tapestry"],
+    "painting":     ["portrait", "picture", "canvas"],
+    "humanoid":     ["person", "man", "woman", "figure", "statue"],
+    # Edge-case shapes — fall-through to bare category word on lookup miss.
+}
+
 # EB-6: Idle-bark words — a line must contain at least one to pass
 # relevance for a non-conversation idle line.
 _IDLE_WORDS: set[str] = {
@@ -151,13 +193,40 @@ def _no_code_patterns(line: str) -> bool:
 
 
 def _references_quest(line: str, category: str) -> bool:
-    """Check the line references the quest: mentions the target's category
-    OR a generic quest word (case-insensitive, word-boundary match)."""
+    """Check the line references the quest's TARGET.
+
+    C4 (Phase 0.1): the category word OR a known synonym of the
+    category must be present.  The quest-verb list is no longer a
+    standalone pass — it is exposed via ``_has_quest_verb`` as a soft
+    signal for callers that want to flag 'category referenced but no
+    quest verb' as a heuristic, never as a blocking check.
+
+    Without this fix, "Find my treasure." passes for category="book"
+    (verb-only match) and the resulting quest is winnable-by-manifest
+    but unplayable-by-text.
+    """
     lower = line.lower()
     # Category match (word-boundary)
     if re.search(rf"\b{re.escape(category.lower())}\b", lower):
         return True
-    # Quest-word match (each word on \b boundaries)
+    # Synonym match (word-boundary per synonym) — .get(empty) is safe:
+    # unknown categories fall back to the bare-word check, no KeyError.
+    for syn in _CATEGORY_SYNONYMS.get(category.lower(), []):
+        if re.search(rf"\b{re.escape(syn)}\b", lower):
+            return True
+    return False
+
+
+def _has_quest_verb(line: str) -> bool:
+    """Soft signal: does the line contain a generic quest verb?
+
+    The verb list is no longer a hard gate on its own — see
+    ``_references_quest`` — but is exposed here so callers (e.g. the
+    ``quest.dialogue_no_verb`` soft DP a future caller might emit)
+    can still flag 'category referenced but no quest verb' as a
+    heuristic diagnostic.
+    """
+    lower = line.lower()
     for w in _QUEST_WORDS:
         if re.search(rf"\b{re.escape(w)}\b", lower):
             return True
@@ -211,17 +280,64 @@ def validate_dialogue(
 ) -> Tuple[dict[str, str], List[DecisionPoint]]:
     """Validate all four dialogue lines against *category*.
 
-    Returns ``(validated_dialogue, decisions)``.  For each line that fails
-    validation, the fallback line is substituted and a ``quest.dialogue_fallback``
-    Decision Point is emitted.
+    C4 (Phase 0.1): the ``ask``+``thank`` cue lines must reference the
+    TARGET CATEGORY (word or synonym).  When they don't, a
+    ``quest.dialogue_target_mismatch`` Decision Point is emitted at
+    severity="error" — the previous code path silently passed these
+    diffs, producing quests winnable-by-manifest but unplayable-by-text.
+
+    The fallback line substitution still applies (so the player sees a
+    line that DOES mention the category); the error DP is on top, so
+    the orchestrator surfaces the
+    noun-mismatch in the build report.
+
+    Returns ``(validated_dialogue, decisions)``.  For each line that
+    fails validation, the fallback line is substituted and a
+    ``quest.dialogue_fallback`` Decision Point is emitted.
     """
     validated: dict[str, str] = {}
     decisions: list[DecisionPoint] = []
     fallback = fallback_dialogue(category, adjective=adjective)
 
     for field in ("greet", "ask", "wrong", "thank"):
-        line = dialogue.get(field, "")
-        if validate_line(line, category):
+        line = dialogue.get(field, "") or ""
+        stripped = line.strip()
+
+        if field in ("ask", "thank"):
+            # Strict check: category word OR known synonym must be present.
+            # Length / code-pattern failures don't trigger target_mismatch
+            # — those surface the existing ``quest.dialogue_fallback`` DP.
+            cat_ref = _references_quest(stripped, category)
+            length_ok = _line_length_ok(stripped)
+            code_ok = _no_code_patterns(stripped)
+            if cat_ref is False and length_ok and code_ok:
+                decisions.append(
+                    make_decision(
+                        code="quest.dialogue_target_mismatch",
+                        stage="planner",
+                        severity="error",
+                        context={
+                            "field": field,
+                            "original": stripped[:80],
+                            "category": category,
+                        },
+                        choices=(),
+                    )
+                )
+            is_valid = cat_ref and length_ok and code_ok
+        else:
+            # Greeter/reject lines use the looser semantics: category ref
+            # OR a quest-verb ref is enough (a friendly "Ah, welcome,
+            # traveler." greets without mentioning the item).
+            cat_ref = _references_quest(stripped, category)
+            verb_ref = _has_quest_verb(stripped)
+            is_valid = (
+                _line_length_ok(stripped)
+                and _no_code_patterns(stripped)
+                and (cat_ref or verb_ref)
+            )
+
+        if is_valid:
             validated[field] = line
         else:
             validated[field] = fallback[field]
