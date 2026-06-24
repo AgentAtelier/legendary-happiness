@@ -17,7 +17,6 @@ import logging
 import re
 from collections.abc import Callable
 from pathlib import Path
-from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 from dialogue_validator import validate_dialogue, validate_idle_barks
@@ -41,7 +40,7 @@ _MAX_NPC_ROLE_LEN = 60
 
 # ── NPC role validation ──────────────────────────────────────────
 
-def _validate_npc_role(raw_role: object) -> Tuple[str, List[DecisionPoint]]:
+def _validate_npc_role(raw_role: object) -> tuple[str, list[DecisionPoint]]:
     """Validate and clean an NPC role string.
 
     Returns ``(cleaned_role, decisions)``.  Never raises — always
@@ -117,7 +116,7 @@ def _validate_npc_role(raw_role: object) -> Tuple[str, List[DecisionPoint]]:
     return role, decisions
 
 
-def _npc_role_choices(resolved: str) -> Tuple[Choice, ...]:
+def _npc_role_choices(resolved: str) -> tuple[Choice, ...]:
     """Build the standard set of NPC role override choices."""
     return (
         Choice(
@@ -459,7 +458,7 @@ class QuestBehaviourPlanner:
         llm: Callable[[str, str | None], str],
         seed: int | None = None,
         carryable_ids: set[str] | None = None,
-    ) -> Tuple[dict, List[DecisionPoint]]:
+    ) -> tuple[dict, list[DecisionPoint]]:
         """Plan a quest spec from a room theme and placed-entity manifest.
 
         Args:
@@ -616,7 +615,7 @@ class QuestBehaviourPlanner:
         npc_count: int = 2,
         seed: int | None = None,
         carryable_ids: set[str] | None = None,
-    ) -> Tuple[list[dict], List[DecisionPoint]]:
+    ) -> tuple[list[dict], list[DecisionPoint]]:
         """C-4: Generate *npc_count* quest specs for multiple NPCs in
         a single LLM call so the LLM picks distinct targets and roles.
 

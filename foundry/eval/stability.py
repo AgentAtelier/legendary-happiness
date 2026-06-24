@@ -17,14 +17,13 @@ in tests.  Outputs report.md + report.json.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Dict, List, Tuple
 
 # ── Core entry point ──────────────────────────────────────────────────
 
 
 def _default_plan(
     request: str, llm: Callable[[str, str | None], str]
-) -> Tuple[dict, List]:
+) -> tuple[dict, list]:
     from planner import AssetPlanner
     return AssetPlanner().plan(request, llm)
 
@@ -47,13 +46,13 @@ def _captured_keys(spec: dict) -> dict:
 
 
 def run_stability(
-    requests: List[str],
+    requests: list[str],
     *,
     runs: int = 5,
     seed: int = 1337,
     llm: Callable[[str, str | None], str] | None = None,
-    plan: Callable[..., Tuple[dict, List]] | None = None,
-) -> Tuple[List[dict], float]:
+    plan: Callable[..., tuple[dict, list]] | None = None,
+) -> tuple[list[dict], float]:
     """Run *requests* through the planner N times, measuring variance.
 
     Args:
@@ -72,11 +71,11 @@ def run_stability(
     if plan is None:
         plan = _default_plan
 
-    per_request: List[dict] = []
+    per_request: list[dict] = []
     stable_count = 0
 
     for req in requests:
-        captures: List[dict] = []
+        captures: list[dict] = []
         for _ in range(runs):
             spec, _decisions = plan(req, llm)
             captures.append(_captured_keys(spec))
@@ -146,7 +145,7 @@ def run_stability(
 
 
 def build_report_dict(
-    per_request: List[dict],
+    per_request: list[dict],
     stability_score: float,
     runs: int,
     seed: int,
@@ -175,7 +174,7 @@ def build_report_dict(
 
 def build_report_md(report_dict: dict) -> str:
     """Build the markdown digest for the stability report."""
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append("# Foundry Eval — Stability Report")
     lines.append("")
     lines.append(f"- **Total requests:** {report_dict['total']}")
@@ -214,7 +213,7 @@ def build_report_md(report_dict: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _count_varied(per_request: List[dict]) -> Dict[str, int]:
+def _count_varied(per_request: list[dict]) -> dict[str, int]:
     """Count how many requests varied in each field."""
     from collections import Counter
     c: Counter[str] = Counter()

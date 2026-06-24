@@ -34,11 +34,9 @@ Per-category fields:
 
 from __future__ import annotations
 
-from typing import Dict, Tuple
-
 # ── Category registry — single source of truth ───────────────────
 
-REGISTRY: Dict[str, dict] = {
+REGISTRY: dict[str, dict] = {
 
     # ── Furniture ──────────────────────────────────────────────
     "table": {
@@ -487,7 +485,7 @@ def get_kind(category: str) -> str:
     return entry["kind"] if entry else "?"
 
 
-def get_collision_size(category: str) -> Tuple[float, float, float]:
+def get_collision_size(category: str) -> tuple[float, float, float]:
     """Return the collision BoxShape3D size for *category*."""
     entry = REGISTRY.get(category)
     if entry:
@@ -533,18 +531,18 @@ DECOR_CATEGORIES = frozenset(
 # carryables + extended props pass through every theme.
 BASE_FURNITURE = frozenset({"table", "chair", "shelf", "cabinet"})
 
-COLLISION_SIZES: Dict[str, Tuple[float, float, float]] = {
+COLLISION_SIZES: dict[str, tuple[float, float, float]] = {
     k: v["collision_size"] for k, v in REGISTRY.items()
 }
 COLLISION_SIZES["?"] = _DEFAULT["collision_size"]
 
-PARAM_RANGES: Dict[str, dict] = {
+PARAM_RANGES: dict[str, dict] = {
     k: v["param_ranges"]
     for k, v in REGISTRY.items()
     if v.get("param_ranges")
 }
 
-FURNITURE_TOP_Y: Dict[str, float] = {
+FURNITURE_TOP_Y: dict[str, float] = {
     k: v["furniture_top_y"]
     for k, v in REGISTRY.items()
     if v.get("furniture_top_y") is not None

@@ -11,7 +11,6 @@ deterministic validation — no LLM calls.
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 
@@ -34,11 +33,11 @@ def _content_words(text: str) -> set[str]:
 
 from room_control import THEME_TABLE  # noqa: E402
 
-THEMES: Tuple[str, ...] = tuple(r["theme"] for r in THEME_TABLE)
+THEMES: tuple[str, ...] = tuple(r["theme"] for r in THEME_TABLE)
 
 from room_planner import CATEGORIES  # noqa: E402
 
-VALID_SCALES: Tuple[str, ...] = ("small", "medium", "large")
+VALID_SCALES: tuple[str, ...] = ("small", "medium", "large")
 
 # Size band mapping: scale → (min, max) metres for the room.
 SCALE_BANDS: dict = {"small": (4, 6), "medium": (6, 9), "large": (9, 12)}
@@ -154,15 +153,15 @@ def brief_json_schema() -> dict:
 
 def validate_brief(
     raw: dict,
-    themes: Tuple[str, ...] = THEMES,
-    categories: Tuple[str, ...] = CATEGORIES,
-) -> Tuple[dict, List[DecisionPoint]]:
+    themes: tuple[str, ...] = THEMES,
+    categories: tuple[str, ...] = CATEGORIES,
+) -> tuple[dict, list[DecisionPoint]]:
     """Normalise and validate a raw dict into a clean Brief dict.
 
     Every deviation from the closed vocabularies emits a Decision Point
     instead of raising.  Returns ``(brief_dict, decisions)``.
     """
-    decisions: List[DecisionPoint] = []
+    decisions: list[DecisionPoint] = []
 
     # --- schema_version (always 1) ---
     brief: dict = {"schema_version": raw.get("schema_version", 1)}

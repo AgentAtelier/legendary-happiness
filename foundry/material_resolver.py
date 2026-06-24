@@ -16,7 +16,6 @@ what the alternatives are.
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 from materials import MATERIAL_PALETTE
@@ -89,7 +88,7 @@ def _word_in(text: str, kw: str) -> bool:
     return re.search(rf"\b{re.escape(kw)}\b", text, flags=re.IGNORECASE) is not None
 
 
-def _family_members(family: str) -> List[str]:
+def _family_members(family: str) -> list[str]:
     """Return the materials in *family*, in MATERIAL_PALETTE declaration
     order.  Drives family-default + choices-listing deterministically."""
     return [m for m, info in MATERIAL_PALETTE.items() if info["family"] == family]
@@ -115,7 +114,7 @@ def _choice(material_id: str) -> Choice:
 # ── Public entry point ─────────────────────────────────────────────
 
 
-def material_cues(request: str) -> List[Tuple[str, str]]:
+def material_cues(request: str) -> list[tuple[str, str]]:
     """Return ALL matched material cues for *request* as
     ``(keyword, family)`` — the multi-match counterpart of
     ``resolve_material``.  Single-sourced from ``_SPECIFIC_KW`` and
@@ -130,7 +129,7 @@ def material_cues(request: str) -> List[Tuple[str, str]]:
 
     Returns ``[]`` when no material keyword matches.
     """
-    cues: List[Tuple[str, str]] = []
+    cues: list[tuple[str, str]] = []
     for kw, mat_id in _SPECIFIC_KW.items():
         if _word_in(request, kw):
             info = MATERIAL_PALETTE.get(mat_id, {})
@@ -142,7 +141,7 @@ def material_cues(request: str) -> List[Tuple[str, str]]:
     return cues
 
 
-def resolve_material(request: str) -> Tuple[str, List[DecisionPoint]]:
+def resolve_material(request: str) -> tuple[str, list[DecisionPoint]]:
     """Resolve the material for *request* deterministically.  Returns
     ``(material_id, decisions)``.
 
@@ -163,7 +162,7 @@ def resolve_material(request: str) -> Tuple[str, List[DecisionPoint]]:
           recover by switching families.
     """
     resolved: str
-    decisions: List[DecisionPoint] = []
+    decisions: list[DecisionPoint] = []
 
     # 1. Specific keywords win (most specific).
     for kw, mat_id in _SPECIFIC_KW.items():

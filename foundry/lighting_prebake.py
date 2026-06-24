@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
 
 import lighting_bake
 
@@ -40,9 +39,9 @@ def enqueue_bake(scene_desc: dict, *, cache_root=None, queue_root=None) -> dict:
     return {"key": key, "status": "queued"}
 
 
-def pending_bakes(*, queue_root=None) -> List[dict]:
+def pending_bakes(*, queue_root=None) -> list[dict]:
     q = _qroot(queue_root)
-    out: List[dict] = []
+    out: list[dict] = []
     for f in sorted(q.glob("*.json")):
         try:
             out.append(json.loads(f.read_text()))

@@ -7,13 +7,11 @@ interior-light spacing.
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 # ── Tag → component table ────────────────────────────────────────
 # P5 wires these into the .tscn.  Kept here as the single source of
 # truth for which tag maps to which component script path.
 
-_TAG_TABLE: Dict[str, str | None] = {
+_TAG_TABLE: dict[str, str | None] = {
     "pickup": "res://scripts/pickup.gd",
     "talk": "res://scripts/npc.gd",
     # "give" is handled by npc.gd (state machine checks carried_item)
@@ -31,7 +29,7 @@ _TAG_TABLE: Dict[str, str | None] = {
 # P4: reusable GDScript files the compiler always attaches.
 # Paths relative to res:// — these were authored once in rpg/scripts/.
 
-_SHELL_SCRIPTS: List[dict] = [
+_SHELL_SCRIPTS: list[dict] = [
     {"id": "s_player", "path": "res://scripts/player.gd"},
     {"id": "s_interact", "path": "res://scripts/interaction.gd"},
     {"id": "s_hud", "path": "res://scripts/hud.gd"},
@@ -55,7 +53,7 @@ _SHELL_SCRIPTS: List[dict] = [
 # The compiler always emits these nodes.  P4 attaches the shell
 # scripts; P5 wires pickup/talk/give components by tag.
 
-_SHELL_NODES: List[dict] = [
+_SHELL_NODES: list[dict] = [
     {"name": "Player", "type": "CharacterBody3D", "parent": ".", "script": "s_player"},
     {"name": "Camera3D", "type": "Camera3D", "parent": "Player"},
     {"name": "CarriedItem", "type": "Node3D", "parent": "Player/Camera3D"},

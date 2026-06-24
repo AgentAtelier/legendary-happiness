@@ -21,8 +21,6 @@ Each row:
 
 from __future__ import annotations
 
-from typing import Tuple
-
 BIOME_TABLE: list[dict] = [
     {
         "biome": "snow_forest",
@@ -116,7 +114,7 @@ BIOME_TABLE: list[dict] = [
     },
 ]
 
-BIOMES: Tuple[str, ...] = tuple(r["biome"] for r in BIOME_TABLE)
+BIOMES: tuple[str, ...] = tuple(r["biome"] for r in BIOME_TABLE)
 
 _BY_TAG = {r["biome"]: r for r in BIOME_TABLE}
 _GENERIC = _BY_TAG["*"]

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# forge-gamemode — toggle Steam-friendly Game Mode that frees GPU/CPU on the box.
+#
+# Usage:  forge-gamemode {on|off}
+#   on    → POST /api/mode {"mode":"game"}    (stops llama + godot + hunyuan/bake)
+#   off   → POST /api/mode {"mode":"resume"}  (starts llama + godot)
+#
+# Designed for Steam Launch Options — wrap the game command, and the box is
+# freed before launch and restored after exit:
+#
+#     forge-gamemode on; %command%; forge-gamemode off
+#
+# Using `;` instead of `&&` so the game still launches if the toggle hiccups,
+# and the resume attempt still runs even if the game errored at start. Both
+# calls are idempotent on the hub side (state-file check), so accidental
+# double-fires are harmless.
+#
+# Override the hub URL with the FORGE_HUB_URL env var (default localhost:8003).
+# The hub binds 127.0.0.1 only, so an SSH-forwarded tunnel is fine; running this
+# on a non-hub host without FORGE_HUB_URL will fail with the message below.
+set -eu
+
+ACTION="${1:-}"
+case "$ACTION" in
+  on)  MODE="game"   ;;
+  off) MODE="resume" ;;
+  *)
+    echo "usage: forge-gamemode {on|off}" >&2
+    echo "example (Steam Launch Options): forge-gamemode on; %command%; forge-gamemode off" >&2
+    exit 2
+    ;;
+esac
+
+URL="${FORGE_HUB_URL:-http://127.0.0.1:8003}"
+
+# Fail-fast reachability check — if FORGE_HUB_URL is wrong (SSH not forwarded,
+# wrong host, hub down) we want to know in <3s, not after 5 min of silent
+# polling for /api/job/active.
+curl -fsS --max-time 3 "$URL/api/version" >/dev/null 2>&1 || {
+  echo "[forge-gamemode] hub unreachable at $URL — is the hub running? (override with FORGE_HUB_URL)" >&2
+  exit 1
+}
+
+echo "[forge-gamemode] $ACTION → POST $URL/api/mode {mode:$MODE}"
+RESP=$(curl -fsS --max-time 15 \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-forge-hub: 1" \
+  -d "{\"mode\":\"$MODE\"}" \
+  "$URL/api/mode") || {
+    echo "[forge-gamemode] POST failed (should not happen after reachability check above)" >&2
+    exit 1
+}
+
+JOB=$(printf '%s' "$RESP" | python3 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
+echo "[forge-gamemode] job=$JOB — polling hub until done..."
+
+# Poll /api/job/active until the hub reports inactive. Hard cap at 5 min so a
+# stuck llama restart can't block Steam's launch-handling forever.
+START=$(date +%s)
+HARD_CAP=300
+while :; do
+  ACTIVE_JSON=$(curl -fsS --max-time 5 "$URL/api/job/active" 2>/dev/null || true)
+
+  INACTIVE=false
+  if printf '%s' "$ACTIVE_JSON" | grep -Eq '"active"[[:space:]]*:[[:space:]]*false'; then
+    INACTIVE=true
+  fi
+  if [ "$INACTIVE" = true ]; then
+    break
+  fi
+
+  ELAPSED=$(( $(date +%s) - START ))
+  if [ "$ELAPSED" -gt "$HARD_CAP" ]; then
+    echo "[forge-gamemode] WARNING: job still running after ${HARD_CAP}s; bailing out (resume still safe to re-run)" >&2
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "[forge-gamemode] $ACTION complete"
+exit 0

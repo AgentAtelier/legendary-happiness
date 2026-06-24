@@ -13,19 +13,14 @@ from __future__ import annotations
 
 import math
 import os
-from typing import Dict, List
 
 from _constants import SUN_BASIS_EXTERIOR
 from exterior_planner import ExteriorPlan
-
-# Sun basis from shared constants (a fixed pleasant angle); biome sets its energy.
-_SUN_XFORM = SUN_BASIS_EXTERIOR
 
 
 def _transform3d(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 1.0) -> str:
     """A Godot Transform3D string: yaw about Y + uniform scale + translation."""
     c, s = math.cos(yaw), math.sin(yaw)
-    # X axis, Y axis, Z axis (each * scale), then origin.
     xx, xy, xz = c * scale, 0.0, -s * scale
     yx, yy, yz = 0.0, scale, 0.0
     zx, zy, zz = s * scale, 0.0, c * scale
@@ -71,9 +66,48 @@ def compile_exterior_build(brief: dict, seed: int, *, plan: dict | None = None,
         return emit_exterior_layer(ext_plan, interior_manifest=manifest)
 
     import lighting_bake
-    scene_desc = _scene_desc_from(ext_plan, manifest, tier, assets_subdir)
-    result = lighting_bake.bake_scene(scene_desc, baker=baker or _blender_baker,
-                                      cache_root=cache_root)
+    # Phase 1.2: build a lighting_plan-like dict from the ExteriorPlan
+    # biome atmosphere, construct the placement list, then feed both
+    # into the canonical build_scene_desc + bake_and_apply.
+    atm = ext_plan.biome.get("atmosphere", {})
+    lighting_plan = {
+        "sun": {
+            "direction": list(atm.get("sun_dir", [0.3, -0.6, -0.7])),
+            "energy": float(atm.get("sun_energy", 1.1)),
+            "color": list(atm.get("sun_color", [1.0, 0.97, 0.92])),
+        },
+        "sky": {
+            "top": list(atm.get("sky_tint", [0.6, 0.7, 0.85])),
+            "horizon": list(atm.get("fog_color", [0.6, 0.6, 0.6])),
+            "ambient_energy": float(atm.get("ambient_energy", 0.5)),
+        },
+        "sources": [],
+    }
+    py_build = ext_plan.building["pad_height"]
+    placements = [
+        {"glb": f"{assets_subdir}/terrain.glb", "transform": _xform_list(0, 0, 0), "static": True}
+    ]
+    for p in ext_plan.scatter_placements:
+        placements.append({
+            "glb": f"{assets_subdir}/{p['category']}.glb",
+            "transform": _xform_list(p["x"], p["y"], p["z"], p.get("yaw", 0.0), p.get("scale", 1.0)),
+            "static": True,
+        })
+    for e in manifest:
+        placements.append({
+            "glb": f"{assets_subdir}/{e['category']}_{e['material']}.glb",
+            "transform": _xform_list(e["x"], py_build + e.get("y", 0.0), e["z"], e.get("yaw", 0.0)),
+            "static": True,
+        })
+    scene_desc = lighting_bake.build_scene_desc(
+        lighting_plan, placements, tier,
+        samples=96 if tier >= 2 else 24,
+    )
+    result = lighting_bake.bake_and_apply(
+        scene_desc, "/tmp/forge_exterior_bake",
+        baker=baker or _blender_baker,
+        cache_root=cache_root,
+    )
     if result.get("status") in ("baked", "cached") and result.get("artifacts"):
         res = f"res://{assets_subdir}/{os.path.basename(result['artifacts'][0])}"
         return emit_baked_scene(ext_plan, res, assets_subdir=assets_subdir)
@@ -84,47 +118,6 @@ def _xform_list(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 1
     c, s = math.cos(yaw), math.sin(yaw)
     return [c * scale, 0.0, -s * scale, 0.0, scale, 0.0, s * scale, 0.0, c * scale, x, y, z]
 
-
-def _scene_desc_from(ext_plan: ExteriorPlan, manifest: list, tier: int,
-                     assets_subdir: str) -> dict:
-    """Assemble the bake contract from the plan + interior manifest + biome lights.
-
-    C2 (Phase 0.2): the bake payload carries ``interior_lights`` (empty
-    for exteriors today — biome sun/sky only).  The swizzle logic is
-    centralised in one place: any future exterior-side interior emitter
-    paths will pass their sources through the same (x, z, y) remap the
-    interior compiler applies, so the bake boundary keeps a single
-    convention.
-    """
-    atm = ext_plan.biome.get("atmosphere", {})
-    placements = [{"glb": f"{assets_subdir}/terrain.glb", "transform": _xform_list(0, 0, 0),
-                   "static": True}]
-    for p in ext_plan.scatter_placements:
-        placements.append({"glb": f"{assets_subdir}/{p['category']}.glb",
-                           "transform": _xform_list(p["x"], p["y"], p["z"],
-                                                    p.get("yaw", 0.0), p.get("scale", 1.0)),
-                           "static": True})
-    py = ext_plan.building["pad_height"]
-    for e in manifest:
-        placements.append({"glb": f"{assets_subdir}/{e['category']}_{e['material']}.glb",
-                           "transform": _xform_list(e["x"], py + e.get("y", 0.0), e["z"],
-                                                    e.get("yaw", 0.0)),
-                           "static": True})
-    return {
-        "placements": placements,
-        "sun": {"direction": list(atm.get("sun_dir", [0.3, -0.6, -0.7])),
-                "energy": float(atm.get("sun_energy", 1.1)),
-                "color": list(atm.get("sun_color", [1.0, 0.97, 0.92]))},
-        "sky": {"top": list(atm.get("sky_tint", [0.6, 0.7, 0.85])),
-                "horizon": list(atm.get("fog_color", [0.6, 0.6, 0.6])),
-                "ambient_energy": float(atm.get("ambient_energy", 0.5))},
-        # C2: interior_lights slot stays empty for exteriors (biome-only
-        # lighting); retained for contract parallelism with
-        # scene_compiler.build_lighting_scene_desc.  If exterior-side
-        # interior emitters appear later, they must be swizzled y→z here.
-        "interior_lights": [],
-        "tier": tier, "samples": 96 if tier >= 2 else 24,
-    }
 
 
 def emit_baked_scene(ext_plan: ExteriorPlan, baked_glb_res: str, *,
@@ -157,7 +150,7 @@ def emit_baked_scene(ext_plan: ExteriorPlan, baked_glb_res: str, *,
         '[node name="WorldEnvironment" type="WorldEnvironment" parent="."]',
         'environment = SubResource("world_env")',
         '[node name="Sun" type="DirectionalLight3D" parent="."]',
-        f"transform = Transform3D({_SUN_XFORM}, 0, 20, 0)",
+        f"transform = Transform3D({SUN_BASIS_EXTERIOR}, 0, 20, 0)",
         f"light_energy = {sun_e}",
         "shadow_enabled = true",
         '[node name="BakedScene" parent="." instance=ExtResource("1_baked")]',
@@ -199,8 +192,8 @@ def _emit_building(plan: ExteriorPlan):
     py = b["pad_height"]
     wt, wh, door_w = 0.2, 2.6, 1.4
     full_w, full_d = hw * 2.0, hd * 2.0
-    subs: List[str] = []
-    nodes: List[str] = []
+    subs: list[str] = []
+    nodes: list[str] = []
     n = [0]
 
     def box_body(name, cx, cz, sx, sz, h=wh, cy=None):
@@ -244,8 +237,8 @@ def emit_exterior_layer(plan: ExteriorPlan, interior_manifest=None, *,
 
     # ── ext_resources: terrain + each unique flora category ───────
     flora_cats = sorted({p["category"] for p in plan.scatter_placements})
-    ext_ids: Dict[str, str] = {"terrain": "1_terrain"}
-    ext_lines: List[str] = [
+    ext_ids: dict[str, str] = {"terrain": "1_terrain"}
+    ext_lines: list[str] = [
         f'[ext_resource type="PackedScene" path="res://{assets_subdir}/terrain.glb" id="1_terrain"]'
     ]
     for i, cat in enumerate(flora_cats, start=2):
@@ -257,7 +250,7 @@ def emit_exterior_layer(plan: ExteriorPlan, interior_manifest=None, *,
 
     # interior props (INSIDE the building): one PackedScene per (category, material)
     interior = interior_manifest or []
-    interior_ids: Dict[str, str] = {}
+    interior_ids: dict[str, str] = {}
     nxt = len(flora_cats) + 2
     for e in interior:
         key = f"{e['category']}_{e['material']}"
@@ -298,7 +291,7 @@ def emit_exterior_layer(plan: ExteriorPlan, interior_manifest=None, *,
         '[node name="WorldEnvironment" type="WorldEnvironment" parent="."]',
         'environment = SubResource("world_env")',
         '[node name="Sun" type="DirectionalLight3D" parent="."]',
-        f"transform = Transform3D({_SUN_XFORM}, 0, 20, 0)",
+        f"transform = Transform3D({SUN_BASIS_EXTERIOR}, 0, 20, 0)",
         f"light_energy = {sun_e}",
         "shadow_enabled = true",
         '[node name="Terrain" parent="." instance=ExtResource("1_terrain")]',

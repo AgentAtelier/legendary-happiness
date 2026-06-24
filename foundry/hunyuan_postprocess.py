@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Tuple
 
 import trimesh
 
@@ -36,7 +35,7 @@ def decimate(mesh: trimesh.Trimesh, max_faces: int) -> trimesh.Trimesh:
 
 def scale_normalize(
     mesh: trimesh.Trimesh,
-    target: Tuple[float, float, float],
+    target: tuple[float, float, float],
     *,
     center: bool = True,
 ) -> trimesh.Trimesh:

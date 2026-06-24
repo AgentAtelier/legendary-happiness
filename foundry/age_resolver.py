@@ -14,7 +14,6 @@ aged+new words coexist.
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 from wear_words import AGED_WORDS, NEW_WORDS
@@ -42,7 +41,7 @@ def _make_age_choice(age_value: float) -> Choice:
     )
 
 
-def resolve_age(request: str) -> Tuple[float, List[DecisionPoint]]:
+def resolve_age(request: str) -> tuple[float, list[DecisionPoint]]:
     """Resolve the age for *request* deterministically.  Returns
     ``(age_value, decisions)``.
 

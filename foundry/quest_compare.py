@@ -26,7 +26,6 @@ import sys
 import textwrap
 import time
 from pathlib import Path
-from typing import Tuple
 
 import requests
 
@@ -188,7 +187,7 @@ def _wait_for_health(expected_alias: str | None = None) -> bool:
     return False
 
 
-def _run_quest(prompt: str, scene: str, npc_count: int = 2) -> Tuple[bool, str, dict]:
+def _run_quest(prompt: str, scene: str, npc_count: int = 2) -> tuple[bool, str, dict]:
     """Run ``python -m foundry quest`` and capture the spec.
 
     The quest command scaffolds into ``builds/<scene>/``.
@@ -320,7 +319,7 @@ def _run_godot_smoke(scene_name: str) -> bool:
     return True
 
 
-def _run_playthrough_probe(scene_name: str) -> Tuple[bool, dict]:
+def _run_playthrough_probe(scene_name: str) -> tuple[bool, dict]:
     """Run the Godot headless playthrough probe.
 
     Uses probe_playthrough.gd to drive a scripted playthrough.

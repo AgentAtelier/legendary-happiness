@@ -44,31 +44,31 @@ class Metric:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Metric":
+    def from_dict(cls, d: dict) -> Metric:
         return cls(d["value"], d["unit"], d["higher_is_better"], d["label"])
 
     # ── convenience constructors ──────────────────────────────────
 
     @classmethod
-    def ratio(cls, value: float, label: str, higher_is_better: bool = True) -> "Metric":
+    def ratio(cls, value: float, label: str, higher_is_better: bool = True) -> Metric:
         return cls(value, "ratio", higher_is_better, label)
 
     @classmethod
-    def percent(cls, value: float, label: str, higher_is_better: bool = True) -> "Metric":
+    def percent(cls, value: float, label: str, higher_is_better: bool = True) -> Metric:
         return cls(value, "percent", higher_is_better, label)
 
     @classmethod
-    def count(cls, value: int, label: str, higher_is_better: bool = True) -> "Metric":
+    def count(cls, value: int, label: str, higher_is_better: bool = True) -> Metric:
         return cls(value, "count", higher_is_better, label)
 
     @classmethod
-    def milliseconds(cls, value: int, label: str, higher_is_better: bool = False) -> "Metric":
+    def milliseconds(cls, value: int, label: str, higher_is_better: bool = False) -> Metric:
         return cls(value, "ms", higher_is_better, label)
 
     @classmethod
-    def boolean(cls, value: bool, label: str) -> "Metric":
+    def boolean(cls, value: bool, label: str) -> Metric:
         return cls(value, "bool", True, label)
 
     @classmethod
-    def score(cls, value: int, label: str = "score") -> "Metric":
+    def score(cls, value: int, label: str = "score") -> Metric:
         return cls(value, "score", True, label)

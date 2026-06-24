@@ -370,7 +370,10 @@ def test_get_lighting_and_shell_material_isolated_from_each_other():
     SHELL_THEME_INDEX and vice versa (they share the same lowercase-key
     pattern but iterate separate source dicts)."""
     from room_control import (
-        LIGHTING_TABLE, SHELL_TABLE, get_lighting, get_shell_material,
+        LIGHTING_TABLE,
+        SHELL_TABLE,
+        get_lighting,
+        get_shell_material,
     )
     # All thirteen themes pass through both lookups individually.
     for key in LIGHTING_TABLE:

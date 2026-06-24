@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
-from typing import List, Tuple
 
 from eval.harness import RunRecord
 from eval.sampler import SampleResult
@@ -34,8 +33,8 @@ from eval.signals import (
 
 
 def build_friction_report(
-    records: List[RunRecord], sample: SampleResult
-) -> Tuple[dict, str]:
+    records: list[RunRecord], sample: SampleResult
+) -> tuple[dict, str]:
     """Build the (machine dict, markdown digest) pair for one run.
 
     Args:
@@ -52,13 +51,13 @@ def build_friction_report(
     return report_dict, digest
 
 
-def load_corpus(path: str) -> List[str]:
+def load_corpus(path: str) -> list[str]:
     """Read the corpus file at *path*.  Skip blank lines and lines whose
     first non-whitespace character is ``#``.  Strip each kept line.
 
     Returns the NL requests to feed to ``run_corpus``.
     """
-    out: List[str] = []
+    out: list[str] = []
     for raw in Path(path).read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
@@ -70,7 +69,7 @@ def load_corpus(path: str) -> List[str]:
 # ── Dict assembly ─────────────────────────────────────────────────────
 
 
-def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
+def _build_dict(records: list[RunRecord], sample: SampleResult) -> dict:
     """Compute every named key in the spec's report schema."""
 
     # ── signal_counts: tag → how-many records carry it ───────────────
@@ -91,7 +90,7 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
             reason_counter[r] += 1
 
     # ── build_errors: per-record summary {request, error, index} ─────
-    build_errors: List[dict] = []
+    build_errors: list[dict] = []
     for idx, rec in enumerate(records):
         if rec.error:
             build_errors.append({
@@ -101,7 +100,7 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
             })
 
     # ── size_mismatches: per-record detail from signals helper ───────
-    size_mismatches: List[dict] = []
+    size_mismatches: list[dict] = []
     for idx, rec in enumerate(records):
         if rec.spec is None:
             continue
@@ -115,7 +114,7 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
         })
 
     # ── age_mismatches (slice 2): per-record detail from signals helper
-    age_mismatches: List[dict] = []
+    age_mismatches: list[dict] = []
     for idx, rec in enumerate(records):
         if rec.spec is None:
             continue
@@ -130,7 +129,7 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
 
     # ── material_conflicts (slice 2): per-record detail from signals
     #    helper.  Pure request-level — no spec gating required.
-    material_conflicts: List[dict] = []
+    material_conflicts: list[dict] = []
     for idx, rec in enumerate(records):
         detail = material_conflict_detail(rec.request)
         if detail is None:
@@ -172,7 +171,7 @@ def _build_dict(records: List[RunRecord], sample: SampleResult) -> dict:
 def _build_digest(d: dict) -> str:
     """Render an *human-readable* markdown digest of *d*.  Sections in
     fixed order, the probe list CLOSES the digest per spec."""
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append("# Foundry Eval — Friction Report")
     lines.append("")
     lines.append(f"- **Total runs:** {d['total']}")

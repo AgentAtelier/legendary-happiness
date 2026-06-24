@@ -17,13 +17,13 @@ from __future__ import annotations
 import base64
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
 # ── Schemas (json_schema structures for llama.cpp) ───────────────
 
-PROP_SCHEMA: Dict[str, Any] = {
+PROP_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "textured": {"type": "boolean"},
@@ -42,7 +42,7 @@ PROP_SCHEMA: Dict[str, Any] = {
     "additionalProperties": False,
 }
 
-SCENE_SCHEMA: Dict[str, Any] = {
+SCENE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "floater": {"type": "boolean"},
@@ -68,7 +68,7 @@ SCENE_SCHEMA: Dict[str, Any] = {
 
 # ── Safe fallback defaults (returned on parse / connection errors) ─
 
-PROP_DEFAULTS: Dict[str, Any] = {
+PROP_DEFAULTS: dict[str, Any] = {
     "textured": True,
     "material_reads_right": True,
     "has_holes_or_deformity": False,
@@ -76,7 +76,7 @@ PROP_DEFAULTS: Dict[str, Any] = {
     "notes": "",
 }
 
-SCENE_DEFAULTS: Dict[str, Any] = {
+SCENE_DEFAULTS: dict[str, Any] = {
     "floater": False,
     "clipping": False,
     "ceiling_visible": True,
@@ -91,7 +91,7 @@ SCENE_DEFAULTS: Dict[str, Any] = {
 
 def check_image(
     png_path: str,
-    schema: Dict[str, Any],
+    schema: dict[str, Any],
     prompt: str = "",
     *,
     endpoint: str = "http://127.0.0.1:8002",
@@ -99,8 +99,8 @@ def check_image(
     max_tokens: int = 256,
     timeout_s: int = 60,
     seed: int | None = None,
-    defaults: Dict[str, Any] | None = None,
-) -> Dict[str, Any]:
+    defaults: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Run a VLM structured visual check on a single PNG.
 
     Reads *png_path*, base64-encodes it, and sends it to llama.cpp
@@ -162,12 +162,12 @@ def _encode_png(png_path: str) -> str:
 def _build_payload(
     prompt: str,
     image_b64: str,
-    schema: Dict[str, Any],
+    schema: dict[str, Any],
     *,
     temperature: float,
     max_tokens: int,
     seed: int | None = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Construct the OpenAI-compatible chat/completions multimodal payload.
 
     The image is passed as a base64 ``data:`` URI in an ``image_url`` content
@@ -175,7 +175,7 @@ def _build_payload(
     schema is enforced via ``response_format: json_schema``.
     """
     data_uri = f"data:image/png;base64,{image_b64}"
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "messages": [
             {
                 "role": "user",
@@ -197,7 +197,7 @@ def _build_payload(
     return payload
 
 
-def _extract_content(data: Dict[str, Any]) -> str:
+def _extract_content(data: dict[str, Any]) -> str:
     """Pull the generated text from a chat/completions response.
 
     Prefers the chat shape (``choices[0].message.content``); falls back to a
@@ -215,14 +215,14 @@ def _extract_content(data: Dict[str, Any]) -> str:
     return data.get("content", "")
 
 
-def _pick_defaults(schema: Dict[str, Any]) -> Dict[str, Any]:
+def _pick_defaults(schema: dict[str, Any]) -> dict[str, Any]:
     """Return the right defaults dict based on schema identity."""
     if schema is SCENE_SCHEMA:
         return dict(SCENE_DEFAULTS)
     if schema is PROP_SCHEMA:
         return dict(PROP_DEFAULTS)
     # Unknown schema — build generic defaults from properties
-    defaults: Dict[str, Any] = {}
+    defaults: dict[str, Any] = {}
     for key, prop in schema.get("properties", {}).items():
         ptype = prop.get("type", "string")
         if ptype == "boolean":
@@ -238,9 +238,9 @@ def _pick_defaults(schema: Dict[str, Any]) -> Dict[str, Any]:
 
 def _parse_response(
     content: str,
-    defaults: Dict[str, Any],
-    schema: Dict[str, Any],
-) -> Dict[str, Any]:
+    defaults: dict[str, Any],
+    schema: dict[str, Any],
+) -> dict[str, Any]:
     """Parse the LLM response text into a dict, falling back to defaults."""
     if not content or not content.strip():
         return {**defaults, "_parse_error": True}
@@ -258,7 +258,7 @@ def _parse_response(
         return {**defaults, "_parse_error": True}
 
     # Fill in missing keys from defaults, cast types, and prune extras
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for key, prop in schema.get("properties", {}).items():
         ptype = prop.get("type", "string")
         if key in parsed:
@@ -269,7 +269,7 @@ def _parse_response(
     return result
 
 
-def _extract_json_from_text(text: str) -> Dict[str, Any] | None:
+def _extract_json_from_text(text: str) -> dict[str, Any] | None:
     """Try to extract a JSON object from text (code fences, markdown, etc.)."""
     import re
 

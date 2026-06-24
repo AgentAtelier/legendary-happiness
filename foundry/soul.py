@@ -12,20 +12,18 @@ this slice (axes are stored as initial state only).
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 from decisions import Choice, DecisionPoint, make_decision
 
 # ── Constants ─────────────────────────────────────────────────────
 
-SUBSTRATE_TRAITS: Tuple[str, ...] = ("courage", "generosity", "stability")
-AXES: Tuple[str, ...] = ("security", "belonging", "agency", "satiation")
+SUBSTRATE_TRAITS: tuple[str, ...] = ("courage", "generosity", "stability")
+AXES: tuple[str, ...] = ("security", "belonging", "agency", "satiation")
 
 # Threshold for tone adjective assignment: |value| >= this → tagged
 _TONE_THRESHOLD: float = 0.33
 
 # Tone mappings per trait: (low_label, high_label)
-_TONE_MAP: dict[str, Tuple[str, str]] = {
+_TONE_MAP: dict[str, tuple[str, str]] = {
     "courage":    ("timid",  "bold"),
     "generosity": ("guarded", "warm"),
     "stability":  ("anxious", "steady"),
@@ -42,7 +40,7 @@ def default_soul() -> dict:
     }
 
 
-def validate_soul(raw: dict) -> Tuple[dict, List[DecisionPoint]]:
+def validate_soul(raw: dict) -> tuple[dict, list[DecisionPoint]]:
     """Validate and normalise a raw soul dict.
 
     Coerces values to float, clamps each to [-1.0, 1.0], defaults
@@ -51,7 +49,7 @@ def validate_soul(raw: dict) -> Tuple[dict, List[DecisionPoint]]:
 
     Returns ``(soul_dict, decisions)``.
     """
-    decisions: List[DecisionPoint] = []
+    decisions: list[DecisionPoint] = []
     soul: dict = {"substrate": {}, "axes": {}}
 
     # ── Substrate traits ──

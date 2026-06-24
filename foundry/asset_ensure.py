@@ -17,7 +17,6 @@ import tempfile
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import List
 
 from decisions import Choice, DecisionPoint, make_decision
 
@@ -71,13 +70,13 @@ def _forge_category(category: str, material: str, library_dir: str, lexicon_path
 
 
 def ensure_assets(
-    manifest: List[dict],
+    manifest: list[dict],
     library_dir: str,
     lexicon_path: str,
     *,
     builder: Callable = None,
     max_workers: int = 2,
-) -> List[DecisionPoint]:
+) -> list[DecisionPoint]:
     """For each unique (category, material) in *manifest* with no GLB in
     *library_dir*, build it via *builder* (default: deterministic
     ``_forge_category``). Returns any Decision Points the builds emitted.
@@ -87,7 +86,7 @@ def ensure_assets(
     """
     if builder is None:
         builder = _forge_category
-    decisions: List[DecisionPoint] = []
+    decisions: list[DecisionPoint] = []
     # /tmp copy of the lexicon — never mutate the real one.
     tmp_lex = Path(tempfile.mkdtemp()) / "asset_lexicon.json"
     shutil.copy(lexicon_path, tmp_lex)

@@ -15,7 +15,6 @@ import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import List
 
 # ── Public API ────────────────────────────────────────────────────
 
@@ -23,14 +22,14 @@ from typing import List
 def capture_scene(
     build_dir: str,
     out_dir: str,
-    angles: List[float] | None = None,
+    angles: list[float] | None = None,
     *,
     radius: float = 5.0,
     height: float = 1.7,
     hardware_gpu: bool = False,
     godot_bin: str = "godot",
     capture_script: str | None = None,
-) -> List[str]:
+) -> list[str]:
     """Capture screenshots of a compiled Godot scene from fixed camera angles.
 
     CB-8: Default radius reduced from 8.0→5.0 and height from 3.0→1.7
@@ -95,13 +94,13 @@ def capture_scene(
 def capture_prop(
     glb_path: str,
     out_dir: str,
-    angles: List[float] | None = None,
+    angles: list[float] | None = None,
     *,
     radius: float = 2.5,
     height: float = 1.2,
     godot_bin: str = "godot",
     capture_script: str | None = None,
-) -> List[str]:
+) -> list[str]:
     """Capture a single prop GLB from turntable camera angles.
 
     Creates a temporary Godot project that instances the GLB, renders
@@ -620,7 +619,7 @@ def _dump_godot_stderr(build_dir: str, stderr: str) -> None:
         pass
 
 
-def _read_manifest(out_dir: Path) -> List[str]:
+def _read_manifest(out_dir: Path) -> list[str]:
     """Read the capture manifest JSON and return the list of PNG paths."""
     manifest = out_dir / "capture_manifest.json"
     if not manifest.exists():

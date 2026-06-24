@@ -14,7 +14,6 @@ import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 from compiler import compile_spec, load_spec
 from decisions import DecisionPoint
@@ -33,7 +32,7 @@ class ForgeResult:
     # Decision Points emitted during the pipeline (resolver output for
     # forge_from_request; empty for the explicit-spec forge() path).
     # repr=False so logging a ForgeResult doesn't dump a wall of dicts.
-    decisions: List[DecisionPoint] = field(default_factory=list, repr=False)
+    decisions: list[DecisionPoint] = field(default_factory=list, repr=False)
 
 
 def _build(spec_path: str, out_glb: str, blender: str) -> None:

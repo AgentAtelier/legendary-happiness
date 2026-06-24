@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Tuple
 
 # SEVERITY string constants — the four known severities.
 # "warning" was added in the AUDIT-02 L1 / AUDIT-01 A10 fix so that
@@ -25,7 +24,7 @@ from typing import Tuple
 # the invariant's owner; plan_multi mustn't re-raise on layout_room
 # regressing).  "warning" sits between "assumption" and "error" —
 # rendered in CLI (unlike "info") but not blocking.
-SEVERITY: Tuple[str, ...] = ("info", "assumption", "ambiguous", "warning", "error")
+SEVERITY: tuple[str, ...] = ("info", "assumption", "ambiguous", "warning", "error")
 
 
 # ── Data classes ────────────────────────────────────────────────────
@@ -51,7 +50,7 @@ class DecisionPoint:
     technical: str       # dev-facing message
     plain: str           # non-technical message
     context: dict        # {request, resolved, alternatives, ...}
-    choices: Tuple[Choice, ...]
+    choices: tuple[Choice, ...]
 
 
 # ── Template registry ──────────────────────────────────────────────

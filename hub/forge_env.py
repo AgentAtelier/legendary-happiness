@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Optional
 
 HOME = Path.home()
 ENVFILE = HOME / ".config/forge-stack/stack.env"
@@ -56,7 +55,7 @@ def _unquote(v: str) -> str:
     return v
 
 
-def _quote_style(v: str) -> Optional[str]:
+def _quote_style(v: str) -> str | None:
     """Return '"', "'", or None depending on how v is quoted."""
     v = v.strip()
     if len(v) >= 2:
@@ -106,7 +105,7 @@ def write_env(path: Path, updates: dict[str, str]) -> None:
     except OSError:
         lines = []
 
-    orig_styles: dict[str, Optional[str]] = {}
+    orig_styles: dict[str, str | None] = {}
     for line in lines:
         s = line.strip()
         if s and not s.startswith("#") and "=" in s:

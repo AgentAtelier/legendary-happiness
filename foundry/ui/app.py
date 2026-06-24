@@ -18,17 +18,16 @@ import threading
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 # ── Injectables (overridden in tests) ────────────────────────────────
 
 #: Callable ``(request: str) -> (spec: dict, decisions: list)``.
 #: Set via ``configure_forge()``; tests inject a fake that skips Blender.
-_plan_fn: Callable[[str], Tuple[dict, List]] | None = None
+_plan_fn: Callable[[str], tuple[dict, list]] | None = None
 
 #: Callable ``(spec: dict, decisions: list, library_dir: str) -> dict``.
 #: Returns ``{glb_path, gate_passed, registered}``.
-_forge_fn: Callable[[dict, List, str], dict] | None = None
+_forge_fn: Callable[[dict, list, str], dict] | None = None
 
 #: Library directory for forge output.
 _library_dir: str = ""
@@ -39,8 +38,8 @@ _report_path: str = ""
 
 def configure_forge(
     *,
-    plan_fn: Callable[[str], Tuple[dict, List]],
-    forge_fn: Callable[[dict, List, str], dict],
+    plan_fn: Callable[[str], tuple[dict, list]],
+    forge_fn: Callable[[dict, list, str], dict],
     lexicon_path: str = "",
     library_dir: str = "",
     report_path: str = "",
@@ -55,8 +54,8 @@ def configure_forge(
 
 # ── In-memory state ──────────────────────────────────────────────────
 
-_jobs: Dict[str, dict] = {}
-_decisions_store: List[dict] = []
+_jobs: dict[str, dict] = {}
+_decisions_store: list[dict] = []
 
 _MAX_DECISIONS = 100
 
@@ -193,7 +192,7 @@ def _run_forge(job_id: str, request_text: str):
         _jobs[job_id] = {"status": "error", "error": str(exc)}
 
 
-def _serialize_decisions(decisions: List) -> List[dict]:
+def _serialize_decisions(decisions: list) -> list[dict]:
     """Serialize DecisionPoint objects to plain dicts via decisions.to_dict."""
     from decisions import to_dict as _to_dict
     out = []

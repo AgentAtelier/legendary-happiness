@@ -7,8 +7,6 @@ rest offset, prop half-extents.
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 from _constants import DEFAULT_RNG_SEED
 from category_registry import COLLISION_SIZES
 
@@ -148,11 +146,11 @@ _GRID_MIN_CELL = 2.0
 
 
 def _resolve_prop_overlaps(
-    manifest: List[dict],
+    manifest: list[dict],
     npc_x: float = 0.0,
     npc_z: float = -2.0,
     max_iterations: int = 20,
-) -> List[dict]:
+) -> list[dict]:
     """Deterministic AABB separation pass (Item 3, AUDIT-05 P8 broad-phase grid).
 
     Pushes overlapping props apart so they don't intersect each other
@@ -190,7 +188,7 @@ def _resolve_prop_overlaps(
     npc_hx, _, npc_hz = _prop_half_extents("humanoid")
 
     # Build list of (index, hx, hz) for quick lookup
-    prop_data: list[Tuple[int, float, float]] = []
+    prop_data: list[tuple[int, float, float]] = []
     for i, entry in enumerate(result):
         cat = entry.get("category", "?")
         hx, _, hz = _prop_half_extents(cat)
@@ -330,7 +328,7 @@ def _resolve_prop_overlaps(
 def _resolve_overlaps_bruteforce(
     result: list[dict],
     separable: list[int],
-    prop_data: list[Tuple[int, float, float]],
+    prop_data: list[tuple[int, float, float]],
     npc_x: float,
     npc_z: float,
     npc_hx: float,

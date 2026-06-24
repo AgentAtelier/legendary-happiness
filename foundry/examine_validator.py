@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from typing import List, Tuple
 
 from decisions import DecisionPoint, make_decision
 
@@ -114,7 +113,7 @@ def generate_examine(
     room_theme: str,
     manifest: list[dict],
     llm: Callable[[str, str | None], str],
-) -> Tuple[dict[str, str], List[DecisionPoint]]:
+) -> tuple[dict[str, str], list[DecisionPoint]]:
     """Generate examine flavour text for every prop in *manifest*.
 
     Returns ``({prop_id: flavour_text}, decisions)``.  Calls the LLM

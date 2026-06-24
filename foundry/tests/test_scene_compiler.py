@@ -11,6 +11,12 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
+# AUDIT-05 P12 cleanup: these live in placement.py now (moved in P8 broad-
+# phase grid).  Import from the canonical home rather than via
+# scene_compiler's re-export, which is dead (no in-body use) and ruff
+# would prune again.
+from placement import _prop_half_extents, _resolve_prop_overlaps
 from scene_compiler import (
     PlacedEntity,
     _ext_resource_block,
@@ -21,11 +27,6 @@ from scene_compiler import (
     compile_scene,
     read_quest_data,
 )
-# AUDIT-05 P12 cleanup: these live in placement.py now (moved in P8 broad-
-# phase grid).  Import from the canonical home rather than via
-# scene_compiler's re-export, which is dead (no in-body use) and ruff
-# would prune again.
-from placement import _prop_half_extents, _resolve_prop_overlaps
 
 # ── Test manifest ────────────────────────────────────────────────
 

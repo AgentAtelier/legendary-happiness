@@ -15,8 +15,6 @@ Tests use synthetic RunRecords — no pipeline, no llm, no Blender.
 
 from __future__ import annotations
 
-from typing import List
-
 import pytest
 from eval.harness import RunRecord
 from eval.sampler import SampleResult, estimate_clean_rate, stratify_and_sample
@@ -106,7 +104,7 @@ def test_sampler_returns_sample_result_dataclass_with_expected_fields():
 def test_sampler_all_problem_records_selected_when_no_cap():
     """No problem_cap → every problem-stratum record is selected (and the
     dedup'd union is what's returned, with multi-strata labelling)."""
-    records: List[RunRecord] = []
+    records: list[RunRecord] = []
     records.extend(_error_record(i)       for i in range(2))   # 2 build_error
     records.extend(_gate_rejected_record(i) for i in range(3)) # 3 gate_rejected
     records.extend(_clean_record(i)         for i in range(5)) # 5 clean
@@ -202,7 +200,7 @@ def test_sampler_different_seed_may_differ():
 def test_sampler_problem_cap_limits_per_stratum_with_seeded_rng():
     """Each non-clean stratum is capped at problem_cap (drawn with seeded
     RNG); the final probe list is the union across strata."""
-    records: List[RunRecord] = []
+    records: list[RunRecord] = []
     records.extend(_error_record(i)        for i in range(8))  # 8 build_error
     records.extend(_gate_rejected_record(i) for i in range(8)) # 8 gate_rejected
     records.extend(_clean_record(i)         for i in range(8)) # 8 clean
@@ -300,7 +298,7 @@ def test_sampler_severity_low_capped_at_low_severity_cap_high_all_in_clean_intac
       - exactly 10 clean baseline
       - stratum_sizes reflect the FULL population.
     """
-    recs: List[RunRecord] = []
+    recs: list[RunRecord] = []
     recs.extend(_decision_fired_record(i) for i in range(20))
     recs.extend(_gate_rejected_record(i + 20) for i in range(3))
     recs.extend(_clean_record(i + 23) for i in range(30))

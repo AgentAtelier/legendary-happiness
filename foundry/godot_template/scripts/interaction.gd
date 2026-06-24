@@ -3,6 +3,10 @@
 # Uses _unhandled_input for one-shot E key detection.
 # P-B: named prompts (e.g. "Press E to pick up the table")
 # P-C-1: highlights the hovered interactable with emissive material overlay
+#
+# Phase 0.5 (probe honesty): interact_under_crosshair() is the canonical
+# interaction entry-point — the human E-key path AND probes both drive it.
+# It emits object_interacted so probes can await real outcomes.
 extends Node3D
 
 signal interact_prompt(visible: bool, prompt_text: String, tag: String)
@@ -74,6 +78,36 @@ func _process(_delta: float) -> void:
 	_update_target_glow()
 
 
+func interact_under_crosshair() -> Node:
+	"""Cast a camera raycast, walk parents to find a _forge_tag node,
+	call on_interact(tag), emit object_interacted, and return the
+	interacted node (or null if nothing hit).
+
+	This is the canonical interaction entry-point — both the human
+	E-key path and the probe scripts drive it."""
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var origin: Vector3 = _camera.global_position
+	var end: Vector3 = origin + -_camera.global_transform.basis.z * interact_range
+	var query := PhysicsRayQueryParameters3D.create(origin, end)
+	query.collide_with_areas = true
+	query.collide_with_bodies = true
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.is_empty():
+		return null
+	# intersect_ray returns the CollisionObject3D, start from it
+	var current: Node = result.collider as Node
+	while current:
+		if current.has_meta("_forge_tag"):
+			var tag: String = current.get_meta("_forge_tag")
+			if tag == "pickup" or tag == "talk" or tag == "open" or tag == "door":
+				if current.has_method("on_interact"):
+					current.on_interact(tag)
+					object_interacted.emit(current, tag)
+					return current
+		current = current.get_parent()
+	return null
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.physical_keycode == KEY_E:
 		if event.pressed and not event.echo:
@@ -81,25 +115,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			var player = get_node_or_null("/root/Root/Player")
 			if player and str(player.get_active_item()) != "":
 				_place_item_on_surface()
-			# Check what we're looking at and fire interaction
-			var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
-			var origin: Vector3 = _camera.global_position
-			var end: Vector3 = origin + -_camera.global_transform.basis.z * interact_range
-			var query := PhysicsRayQueryParameters3D.create(origin, end)
-			query.collide_with_areas = true
-			query.collide_with_bodies = true
-			var result: Dictionary = space_state.intersect_ray(query)
-			if not result.is_empty():
-				# intersect_ray returns the CollisionObject3D, start from it
-				var current: Node = result.collider as Node
-				while current:
-					if current.has_meta("_forge_tag"):
-						var tag: String = current.get_meta("_forge_tag")
-						if tag == "pickup" or tag == "talk" or tag == "open" or tag == "door":
-							if current.has_method("on_interact"):
-								current.on_interact(tag)
-							return
-					current = current.get_parent()
+			interact_under_crosshair()
 	if event is InputEventKey and event.physical_keycode == KEY_X:
 		if event.pressed and not event.echo:
 			# EB-6: Examine — show flavour text for the looked-at prop/NPC

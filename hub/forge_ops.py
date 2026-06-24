@@ -25,8 +25,8 @@ import json
 import os
 import re
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 import httpx
 from forge_env import ENVFILE, read_env, write_env
@@ -189,7 +189,7 @@ async def run_cmd_capture(*cmd: str, timeout: float = 20.0) -> tuple[int, str]:
         )
         try:
             raw, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             return 124, f"timeout after {timeout:.0f}s: {' '.join(cmd)}"
         return proc.returncode or 0, ANSI_RE.sub("", raw.decode(errors="replace"))
@@ -243,7 +243,7 @@ async def _service_is_failed() -> bool:
 # ── Phase 3: drift detection ─────────────────────────────────────
 
 
-async def check_drift(port: str = "8002") -> Optional[dict]:
+async def check_drift(port: str = "8002") -> dict | None:
     """Compare configured (stack.env) versus running (/props) model state."""
     env = read_env(ENVFILE)
     configured_alias = env.get("MODEL_ALIAS")
@@ -251,8 +251,8 @@ async def check_drift(port: str = "8002") -> Optional[dict]:
     ctx_match = re.search(r"--ctx-size\s+(\d+)", ll_args)
     configured_ctx = int(ctx_match.group(1)) if ctx_match else None
 
-    running_alias: Optional[str] = None
-    running_ctx: Optional[int] = None
+    running_alias: str | None = None
+    running_ctx: int | None = None
 
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:

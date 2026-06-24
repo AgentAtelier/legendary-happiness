@@ -23,13 +23,11 @@ The module is extractable as a standalone dungeon-graph tool.
 
 from __future__ import annotations
 
-from typing import Dict, List, Set, Tuple
-
 # ── Grid-room type ──────────────────────────────────────────────
 
 # A room on the grid: (rx, rz) coordinate pair.
 # rx = column index, rz = row index.
-GridRoom = Tuple[int, int]
+GridRoom = tuple[int, int]
 
 # A door edge between two adjacent rooms.
 DoorEdge = dict  # see schema above
@@ -37,7 +35,7 @@ DoorEdge = dict  # see schema above
 
 # ── Grid builder ────────────────────────────────────────────────
 
-_WALL_DIRECTIONS: List[Tuple[str, int, int]] = [
+_WALL_DIRECTIONS: list[tuple[str, int, int]] = [
     ("north", 0, -1),
     ("south", 0, 1),
     ("east", 1, 0),
@@ -53,20 +51,20 @@ def build_grid_rooms(
     width: int,
     depth: int,
     seed: int = 42,
-) -> Tuple[List[GridRoom], Set[Tuple[GridRoom, GridRoom]]]:
+) -> tuple[list[GridRoom], set[tuple[GridRoom, GridRoom]]]:
     """Build a rectangular grid of rooms with all adjacent edges.
 
     Returns:
         rooms: list of (rx, rz) coordinates.
         adjacent_edges: set of unordered ((rx1,rz1), (rx2,rz2)) pairs.
     """
-    rooms: List[GridRoom] = []
+    rooms: list[GridRoom] = []
     for rz in range(depth):
         for rx in range(width):
             rooms.append((rx, rz))
 
     # Collect all adjacent (non-diagonal) edges
-    edges: Set[Tuple[GridRoom, GridRoom]] = set()
+    edges: set[tuple[GridRoom, GridRoom]] = set()
     room_set = set(rooms)
     for rx, rz in rooms:
         for _wall, dx, dz in _WALL_DIRECTIONS:
@@ -81,9 +79,9 @@ def build_grid_rooms(
 
 
 def build_spanning_tree(
-    edges: Set[Tuple[GridRoom, GridRoom]],
+    edges: set[tuple[GridRoom, GridRoom]],
     seed: int = 42,
-) -> Set[Tuple[GridRoom, GridRoom]]:
+) -> set[tuple[GridRoom, GridRoom]]:
     """Build a random spanning tree from *edges* (Kruskal-style).
 
     Returns a set of edges forming a tree that connects all rooms.
@@ -92,7 +90,7 @@ def build_spanning_tree(
     rng = _random.Random(seed)
 
     sorted_edges = sorted(edges, key=lambda e: rng.random())
-    parent: Dict[GridRoom, GridRoom] = {}
+    parent: dict[GridRoom, GridRoom] = {}
 
     def find(r: GridRoom) -> GridRoom:
         if r not in parent:
@@ -108,7 +106,7 @@ def build_spanning_tree(
         parent[ra] = rb
         return True
 
-    tree: Set[Tuple[GridRoom, GridRoom]] = set()
+    tree: set[tuple[GridRoom, GridRoom]] = set()
     for edge in sorted_edges:
         a, b = edge
         if union(a, b):
@@ -117,11 +115,11 @@ def build_spanning_tree(
 
 
 def build_doors(
-    tree_edges: Set[Tuple[GridRoom, GridRoom]],
-    extra_edges: Set[Tuple[GridRoom, GridRoom]] | None = None,
+    tree_edges: set[tuple[GridRoom, GridRoom]],
+    extra_edges: set[tuple[GridRoom, GridRoom]] | None = None,
     lock_probability: float = 0.3,
     seed: int = 42,
-) -> List[DoorEdge]:
+) -> list[DoorEdge]:
     """Build door edges from tree edges (and optional extra loop edges).
 
     Doors are placed on the wall shared between the two rooms.
@@ -129,7 +127,7 @@ def build_doors(
     import random as _random
     rng = _random.Random(seed)
 
-    doors: List[DoorEdge] = []
+    doors: list[DoorEdge] = []
     all_edges = set(tree_edges)
     if extra_edges:
         all_edges |= extra_edges
@@ -175,20 +173,20 @@ def _wall_between(a: GridRoom, b: GridRoom) -> str:
 def has_path(
     start: GridRoom,
     end: GridRoom,
-    edges: Set[Tuple[GridRoom, GridRoom]],
+    edges: set[tuple[GridRoom, GridRoom]],
 ) -> bool:
     """Return True if a path exists from *start* to *end* along *edges*."""
     if start == end:
         return True
 
     # BFS
-    adj: Dict[GridRoom, List[GridRoom]] = {}
+    adj: dict[GridRoom, list[GridRoom]] = {}
     for a, b in edges:
         adj.setdefault(a, []).append(b)
         adj.setdefault(b, []).append(a)
 
-    visited: Set[GridRoom] = set()
-    queue: List[GridRoom] = [start]
+    visited: set[GridRoom] = set()
+    queue: list[GridRoom] = [start]
     visited.add(start)
 
     while queue:
@@ -204,8 +202,8 @@ def has_path(
 
 
 def validate_start_exit_path(
-    rooms: List[GridRoom],
-    tree_edges: Set[Tuple[GridRoom, GridRoom]],
+    rooms: list[GridRoom],
+    tree_edges: set[tuple[GridRoom, GridRoom]],
     start: GridRoom,
     exit_room: GridRoom,
 ) -> bool:
@@ -253,7 +251,7 @@ def build_room_graph(
     # Extra loop edges (remove any from tree, pick remaining randomly)
     remaining = sorted(all_edges - tree_edges)
     rng.shuffle(remaining)
-    extra_edges: Set[Tuple[GridRoom, GridRoom]] = set(remaining[:extra_loop_edges])
+    extra_edges: set[tuple[GridRoom, GridRoom]] = set(remaining[:extra_loop_edges])
 
     # Default start = (0, 0), exit = opposite corner
     if start is None:
@@ -291,7 +289,7 @@ def door_position_on_wall(
     to_room: GridRoom,
     room_width: float = 20.0,
     room_depth: float = 20.0,
-) -> Tuple[float, float, float, float]:
+) -> tuple[float, float, float, float]:
     """Compute the (x, y, z, yaw) position of a door on the wall between two rooms.
 
     The door sits on the wall of *from_room* that faces *to_room*,
@@ -321,10 +319,10 @@ def door_position_on_wall(
 
 def get_doors_for_room(
     room: GridRoom,
-    doors: List[DoorEdge],
-) -> List[DoorEdge]:
+    doors: list[DoorEdge],
+) -> list[DoorEdge]:
     """Return all door edges connected to *room*."""
-    result: List[DoorEdge] = []
+    result: list[DoorEdge] = []
     rx, rz = room
     for door in doors:
         fr, to = door["from_room"], door["to_room"]

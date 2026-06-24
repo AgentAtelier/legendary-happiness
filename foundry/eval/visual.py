@@ -7,14 +7,14 @@ signals.  Deterministic, no model dependencies — tested with canned inputs.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 # ── Public API ───────────────────────────────────────────────────
 
 def compute_visual_signals(
-    checks: Dict[str, Any],
-    aesthetic: Dict[str, Any] | None = None,
-) -> Dict[str, Any]:
+    checks: dict[str, Any],
+    aesthetic: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Compute flat visual signal booleans from structured VLM checks
     and an optional aesthetic score.
 
@@ -42,7 +42,7 @@ def compute_visual_signals(
     """
     aesthetic_score_val = _extract_aesthetic(aesthetic)
 
-    signals: Dict[str, Any] = {}
+    signals: dict[str, Any] = {}
     signals["notes"] = checks.get("notes", "")
 
     # ── Prop signals ─────────────────────────────────────────
@@ -79,7 +79,7 @@ def compute_visual_signals(
 
 # ── Internal helpers ────────────────────────────────────────────
 
-def _extract_aesthetic(aesthetic: Dict[str, Any] | None) -> float | None:
+def _extract_aesthetic(aesthetic: dict[str, Any] | None) -> float | None:
     """Extract the numeric score from an aesthetic result dict."""
     if aesthetic is None:
         return None

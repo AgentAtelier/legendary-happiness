@@ -303,16 +303,16 @@ def test_no_ensure_shell_textures_symbol():
 # ── Import-ordering fix: pass-2 must run after _copy_room_shell ────
 
 def test_scaffold_runs_post_shell_import_pass(tmp_path, monkeypatch):
-    """Showcase2 fix: scaffold_project must run a SECOND headless
+    """Phase 2.1: scaffold_project must run the single headless
     ``--import`` pass AFTER ``_copy_room_shell`` so shell.glb +
     its image refs end up with ``.godot/imported/*.ctex`` sidecars.
 
     Asserts:
       1. ``_copy_room_shell`` is called at least once.
-      2. ``_pre_import`` is called at least twice (two passes).
-      3. The last ``_copy_room_shell`` invocation precedes the last
-         ``_pre_import`` invocation (second pass imports what
-         just got copied).
+      2. ``_pre_import`` is called exactly once.
+      3. The ``_copy_room_shell`` invocation precedes the
+         ``_pre_import`` invocation (single import sees what
+         was just copied).
     """
     import room_shell as _room_shell
     import scaffold
@@ -326,8 +326,8 @@ def test_scaffold_runs_post_shell_import_pass(tmp_path, monkeypatch):
     def fake_copy_room_shell(glb_path, dest_assets_dir):
         call_log.append(("copy_room_shell", {"path": glb_path}))
 
-    def fake_pre_import(build_path, godot_bin, *, label="first"):
-        call_log.append(("pre_import", {"label": label, "path": str(build_path)}))
+    def fake_pre_import(build_path, godot_bin):
+        call_log.append(("pre_import", {"path": str(build_path)}))
 
     monkeypatch.setattr(_room_shell, "ensure_room_shell", fake_ensure_room_shell)
     monkeypatch.setattr(scaffold, "_copy_room_shell", fake_copy_room_shell)
@@ -382,24 +382,15 @@ def test_scaffold_runs_post_shell_import_pass(tmp_path, monkeypatch):
     assert len(copy_calls) >= 1, (
         f"_copy_room_shell was never called — call log: {call_log}"
     )
-    assert len(import_calls) >= 2, (
-        f"Expected exactly 2 _pre_import calls (first + after-shell); "
+    assert len(import_calls) == 1, (
+        f"Expected exactly 1 _pre_import call (single import pass); "
         f"got {len(import_calls)}. call log: {call_log}"
     )
 
-    # Two import passes with two distinct labels — protects against
-    # someone deleting the second pass and bumping the first label,
-    # without coupling the assertion to literal label strings.
-    labels = [c[1]["label"] for c in import_calls]
-    assert len(set(labels)) == 2, (
-        f"_pre_import must run twice with distinct labels; got {labels}. "
-        f"call log: {call_log}"
-    )
-
-    # The last copy must precede the last import.
-    last_copy_idx = max(i for i, c in enumerate(call_log) if c[0] == "copy_room_shell")
-    last_import_idx = max(i for i, c in enumerate(call_log) if c[0] == "pre_import")
-    assert last_copy_idx < last_import_idx, (
-        f"Order violation: last _copy_room_shell came AFTER last _pre_import. "
+    # The copy must precede the import.
+    copy_idx = max(i for i, c in enumerate(call_log) if c[0] == "copy_room_shell")
+    import_idx = max(i for i, c in enumerate(call_log) if c[0] == "pre_import")
+    assert copy_idx < import_idx, (
+        f"Order violation: _copy_room_shell came AFTER _pre_import. "
         f"call log: {call_log}"
     )

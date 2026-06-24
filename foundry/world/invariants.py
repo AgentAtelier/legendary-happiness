@@ -14,7 +14,7 @@ Tiered invariants:
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Dict, List
+from typing import Any
 
 from decisions import DecisionPoint, make_decision
 from world.model import World
@@ -23,9 +23,9 @@ from world.model import World
 def check_invariants(
     world: World,
     *,
-    material_palette: Dict[str, Any] | None = None,
+    material_palette: dict[str, Any] | None = None,
     max_per_zone: int = 100,
-) -> List[DecisionPoint]:
+) -> list[DecisionPoint]:
     """Run all invariants against *world*.
 
     Returns a list of Decision Points.  HARD decisions have
@@ -36,7 +36,7 @@ def check_invariants(
         from materials import MATERIAL_PALETTE
         material_palette = MATERIAL_PALETTE
 
-    decisions: List[DecisionPoint] = []
+    decisions: list[DecisionPoint] = []
 
     # ── HARD: referential integrity ───────────────────────────────
     _check_referential_integrity(world, material_palette, decisions)
@@ -55,8 +55,8 @@ def check_invariants(
 
 def _check_referential_integrity(
     world: World,
-    palette: Dict[str, Any],
-    decisions: List[DecisionPoint],
+    palette: dict[str, Any],
+    decisions: list[DecisionPoint],
 ):
     """HARD: every placement's material (if present in attrs) must be in
     the known material palette."""
@@ -80,7 +80,7 @@ def _check_referential_integrity(
 def _check_zone_budget(
     world: World,
     max_per_zone: int,
-    decisions: List[DecisionPoint],
+    decisions: list[DecisionPoint],
 ):
     """HARD: max placements per zone must not be exceeded."""
     zone_counts: Counter[str] = Counter()
@@ -107,11 +107,11 @@ def _check_zone_budget(
 
 def _check_material_monoculture(
     world: World,
-    decisions: List[DecisionPoint],
+    decisions: list[DecisionPoint],
 ):
     """SOFT: warn if all placements in a zone share the same material
     (material monoculture)."""
-    zone_materials: Dict[str, Counter[str]] = {}
+    zone_materials: dict[str, Counter[str]] = {}
     for p in world.placements:
         zone = p.attrs.get("zone", "default")
         mat = p.attrs.get("material")

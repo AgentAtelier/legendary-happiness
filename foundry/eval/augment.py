@@ -30,11 +30,10 @@ import hashlib
 import random
 from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 # ── Slot lexicons (single-sourced from resolver / wear_words) ─────────
 
-_GENERATOR_NOUNS: Dict[str, List[str]] = {
+_GENERATOR_NOUNS: dict[str, list[str]] = {
     "table": ["table", "desk", "coffee table", "dining table", "workbench", "side table"],
     "chair": ["chair", "stool", "seat", "dining chair", "armchair"],
     "shelf": ["shelf", "bookshelf", "bookcase", "wall shelf", "shelving unit"],
@@ -42,34 +41,34 @@ _GENERATOR_NOUNS: Dict[str, List[str]] = {
 }
 
 # Material keywords — from the resolver itself so they always parse.
-def _specific_keywords() -> List[str]:
+def _specific_keywords() -> list[str]:
     from material_resolver import _SPECIFIC_KW
     return list(_SPECIFIC_KW.keys())
 
 
-def _family_keywords() -> List[str]:
+def _family_keywords() -> list[str]:
     from material_resolver import _FAMILY_KW
     return list(_FAMILY_KW.keys())
 
 
-def _aged_words() -> List[str]:
+def _aged_words() -> list[str]:
     from wear_words import AGED_WORDS
     return sorted(AGED_WORDS)
 
 
-def _new_words() -> List[str]:
+def _new_words() -> list[str]:
     from wear_words import NEW_WORDS
     return sorted(NEW_WORDS)
 
 
 # Size adjectives
-_SIZE_WORDS: List[str] = [
+_SIZE_WORDS: list[str] = [
     "tall", "low", "wide", "narrow", "large", "small",
     "long", "short", "deep", "shallow", "sturdy", "heavy",
 ]
 
 # Ambiguous nouns (for adversarial templates)
-_AMBIG_NOUNS: List[str] = [
+_AMBIG_NOUNS: list[str] = [
     "thing", "object", "item", "piece", "unit",
     "furniture", "furnishing",
 ]
@@ -83,7 +82,7 @@ _AMBIG_NOUNS: List[str] = [
 # {size} = size word (e.g. "tall", "wide")
 # {ambig} = ambiguous noun
 
-_SYSTEMATIC_TEMPLATES: List[str] = [
+_SYSTEMATIC_TEMPLATES: list[str] = [
     "a {gen}",
     "a {mat} {gen}",
     "a {wear} {gen}",
@@ -95,7 +94,7 @@ _SYSTEMATIC_TEMPLATES: List[str] = [
     "a {wear} {size} {mat} {gen}",
 ]
 
-_ADVERSARIAL_TEMPLATES: List[str] = [
+_ADVERSARIAL_TEMPLATES: list[str] = [
     # Conflicting material cues (cross-family)
     "a {mat1}-look {mat2} {gen}",
     "a {mat1} {mat2} {gen}",
@@ -195,9 +194,9 @@ def _fires_decision(request: str, llm=None) -> bool:
 # ── Core generation ───────────────────────────────────────────────────
 
 
-def _all_slot_combos(rng: random.Random) -> List[dict]:
+def _all_slot_combos(rng: random.Random) -> list[dict]:
     """Generate slot-fill dicts from our real lexicons."""
-    combos: List[dict] = []
+    combos: list[dict] = []
 
     gens = list(_GENERATOR_NOUNS.keys())
     specific_kws = _specific_keywords()
@@ -235,9 +234,9 @@ def _all_slot_combos(rng: random.Random) -> List[dict]:
     return combos
 
 
-def _adversarial_combos(rng: random.Random) -> List[dict]:
+def _adversarial_combos(rng: random.Random) -> list[dict]:
     """Generate adversarial slot-fill dicts."""
-    combos: List[dict] = []
+    combos: list[dict] = []
     gens = list(_GENERATOR_NOUNS.keys())
     specific_kws = _specific_keywords()
 
@@ -271,7 +270,7 @@ def augment_corpus(
     dry_run: bool = False,
     llm: Callable | None = None,
     paraphrase: Callable | None = None,
-) -> Tuple[List[str], dict]:
+) -> tuple[list[str], dict]:
     """Generate an augmented corpus via lexicon-driven slot-filling.
 
     Args:
@@ -299,7 +298,7 @@ def augment_corpus(
     adv_combos = _adversarial_combos(rng)
 
     # 3. Fill templates → raw requests
-    raw_requests: List[str] = []
+    raw_requests: list[str] = []
 
     # Systematic
     for combo in slot_combos:
@@ -311,7 +310,7 @@ def augment_corpus(
             continue
 
     # Adversarial (insert at front so they're always included)
-    adv_requests: List[str] = []
+    adv_requests: list[str] = []
     for combo in adv_combos:
         tmpl = rng.choice(_ADVERSARIAL_TEMPLATES)
         try:
@@ -320,8 +319,8 @@ def augment_corpus(
             continue
 
     # 4. Dedup
-    seen: Set[str] = set()
-    unique: List[str] = []
+    seen: set[str] = set()
+    unique: list[str] = []
     for req in adv_requests + raw_requests:
         key = _request_key(req)
         if key not in seen:
@@ -331,7 +330,7 @@ def augment_corpus(
     dedup_rate = 1.0 - (len(unique) / max(len(adv_requests) + len(raw_requests), 1))
 
     # 5. Validity filter
-    valid: List[str] = []
+    valid: list[str] = []
     rejected: int = 0
     for req in unique:
         if _is_valid(req, llm):
@@ -350,7 +349,7 @@ def augment_corpus(
             decision_firers += 1
 
     # 8. Compute stats
-    generator_counts: Dict[str, int] = {}
+    generator_counts: dict[str, int] = {}
     for req in valid:
         for gen in _GENERATOR_NOUNS:
             for noun in _GENERATOR_NOUNS[gen]:
@@ -386,24 +385,24 @@ def augment_corpus(
 
 # ── Room-themed lexicons ────────────────────────────────────────
 
-_NPC_ROLES: List[str] = [
+_NPC_ROLES: list[str] = [
     "hermit", "blacksmith", "wizard", "innkeeper", "alchemist",
     "shopkeeper", "tinker", "woodcutter", "sage", "miner",
     "fisherman", "potter", "weaver", "carpenter", "hunter",
 ]
 
-_ROOM_TYPES: List[str] = [
+_ROOM_TYPES: list[str] = [
     "shack", "study", "workshop", "back room", "chamber", "hut",
     "cellar", "attic", "cabin", "forge", "laboratory", "storeroom",
     "cottage", "den", "loft",
 ]
 
-_ROOM_MOODS: List[str] = [
+_ROOM_MOODS: list[str] = [
     "cluttered", "dusty", "dim", "cozy", "worn", "ancient",
     "cramped", "forgotten", "shadowy", "musty",
 ]
 
-_FURNITURE_ITEMS: List[str] = [
+_FURNITURE_ITEMS: list[str] = [
     "worn furniture", "wooden shelves", "old tables", "scattered chairs",
     "a heavy cabinet", "stacked crates", "dusty bookshelves",
     "a rickety table", "iron-bound chests", "a potion-stained workbench",
@@ -412,7 +411,7 @@ _FURNITURE_ITEMS: List[str] = [
 
 # ── Room prompt templates ───────────────────────────────────────
 
-_QUEST_SYSTEMATIC_TEMPLATES: List[str] = [
+_QUEST_SYSTEMATIC_TEMPLATES: list[str] = [
     "a {role}'s {room}",
     "a {mood} {room} with {furniture}",
     "a {role}'s {room} with {furniture}",
@@ -420,7 +419,7 @@ _QUEST_SYSTEMATIC_TEMPLATES: List[str] = [
     "a {role}'s {mood} {room} with {furniture}",
 ]
 
-_QUEST_ADVERSARIAL_TEMPLATES: List[str] = [
+_QUEST_ADVERSARIAL_TEMPLATES: list[str] = [
     # Empty room
     "an empty {room}",
     # Ambiguous / underspecified
@@ -433,9 +432,9 @@ _QUEST_ADVERSARIAL_TEMPLATES: List[str] = [
 
 # ── Quest-slot combo generation ─────────────────────────────────
 
-def _quest_slot_combos(rng: random.Random) -> List[dict]:
+def _quest_slot_combos(rng: random.Random) -> list[dict]:
     """Generate slot-fill dicts from room-themed lexicons."""
-    combos: List[dict] = []
+    combos: list[dict] = []
 
     for role in _NPC_ROLES:
         for room in _ROOM_TYPES:
@@ -457,9 +456,9 @@ def _quest_slot_combos(rng: random.Random) -> List[dict]:
     return combos
 
 
-def _quest_adversarial_combos(rng: random.Random) -> List[dict]:
+def _quest_adversarial_combos(rng: random.Random) -> list[dict]:
     """Generate adversarial quest combos."""
-    combos: List[dict] = []
+    combos: list[dict] = []
 
     for room in rng.sample(_ROOM_TYPES, min(6, len(_ROOM_TYPES))):
         combos.append({"room": room})
@@ -548,7 +547,7 @@ def augment_quest_corpus(
     dry_run: bool = False,
     llm: Callable | None = None,
     paraphrase: Callable | None = None,
-) -> Tuple[List[str], dict]:
+) -> tuple[list[str], dict]:
     """Generate a fetch-quest corpus via room-themed slot-filling.
 
     Produces room prompts (like "a hermit's shack", "a dusty workshop
@@ -581,7 +580,7 @@ def augment_quest_corpus(
     adv_combos = _quest_adversarial_combos(rng)
 
     # 3. Fill templates → raw room themes
-    raw_themes: List[str] = []
+    raw_themes: list[str] = []
 
     for combo in slot_combos:
         tmpl = rng.choice(_QUEST_SYSTEMATIC_TEMPLATES)
@@ -590,7 +589,7 @@ def augment_quest_corpus(
         except KeyError:
             continue
 
-    adv_themes: List[str] = []
+    adv_themes: list[str] = []
     for combo in adv_combos:
         tmpl = rng.choice(_QUEST_ADVERSARIAL_TEMPLATES)
         try:
@@ -599,8 +598,8 @@ def augment_quest_corpus(
             continue
 
     # 4. Dedup
-    seen: Set[str] = set()
-    unique: List[str] = []
+    seen: set[str] = set()
+    unique: list[str] = []
     for req in adv_themes + raw_themes:
         key = _request_key(req)
         if key not in seen:
@@ -610,7 +609,7 @@ def augment_quest_corpus(
     dedup_rate = 1.0 - (len(unique) / max(len(adv_themes) + len(raw_themes), 1))
 
     # 5. Quest validity filter
-    valid: List[str] = []
+    valid: list[str] = []
     rejected: int = 0
     for req in unique:
         if _quest_is_valid(req, manifest, llm):
@@ -629,7 +628,7 @@ def augment_quest_corpus(
             decision_firers += 1
 
     # 8. Compute stats
-    role_counts: Dict[str, int] = {}
+    role_counts: dict[str, int] = {}
     for req in valid:
         for role in _NPC_ROLES:
             if role in req.lower():

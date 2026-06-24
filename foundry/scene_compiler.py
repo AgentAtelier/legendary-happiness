@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import List, Tuple, TypedDict
+from typing import TypedDict
 
 import navmesh
 from _constants import _SUN_BASIS_INTERIOR_TUPLE as _SUN_BASIS
@@ -146,7 +146,7 @@ def _build_room_sub_resources(
     nav_polygons = None,
     shell_glb_path = None,
     tonemap_mode: int = 3,
-) -> Tuple[List[dict], List[dict]]:
+) -> tuple[list[dict], list[dict]]:
     """Build the list of room sub-resources for the given dimensions.
 
     P-G: *ambient* and *background* override the default environment
@@ -409,7 +409,7 @@ def _build_room_nodes(
     directional_energy: float | None = None,
     is_outdoor: bool = False,
     shell_glb_path = None,
-) -> List[dict]:
+) -> list[dict]:
     """Build the list of room nodes (lights, meshes, walls) for the
     given dimensions.
 
@@ -519,7 +519,7 @@ def _build_room_nodes(
 
 # ── Wall collision children definitions ───────────────────────────
 
-_WALL_COLLISION_NODES: List[dict] = [
+_WALL_COLLISION_NODES: list[dict] = [
     {"name": "WallN_collision", "type": "CollisionShape3D", "parent": "WallN",
      "shape": "wall_ns_shape"},
     {"name": "WallS_collision", "type": "CollisionShape3D", "parent": "WallS",
@@ -530,7 +530,7 @@ _WALL_COLLISION_NODES: List[dict] = [
      "shape": "wall_ew_shape"},
 ]
 
-_WALL_MESH_NODES: List[dict] = [
+_WALL_MESH_NODES: list[dict] = [
     {"name": "WallN_mesh", "type": "MeshInstance3D", "parent": "WallN",
      "mesh": "wall_ns_mesh", "mat": "wall_mat"},
     {"name": "WallS_mesh", "type": "MeshInstance3D", "parent": "WallS",
@@ -563,10 +563,10 @@ def _glb_res_path(category: str, material: str, assets_subdir: str = "assets") -
     return f"res://{assets_subdir}/{category}_{material}.glb"
 
 
-def _resolve_unique_glbs(manifest: List[PlacedEntity]) -> List[Tuple[str, str]]:
+def _resolve_unique_glbs(manifest: list[PlacedEntity]) -> list[tuple[str, str]]:
     """Return sorted unique (category, material) pairs from the manifest."""
-    seen: set[Tuple[str, str]] = set()
-    result: list[Tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    result: list[tuple[str, str]] = []
     for entry in manifest:
         pair = (entry.get("category", "?"), entry.get("material", "default"))
         if pair not in seen:
@@ -576,7 +576,7 @@ def _resolve_unique_glbs(manifest: List[PlacedEntity]) -> List[Tuple[str, str]]:
     return result
 
 
-def resolve_unique_glbs_with_npc(manifest: List[PlacedEntity]) -> List[Tuple[str, str]]:
+def resolve_unique_glbs_with_npc(manifest: list[PlacedEntity]) -> list[tuple[str, str]]:
     """Return sorted unique (category, material) pairs INCLUDING the NPC body.
 
     This is the single source of truth for which GLBs a compiled scene
@@ -591,7 +591,7 @@ def resolve_unique_glbs_with_npc(manifest: List[PlacedEntity]) -> List[Tuple[str
     return unique
 
 
-def _ext_resource_block(unique_glbs: List[Tuple[str, str]], assets_subdir: str) -> str:
+def _ext_resource_block(unique_glbs: list[tuple[str, str]], assets_subdir: str) -> str:
     """Build the [ext_resource] header block for unique GLBs.
 
     Omits the ``uid`` attribute intentionally — Godot auto-generates
@@ -607,7 +607,7 @@ def _ext_resource_block(unique_glbs: List[Tuple[str, str]], assets_subdir: str) 
 
 def compile_scene(
     quest_specs: list[dict],
-    manifest: List[PlacedEntity],
+    manifest: list[PlacedEntity],
     output_path: str,
     assets_subdir: str = "assets",
     scene_uid: str | None = None,
@@ -866,13 +866,13 @@ def compile_scene(
     output_dir = str(Path(output_path).parent)
 
     # ── Build GLB id map ────────────────────────────────────────
-    glb_ids: dict[Tuple[str, str], str] = {}
+    glb_ids: dict[tuple[str, str], str] = {}
     for i, (cat, mat) in enumerate(unique_glbs, start=1):
         glb_ids[(cat, mat)] = str(i)
 
     # ── Build collision shape data for each interactable ────────
     # Map entity id → (sub_resource_id, size_tuple)
-    collision_info: dict[str, Tuple[str, Tuple[float, float, float]]] = {}
+    collision_info: dict[str, tuple[str, tuple[float, float, float]]] = {}
     sub_res_idx = 1
 
     # Floor sub_resource

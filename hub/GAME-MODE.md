@@ -87,8 +87,16 @@ The same endpoint also accepts `mode=build` and `mode=write` for the existing Bu
 - During a Steam session, if the hub restarts, the persistent state file at `~/.local/state/forge_gamemode.json` is the source of truth — `resume` still works.
 - A Steam crash mid-session is safe — the next `forge-gamemode off` (your launch line) runs `mode=resume`; if state file is intact, it restarts llama+godot; if it's gone, it's a no-op.
 
+## Installation
+
+```bash
+cp hub/bin/forge-gamemode ~/.local/bin/
+chmod +x ~/.local/bin/forge-gamemode
+```
+
 ## Files
 
+- `hub/bin/forge-gamemode` — tracked copy of the CLI wrapper
 - `hub/hub.py` — `/api/mode` handler + state helpers (`_gamemode_load/active/set/clear`)
 - `hub/static/index.html` — 🎮 Game Mode button + state-aware label + `🎮 GAME` chip
 - `~/.local/bin/forge-gamemode` — CLI wrapper (chmod +x, in PATH)

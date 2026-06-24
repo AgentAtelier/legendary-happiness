@@ -23,7 +23,6 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from typing import List, Tuple
 
 from brief import CATEGORIES, THEMES, brief_json_schema, minimal, validate_brief
 from decisions import Choice, DecisionPoint, make_decision
@@ -136,7 +135,7 @@ class Interpreter:
         prompt: str,
         llm: Callable[[str, str | None], str],
         seed: int | None = None,
-    ) -> Tuple[dict, List[DecisionPoint]]:
+    ) -> tuple[dict, list[DecisionPoint]]:
         """Interpret a free-form user prompt into a validated Brief.
 
         Args:
@@ -154,7 +153,7 @@ class Interpreter:
         ``Brief.minimal(prompt)`` plus a ``brief.parse_fallback``
         decision.
         """
-        decisions: List[DecisionPoint] = []
+        decisions: list[DecisionPoint] = []
 
         # Call the LLM with json_schema to constrain output to the Brief
         # shape (json_schema wins over grammar).  This replaces the old
@@ -217,7 +216,7 @@ class Interpreter:
 # ── Helpers ────────────────────────────────────────────────────────
 
 
-def _chunk_list(items: Tuple[str, ...], chunk_size: int) -> list[list[str]]:
+def _chunk_list(items: tuple[str, ...], chunk_size: int) -> list[list[str]]:
     """Split a tuple of strings into chunks for readable formatting."""
     chunks: list[list[str]] = []
     for i in range(0, len(items), chunk_size):

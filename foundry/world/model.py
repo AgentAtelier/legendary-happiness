@@ -8,7 +8,7 @@ NEVER stored in the model.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 from decisions import DecisionPoint
 
@@ -22,7 +22,7 @@ class Placement:
 
     id: str
     asset_hash: str                     # opaque hash; geometry is derived
-    attrs: Dict[str, Any] = field(default_factory=dict)
+    attrs: dict[str, Any] = field(default_factory=dict)
     # Typical attrs: material, generator, zone
 
 
@@ -33,7 +33,7 @@ class World:
     This is the canonical state.  The event log is a separate concern
     (see ``foundry.world.log``)."""
 
-    placements: List[Placement] = field(default_factory=list)
+    placements: list[Placement] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class ProposeResult:
 
     accepted: bool
     world: World
-    decisions: List[DecisionPoint] = field(default_factory=list)
+    decisions: list[DecisionPoint] = field(default_factory=list)
 
 
 # ── Propose ───────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ def propose(
     world: World,
     intent: Intent,
     *,
-    material_palette: Dict[str, Any] | None = None,
+    material_palette: dict[str, Any] | None = None,
     max_per_zone: int = 100,
 ) -> ProposeResult:
     """Validate *intent* against *world* and either accept (append event,

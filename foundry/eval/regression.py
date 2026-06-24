@@ -21,7 +21,6 @@ import hashlib
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 # ── Hashing ──────────────────────────────────────────────────────────
 
@@ -58,7 +57,7 @@ def _save_expectation(expectations_dir: str, req_hash: str, spec: dict):
 
 def _default_plan(
     request: str, llm: Callable[[str, str | None], str]
-) -> Tuple[dict, List]:
+) -> tuple[dict, list]:
     from planner import AssetPlanner
     return AssetPlanner().plan(request, llm)
 
@@ -67,13 +66,13 @@ def _default_plan(
 
 
 def run_regression(
-    requests: List[str],
+    requests: list[str],
     expectations_dir: str,
     *,
     llm: Callable[[str, str | None], str] | None = None,
     plan: Callable | None = None,
     update: bool = False,
-) -> Tuple[List[dict], dict]:
+) -> tuple[list[dict], dict]:
     """Run *requests* once each through the planner, comparing output
     against golden-master expectations.
 
@@ -92,7 +91,7 @@ def run_regression(
     if plan is None:
         plan = _default_plan
 
-    results: List[dict] = []
+    results: list[dict] = []
     hard_pass = 0
     hard_fail = 0
     generator_mismatches = 0
@@ -112,7 +111,7 @@ def run_regression(
         if update:
             _save_expectation(expectations_dir, req_hash, spec)
 
-        diffs: Dict[str, dict] = {}
+        diffs: dict[str, dict] = {}
         hard_ok = True
 
         # HARD — material (must be deterministic via resolver)
@@ -173,7 +172,7 @@ def run_regression(
 
 
 def build_report_dict(
-    results: List[dict],
+    results: list[dict],
     score: dict,
 ) -> dict:
     """Build the machine dict for the regression report."""
@@ -213,7 +212,7 @@ def build_report_dict(
 
 def build_report_md(report_dict: dict) -> str:
     """Build the markdown digest for the regression report."""
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append("# Foundry Eval — Regression Report")
     lines.append("")
     lines.append(f"- **Total requests:** {report_dict['total']}")

@@ -86,7 +86,7 @@ class Artifact:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Artifact":
+    def from_dict(cls, d: dict) -> Artifact:
         art = cls(
             kind=d["kind"],
             suite=d["suite"],
@@ -107,7 +107,7 @@ class Artifact:
         return out_dir
 
     @classmethod
-    def load(cls, ts_slug: str) -> "Artifact | None":
+    def load(cls, ts_slug: str) -> Artifact | None:
         """Load a previously-saved artifact by timestamp slug."""
         fp = ARTIFACT_DIR / ts_slug / "artifact.json"
         if not fp.exists():

@@ -937,7 +937,7 @@ async def api_logs_read(source: str = "plugin", count: int = 50, offset: int = 0
             timeout=8.0,
         )
         return result
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {"lines": [], "error": "godot-ai logs_read timed out (8s)", "stale_run_id": True}
     except Exception as e:
         return {"lines": [], "error": f"godot-ai not reachable: {type(e).__name__}", "stale_run_id": True}

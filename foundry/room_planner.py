@@ -13,7 +13,6 @@ import json
 import re
 from collections.abc import Callable
 from pathlib import Path
-from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 from llm import load_grammar as _load_grammar
@@ -114,7 +113,7 @@ class RoomPlanner:
         brief: dict | str,
         llm: Callable[[str, str | None], str],
         seed: int | None = None,
-    ) -> Tuple[dict, List[DecisionPoint]]:
+    ) -> tuple[dict, list[DecisionPoint]]:
         """Plan a room from a Brief dict (or raw string).
 
         Accepts a Brief dict or a raw string (wrapped in Brief.minimal
@@ -130,7 +129,7 @@ class RoomPlanner:
             brief = minimal(brief)
 
         raw = self.parse(llm(self.build_prompt(brief), _GRAMMAR))
-        decisions: List[DecisionPoint] = []
+        decisions: list[DecisionPoint] = []
 
         size_in = raw.get("room_size", {}) or {}
         room_size = {}

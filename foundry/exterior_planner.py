@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
 
 from biome_recipe import validate_biome_recipe
 from decisions import make_decision
@@ -43,7 +42,7 @@ class ExteriorPlan:
     biome: dict
     building: dict          # center, half_w, half_d, pad_height, door_side, door_center, structure
     spawn: dict             # x, z, yaw
-    scatter_placements: List[dict]
+    scatter_placements: list[dict]
     names: dict
     decisions: list
     extent: float
@@ -54,7 +53,7 @@ def plan_exterior(
     seed: int,
     *,
     extent: float = _DEFAULT_EXTENT,
-    room_dims: Tuple[float, float] | None = None,
+    room_dims: tuple[float, float] | None = None,
     slope_max: float = 1.2,
 ) -> ExteriorPlan | None:
     """Return an :class:`ExteriorPlan`, or ``None`` if exterior is disabled."""
@@ -131,7 +130,7 @@ def _normalize_names(raw: dict | None) -> dict:
     raw = raw or {}
     scene_name = raw.get("scene_name")
     lore = raw.get("landmark_lore")
-    out_lore: List[dict] = []
+    out_lore: list[dict] = []
     if isinstance(lore, list):
         for item in lore:
             if isinstance(item, dict) and "landmark_id" in item and "line" in item:

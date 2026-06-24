@@ -14,17 +14,17 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from eval.visual import compute_visual_signals
 
 # ── Public API ───────────────────────────────────────────────────
 
 def render_visual_report(
-    items: List[Dict[str, Any]],
+    items: list[dict[str, Any]],
     *,
     title: str = "Visual Eval Report",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a visual report from a list of scored items.
 
     Each item MUST have:
@@ -56,12 +56,12 @@ def render_visual_report(
     return {"json": report_json, "md": report_md}
 
 
-def save_baseline(items: List[Dict[str, Any]], path: str) -> None:
+def save_baseline(items: list[dict[str, Any]], path: str) -> None:
     """Persist current visual results as a baseline JSON file.
 
     Stores ``{id: {signals}}`` keyed by item id for fast lookup.
     """
-    baseline: Dict[str, Any] = {}
+    baseline: dict[str, Any] = {}
     for item in items:
         signals = compute_visual_signals(
             item.get("checks", {}),
@@ -71,7 +71,7 @@ def save_baseline(items: List[Dict[str, Any]], path: str) -> None:
     Path(path).write_text(json.dumps(baseline, indent=2))
 
 
-def load_baseline(path: str) -> Dict[str, Any]:
+def load_baseline(path: str) -> dict[str, Any]:
     """Load a previously saved baseline JSON file.
 
     Returns ``{id: {signals}}`` dict.  Returns empty dict if missing.
@@ -83,9 +83,9 @@ def load_baseline(path: str) -> Dict[str, Any]:
 
 
 def regression_delta(
-    current: List[Dict[str, Any]],
-    baseline: Dict[str, Any],
-) -> Dict[str, Any]:
+    current: list[dict[str, Any]],
+    baseline: dict[str, Any],
+) -> dict[str, Any]:
     """Compare current results against a baseline.
 
     Returns a dict with:
@@ -98,13 +98,13 @@ def regression_delta(
     An item is "regressed" when its ``flag_count`` is higher than
     baseline, or its aesthetic score drops by >0.5.
     """
-    regressed: List[Dict[str, Any]] = []
-    improved: List[Dict[str, Any]] = []
-    new_items: List[Dict[str, Any]] = []
-    removed: List[Dict[str, Any]] = []
-    aesthetic_deltas: Dict[str, Dict[str, Any]] = {}
+    regressed: list[dict[str, Any]] = []
+    improved: list[dict[str, Any]] = []
+    new_items: list[dict[str, Any]] = []
+    removed: list[dict[str, Any]] = []
+    aesthetic_deltas: dict[str, dict[str, Any]] = {}
 
-    current_signals: Dict[str, Dict[str, Any]] = {}
+    current_signals: dict[str, dict[str, Any]] = {}
     for item in current:
         cid = item.get("id", "?")
         signals = compute_visual_signals(
@@ -163,7 +163,7 @@ def regression_delta(
 
 # ── Internal helpers ─────────────────────────────────────────────
 
-def _sort_key(scored_item: Dict[str, Any]) -> tuple:
+def _sort_key(scored_item: dict[str, Any]) -> tuple:
     """Sort key: (flag_count, -aesthetic_score).  None aesthetic → 0.
 
     Sorted descending (reverse=True) so worst items come first:
@@ -174,7 +174,7 @@ def _sort_key(scored_item: Dict[str, Any]) -> tuple:
     return (s.get("flag_count", 0), -aes_key)
 
 
-def _build_json(scored: List[Dict[str, Any]], title: str) -> Dict[str, Any]:
+def _build_json(scored: list[dict[str, Any]], title: str) -> dict[str, Any]:
     """Build the machine-readable JSON report."""
     return {
         "title": title,
@@ -187,9 +187,9 @@ def _build_json(scored: List[Dict[str, Any]], title: str) -> Dict[str, Any]:
     }
 
 
-def _build_md(scored: List[Dict[str, Any]], title: str) -> str:
+def _build_md(scored: list[dict[str, Any]], title: str) -> str:
     """Build the human-readable Markdown report (worst-first)."""
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(f"# {title}")
     lines.append("")
 

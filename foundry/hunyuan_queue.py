@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
-from typing import List
 
 from hunyuan_postprocess import content_cache_key
 
@@ -69,10 +68,10 @@ def enqueue(spec: dict, *, root: str | Path | None = None) -> dict:
     return {"key": key, "status": "queued", "glb": str(cp)}
 
 
-def pending_jobs(*, root: str | Path | None = None) -> List[dict]:
+def pending_jobs(*, root: str | Path | None = None) -> list[dict]:
     """All queued jobs, priority-ordered (the filename's ``<prio>_<key>`` sorts)."""
     r = _root(root)
-    out: List[dict] = []
+    out: list[dict] = []
     for f in sorted((r / "queue").glob("*.json")):
         try:
             out.append(json.loads(f.read_text()))

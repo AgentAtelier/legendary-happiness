@@ -9,7 +9,7 @@ import json
 import re
 import shutil
 from pathlib import Path
-from typing import List, TypedDict
+from typing import TypedDict
 
 from library import register_variant
 
@@ -28,8 +28,8 @@ class SkippedEntry(TypedDict):
 
 
 class PublishResult(TypedDict):
-    published: List[PublishedEntry]
-    skipped: List[SkippedEntry]
+    published: list[PublishedEntry]
+    skipped: list[SkippedEntry]
 
 
 def _resolve_asset_and_material(
@@ -144,7 +144,7 @@ def copy_asset_family(
     material: str,
     library_dir: str,
     dest_assets_dir: str,
-) -> List[str]:
+) -> list[str]:
     """Copy a GLB and its entire file family into a destination.
 
     For a (category, material) pair, globs and copies every file whose

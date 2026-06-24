@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from PIL import Image
 
@@ -38,7 +38,7 @@ except ImportError:
 
 # ── Cache for lazy-loaded model ──────────────────────────────────
 
-_model_cache: Dict[str, Any] | None = None
+_model_cache: dict[str, Any] | None = None
 _load_attempted: bool = False
 
 
@@ -51,7 +51,7 @@ def aesthetic_score(
     pretrained: str = "laion2b_s34b_b79k",
     head_weights: str | None = None,
     device: str = "cpu",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Score the aesthetic quality of a PNG image.
 
     Uses a CLIP visual encoder + a small LAION aesthetic regression
@@ -96,7 +96,7 @@ def _load_model(
     pretrained: str,
     head_weights: str | None,
     device: str,
-) -> Dict[str, Any] | None:
+) -> dict[str, Any] | None:
     """Load CLIP model + aesthetic head.  Returns None on failure."""
     try:
         import open_clip
@@ -158,7 +158,7 @@ def _find_head_weights(embed_dim: int) -> str | None:
 
 # ── Inference ────────────────────────────────────────────────────
 
-def _compute_score(png_path: str, model_cache: Dict[str, Any]) -> float:
+def _compute_score(png_path: str, model_cache: dict[str, Any]) -> float:
     """Preprocess image, run CLIP encoder + aesthetic head, return scalar."""
     import torch
 

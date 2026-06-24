@@ -16,13 +16,12 @@ import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
-from typing import List
 
 from decisions import make_decision
 from hunyuan_postprocess import content_cache_key
 
 # baker(scene_desc, out_dir) -> list[str] of artifact paths written under out_dir.
-Baker = Callable[[dict, str], List[str]]
+Baker = Callable[[dict, str], list[str]]
 
 DEFAULT_ROOT = Path.home() / ".cache" / "forge"
 
@@ -197,7 +196,7 @@ def bake_scene(scene_desc: dict, *, baker: Baker,
         tmp.mkdir(parents=True, exist_ok=True)
         artifacts = baker(scene_desc, str(tmp))
         cache_dir.mkdir(parents=True, exist_ok=True)
-        out: List[str] = []
+        out: list[str] = []
         for a in artifacts:
             dst = cache_dir / Path(a).name
             shutil.move(str(a), str(dst))

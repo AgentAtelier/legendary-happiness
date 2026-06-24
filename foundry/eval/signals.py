@@ -44,7 +44,6 @@ can surface WHY a record was flagged.
 from __future__ import annotations
 
 import re
-from typing import List, Set
 
 from category_registry import DECOR_CATEGORIES
 from compiler import PARAM_RANGES
@@ -139,9 +138,9 @@ def _has_word(text: str, kw: str) -> bool:
 # ── Public entry points ───────────────────────────────────────────────
 
 
-def compute_signals(record) -> Set[str]:
+def compute_signals(record) -> set[str]:
     """Return the set of objective signal tags for *record*."""
-    tags: Set[str] = set()
+    tags: set[str] = set()
 
     if record.error:
         tags.add("build_error")
@@ -170,7 +169,7 @@ def compute_signals(record) -> Set[str]:
     return tags
 
 
-def decision_codes(record) -> List[str]:
+def decision_codes(record) -> list[str]:
     """Return the list of Decision-Point codes on *record* (used for
     ``decision_code_freq`` aggregation in the friction report)."""
     return [d.get("code", "?") for d in (record.decisions or [])]
@@ -429,7 +428,7 @@ def check_brief_valid(brief: dict | None) -> dict:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def compute_quest_signals(record) -> Set[str]:
+def compute_quest_signals(record) -> set[str]:
     """Return the set of objective signal tags for a QuestRecord.
 
     Mirrors ``compute_signals`` for the quest pipeline.  Pure function —
@@ -445,7 +444,7 @@ def compute_quest_signals(record) -> Set[str]:
       ``quest_decision_fired``   — decisions is non-empty
       ``clean``                  — none of the above
     """
-    tags: Set[str] = set()
+    tags: set[str] = set()
 
     # 1. Build error
     if record.error or not getattr(record, "compiled", True):
@@ -553,7 +552,7 @@ def compute_quest_signals(record) -> Set[str]:
     return tags
 
 
-def quest_decision_codes(record) -> List[str]:
+def quest_decision_codes(record) -> list[str]:
     """Return the list of Decision-Point codes on a QuestRecord."""
     return [d.get("code", "?") for d in (record.decisions or [])]
 

@@ -30,7 +30,6 @@ from __future__ import annotations
 import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 from eval.harness import RunRecord
 from eval.signals import compute_signals, record_tier
@@ -44,9 +43,9 @@ class SampleResult:
 
     # Each probe is a dict so the report layer can JSON-serialize directly.
     # Probe shape: {"index": int, "strata": list[str], "reason": str}.
-    probes: List[dict] = field(default_factory=list)
+    probes: list[dict] = field(default_factory=list)
     # Full population counts per stratum (NOT the sampled/capped counts).
-    stratum_sizes: Dict[str, int] = field(default_factory=dict)
+    stratum_sizes: dict[str, int] = field(default_factory=dict)
     # The RNG seed — echoed for reproducibility in the report.
     seed: int = 0
 
@@ -55,7 +54,7 @@ class SampleResult:
 
 
 def stratify_and_sample(
-    records: List[RunRecord],
+    records: list[RunRecord],
     *,
     seed: int,
     clean_baseline_n: int,
@@ -112,8 +111,8 @@ def stratify_and_sample(
 
     # ── 1. Compute signals + populate strata (full population)
     # ───────────────────────────────────
-    stratum_to_indices: Dict[str, List[int]] = {}
-    record_tags: Dict[int, Set[str]] = {}
+    stratum_to_indices: dict[str, list[int]] = {}
+    record_tags: dict[int, Set[str]] = {}
     for idx, rec in enumerate(records):
         tags = (signals_fn(rec) or set())
         if not tags:
@@ -125,7 +124,7 @@ def stratify_and_sample(
 
     # ── 2. Per-stratum pick (slice-1 contract; honors problem_cap)
     # ────────────────────────────
-    picked: Dict[int, List[str]] = {}  # index → strata this index belongs to
+    picked: dict[int, list[str]] = {}  # index → strata this index belongs to
     for tag, indices in stratum_to_indices.items():
         if tag == "clean":
             continue  # clean handled below
@@ -145,7 +144,7 @@ def stratify_and_sample(
     # High-tier records are NOT touched here — they were already in
     # ``picked`` from step 2 (or were all included if problem_cap was
     # None) and we want every one of them in the probe set.
-    low_tier_in_picked: List[int] = [
+    low_tier_in_picked: list[int] = [
         idx for idx, tags in record_tags.items()
         if idx in picked and record_tier(tags) == "low"
     ]
@@ -189,7 +188,7 @@ def stratify_and_sample(
     problem_first.sort(key=lambda x: x[0])
     clean_after.sort(key=lambda x: x[0])
 
-    probes: List[dict] = []
+    probes: list[dict] = []
     for idx, strata in problem_first:
         tier = record_tier(record_tags[idx])
         probes.append({
@@ -233,7 +232,7 @@ def estimate_clean_rate(
 # ── Inner helpers ─────────────────────────────────────────────────────
 
 
-def _reason_for(strata: List[str], *, tier: str) -> str:
+def _reason_for(strata: list[str], *, tier: str) -> str:
     """Build a human-readable 'why was this picked' string.
 
     After severity-tier classification (slice 2), reasons explicitly

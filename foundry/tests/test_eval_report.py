@@ -9,7 +9,6 @@ corpus-loader + corpus-file shape tests (no live llm/Blender).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 
 import pytest
 from eval.harness import RunRecord
@@ -392,7 +391,7 @@ def test_seed_requests_txt_each_generator_is_represented(generator: str):
 def test_build_friction_report_smoke_run_through_synthetic_records():
     """A full synthetic pipeline: build records → sample → build report.
     Confirms no live llm/Blender path is involved."""
-    records: List[RunRecord] = []
+    records: list[RunRecord] = []
     records += [_error_record(i)                       for i in range(2)]
     records += [_gate_rejected_record(i + 2)            for i in range(3)]
     records += [_clean_record(i + 5)                    for i in range(5)]

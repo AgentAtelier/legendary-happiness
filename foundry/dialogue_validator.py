@@ -12,7 +12,6 @@ The fallback firing IS itself an event (feeds P2).
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
 
 from decisions import DecisionPoint, make_decision
 
@@ -277,7 +276,7 @@ def validate_dialogue(
     dialogue: dict[str, str],
     category: str,
     adjective: str = "",
-) -> Tuple[dict[str, str], List[DecisionPoint]]:
+) -> tuple[dict[str, str], list[DecisionPoint]]:
     """Validate all four dialogue lines against *category*.
 
     C4 (Phase 0.1): the ``ask``+``thank`` cue lines must reference the
@@ -374,7 +373,7 @@ def get_canned_idle_barks(theme: str) -> list[str]:
 def validate_idle_barks(
     barks: list[str],
     theme: str = "",
-) -> Tuple[list[str], List[DecisionPoint]]:
+) -> tuple[list[str], list[DecisionPoint]]:
     """EB-6: Validate a list of idle bark lines, falling back to canned.
 
     Returns ``(validated_barks, decisions)``.  At least 3 lines are

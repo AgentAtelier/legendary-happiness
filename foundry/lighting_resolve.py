@@ -11,8 +11,6 @@ ROADMAP 1.5 / AUDIT-03 Q4.
 
 from __future__ import annotations
 
-from typing import List
-
 from comp_tags import _INTERIOR_LIGHT_AREA_PER_LIGHT
 from tscn_writer import fmt_float, transform3d
 
@@ -43,7 +41,7 @@ DEFAULT_LIGHTING_ENV: dict = {
 def _build_interior_lights(
     room_w: float, room_d: float, room_h: float,
     interior_color: tuple, interior_energy: float,
-) -> List[dict]:
+) -> list[dict]:
     """Build interior OmniLight3D nodes for ceiling-mounted room lights.
 
     One light per ~_INTERIOR_LIGHT_AREA_PER_LIGHT m² (at least 1),

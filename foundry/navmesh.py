@@ -11,11 +11,10 @@ pathological inputs.
 from __future__ import annotations
 
 import numpy as np
+from decisions import DecisionPoint, make_decision
 from mapbox_earcut import triangulate_float64
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
-
-from decisions import DecisionPoint, make_decision
 
 Obstacle = tuple[float, float, float, float]  # (cx, cz, half_x, half_z)
 

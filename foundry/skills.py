@@ -23,11 +23,9 @@ combat 25, "dodge_roll" at combat 50).
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 # ── Skill domain definitions ────────────────────────────────────
 
-SKILL_DOMAINS: Dict[str, dict] = {
+SKILL_DOMAINS: dict[str, dict] = {
     "combat": {
         "name": "Combat",
         "description": "Melee fighting ability — damage, swing speed, parry.",
@@ -189,7 +187,7 @@ def tick_decay(skill: dict, current_tick: int) -> dict:
     return skill
 
 
-def get_affordances(skill: dict) -> List[str]:
+def get_affordances(skill: dict) -> list[str]:
     """Return the list of unlocked affordance IDs for a skill."""
     return list(skill.get("affordances", []))
 
@@ -199,12 +197,12 @@ def get_level(skill: dict) -> int:
     return skill.get("level", 0)
 
 
-def all_skills() -> List[str]:
+def all_skills() -> list[str]:
     """Return all skill domain names."""
     return list(SKILL_DOMAINS.keys())
 
 
-def new_player_skills() -> Dict[str, dict]:
+def new_player_skills() -> dict[str, dict]:
     """Create a fresh set of all skills for a new player."""
     return {domain: new_skill_state(domain) for domain in SKILL_DOMAINS}
 

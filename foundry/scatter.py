@@ -17,14 +17,13 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
-from typing import List, Tuple
 
 from terrain_field import Field, height_at, slope_at
 
 # Exclusion zones are circles (cx, cz, radius) — a rectangular building
 # footprint is passed as its bounding circle (conservative, keeps the
 # entrance clear without rect math).
-Exclusion = Tuple[float, float, float]
+Exclusion = tuple[float, float, float]
 
 
 def scatter(
@@ -35,15 +34,15 @@ def scatter(
     extent: float | None = None,
     exclusions: Sequence[Exclusion] | None = None,
     slope_max: float = 1.2,
-    scale_range: Tuple[float, float] = (0.8, 1.3),
-) -> List[dict]:
+    scale_range: tuple[float, float] = (0.8, 1.3),
+) -> list[dict]:
     """Return deterministic flora placements for *biome* on *field*."""
     exclusions = list(exclusions or [])
     ext = float(extent) if extent is not None else field.extent
     half = ext / 2.0
     smin, smax = scale_range
 
-    placements: List[dict] = []
+    placements: list[dict] = []
     for i, fl in enumerate(biome.get("flora_set", ())):
         density = float(fl.get("density", 0.0))
         weight = float(fl.get("weight", 1.0))

@@ -11,8 +11,6 @@ counted toward density and aren't restricted by theme tables.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 from category_registry import BASE_FURNITURE, CARRYABLES, DECOR_CATEGORIES
 from decisions import Choice, DecisionPoint
 
@@ -31,7 +29,7 @@ _FABRIC_SAFE_CATEGORIES = frozenset({"chair", "rug", "stool", "bench"})
 # The LLM output is validated/clamped against the matched row.
 # Decor categories always pass through.
 
-THEME_TABLE: List[dict] = [
+THEME_TABLE: list[dict] = [
     {
         "theme": "hermit",
         "required_categories": ("table", "chair", "shelf"),
@@ -158,7 +156,7 @@ def _match_theme(request: str) -> dict:
 def apply_rules(
     plan: dict, request: str,
     npc_count: int = 1,
-) -> Tuple[dict, List[DecisionPoint]]:
+) -> tuple[dict, list[DecisionPoint]]:
     """Post-process an LLM-generated room plan against theme rules and
     global guards.  Returns (clamped_plan, decisions).
 
@@ -168,7 +166,7 @@ def apply_rules(
     EB-7: *npc_count* drives the carryable-injection guard — a
     multi-NPC room must have at least that many distinct carryables.
     """
-    decisions: List[DecisionPoint] = []
+    decisions: list[DecisionPoint] = []
     row = _match_theme(request)
 
     room_size = dict(plan.get("room_size", {"w": 6.0, "d": 6.0}))
@@ -475,7 +473,7 @@ def apply_rules(
 # colour + energy.  Emitted by scene_compiler per room area.
 # Also: ambient_light_energy raised ≥ 0.4; directional demoted to fill.
 
-LIGHTING_TABLE: Dict[str, dict] = {
+LIGHTING_TABLE: dict[str, dict] = {
     "hermit": {
         "directional_color": (1.0, 0.9, 0.75),
         "directional_energy": 1.2,
@@ -673,12 +671,12 @@ def get_lighting(theme: str) -> dict:
 # lookup; the substring-walk path (``_LIGHTING_ENTRIES``) handles
 # descriptive themes like "cozy kitchen scene".  Default ("*") is
 # cached as a module-level constant.
-THEME_INDEX: Dict[str, dict] = {
+THEME_INDEX: dict[str, dict] = {
     (key.lower() if key != "*" else "*"): entry
     for key, entry in LIGHTING_TABLE.items()
 }
 _LIGHTING_DEFAULT: dict = THEME_INDEX["*"]
-_LIGHTING_ENTRIES: List[Tuple[str, dict]] = [
+_LIGHTING_ENTRIES: list[tuple[str, dict]] = [
     (key, entry) for key, entry in THEME_INDEX.items() if key != "*"
 ]
 
@@ -690,7 +688,7 @@ _LIGHTING_ENTRIES: List[Tuple[str, dict]] = [
 # disk they take priority; this table is the fallback.
 # Colours are (r, g, b) in [0, 1]; roughness in [0, 1].
 
-SHELL_TABLE: Dict[str, dict] = {
+SHELL_TABLE: dict[str, dict] = {
     "hermit": {
         "floor": {"albedo": (0.35, 0.25, 0.15), "roughness": 0.85},
         "wall": {"albedo": (0.55, 0.5, 0.45), "roughness": 0.8},
@@ -782,17 +780,17 @@ def get_shell_material(theme: str, surface: str) -> dict:
 # an O(1) exact-match lookup; the substring-walk path (_SHELL_ENTRIES)
 # handles descriptive themes like 'cozy kitchen scene'. Default ('*')
 # is cached as a module-level constant.
-SHELL_THEME_INDEX: Dict[str, dict] = {
+SHELL_THEME_INDEX: dict[str, dict] = {
     (key.lower() if key != "*" else "*"): entry
     for key, entry in SHELL_TABLE.items()
 }
 _SHELL_DEFAULT: dict = SHELL_THEME_INDEX["*"]
-_SHELL_ENTRIES: List[Tuple[str, dict]] = [
+_SHELL_ENTRIES: list[tuple[str, dict]] = [
     (key, entry) for key, entry in SHELL_THEME_INDEX.items() if key != "*"
 ]   
 
 
-def check_guards_violated(decisions: List[DecisionPoint]) -> bool:
+def check_guards_violated(decisions: list[DecisionPoint]) -> bool:
     """C-0 eval: True if any guard emitted a Decision Point (i.e. the
     LLM output needed correction beyond theme-appropriate variation)."""
     for d in (decisions or []):

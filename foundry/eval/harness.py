@@ -18,7 +18,7 @@ import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any
 
 # ── RunRecord ──────────────────────────────────────────────────────────
 
@@ -29,9 +29,9 @@ class RunRecord:
 
     request: str
     spec: dict | None
-    decisions: List[dict]
+    decisions: list[dict]
     gate_passed: bool | None
-    gate_reasons: List[str]
+    gate_reasons: list[str]
     built: bool
     error: str | None
     glb_path: str | None
@@ -45,10 +45,10 @@ class QuestRecord:
 
     room_theme: str
     quest_spec: dict | None
-    decisions: List[dict]
+    decisions: list[dict]
     compiled: bool
     scene_path: str | None
-    manifest: List[dict]
+    manifest: list[dict]
     error: str | None
     seconds: float
 
@@ -66,12 +66,12 @@ def quest_record_to_dict(qr: QuestRecord) -> dict:
     return asdict(qr)
 
 
-def records_to_jsonl(records: List[RunRecord]) -> str:
+def records_to_jsonl(records: list[RunRecord]) -> str:
     """One JSON object per line, newline-terminated, no trailing commas."""
     return "\n".join(json.dumps(record_to_dict(r)) for r in records) + "\n"
 
 
-def quest_records_to_jsonl(records: List[QuestRecord]) -> str:
+def quest_records_to_jsonl(records: list[QuestRecord]) -> str:
     """One JSON object per line for QuestRecords."""
     return "\n".join(json.dumps(quest_record_to_dict(qr)) for qr in records) + "\n"
 
@@ -81,7 +81,7 @@ def quest_records_to_jsonl(records: List[QuestRecord]) -> str:
 
 def _default_plan(
     request: str, llm: Callable[[str, str | None], str]
-) -> Tuple[dict, List]:
+) -> tuple[dict, list]:
     """Import AssetPlanner lazily so tests injecting ``plan`` don't pull
     Blender/llama paths."""
     from planner import AssetPlanner
@@ -100,15 +100,15 @@ def _default_forge(
 
 
 def run_corpus(
-    requests: List[str],
+    requests: list[str],
     llm: Callable[[str, str | None], str],
     lexicon_path: str,
     library_dir: str,
     *,
     build: bool = True,
-    plan: Callable[..., Tuple[dict, List]] | None = None,
+    plan: Callable[..., tuple[dict, list]] | None = None,
     forge: Callable[[str, str, str], Any] | None = None,
-) -> List[RunRecord]:
+) -> list[RunRecord]:
     """Run *requests* through the foundry pipeline, capturing structured
     records.  NEVER raises out of the per-request loop.
 
@@ -147,7 +147,7 @@ def run_corpus(
         # try/except catches the per-record failure.
         _serialize_decision = lambda d: {"repr": repr(d)}  # noqa: E731
 
-    records: List[RunRecord] = []
+    records: list[RunRecord] = []
     for request in requests:
         t0 = time.perf_counter()
         record = RunRecord(
@@ -198,14 +198,14 @@ def run_corpus(
 # ── Quest pipeline entry point (P6) ───────────────────────────────────
 
 def run_quest_corpus(
-    room_themes: List[str],
-    manifest: List[dict],
+    room_themes: list[str],
+    manifest: list[dict],
     llm: Callable[[str, str | None], str],
     scene_output_dir: str,
     *,
-    plan_quest: Callable[..., Tuple[dict, List]] | None = None,
+    plan_quest: Callable[..., tuple[dict, list]] | None = None,
     compile_scene_fn: Callable[..., str] | None = None,
-) -> List[QuestRecord]:
+) -> list[QuestRecord]:
     """Run *room_themes* through the quest pipeline, capturing structured
     records.  NEVER raises out of the per-request loop.
 
@@ -237,7 +237,7 @@ def run_quest_corpus(
     except ImportError:
         _serialize_decision = lambda d: {"repr": repr(d)}
 
-    records: List[QuestRecord] = []
+    records: list[QuestRecord] = []
     for idx, theme in enumerate(room_themes):
         t0 = time.perf_counter()
         record = QuestRecord(

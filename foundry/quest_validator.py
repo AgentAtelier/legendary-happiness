@@ -18,16 +18,14 @@ truth), never re-hardcoded here.
 
 from __future__ import annotations
 
-from typing import Dict, List, Set, Tuple
-
 from category_registry import get_furniture_top_y, get_kind
 
-OBJECTIVE_TYPES: Tuple[str, ...] = ("fetch", "deliver", "place", "talk")
+OBJECTIVE_TYPES: tuple[str, ...] = ("fetch", "deliver", "place", "talk")
 
 
 # ── Manifest helpers ──────────────────────────────────────────────
 
-def _category_by_id(manifest: List[dict]) -> Dict[str, str]:
+def _category_by_id(manifest: list[dict]) -> dict[str, str]:
     """Map manifest entity id → category."""
     return {e["id"]: e.get("category", "") for e in manifest if "id" in e}
 
@@ -47,9 +45,9 @@ def _is_surface(category: str) -> bool:
 def objective_winnable(
     objective: dict,
     *,
-    manifest: List[dict],
-    npc_ids: Set[str],
-) -> Tuple[bool, str]:
+    manifest: list[dict],
+    npc_ids: set[str],
+) -> tuple[bool, str]:
     """Return ``(winnable, reason)`` for a single objective.
 
     ``reason`` is ``""`` when winnable, else a short human-readable cause.
@@ -98,17 +96,17 @@ def objective_winnable(
 
 # ── Chain solvability (DAG over quest_id / depends_on) ─────────────
 
-def chain_solvable(quests: List[dict]) -> Tuple[bool, str]:
+def chain_solvable(quests: list[dict]) -> tuple[bool, str]:
     """Return ``(solvable, reason)`` for a set of (possibly chained) quests.
 
     A chain is solvable when quest ids are unique, every ``depends_on``
     reference points at a real quest, and the dependency graph is acyclic
     (so there is an order in which every quest can be started).
     """
-    ids: List[str] = [q.get("quest_id", "") for q in quests]
+    ids: list[str] = [q.get("quest_id", "") for q in quests]
 
     # Unique ids
-    seen: Set[str] = set()
+    seen: set[str] = set()
     for qid in ids:
         if qid in seen:
             return False, f"duplicate quest_id '{qid}'"
@@ -117,7 +115,7 @@ def chain_solvable(quests: List[dict]) -> Tuple[bool, str]:
     id_set = set(ids)
 
     # Build edges; validate references
-    deps: Dict[str, List[str]] = {}
+    deps: dict[str, list[str]] = {}
     for q in quests:
         qid = q.get("quest_id", "")
         obj = q.get("objective", {}) or {}
@@ -128,11 +126,11 @@ def chain_solvable(quests: List[dict]) -> Tuple[bool, str]:
         deps[qid] = list(prereqs)
 
     # Kahn topological sort — if not all nodes drain, there's a cycle.
-    indeg: Dict[str, int] = {qid: 0 for qid in id_set}
+    indeg: dict[str, int] = {qid: 0 for qid in id_set}
     for qid, prereqs in deps.items():
         indeg[qid] = len(prereqs)
     queue = [qid for qid, d in indeg.items() if d == 0]
-    dependents: Dict[str, List[str]] = {qid: [] for qid in id_set}
+    dependents: dict[str, list[str]] = {qid: [] for qid in id_set}
     for qid, prereqs in deps.items():
         for p in prereqs:
             dependents[p].append(qid)

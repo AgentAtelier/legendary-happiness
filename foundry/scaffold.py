@@ -16,7 +16,6 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List
 
 import room_shell
 from publish import copy_asset_family
@@ -118,7 +117,7 @@ def _copy_room_shell(glb_path: str | None, dest_assets_dir: str) -> None:
 def scaffold_project(
     name: str,
     quest_specs: list[dict],
-    manifest: List[dict],
+    manifest: list[dict],
     *,
     template_dir: str,
     library_dir: str,

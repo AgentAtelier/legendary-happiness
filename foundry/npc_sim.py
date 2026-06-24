@@ -17,11 +17,9 @@ deterministic Godot-side execution.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 # ── 7 Needs ──────────────────────────────────────────────────────
 
-NEED_NAMES: Tuple[str, ...] = (
+NEED_NAMES: tuple[str, ...] = (
     "food", "water", "shelter", "safety",
     "sleep", "companionship", "joy",
 )
@@ -30,7 +28,7 @@ NEED_NAMES: Tuple[str, ...] = (
 # Decay is linear — need drops by decay_per_hour every game-hour.
 # When a need falls below its threshold, it becomes "urgent" and
 # actions that address it get a utility bonus.
-NEED_DEFAULTS: Dict[str, Tuple[float, float, float]] = {
+NEED_DEFAULTS: dict[str, tuple[float, float, float]] = {
     "food":           (80.0, 8.0,  30.0),
     "water":          (85.0, 10.0, 25.0),
     "shelter":        (90.0, 2.0,  50.0),
@@ -41,17 +39,17 @@ NEED_DEFAULTS: Dict[str, Tuple[float, float, float]] = {
 }
 
 
-def default_needs() -> Dict[str, float]:
+def default_needs() -> dict[str, float]:
     """Return a fresh needs dict with default starting values."""
     return {name: NEED_DEFAULTS[name][0] for name in NEED_NAMES}
 
 
-def tick_needs(needs: Dict[str, float], hours: float) -> Dict[str, float]:
+def tick_needs(needs: dict[str, float], hours: float) -> dict[str, float]:
     """Decay all needs by *hours* game-hours.
 
     Returns a new dict (does not mutate input).  Clamps to ≥ 0.
     """
-    result: Dict[str, float] = {}
+    result: dict[str, float] = {}
     for name in NEED_NAMES:
         _, decay_rate, _ = NEED_DEFAULTS[name]
         result[name] = max(0.0, needs.get(name, 100.0) - decay_rate * hours)
@@ -81,7 +79,7 @@ def urgency(need_name: str, value: float) -> float:
 #   location_tag    str            where the action happens ("any" | "furniture" | "npc" | "door")
 #   target_category str | None     furniture/carryable category to seek (None = any)
 
-_ACTION_CATALOGUE: List[dict] = [
+_ACTION_CATALOGUE: list[dict] = [
     # ── Food ──────────────────────────────────────────────────
     {"id": "eat_stored",   "label": "Eat stored food",   "primary_need": "food",  "fulfillment": 60, "duration_h": 0.3,  "coping_type": "active",  "time_preference": "any",  "communal": False, "major": False, "location_tag": "any",       "target_category": None},
     {"id": "cook_meal",    "label": "Cook a meal",       "primary_need": "food",  "fulfillment": 85, "duration_h": 1.0,  "coping_type": "active",  "time_preference": "day",  "communal": False, "major": True,  "location_tag": "furniture", "target_category": "table"},
@@ -112,12 +110,12 @@ _ACTION_CATALOGUE: List[dict] = [
     {"id": "sing_song",     "label": "Sing a song",      "primary_need": "joy", "fulfillment": 25, "duration_h": 0.3,  "coping_type": "social",  "time_preference": "any",  "communal": True,  "major": False, "location_tag": "any",       "target_category": None},
 ]
 
-ACTION_CATALOGUE: Tuple[dict, ...] = tuple(_ACTION_CATALOGUE)
+ACTION_CATALOGUE: tuple[dict, ...] = tuple(_ACTION_CATALOGUE)
 
 
 def select_action(
-    needs: Dict[str, float],
-    available_actions: Tuple[dict, ...] = ACTION_CATALOGUE,
+    needs: dict[str, float],
+    available_actions: tuple[dict, ...] = ACTION_CATALOGUE,
     time_of_day: str = "day",
     other_npcs_nearby: bool = False,
 ) -> dict:
@@ -160,7 +158,7 @@ def select_action(
     return best_action
 
 
-def generate_npc_needs(npc_count: int, seed: int = 42) -> List[Dict[str, float]]:
+def generate_npc_needs(npc_count: int, seed: int = 42) -> list[dict[str, float]]:
     """Generate slightly-varied starting needs for *npc_count* NPCs.
 
     Each NPC starts close to the defaults, with ±15% random variation
@@ -168,9 +166,9 @@ def generate_npc_needs(npc_count: int, seed: int = 42) -> List[Dict[str, float]]
     """
     import random as _random
     rng = _random.Random(seed)
-    results: List[Dict[str, float]] = []
+    results: list[dict[str, float]] = []
     for _ in range(npc_count):
-        needs: Dict[str, float] = {}
+        needs: dict[str, float] = {}
         for name in NEED_NAMES:
             base = NEED_DEFAULTS[name][0]
             jitter = base * rng.uniform(-0.15, 0.15)

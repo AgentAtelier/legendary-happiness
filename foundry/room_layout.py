@@ -6,8 +6,6 @@ paintings hang on walls. Over-capacity is a Decision Point, never a clip.
 """
 from __future__ import annotations
 
-from typing import List, Tuple
-
 from _constants import DEFAULT_RNG_SEED
 from category_registry import CARRYABLES, COLLISION_SIZES, FURNITURE, FURNITURE_TOP_Y
 from decisions import Choice, DecisionPoint, make_decision
@@ -20,7 +18,7 @@ WALL_MARGIN = 0.8     # keep furniture this far from walls
 NPC_Z_INSET = 0.6     # NPC sits this far in from the back wall
 
 
-def _expand(props: List[dict]) -> List[dict]:
+def _expand(props: list[dict]) -> list[dict]:
     """props with counts → flat list of single entities, stable order."""
     out = []
     for p in props:
@@ -29,7 +27,7 @@ def _expand(props: List[dict]) -> List[dict]:
     return out
 
 
-def _grid_cells(w: float, d: float) -> List[Tuple[float, float]]:
+def _grid_cells(w: float, d: float) -> list[tuple[float, float]]:
     """Cell centres inside the room, excluding the player spawn (origin)
     and the NPC slot (back-centre).
 
@@ -55,12 +53,12 @@ def _grid_cells(w: float, d: float) -> List[Tuple[float, float]]:
     return cells
 
 
-def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tuple[List[dict], dict, List[DecisionPoint]]:
+def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> tuple[list[dict], dict, list[DecisionPoint]]:
     room_size = plan["room_size"]
     w, d = float(room_size["w"]), float(room_size["d"])
     entities = _expand(plan.get("props", []))
-    decisions: List[DecisionPoint] = []
-    manifest: List[dict] = []
+    decisions: list[DecisionPoint] = []
+    manifest: list[dict] = []
 
     furniture = [e for e in entities if e["category"] in FURNITURE]
     rugs = [e for e in entities if e["category"] == "rug"]

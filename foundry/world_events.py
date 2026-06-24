@@ -25,8 +25,6 @@ The module is extractable as a standalone event-engine tool.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 from _constants import DEFAULT_RNG_SEED
 
 # ── Event type ───────────────────────────────────────────────────
@@ -35,8 +33,8 @@ class EventType:
     """A single event type in the catalogue."""
     name: str
     dominant_consequence: str       # "resource_loss" | "structural" | "displacement" | "deaths" | "disease"
-    precursors: List[str]           # conditions that can trigger it
-    need_mutations: Dict[str, float]  # delta applied to NPC needs (negative = loss, positive = gain)
+    precursors: list[str]           # conditions that can trigger it
+    need_mutations: dict[str, float]  # delta applied to NPC needs (negative = loss, positive = gain)
     severity: float                 # 0.0–1.0 base severity multiplier
     spatial_radius: int             # rooms affected from epicentre (Manhattan distance)
     spawns_quest: bool              # whether this event generates an emergent quest
@@ -46,8 +44,8 @@ class EventType:
         self,
         name: str,
         dominant_consequence: str,
-        precursors: List[str],
-        need_mutations: Dict[str, float],
+        precursors: list[str],
+        need_mutations: dict[str, float],
         severity: float = 0.5,
         spatial_radius: int = 0,
         spawns_quest: bool = True,
@@ -65,7 +63,7 @@ class EventType:
 
 # ── Event catalogue (G3: 7 event types) ──────────────────────────
 
-EVENT_CATALOGUE: Dict[str, EventType] = {
+EVENT_CATALOGUE: dict[str, EventType] = {
     "flood": EventType(
         name="flood",
         dominant_consequence="displacement",
@@ -145,8 +143,8 @@ def check_precursors(
     event_type: str,
     time_of_day: str = "day",
     tick_count: int = 0,
-    needs: Dict[str, float] | None = None,
-    room_recent_events: List[str] | None = None,
+    needs: dict[str, float] | None = None,
+    room_recent_events: list[str] | None = None,
 ) -> bool:
     """Return True if the precursor conditions for *event_type* are met.
 
@@ -211,13 +209,13 @@ def check_precursors(
 # ── Spatial propagation ──────────────────────────────────────────
 
 def affected_rooms(
-    epicentre: Tuple[int, int],
+    epicentre: tuple[int, int],
     radius: int,
-    all_rooms: List[Tuple[int, int]],
-) -> List[Tuple[int, int]]:
+    all_rooms: list[tuple[int, int]],
+) -> list[tuple[int, int]]:
     """Return rooms within *radius* Manhattan distance of *epicentre*."""
     ex, ez = epicentre
-    result: List[Tuple[int, int]] = []
+    result: list[tuple[int, int]] = []
     for rx, rz in all_rooms:
         if abs(rx - ex) + abs(rz - ez) <= radius:
             result.append((rx, rz))
@@ -228,8 +226,8 @@ def affected_rooms(
 
 def generate_consequences(
     event_type: str,
-    epicentre: Tuple[int, int],
-    all_rooms: List[Tuple[int, int]],
+    epicentre: tuple[int, int],
+    all_rooms: list[tuple[int, int]],
     event_id: str = "event_0",
     tick: int = 0,
 ) -> dict:
@@ -254,7 +252,7 @@ def generate_consequences(
         }
 
     # Scale need mutations by severity
-    scaled_needs: Dict[str, float] = {}
+    scaled_needs: dict[str, float] = {}
     for need, delta in ev.need_mutations.items():
         scaled_needs[need] = delta * ev.severity
 
@@ -262,7 +260,7 @@ def generate_consequences(
     rooms = affected_rooms(epicentre, ev.spatial_radius, all_rooms)
 
     # Room mutations: structural events can disable furniture
-    room_mutations: List[dict] = []
+    room_mutations: list[dict] = []
     if ev.dominant_consequence == "structural":
         room_mutations.append({
             "action": "disable_random_furniture",
@@ -303,10 +301,10 @@ def generate_consequences(
 
 def spawn_emergent_quest(
     event_type: str,
-    epicentre: Tuple[int, int],
-    existing_npc_ids: List[str],
+    epicentre: tuple[int, int],
+    existing_npc_ids: list[str],
     quest_id: str = "q_emergent_0",
-    manifest_entities: List[str] | None = None,
+    manifest_entities: list[str] | None = None,
 ) -> dict:
     """Generate a valid quest spec for an emergent event.
 
@@ -377,10 +375,10 @@ def pick_events(
     num_events: int = 1,
     time_of_day: str = "day",
     tick_count: int = 0,
-    needs: Dict[str, float] | None = None,
-    room_recent_events: List[str] | None = None,
+    needs: dict[str, float] | None = None,
+    room_recent_events: list[str] | None = None,
     seed: int = DEFAULT_RNG_SEED,
-) -> List[str]:
+) -> list[str]:
     """Pick *num_events* event types whose precursors are satisfied.
 
     Returns a list of event type names, deterministically ordered.
@@ -392,7 +390,7 @@ def pick_events(
     room_recent_events = room_recent_events or []
 
     # Find all events whose precursors are met
-    candidates: List[EventType] = []
+    candidates: list[EventType] = []
     for ev in EVENT_CATALOGUE.values():
         if check_precursors(
             ev.name,
@@ -420,14 +418,14 @@ def fire_events(
     num_events: int = 1,
     time_of_day: str = "day",
     tick_count: int = 0,
-    needs: Dict[str, float] | None = None,
-    room_recent_events: List[str] | None = None,
-    epicentre: Tuple[int, int] = (0, 0),
-    all_rooms: List[Tuple[int, int]] | None = None,
-    existing_npc_ids: List[str] | None = None,
-    manifest_entities: List[str] | None = None,
+    needs: dict[str, float] | None = None,
+    room_recent_events: list[str] | None = None,
+    epicentre: tuple[int, int] = (0, 0),
+    all_rooms: list[tuple[int, int]] | None = None,
+    existing_npc_ids: list[str] | None = None,
+    manifest_entities: list[str] | None = None,
     seed: int = DEFAULT_RNG_SEED,
-) -> List[dict]:
+) -> list[dict]:
     """Pick, generate, and return fired event dicts.
 
     Returns a list of event-consequence schema dicts, one per fired
@@ -449,7 +447,7 @@ def fire_events(
         seed=seed,
     )
 
-    fired: List[dict] = []
+    fired: list[dict] = []
     for i, etype in enumerate(event_types):
         event_id = f"event_{tick_count}_{i}"
         event = generate_consequences(

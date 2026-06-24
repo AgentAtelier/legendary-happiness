@@ -36,7 +36,6 @@ pytest.skip(
     allow_module_level=True,
 )
 
-import os
 from pathlib import Path
 
 from visual.screenshot import _has_lavapipe_icd, _has_lavapipe_icd_at

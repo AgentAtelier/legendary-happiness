@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Inspection prompts. Phrased to make the VLM report what it ACTUALLY sees
 # (rather than rubber-stamp "looks fine"), and to flag an empty/blank frame —
@@ -48,7 +48,7 @@ def run_batch(
     library_dir: str | None = None,
     builds_dir: str | None = None,
     baseline_path: str | None = None,
-    angles: List[float] | None = None,
+    angles: list[float] | None = None,
     catalog: bool = True,
     scenes: bool = True,
     # Injectables for testing (default = real modules)
@@ -60,7 +60,7 @@ def run_batch(
     _save_baseline=None,
     _load_baseline=None,
     _regression_delta=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the full visual-eval batch.
 
     Returns a dict with:
@@ -90,9 +90,9 @@ def run_batch(
 
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
-    worklist: List[str] = []
+    worklist: list[str] = []
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
 
     # ── (A) Prop catalog ──────────────────────────────────────
     if catalog and library_dir:
@@ -150,24 +150,24 @@ def run_batch(
 def _run_prop_catalog(
     lib: Path,
     out_path: Path,
-    angles: List[float] | None,
+    angles: list[float] | None,
     capture_prop,
     check_image,
     aesthetic_score_fn,
     prop_schema: dict,
-    worklist: List[str],
-) -> List[Dict[str, Any]]:
+    worklist: list[str],
+) -> list[dict[str, Any]]:
     """Scan *lib* for GLB files, capture + score each, return items."""
     # Scan all .glb files (top-level + subdirectories), excluding .import sidecars
     glbs = sorted(p for p in lib.rglob("*.glb") if not p.name.endswith(".glb.import"))
 
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     prop_out = out_path / "props"
     prop_out.mkdir(parents=True, exist_ok=True)
 
     for glb in glbs:
         prop_id = glb.stem
-        item: Dict[str, Any] = {"id": prop_id}
+        item: dict[str, Any] = {"id": prop_id}
 
         # Capture screenshots
         try:
@@ -209,13 +209,13 @@ def _run_prop_catalog(
 def _run_scene_regression(
     builds_dir: Path,
     out_path: Path,
-    angles: List[float] | None,
+    angles: list[float] | None,
     capture_scene,
     check_image,
     aesthetic_score_fn,
     scene_schema: dict,
-    worklist: List[str],
-) -> List[Dict[str, Any]]:
+    worklist: list[str],
+) -> list[dict[str, Any]]:
     """Scan *builds_dir* for Godot projects, capture + score each."""
     builds = sorted(
         d for d in builds_dir.iterdir()
@@ -224,13 +224,13 @@ def _run_scene_regression(
     if not builds:
         return []
 
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     scene_out = out_path / "scenes"
     scene_out.mkdir(parents=True, exist_ok=True)
 
     for build in builds:
         scene_id = build.name
-        item: Dict[str, Any] = {"id": scene_id}
+        item: dict[str, Any] = {"id": scene_id}
 
         try:
             pngs = capture_scene(

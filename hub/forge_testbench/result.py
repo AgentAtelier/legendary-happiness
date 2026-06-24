@@ -103,7 +103,7 @@ class Result:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Result":
+    def from_dict(cls, d: dict) -> Result:
         return cls(
             test_id=d["test_id"],
             category=d["category"],
