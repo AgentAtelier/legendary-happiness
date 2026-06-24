@@ -133,21 +133,28 @@ def main():
         obj = _add_glb(p) if (p.get("glb") and os.path.exists(p["glb"])) else _add_primitive(p)
         _ensure_material(obj)
         me = obj.data
+        # P14 (AUDIT-05): if the mesh already carries a UV2 layer
+        # (pre-unwrapped GLB), skip the expensive lightmap_pack /
+        # smart_project — re-unwrapping a valid UV2 is wasted work.
+        had_uv2 = len(me.uv_layers) >= 2
         if not me.uv_layers:
             me.uv_layers.new(name="UVMap")
         if len(me.uv_layers) < 2:
             me.uv_layers.new(name="UV2")
         me.uv_layers.active_index = len(me.uv_layers) - 1
-        # lightmap-pack the active (UV2) layer
-        bpy.context.view_layer.objects.active = obj
-        obj.select_set(True)
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
-        try:
-            bpy.ops.uv.lightmap_pack(PREF_CONTEXT="ALL_FACES", PREF_MARGIN_DIV=0.2)
-        except Exception:
-            bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02)
-        bpy.ops.object.mode_set(mode="OBJECT")
+        if not had_uv2:
+            # lightmap-pack the active (UV2) layer
+            bpy.context.view_layer.objects.active = obj
+            obj.select_set(True)
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            try:
+                bpy.ops.uv.lightmap_pack(PREF_CONTEXT="ALL_FACES", PREF_MARGIN_DIV=0.2)
+            except Exception:
+                bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.02)
+            bpy.ops.object.mode_set(mode="OBJECT")
+        else:
+            print(f"[bake] {obj.name}: reusing existing UV2, skip re-unwrap")
         if "bake_col" not in me.color_attributes:
             me.color_attributes.new(name="bake_col", type="FLOAT_COLOR", domain="POINT")
         me.color_attributes.active_color = me.color_attributes["bake_col"]

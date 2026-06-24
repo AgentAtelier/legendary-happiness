@@ -12,6 +12,7 @@ Any bake failure degrades to tier 0 so the scene always renders.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -33,6 +34,101 @@ def _placements_sig(placements: list) -> list:
          bool(p.get("static", True))]
         for p in placements
     ]
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Phase 1.2: Canonical bake contract builder
+# ═══════════════════════════════════════════════════════════════════
+
+def build_scene_desc(
+    lighting_plan: dict,
+    placements: list,
+    tier: int,
+    samples: int,
+) -> dict:
+    """Build the canonical scene_desc dict from a lighting plan.
+
+    This is the ONE place that builds the bake contract.  All three
+    call sites (scene_compiler, exterior_compiler, scaffold) feed
+    through here.
+
+    C2 (Phase 0.2): interior-light pos is swizzled from Godot-Y-up to
+    Blender-Z-up at the bake boundary — this remap lives ONLY here.
+    The realtime rig path keeps Y-up; the bake path feeds Blender's
+    Z-up scene.  Without it Cycles buries emitters under the floor.
+
+    The sky dict is the SUPERSET: horizon is always present (defaults
+    to fog_color from environment if not explicitly set in sky).
+    """
+    sun = lighting_plan.get("sun", {})
+    sky = dict(lighting_plan.get("sky", {}))
+
+    # Superset: ensure horizon is present in the sky payload.
+    # The exterior path sets it explicitly; the interior path may not.
+    if "horizon" not in sky:
+        env = lighting_plan.get("environment", {})
+        sky["horizon"] = list(env.get("fog_color", [0.5, 0.5, 0.5]))
+
+    _interior_lights: list[dict] = []
+    for src in lighting_plan.get("sources", []) or []:
+        _p = src.get("pos", (0, 0, 0))
+        # Bake boundary: Godot-Y-up → Blender-Z-up, (x, z, y).
+        _swizzled = dict(src)
+        _swizzled["pos"] = (_p[0], _p[2], _p[1])
+        _interior_lights.append(_swizzled)
+
+    return {
+        "tier": int(tier), "samples": int(samples),
+        "placements": placements,
+        "sun": sun, "sky": sky,
+        "interior_lights": _interior_lights,
+    }
+
+
+def bake_and_apply(scene_desc: dict, build_dir: str, *,
+                   baker: Baker | None = None,
+                   cache_root: str | Path | None = None) -> dict:
+    """Run the lighting bake for *scene_desc* and (tier≥1) apply artifacts.
+
+    Tier 0 short-circuits — no bake, no side effects.  Tier ≥1 calls
+    ``bake_scene`` with the provided *baker* (or a stub).
+
+    *baker* can be injected by the orchestrator; the real baker shells
+    out to ``blender/bake_lighting.py``.
+
+    Dev override: if ``FORGE_BAKE_TIER`` is set in the environment
+    (e.g. ``"0"``), its value replaces the tier in *scene_desc* so
+    fast iteration never waits on Cycles.
+
+    Returns:
+        ``{"tier", "status", "artifacts"}``.
+    """
+    env_tier = os.environ.get("FORGE_BAKE_TIER")
+    if env_tier is not None:
+        scene_desc = dict(scene_desc)
+        scene_desc["tier"] = int(env_tier)
+
+    if int(scene_desc.get("tier", 0)) == 0:
+        return {"tier": 0, "status": "realtime", "artifacts": []}
+
+    result = bake_scene(
+        scene_desc,
+        baker=baker or (lambda _desc, _out_dir: []),
+        cache_root=cache_root,
+    )
+    if result.get("artifacts") and result.get("tier", 0) >= 1:
+        _apply_bake_artifacts(result, build_dir)
+    return result
+
+
+def _apply_bake_artifacts(bake_result: dict, build_dir: str) -> None:
+    """Placeholder — orchestrator wires the real artifact copy.
+
+    The contract: bake_and_apply calls this after a successful bake,
+    and the artifacts dict carries the file paths.  Tier 1 needs
+    COLOR_0 render-active vertex colours; tier 2 needs lightmap.
+    """
+    pass
 
 
 def bake_key(scene_desc: dict) -> str:

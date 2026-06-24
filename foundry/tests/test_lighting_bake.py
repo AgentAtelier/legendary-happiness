@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 
-from lighting_bake import bake_key, bake_scene
+from lighting_bake import bake_and_apply, bake_key, bake_scene
 
 
 def _desc(tier=1, sun_dir=(0.0, -1.0, 0.0)):
@@ -68,6 +68,82 @@ def test_bake_key_depends_on_interior_lights():
     base = {"tier":2,"samples":64,"placements":[],"sun":{},"sky":{},"interior_lights":[]}
     lit  = {**base, "interior_lights":[{"type":"hearth","pos":(0,0.5,-3),"color":(1,0.6,0.3),"energy":6}]}
     assert bake_key(base) != bake_key(lit)
+
+
+# ═════════════════════════════════════════════════════════════════
+#  Phase 2.3: FORGE_BAKE_TIER dev override + bake_and_apply caching
+# ═════════════════════════════════════════════════════════════════
+
+def test_forge_bake_tier_override_short_circuits(monkeypatch, tmp_path):
+    """FORGE_BAKE_TIER=0 → bake_and_apply returns tier-0 realtime and the baker
+    is NEVER called, even when the incoming scene_desc has tier=2."""
+    monkeypatch.setenv("FORGE_BAKE_TIER", "0")
+    calls = []
+
+    def baker(desc, out_dir):
+        calls.append(1)
+        return []
+
+    r = bake_and_apply(_desc(tier=2), str(tmp_path), baker=baker, cache_root=tmp_path)
+    assert r["tier"] == 0
+    assert r["status"] == "realtime"
+    assert calls == []
+
+
+def test_forge_bake_tier_unset_no_override(monkeypatch, tmp_path):
+    """When FORGE_BAKE_TIER is NOT set, the incoming scene_desc tier is honoured."""
+    # Ensure the env var is absent
+    monkeypatch.delenv("FORGE_BAKE_TIER", raising=False)
+    calls = []
+
+    def baker(desc, out_dir):
+        p = os.path.join(out_dir, "baked.glb")
+        with open(p, "w") as f:
+            f.write("glb")
+        calls.append(1)
+        return [p]
+
+    r = bake_and_apply(_desc(tier=1), str(tmp_path), baker=baker, cache_root=tmp_path)
+    assert r["tier"] == 1
+    assert r["status"] == "baked"
+    assert len(calls) == 1
+
+
+def test_bake_and_apply_cache_hit(tmp_path):
+    """Phase 2.3: bake_and_apply reuses the cached artifact on a second identical
+    call — the baker is called exactly once."""
+    calls = []
+
+    def baker(desc, out_dir):
+        p = os.path.join(out_dir, "baked.glb")
+        with open(p, "w") as f:
+            f.write("glb")
+        calls.append(1)
+        return [p]
+
+    desc = _desc(tier=1)
+    r1 = bake_and_apply(desc, str(tmp_path), baker=baker, cache_root=tmp_path)
+    assert r1["status"] == "baked"
+    assert len(calls) == 1
+
+    r2 = bake_and_apply(desc, str(tmp_path), baker=baker, cache_root=tmp_path)
+    assert r2["status"] == "cached"
+    assert len(calls) == 1  # baker NOT called again
+    assert r2["artifacts"] == r1["artifacts"]
+
+
+def test_bake_and_apply_tier0_no_bake(tmp_path):
+    """bake_and_apply with tier=0 short-circuits without calling the baker."""
+    calls = []
+
+    def baker(desc, out_dir):
+        calls.append(1)
+        return []
+
+    r = bake_and_apply(_desc(tier=0), str(tmp_path), baker=baker, cache_root=tmp_path)
+    assert r["tier"] == 0
+    assert r["status"] == "realtime"
+    assert calls == []
 
 
 # ═════════════════════════════════════════════════════════════════
