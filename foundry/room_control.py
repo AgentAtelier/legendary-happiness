@@ -651,14 +651,36 @@ LIGHTING_TABLE: Dict[str, dict] = {
 
 def get_lighting(theme: str) -> dict:
     """P-G: Return the (directional_color, directional_energy, ambient,
-    background) for *theme* (case-insensitive keyword match, '*' default)."""
+    background) for *theme* (case-insensitive keyword match, '*' default).
+
+    P19: lookup uses the module-level ``THEME_INDEX`` for an O(1)
+    exact-match fast path; substring matching against descriptive
+    themes ('cozy kitchen scene') falls back to a pre-built entry
+    list (keys already lowercased at import time).
+    """
     theme_lower = theme.lower()
-    for key, entry in LIGHTING_TABLE.items():
-        if key == "*":
-            continue
-        if key in theme_lower:
+    exact = THEME_INDEX.get(theme_lower)
+    if exact is not None:
+        return exact
+    for _key, entry in _LIGHTING_ENTRIES:
+        if _key in theme_lower:
             return entry
-    return LIGHTING_TABLE["*"]
+    return _LIGHTING_DEFAULT
+
+
+# AUDIT-05 P19: precomputed lookup index for the per-theme lighting
+# table.  Keys are lowercased so callers can do an O(1) exact-match
+# lookup; the substring-walk path (``_LIGHTING_ENTRIES``) handles
+# descriptive themes like "cozy kitchen scene".  Default ("*") is
+# cached as a module-level constant.
+THEME_INDEX: Dict[str, dict] = {
+    (key.lower() if key != "*" else "*"): entry
+    for key, entry in LIGHTING_TABLE.items()
+}
+_LIGHTING_DEFAULT: dict = THEME_INDEX["*"]
+_LIGHTING_ENTRIES: List[Tuple[str, dict]] = [
+    (key, entry) for key, entry in THEME_INDEX.items() if key != "*"
+]
 
 
 # ── E1: Per-theme shell material table ───────────────────────────
@@ -728,8 +750,7 @@ SHELL_TABLE: Dict[str, dict] = {
         "floor": {"albedo": (0.35, 0.25, 0.15), "roughness": 0.8},
         "wall": {"albedo": (0.5, 0.4, 0.3), "roughness": 0.75},
         "ceiling": {"albedo": (0.6, 0.5, 0.4), "roughness": 0.7},
-    },
-    "*": {
+    },    "*": {
         "floor": {"albedo": (0.35, 0.25, 0.15), "roughness": 0.85},
         "wall": {"albedo": (0.6, 0.55, 0.5), "roughness": 0.8},
         "ceiling": {"albedo": (0.75, 0.7, 0.65), "roughness": 0.75},
@@ -739,14 +760,36 @@ SHELL_TABLE: Dict[str, dict] = {
 
 def get_shell_material(theme: str, surface: str) -> dict:
     """E1: Return the (albedo, roughness) for *surface* (floor|wall|ceiling)
-    in *theme*.  Falls back to '*' default."""
+    in *theme*.
+
+    P19: lookup uses the module-level ``SHELL_THEME_INDEX`` for an
+    O(1) exact-match fast path; substring matching against descriptive
+    themes ('cozy kitchen scene') falls back to a pre-built entry list
+    (keys already lowercased at import time).
+    """
     theme_lower = theme.lower()
-    for key, entry in SHELL_TABLE.items():
-        if key == "*":
-            continue
-        if key in theme_lower:
-            return entry.get(surface, SHELL_TABLE["*"][surface])
-    return SHELL_TABLE["*"][surface]
+    exact = SHELL_THEME_INDEX.get(theme_lower)
+    if exact is not None:
+        return exact.get(surface, _SHELL_DEFAULT[surface])
+    for _key, entry in _SHELL_ENTRIES:
+        if _key in theme_lower:
+            return entry.get(surface, _SHELL_DEFAULT[surface])
+    return _SHELL_DEFAULT[surface]
+
+
+# AUDIT-05 P19: precomputed lookup index for the per-theme shell
+# (floor/wall/ceiling) table. Keys are lowercased so callers can do
+# an O(1) exact-match lookup; the substring-walk path (_SHELL_ENTRIES)
+# handles descriptive themes like 'cozy kitchen scene'. Default ('*')
+# is cached as a module-level constant.
+SHELL_THEME_INDEX: Dict[str, dict] = {
+    (key.lower() if key != "*" else "*"): entry
+    for key, entry in SHELL_TABLE.items()
+}
+_SHELL_DEFAULT: dict = SHELL_THEME_INDEX["*"]
+_SHELL_ENTRIES: List[Tuple[str, dict]] = [
+    (key, entry) for key, entry in SHELL_THEME_INDEX.items() if key != "*"
+]   
 
 
 def check_guards_violated(decisions: List[DecisionPoint]) -> bool:
