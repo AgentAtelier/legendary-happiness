@@ -34,6 +34,7 @@ Make the system correct and *loud*. Mostly independent → run M and D in parall
 | 0.8 | **Determinism constants + complete cache keys** — `_constants.py` (seed 42, sun bases); add palette + GLB-content hash to `bake_key` / room_shell key | D4/D5/C1/D1/P2 | M |
 | 0.9 | **Hygiene** — `TAG-LEGEND.md`; add `ruff`/`pyflakes` lint (auto-fixes dead imports + hint style); standardize `logging` | Q5/Q6/Q19/Q10/Q12 | M |
 | 0.10 | **Brief+seed+plan persistence** — write the Brief/seed/plan as a re-loadable artifact per build (insurance for iterative editing) | BACKLOG §A | D drafts · M implements |
+| 0.11 | **Capture-harness reliability** (broken eyes = false confidence). Done: `process_frame` (headless hang), room-aware AABB camera, Parse-Error stderr guard, missing class-texture stopgap. **OPEN: headless-GL dummy-renderer regression** — capture can't get a real GL context after the rewrite (removed env / driver change); restoring `MESA_GL_VERSION_OVERRIDE` at shell level didn't fix it. | T1-class / orchestrator eyes | M to finish · **O verifies** |
 
 ## Phase 1 — Decompose the realization layer (KEYSTONE)
 
