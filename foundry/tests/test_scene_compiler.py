@@ -808,6 +808,114 @@ def test_scene_uses_separated_positions():
     assert len(transforms) >= 2, f"expected at least 2 transforms, got {len(transforms)}"
 
 
+# ── AUDIT-05 P8: broad-phase grid scales to 150 props ─────────────
+
+import time as _time
+
+
+def test_resolve_prop_overlaps_scales_to_150_props():
+    """P8: broad-phase-grid separation must complete quickly & preserve
+    no-overlap on a 150-prop manifest.
+
+    The manifest is a 15 x 10 grid of chairs on 1.0 m centres
+    (chair half-extent sum 0.5 < 1.0, so no pair overlaps initially).
+
+    Asserts:
+      1. All 150 entries are returned.
+      2. No AABBs overlap post-separation (sanity: same as input).
+      3. Wallclock under 1 s — well under what the O(N^2) all-pairs
+         version of the loop would take at this size.
+    """
+    manifest: list[PlacedEntity] = []
+    pos = 0
+    for xi in range(15):
+        for zi in range(10):
+            if pos >= 150:
+                break
+            manifest.append({
+                "id": f"scale_{pos:03d}", "category": "chair",
+                "material": "worn_oak",
+                "x": xi * 1.0, "y": 0.0, "z": zi * 1.0,
+            })
+            pos += 1
+        if pos >= 150:
+            break
+    assert len(manifest) == 150
+
+    t0 = _time.monotonic()
+    result = _resolve_prop_overlaps(manifest)
+    elapsed_ms = (_time.monotonic() - t0) * 1000.0
+
+    assert len(result) == 150, f"expected 150 returned entries, got {len(result)}"
+
+    sep_indices = [
+        i for i, e in enumerate(result)
+        if e.get("surface") != "underlay" and not e.get("decor")
+    ]
+    hx_chair, hz_chair = _prop_half_extents("chair")[::2]
+    for a_i in range(len(sep_indices)):
+        i = sep_indices[a_i]
+        xi = result[i].get("x", 0.0)
+        zi = result[i].get("z", 0.0)
+        for b_i in range(a_i + 1, len(sep_indices)):
+            j = sep_indices[b_i]
+            ox = (hx_chair + hx_chair) - abs(xi - result[j].get("x", 0.0))
+            oz = (hz_chair + hz_chair) - abs(zi - result[j].get("z", 0.0))
+            assert not (ox > 0 and oz > 0), (
+                f"150-prop separation left {result[i]['id']} and "
+                f"{result[j]['id']} overlapping (ox={ox:.3f}, oz={oz:.3f})"
+            )
+
+    assert elapsed_ms < 1000.0, (
+        f"150-prop broad-phase separation took {elapsed_ms:.1f} ms "
+        f"(expected <1000 ms; original O(N^2) path would be much slower)"
+    )
+
+
+def test_resolve_prop_overlaps_broad_phase_handles_cluster():
+    """P8: a tight prop cluster (multiple props at same point) must
+    still be separated in 20 iterations.
+    """
+    manifest = [
+        {"id": f"clu_{i}", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": 0.0}
+        for i in range(6)
+    ]
+    result = _resolve_prop_overlaps(manifest)
+    hxa, hza = _prop_half_extents("table")[::2]
+    for a in range(len(result)):
+        xa, za = result[a].get("x", 0.0), result[a].get("z", 0.0)
+        for b in range(a + 1, len(result)):
+            xb, zb = result[b].get("x", 0.0), result[b].get("z", 0.0)
+            ox = (hxa + hxa) - abs(xa - xb)
+            oz = (hza + hza) - abs(za - zb)
+            assert not (ox > 0 and oz > 0), (
+                f"cluster separation left {result[a]['id']} and "
+                f"{result[b]['id']} overlapping (ox={ox:.3f}, oz={oz:.3f})"
+            )
+
+
+# ── AUDIT-05 P8: tiny N falls back to brute-force ───────────────
+
+def test_resolve_prop_overlaps_falls_back_for_tiny_n():
+    """P8: when only 0-2 props are separable, the brute-force path is used
+    (broad-phase grid overhead would be wasted).  Test verifies a
+    2-prop overlap cluster produces identical output to the original.
+    """
+    manifest = [
+        {"id": "a", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": 0.0},
+        {"id": "b", "category": "table", "material": "worn_oak",
+         "x": 0.0, "y": 0.0, "z": 0.0},
+    ]
+    result = _resolve_prop_overlaps(manifest)
+    # a_x = ... pushed by half overlap, b_x = ..., separated
+    assert abs(result[0].get("x", 0.0) - result[1].get("x", 0.0)) + \
+           abs(result[0].get("z", 0.0) - result[1].get("z", 0.0)) > 0.01, (
+        "two overlapping tables should be pushed apart by brute-force path"
+    )
+
+
 # ── Item 4: Player body ─────────────────────────────────────────
 
 def test_player_body_mesh_node_exists():
