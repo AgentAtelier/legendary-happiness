@@ -1,8 +1,8 @@
 # Forge — Project State (read this first)
 
-**Updated:** 2026-06-22. Single source of truth for *where we are*. The many `*-PROMPTS.md` /
+**Updated:** 2026-06-25. Single source of truth for *where we are*. The many `*-PROMPTS.md` /
 `*-DESIGN.md` files in this dir are per-task artifacts (mostly historical once implemented); this file
-is the live status.
+is the live status. **➡ For the current DIRECTION, read `WORLD-ENGINE.md` first.**
 
 ## What Forge is
 
@@ -32,7 +32,59 @@ legibility. See `SPINE-DESIGN.md`.
 **Build-time vs run-time:** *Python builds the world, Godot lives it* — Python decides everything at
 build time and bakes it; Godot renders/loops. (Memory: `python-builds-godot-lives`.)
 
-## Done (shipped + verified)
+---
+
+## ⚑ CURRENT STATUS (2026-06-25) — start here; sections below are historical
+
+**Epoch shift.** M1 (the "engine" epoch — make the realization layer honest/clean/fast/correct) is
+**essentially complete**. The next north star is the **World Engine**: stateless scene generator →
+**stateful, growing, editable persistent world**. **Read `WORLD-ENGINE.md`** for the full architecture,
+the named walls, and the build order.
+
+**M1 status** (see `ROADMAP.md` for the table):
+- Phase 0 (correctness/honesty) ✅ · Phase 1 (decompose `scene_compiler` — the keystone) ✅ ·
+  Phase 2 (build speed: 2.1 single-import, 2.3 bake-cache, 2.4 caps) ✅ · Phase 3 (3.1 triplanar gating,
+  3.3 shadow budget, 3.4 lighting re-tune) ✅; 3.2 verified **void** (npc.gd drives the rig).
+- Suite: **~1400 passing** on the fast gate. Audit (5 rounds) synthesized in `AUDIT-00-SYNTHESIS.md`;
+  delegable audit residue cleared.
+- **Remaining M1 items, all orchestrator-owned (not blocking the epoch shift):** **2.2** batch Blender
+  spawns (design+verify), **3.5** two-palette recolor render (visual), **0.5b** headless interaction
+  ray-aim (the 3 `godot_heavy` tests), **0.9b** print→logging (delegable).
+
+**First step of the World Engine:** sub-project (a) — a **human-authored JSON-patch → World-DAG →
+deterministic Godot assembly, with the validation gate, NO LLM**. Prove the machinery, then plug the LLM
+in as a patch-generator. (`WORLD-ENGINE.md` §6–7.)
+
+**Parked (see `FUTURELOG.md`):** **UX / hub redesign** — its own careful anti-slop process (Claude-web
+design + UX research); maker-journey + approach notes captured there. Cohesion Contract / iterative
+editing / exterior now fold into the World Engine.
+
+### Gotchas a cold session MUST know
+- **Gate command (exact):** `cd foundry && .venv/bin/python -m pytest -m "not blender and not godot_heavy" -q`.
+  `not blender` skips Blender-subprocess tests; `not godot_heavy` skips the 3 flaky 0.5b interaction tests.
+- **The venv is `foundry/.venv`** (NOT repo-root). `cd foundry` first, or paths/venv resolve wrong (this
+  bit the CLI: `cd` not persisting across command segments → wrong venv).
+- **Don't start a command with `pkill …`** — it returns exit 1 when nothing matches, and `errexit` aborts
+  the whole line before your real command runs (wasted real time here).
+- **The local LLM/GPU stack can be DOWN with no signal** — a hanging command may mean the env changed, not
+  slowness. Treat abnormally-long runs as a possible environment issue.
+- **`builds/` is gitignored** (artifacts). **Tree cruft to delete** (CLI-session leftovers, not source):
+  `2^31`, `foundry/_apply_q17_dp_emission.py`, `ruff-fix.txt`, `ruff-pre-fix.txt`, `pyproject.toml.before-ruff`,
+  `scripts/rebuild_showcase2.py`.
+
+### Delegation (three tiers; one CLI agent at a time)
+**O** = Opus orchestrator (tokens scarce; writes specs/prompts, decisions, module boundaries, and owns
+all Blender/visual/headless/heavy-test verification). **D** = DeepSeek V4 Pro (default implementer, ~5h/day).
+**M** = MiniMax M3 (bulk/overflow). (GLM/Z.AI was trialed and dropped — operational hassle, not capability.)
+
+### Canonical doc map
+`WORLD-ENGINE.md` (direction) · `ROADMAP.md` (M1) · `AUDIT-00-SYNTHESIS.md` (audit) ·
+`FUTURELOG.md` (parked incl. UX approach) · `docs/superpowers/specs/2026-06-24-cohesion-contract-design.md`
+(Cohesion = World-Engine sub-project c).
+
+---
+
+## Done (shipped + verified) — HISTORICAL (pre-M1; superseded by CURRENT STATUS above)
 
 - **Spine Slice 1** (rooms ride the Brief), **Slice 2** (quests + per-NPC grammared dialogue fallback),
   **Slice 3 — G1 Layered Soul** (interpreter infers Substrate/axes per NPC → dialogue tone; showcase in
