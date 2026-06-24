@@ -1545,3 +1545,115 @@ def test_plan_multi_quest_id_on_every_spec():
     assert len(specs) == 2
     assert specs[0]["quest_id"] == "q_npc_0"
     assert specs[1]["quest_id"] == "q_npc_1"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  AUDIT-02 L1 / AUDIT-01 A10: soft-fallback for insufficient carryables
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_plan_multi_soft_fallback_when_carryables_short():
+    """AUDIT-02 L1 / AUDIT-01 A10: layout_room.auto-injects missing
+    carryables — plan_multi must NOT re-raise the same invariant.
+    With fewer carryables than npc_count, plan_multi must emit a
+    quest.carryables_short Decision Point (severity='warning') and
+    return specs using the available targets round-robin.  Hard-raising
+    here would crash the build with a misleading message if layout_room
+    ever regressed.
+    """
+    planner = QuestBehaviourPlanner()
+
+    # Only 1 carryable for 2 NPCs — triggers len(valid_ids) < npc_count.
+    short_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+    ]
+
+    def fake_short_llm(prompt, grammar=None, json_schema=None, **kw):
+        # npc_0 picks the lone carryable; npc_1 picks a non-existent
+        # item so the dangling_target handler round-robins back to key_0.
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi.", "ask": "Find the key, please.",
+                            "wrong": "Not the right key.",
+                            "thank": "Yes, that key is exactly right."},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "apprentice",
+                "target_entity": "dragon_gold",  # not in manifest
+                "dialogue": {"greet": "Hi.", "ask": "Find the gold, please.",
+                            "wrong": "Not gold.",
+                            "thank": "Yes, that gold is just right."},
+                "objective": {"type": "fetch", "target": "dragon_gold",
+                              "giver": "npc"},
+            },
+        })
+
+    # ACT: must NOT raise (was raising ValueError before the fix).
+    specs, decs = planner.plan_multi(
+        "a shack", short_manifest, fake_short_llm, npc_count=2,
+        carryable_ids={"key_0"},
+    )
+
+    # ASSERT: 2 specs returned, both targeting the lone available carryable.
+    assert len(specs) == 2
+    for spec in specs:
+        assert spec["target_entity"] == "key_0", (
+            f"expected round-robin to key_0, got {spec['target_entity']!r}"
+        )
+
+    # ASSERT: quest.carryables_short DP emitted with severity='warning'.
+    cs_dps = [d for d in decs if d.code == "quest.carryables_short"]
+    assert len(cs_dps) == 1, (
+        f"expected exactly one quest.carryables_short DP; "
+        f"got codes {[d.code for d in decs]}"
+    )
+    dp = cs_dps[0]
+    assert dp.severity == "warning"
+    assert dp.stage == "planner"
+    assert dp.context["npc_count"] == 2
+    assert dp.context["carryable_count"] == 1
+
+
+def test_plan_multi_soft_fallback_emits_no_dp_when_carryables_sufficient():
+    """Happy-path companion: 2 carryables for 2 NPCs → no
+    quest.carryables_short DP emitted (the invariant holds, no warning)."""
+    planner = QuestBehaviourPlanner()
+
+    exact_manifest = [
+        {"id": "key_0", "category": "key", "material": "wrought_iron"},
+        {"id": "gem_0", "category": "gem", "material": "rough_granite"},
+    ]
+
+    def fake_exact_llm(prompt, grammar=None, json_schema=None, **kw):
+        return json.dumps({
+            "npc_0": {
+                "npc_role": "hermit",
+                "target_entity": "key_0",
+                "dialogue": {"greet": "Hi.", "ask": "Find the key, please.",
+                            "wrong": "Not the right key.",
+                            "thank": "Yes, that key is exactly right."},
+                "objective": {"type": "fetch", "target": "key_0", "giver": "npc"},
+            },
+            "npc_1": {
+                "npc_role": "apprentice",
+                "target_entity": "gem_0",
+                "dialogue": {"greet": "Hi.", "ask": "Find the gem, please.",
+                            "wrong": "Not the right gem.",
+                            "thank": "Yes, that gem is exactly right."},
+                "objective": {"type": "fetch", "target": "gem_0", "giver": "npc"},
+            },
+        })
+
+    specs, decs = planner.plan_multi(
+        "a shack", exact_manifest, fake_exact_llm, npc_count=2,
+        carryable_ids={"key_0", "gem_0"},
+    )
+
+    cs_dps = [d for d in decs if d.code == "quest.carryables_short"]
+    assert cs_dps == [], (
+        f"happy path should not emit quest.carryables_short; "
+        f"got codes {[d.code for d in decs]}"
+    )

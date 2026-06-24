@@ -20,7 +20,12 @@ from dataclasses import dataclass
 from typing import Tuple
 
 # SEVERITY string constants — the four known severities.
-SEVERITY: Tuple[str, ...] = ("info", "assumption", "ambiguous", "error")
+# "warning" was added in the AUDIT-02 L1 / AUDIT-01 A10 fix so that
+# plan_multi can soft-fallback on missing carryables (layout_room is
+# the invariant's owner; plan_multi mustn't re-raise on layout_room
+# regressing).  "warning" sits between "assumption" and "error" —
+# rendered in CLI (unlike "info") but not blocking.
+SEVERITY: Tuple[str, ...] = ("info", "assumption", "ambiguous", "warning", "error")
 
 
 # ── Data classes ────────────────────────────────────────────────────
@@ -169,11 +174,17 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # plain
         "The model picked '{picked}' for one NPC even though pick-up-able items were available.",
     ),
-    "quest.insufficient_carryables": (
+    # AUDIT-02 L1 / AUDIT-01 A10: plan_multi soft-fallback when layout_room
+    # has fewer carryables than npc_count.  Severity='warning' (not 'error')
+    # because plan_multi is NOT the invariant's owner — layout_room is, and
+    # it auto-injects missing carryables upstream; if it ever regresses,
+    # plan_multi must degrade gracefully (round-robin among existing
+    # targets) rather than crash the build.
+    "quest.carryables_short": (
         # technical
-        "room has {carryable_count} carryables but {npc_count} NPCs need distinct targets.",
+        "room has {carryable_count} carryables for {npc_count} NPCs; layout_room should have injected the missing ones — proceeding round-robin.",
         # plain
-        "There aren't enough pick-up-able items ({carryable_count}) for {npc_count} NPCs.",
+        "Only {carryable_count} pick-up-able item(s) for {npc_count} NPCs — sharing targets so the build can still finish.",
     ),
     "quest.idle_bark_fallback": (
         # technical

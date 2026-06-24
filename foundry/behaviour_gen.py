@@ -740,27 +740,30 @@ class QuestBehaviourPlanner:
         else:
             valid_ids = (carryable_ids & all_manifest_ids) or non_decor_ids
 
-        # EB-7: Hard fail when carryables < npc_count — every NPC
-        # needs a distinct pickable target.  If the room doesn't have
-        # enough, it's a pipeline error (room_layout must guarantee this).
-        if len(valid_ids) < npc_count:
+        # EB-7: ≥npc_count carryables for npc_count NPCs is layout_room's
+        # invariant (it auto-injects missing carryables upstream).  We used
+        # to raise ValueError here (AUDIT-02 L1 / AUDIT-01 A10) — a second,
+        # fatal enforcement that would crash with a misleading message if
+        # layout_room regressed.  Now this is a soft-fallback: emit a
+        # 'warning' Decision Point and proceed round-robin through whichever
+        # valid_ids actually exist (the dangling_target handler below already
+        # round-robins via ``sorted(valid_ids - used_targets)`` and falls
+        # back to sorted(valid_ids)[0] when the pool is exhausted).  Plan
+        # generation no longer aborts the build.
+        #
+        # Gated on len(valid_ids) > 0 so the truly-empty case (zero
+        # carryables AND zero non-decor props) keeps its pre-existing
+        # crash path instead of being preceded by a lying DP that claims
+        # we will "share targets" when no targets exist.
+        if 0 < len(valid_ids) < npc_count:
             decisions.append(
                 make_decision(
-                    code="quest.insufficient_carryables",
+                    code="quest.carryables_short",
                     stage="planner",
-                    severity="error",
+                    severity="warning",
                     context={"npc_count": npc_count, "carryable_count": len(valid_ids)},
-                    choices=(
-                        Choice(
-                            label="Add carryables",
-                            plain=f"Need at least {npc_count} pickable items (have {len(valid_ids)}).",
-                            apply={"action": "add_carryables"},
-                        ),
-                    ),
+                    choices=(),
                 )
-            )
-            raise ValueError(
-                f"Room has {len(valid_ids)} carryables, need ≥ {npc_count}"
             )
 
         used_targets: set[str] = set()
