@@ -86,7 +86,15 @@ def _xform_list(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 1
 
 def _scene_desc_from(ext_plan: ExteriorPlan, manifest: list, tier: int,
                      assets_subdir: str) -> dict:
-    """Assemble the bake contract from the plan + interior manifest + biome lights."""
+    """Assemble the bake contract from the plan + interior manifest + biome lights.
+
+    C2 (Phase 0.2): the bake payload carries ``interior_lights`` (empty
+    for exteriors today — biome sun/sky only).  The swizzle logic is
+    centralised in one place: any future exterior-side interior emitter
+    paths will pass their sources through the same (x, z, y) remap the
+    interior compiler applies, so the bake boundary keeps a single
+    convention.
+    """
     atm = ext_plan.biome.get("atmosphere", {})
     placements = [{"glb": f"{assets_subdir}/terrain.glb", "transform": _xform_list(0, 0, 0),
                    "static": True}]
@@ -109,6 +117,11 @@ def _scene_desc_from(ext_plan: ExteriorPlan, manifest: list, tier: int,
         "sky": {"top": list(atm.get("sky_tint", [0.6, 0.7, 0.85])),
                 "horizon": list(atm.get("fog_color", [0.6, 0.6, 0.6])),
                 "ambient_energy": float(atm.get("ambient_energy", 0.5))},
+        # C2: interior_lights slot stays empty for exteriors (biome-only
+        # lighting); retained for contract parallelism with
+        # scene_compiler.build_lighting_scene_desc.  If exterior-side
+        # interior emitters appear later, they must be swizzled y→z here.
+        "interior_lights": [],
         "tier": tier, "samples": 96 if tier >= 2 else 24,
     }
 

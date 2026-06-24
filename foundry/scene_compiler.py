@@ -2257,13 +2257,30 @@ def build_lighting_scene_desc(
     Returns:
         A scene_desc dict with keys tier, samples, placements,
         sun, sky, interior_lights.
+
+    C2 (Phase 0.2): interior-light pos is swizzled from Godot-Y-up to
+    Blender-Z-up at the bake boundary (the realtime rig path keeps
+    Y-up; the build_lighting_scene_desc path feeds Blender's
+    Z-up scene).  Without this remap the Cycles bake buries emitters
+    under the floor (a hearth at y=0.5 lands at z=0.5 in world,
+    which is below the floor) and torches end up at the wrong height.
+    The realtime path is untangled (PlanLight transform line still
+    uses pos[1] = up for Godot's Y-up camera).
     """
+    sun = lighting_plan.get("sun", {})
+    sky = lighting_plan.get("sky", {})
+    _interior_lights: list[dict] = []
+    for src in lighting_plan.get("sources", []) or []:
+        _p = src.get("pos", (0, 0, 0))
+        # Bake boundary: Godot-Y-up → Blender-Z-up, (x, z, y).
+        _swizzled = dict(src)
+        _swizzled["pos"] = (_p[0], _p[2], _p[1])
+        _interior_lights.append(_swizzled)
     return {
         "tier": int(tier), "samples": int(samples),
         "placements": placements,
-        "sun": lighting_plan.get("sun", {}),
-        "sky": lighting_plan.get("sky", {}),
-        "interior_lights": lighting_plan.get("sources", []),
+        "sun": sun, "sky": sky,
+        "interior_lights": _interior_lights,
     }
 
 

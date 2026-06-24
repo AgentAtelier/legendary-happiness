@@ -2189,7 +2189,100 @@ def test_scene_desc_carries_interior_lights():
             "sky": {"top":(0.4,0.45,0.6),"ambient_energy":0.4}}
     desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=64)
     assert desc["tier"] == 2 and desc["sun"] == plan["sun"]
-    assert desc["interior_lights"] == plan["sources"]
+    # C2 (Phase 0.2): interior-light pos is swizzled Godot-Y-up → Blender-Z-up
+    # so Cycles bakes emitters at the correct Y-coordinate (hearths used to
+    # bake buried under the floor, torches at the wrong height).
+    expected = dict(plan["sources"][0])
+    p = plan["sources"][0]["pos"]
+    expected["pos"] = (p[0], p[2], p[1])  # (x, z, y)
+    assert desc["interior_lights"][0] == expected
+
+
+def test_interior_light_pos_remapped_y_to_z_explicit_case():
+    """C2 (Phase 0.2): explicit (2.0, 0.5, -3.0) → (2.0, -3.0, 0.5).
+
+    The user's verification case: ``build_lighting_scene_desc`` must
+    swizzle interior-light pos from Godot-Y-up to Blender-Z-up at the
+    bake boundary so Cycles doesn't bury emitters under the floor.
+    """
+    from scene_compiler import build_lighting_scene_desc
+    plan = {"sources": [{"type": "hearth", "pos": (2.0, 0.5, -3.0),
+                         "color": (1.0, 0.6, 0.3), "energy": 6.0,
+                         "range": 6.0, "flicker": True}],
+            "sun": {"color": (0.5, 0.6, 0.85), "energy": 0.8,
+                    "direction": (-0.3, -0.6, -0.5)},
+            "sky": {"top": (0.4, 0.45, 0.6), "ambient_energy": 0.4}}
+    desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=64)
+    assert desc["interior_lights"][0]["pos"] == (2.0, -3.0, 0.5), (
+        f"expected (x, z, y) swizzle; got {desc['interior_lights'][0]['pos']}"
+    )
+
+
+def test_interior_light_other_fields_preserved_after_remap():
+    """C2: the swizzle must only touch 'pos'; other source fields
+    (type, color, energy, range, flicker) pass through unchanged."""
+    from scene_compiler import build_lighting_scene_desc
+    plan = {"sources": [{"type": "torch", "pos": (4.0, 2.2, -3.5),
+                         "color": (1.0, 0.7, 0.4), "energy": 3.0,
+                         "range": 4.0, "flicker": True}],
+            "sun": {}, "sky": {}}
+    desc = build_lighting_scene_desc(plan, placements=[], tier=2, samples=24)
+    remapped = desc["interior_lights"][0]
+    assert remapped["type"] == "torch"
+    assert remapped["color"] == (1.0, 0.7, 0.4)
+    assert remapped["energy"] == 3.0
+    assert remapped["range"] == 4.0
+    assert remapped["flicker"] is True
+    assert remapped["pos"] == (4.0, -3.5, 2.2)  # (x, z, y)
+
+
+def test_interior_light_remap_handles_no_sources_gracefully():
+    """C2: empty sources list -> empty interior_lights, no KeyError."""
+    from scene_compiler import build_lighting_scene_desc
+    plan = {"sources": [], "sun": {}, "sky": {}}
+    desc = build_lighting_scene_desc(plan, placements=[], tier=1, samples=16)
+    assert desc["interior_lights"] == []
+
+
+def test_realtime_omnilight_transform_uses_y_up_pos():
+    """C2 (Phase 0.2): realtime rig MUST use Godot-Y-up pos unchanged.
+
+    Only the bake payload swizzles; the .tscn PlanLight transform line
+    keeps the original (x, y, z) so the realtime scene stays correct.
+    """
+    import scene_compiler as sc
+    plan = {"sources": [{"type": "hearth", "pos": (2.0, 0.5, -3.0),
+                         "color": (1.0, 0.6, 0.3), "energy": 6.0,
+                         "range": 6.0, "flicker": True}],
+            "sun": {"color": (0.5, 0.6, 0.85), "energy": 0.8,
+                    "direction": (-0.3, -0.6, -0.5)},
+            "sky": {"top": (0.4, 0.45, 0.6), "ambient_energy": 0.4},
+            "windows": [],
+            "environment": {"ambient_color": (0.4, 0.4, 0.45),
+                            "ambient_energy": 0.6}}
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], _minimal_manifest(), out,
+                         room_size={"w": 8, "d": 6}, theme="study",
+                         lighting_plan=plan)
+        text = Path(out).read_text(encoding="utf-8")
+        assert "PlanLight0" in text, (
+            f"expected PlanLight0 in tscn, text sample:\n{text[:1500]}"
+        )
+        expected_realtime = (
+            "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, "
+            "2, 0.5, -3)"
+        )
+        assert expected_realtime in text, (
+            f"realtime PlanLight0 transform should use Y-up pos (2.0, 0.5, -3.0); "
+            f"text: {text[:3000]}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
 
 
 def test_tier0_skips_bake(monkeypatch):
