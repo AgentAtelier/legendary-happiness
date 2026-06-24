@@ -62,7 +62,7 @@ Do **after** Phase 0's guard tests (0.4) + probe honesty (0.5) — they are the 
 | # | Item | Source | Owner |
 |---|---|---|---|
 | 3.1 | **Triplanar gating** — only stone/wood/rock/soil; UV-map metal/fabric/foliage | P4 | M |
-| 3.2 | **Drop dead NPC rig nodes** (verify `npc.gd` doesn't drive them first) | A12/P9 | **O verifies npc.gd** · M implements |
+| 3.2 | ~~Drop dead NPC rig nodes~~ **VOID — false positive.** Verified: `npc.gd._setup_skeleton()` builds the Hips bone hierarchy + uses `_anim_player` at runtime; the nodes are LIVE (A12/P9 was a stale static read). No action. | A12/P9 | ✅ verified void |
 | 3.3 | **Shadow budget** — shadows only on planned lights, not the grid | P5 | M |
 | 3.4 | **Lighting re-tune** (after 0.2 C2 + 3.3 + 0.6 harmony) | BACKLOG §C | **O (visual) + user** |
 | 3.5 | **Two-palette recolor + lit render** — the demonstrable-correctness artifact | T6 | **O renders · user judges** |
