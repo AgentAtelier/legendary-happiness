@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import subprocess
 import traceback
@@ -25,6 +26,16 @@ from pathlib import Path
 
 import hunyuan_queue as q
 import proxy
+
+logger = logging.getLogger(__name__)
+
+
+def _configure_logging() -> None:
+    """0.9b: configure the root logger once at CLI entry."""
+    logging.basicConfig(
+        level=os.environ.get("FORGE_LOG_LEVEL", "INFO"),
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
 
 ROOT = Path(__file__).resolve().parent
 BUILD = str(ROOT / "blender" / "build_asset.py")
@@ -76,7 +87,7 @@ SPECS = [
 
 
 def _log(msg):
-    print(f"[overnight] {msg}", flush=True)
+    logger.info(msg)
 
 
 def _build_glb(spec, out_glb):
@@ -134,6 +145,7 @@ def prep(limit=0):
 
 
 if __name__ == "__main__":
+    _configure_logging()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["prep", "one", "count"])
     ap.add_argument("index", nargs="?", type=int, default=0)

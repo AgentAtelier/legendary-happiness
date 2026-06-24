@@ -13,9 +13,21 @@ Layout (default ``~/.cache/forge/lighting_queue/``):
 from __future__ import annotations
 
 import json
+import logging
+import os
 from pathlib import Path
 
 import lighting_bake
+
+logger = logging.getLogger(__name__)
+
+
+def _configure_logging() -> None:
+    """0.9b: configure the root logger once at CLI entry."""
+    logging.basicConfig(
+        level=os.environ.get("FORGE_LOG_LEVEL", "INFO"),
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
 
 DEFAULT_QUEUE = Path.home() / ".cache" / "forge" / "lighting_queue"
 
@@ -73,6 +85,7 @@ if __name__ == "__main__":  # idle-drain entry: python -m lighting_prebake [max]
 
     from exterior_compiler import _blender_baker
 
+    _configure_logging()
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     n = drain_bakes(baker=_blender_baker, max_jobs=limit)
-    print(f"[lighting_prebake] baked {n} queued scene(s)")
+    logger.info("baked %d queued scene(s)", n)

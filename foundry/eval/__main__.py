@@ -18,8 +18,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Mirror foundry/__main__.py: insert the package directory onto sys.path
 # so bare imports resolve from BOTH `python -m foundry.eval` (repo root)
@@ -29,11 +33,27 @@ if _foundry_dir not in sys.path:
     sys.path.insert(0, _foundry_dir)
 
 
+def _configure_logging() -> None:
+    """0.9b: configure the root logger once at CLI entry.
+
+    Honours ``FORGE_LOG_LEVEL`` so operators can dial verbosity without
+    code changes; default INFO.  Safe to call multiple times — basicConfig
+    is a no-op once a handler is attached (sub-entry-points inherit the
+    level set here).
+    """
+    logging.basicConfig(
+        level=os.environ.get("FORGE_LOG_LEVEL", "INFO"),
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
+
+
 def _cmd_augment(args: argparse.Namespace) -> int:
     from eval.augment import augment_corpus
 
-    print(f"[augment] target={args.target}  seed={args.seed}  "
-          f"dry_run={args.dry_run}")
+    logger.info(
+        "target=%d  seed=%d  dry_run=%s",
+        args.target, args.seed, args.dry_run,
+    )
 
     requests, stats = augment_corpus(
         args.out_file,
@@ -42,14 +62,16 @@ def _cmd_augment(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
     )
 
-    print(f"[augment] generated {stats['raw_generated']} raw, "
-          f"{stats['unique_after_dedup']} unique, "
-          f"{stats['valid']} valid ({stats['rejected_by_validity']} rejected)")
-    print(f"[augment] decision firers: {stats['decision_firers']}")
-    print(f"[augment] dedup rate: {stats['dedup_rate']:.1%}")
-    print(f"[augment] generator counts: {stats['generator_counts']}")
+    logger.info(
+        "generated %d raw, %d unique, %d valid (%d rejected)",
+        stats['raw_generated'], stats['unique_after_dedup'],
+        stats['valid'], stats['rejected_by_validity'],
+    )
+    logger.info("decision firers: %d", stats['decision_firers'])
+    logger.info("dedup rate: %.1f%%", stats['dedup_rate'] * 100)
+    logger.info("generator counts: %s", stats['generator_counts'])
     if not args.dry_run:
-        print(f"[augment] wrote {args.out_file}")
+        logger.info("wrote %s", args.out_file)
     return 0
 
 
@@ -58,8 +80,10 @@ def _cmd_augment_quest(args: argparse.Namespace) -> int:
     quest pipeline (P6)."""
     from eval.augment import _NPC_ROLES, augment_quest_corpus
 
-    print(f"[augment-quest] target={args.target}  seed={args.seed}  "
-          f"dry_run={args.dry_run}")
+    logger.info(
+        "target=%d  seed=%d  dry_run=%s",
+        args.target, args.seed, args.dry_run,
+    )
 
     # Build a default manifest from the existing test fixture so the CLI
     # works standalone without a live asset-gen run.
@@ -82,14 +106,19 @@ def _cmd_augment_quest(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
     )
 
-    print(f"[augment-quest] generated {stats['raw_generated']} raw, "
-          f"{stats['unique_after_dedup']} unique, "
-          f"{stats['valid']} valid ({stats['rejected_by_validity']} rejected)")
-    print(f"[augment-quest] decision firers: {stats['decision_firers']}")
-    print(f"[augment-quest] dedup rate: {stats['dedup_rate']:.1%}")
-    print(f"[augment-quest] role coverage: {len(stats['role_counts'])}/{len(_NPC_ROLES)} roles")
+    logger.info(
+        "generated %d raw, %d unique, %d valid (%d rejected)",
+        stats['raw_generated'], stats['unique_after_dedup'],
+        stats['valid'], stats['rejected_by_validity'],
+    )
+    logger.info("decision firers: %d", stats['decision_firers'])
+    logger.info("dedup rate: %.1f%%", stats['dedup_rate'] * 100)
+    logger.info(
+        "role coverage: %d/%d roles",
+        len(stats['role_counts']), len(_NPC_ROLES),
+    )
     if not args.dry_run:
-        print(f"[augment-quest] wrote {args.out_file}")
+        logger.info("wrote %s", args.out_file)
     return 0
 
 
@@ -103,8 +132,10 @@ def _cmd_stability(args: argparse.Namespace) -> int:
               f"comments/blanks).", file=sys.stderr)
         return 2
 
-    print(f"[stability] corpus={args.corpus}  requests={len(requests)}  "
-          f"runs={args.runs}  seed={args.seed}")
+    logger.info(
+        "corpus=%s  requests=%d  runs=%d  seed=%d",
+        args.corpus, len(requests), args.runs, args.seed,
+    )
 
     # Stub LLM by default; --live wires in FoundryLLM for real qwen
     # variance measurement (the point of this lens).
@@ -137,10 +168,12 @@ def _cmd_stability(args: argparse.Namespace) -> int:
     )
     (out_dir / "report.md").write_text(digest, encoding="utf-8")
 
-    print(f"[stability] score={score:.1%}  "
-          f"stable={report_dict['stable_count']}/{report_dict['total']}")
-    print(f"[stability] wrote {out_dir/'report.json'}")
-    print(f"[stability] wrote {out_dir/'report.md'}")
+    logger.info(
+        "score=%.1f%%  stable=%d/%d",
+        score * 100, report_dict['stable_count'], report_dict['total'],
+    )
+    logger.info("wrote %s", out_dir / 'report.json')
+    logger.info("wrote %s", out_dir / 'report.md')
     return 0
 
 
@@ -166,8 +199,10 @@ def _cmd_regression(args: argparse.Namespace) -> int:
     else:
         llm = _stub_llm()
 
-    print(f"[regression] corpus={args.corpus}  requests={len(requests)}  "
-          f"expectations={expectations_dir}  update={args.update}")
+    logger.info(
+        "corpus=%s  requests=%d  expectations=%s  update=%s",
+        args.corpus, len(requests), expectations_dir, args.update,
+    )
 
     results, score = run_regression(
         requests,
@@ -186,10 +221,12 @@ def _cmd_regression(args: argparse.Namespace) -> int:
     )
     (out_dir / "report.md").write_text(digest, encoding="utf-8")
 
-    print(f"[regression] score={score['score']:.1%}  "
-          f"hard_pass={score['hard_pass']}  hard_fail={score['hard_fail']}")
-    print(f"[regression] wrote {out_dir/'report.json'}")
-    print(f"[regression] wrote {out_dir/'report.md'}")
+    logger.info(
+        "score=%.1f%%  hard_pass=%d  hard_fail=%d",
+        score['score'] * 100, score['hard_pass'], score['hard_fail'],
+    )
+    logger.info("wrote %s", out_dir / 'report.json')
+    logger.info("wrote %s", out_dir / 'report.md')
     return 0
 
 
@@ -222,9 +259,10 @@ def _cmd_run(args: argparse.Namespace) -> int:
               f"comments/blanks).", file=sys.stderr)
         return 2
 
-    print(f"[eval] corpus={args.corpus}  requests={len(requests)}  "
-          f"build={build}  seed={args.seed}  baseline={args.baseline}  "
-          f"library_dir={args.library_dir}")
+    logger.info(
+        "corpus=%s  requests=%d  build=%s  seed=%d  baseline=%d  library_dir=%s",
+        args.corpus, len(requests), build, args.seed, args.baseline, args.library_dir,
+    )
 
     records = run_corpus(
         requests=requests,
@@ -257,10 +295,10 @@ def _cmd_run(args: argparse.Namespace) -> int:
         json.dumps(report_dict["probes"], indent=2) + "\n", encoding="utf-8"
     )
 
-    print(f"[eval] wrote {out_dir/'capture.jsonl'}")
-    print(f"[eval] wrote {out_dir/'report.json'}")
-    print(f"[eval] wrote {out_dir/'report.md'}")
-    print(f"[eval] wrote {out_dir/'probes.json'}")
+    logger.info("wrote %s", out_dir / 'capture.jsonl')
+    logger.info("wrote %s", out_dir / 'report.json')
+    logger.info("wrote %s", out_dir / 'report.md')
+    logger.info("wrote %s", out_dir / 'probes.json')
     return 0
 
 
@@ -357,6 +395,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    _configure_logging()
     parser = _build_parser()
     args = parser.parse_args()
     # Default library_dir (when not passed) to <out_dir>/library so forge

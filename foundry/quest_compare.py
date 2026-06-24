@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import subprocess
 import sys
@@ -28,6 +29,8 @@ import time
 from pathlib import Path
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 HUB_URL = "http://127.0.0.1:8003"
 LLAMA_URL = "http://127.0.0.1:8002"
@@ -69,13 +72,13 @@ def _get_current_model() -> str | None:
                 return m.get("alias")
         return None
     except requests.RequestException as e:
-        print(f"[quest_compare] WARNING: cannot read current model: {e}")
+        logger.warning("cannot read current model: %s", e)
         return None
 
 
 def _swap_model(fragment: str) -> bool:
     """Swap to *fragment* via the hub API.  Returns True on success."""
-    print(f"  [swap] sending swap request for '{fragment}'...")
+    logger.info("  [swap] sending swap request for '%s'...", fragment)
     try:
         r = requests.post(
             f"{HUB_URL}/api/swap",
@@ -86,10 +89,10 @@ def _swap_model(fragment: str) -> bool:
         r.raise_for_status()
         job_id = r.json().get("job")
         if not job_id:
-            print(f"  [swap] ERROR: no job_id in response: {r.text}")
+            logger.error("  [swap] ERROR: no job_id in response: %s", r.text)
             return False
     except requests.RequestException as e:
-        print(f"  [swap] ERROR: swap request failed: {e}")
+        logger.error("  [swap] ERROR: swap request failed: %s", e)
         return False
 
     # ── Stream the job output and wait for completion ───────────
@@ -124,10 +127,10 @@ def _swap_model(fragment: str) -> bool:
                 all_lines.append(line)
                 # Print new lines as they arrive
                 while last_line_idx < len(all_lines):
-                    print(f"  [swap]   {all_lines[last_line_idx]}")
+                    logger.info("  [swap]   %s", all_lines[last_line_idx])
                     last_line_idx += 1
     except requests.RequestException as e:
-        print(f"  [swap] ERROR: stream failed: {e}")
+        logger.error("  [swap] ERROR: stream failed: %s", e)
         return False
 
     if exit_code is None:
@@ -141,14 +144,14 @@ def _swap_model(fragment: str) -> bool:
                 continue
 
     if exit_code is None:
-        print("  [swap] ERROR: could not determine exit code from stream")
+        logger.error("  [swap] ERROR: could not determine exit code from stream")
         return False
 
     if exit_code != 0:
-        print(f"  [swap] ERROR: swap returned exit code {exit_code}")
+        logger.error("  [swap] ERROR: swap returned exit code %d", exit_code)
         return False
 
-    print(f"  [swap] swap to '{fragment}' complete")
+    logger.info("  [swap] swap to '%s' complete", fragment)
     return True
 
 
@@ -158,7 +161,7 @@ def _wait_for_health(expected_alias: str | None = None) -> bool:
 
     Returns True on success.
     """
-    print("  [health] waiting for llama /health...")
+    logger.info("  [health] waiting for llama /health...")
     for attempt in range(1, HEALTH_POLL_ATTEMPTS + 1):
         try:
             r = requests.get(f"{LLAMA_URL}/health", timeout=3)
@@ -174,16 +177,21 @@ def _wait_for_health(expected_alias: str | None = None) -> bool:
                                 or (pdata.get("default_generation_settings") or {}).get("model_alias", "")
                             )
                             if running and running != expected_alias:
-                                print(f"  [health] WARNING: running model {running!r} != expected {expected_alias!r}")
+                                logger.warning(
+                                    "  [health] WARNING: running model %r != expected %r",
+                                    running, expected_alias,
+                                )
                     except requests.RequestException:
                         pass
-                print(f"  [health] llama healthy (attempt {attempt})")
+                logger.info("  [health] llama healthy (attempt %d)", attempt)
                 return True
         except requests.RequestException:
             pass
         time.sleep(HEALTH_POLL_INTERVAL)
-    print(f"  [health] ERROR: llama did not become healthy after "
-          f"{HEALTH_POLL_ATTEMPTS * HEALTH_POLL_INTERVAL:.0f}s")
+    logger.error(
+        "  [health] ERROR: llama did not become healthy after %.0fs",
+        HEALTH_POLL_ATTEMPTS * HEALTH_POLL_INTERVAL,
+    )
     return False
 
 
@@ -199,7 +207,7 @@ def _run_quest(prompt: str, scene: str, npc_count: int = 2) -> tuple[bool, str, 
         "--scene", scene,
         "--npc-count", str(npc_count),
     ]
-    print(f"  [quest] running: {' '.join(cmd)}")
+    logger.info("  [quest] running: %s", ' '.join(cmd))
     result = subprocess.run(
         cmd,
         capture_output=True,
@@ -210,12 +218,12 @@ def _run_quest(prompt: str, scene: str, npc_count: int = 2) -> tuple[bool, str, 
     stdout = result.stdout
 
     if result.returncode != 0:
-        print(f"  [quest] ERROR: quest command failed (exit {result.returncode})")
-        print(f"  [quest] stderr: {result.stderr[:500]}")
+        logger.error("  [quest] ERROR: quest command failed (exit %d)", result.returncode)
+        logger.error("  [quest] stderr: %s", result.stderr[:500])
         return False, stdout, {}
 
     spec = _parse_quest_output(stdout)
-    print(f"  [quest] spec captured: {spec}")
+    logger.info("  [quest] spec captured: %s", spec)
     return True, stdout, spec
 
 
@@ -373,7 +381,7 @@ def _check_model_fit(alias: str) -> dict:
                     "ctx": fit.get("ctx", 0),
                 }
     except requests.RequestException as e:
-        print(f"  [fit] WARNING: cannot check fit for {alias}: {e}")
+        logger.warning("  [fit] WARNING: cannot check fit for %s: %s", alias, e)
     return {}
 
 
@@ -387,10 +395,10 @@ def _pre_configure_27b() -> bool:
     HOME = _P.home()
     fm = str(HOME / ".local/bin/forge-model")
     if not _P(fm).exists():
-        print("[27b-fit] forge-model CLI not found, skipping pre-config")
+        logger.info("[27b-fit] forge-model CLI not found, skipping pre-config")
         return True  # not fatal — the VRAM pre-flight will catch the spill
 
-    print("[27b-fit] pre-configuring qwen3-6-27b ctx=8192...")
+    logger.info("[27b-fit] pre-configuring qwen3-6-27b ctx=8192...")
     result = subprocess.run(
         [fm, "set", "qwen3-6-27b", "ctx=8192"],
         capture_output=True,
@@ -398,10 +406,10 @@ def _pre_configure_27b() -> bool:
         timeout=30,
     )
     if result.returncode == 0:
-        print("[27b-fit] ctx=8192 set")
+        logger.info("[27b-fit] ctx=8192 set")
         return True
     # ctx=8192 may still be too large — try 4096
-    print(f"[27b-fit] ctx=8192 failed (exit {result.returncode}), trying ctx=4096...")
+    logger.info("[27b-fit] ctx=8192 failed (exit %d), trying ctx=4096...", result.returncode)
     result2 = subprocess.run(
         [fm, "set", "qwen3-6-27b", "ctx=4096"],
         capture_output=True,
@@ -409,9 +417,9 @@ def _pre_configure_27b() -> bool:
         timeout=30,
     )
     if result2.returncode == 0:
-        print("[27b-fit] ctx=4096 set")
+        logger.info("[27b-fit] ctx=4096 set")
         return True
-    print(f"[27b-fit] ERROR: ctx=4096 also failed (exit {result2.returncode})")
+    logger.error("[27b-fit] ERROR: ctx=4096 also failed (exit %d)", result2.returncode)
     return False
 
 
@@ -541,15 +549,15 @@ def run_compare(
     if original_model is None:
         original_model = _get_current_model()
     if original_model:
-        print(f"[quest_compare] Original model: {original_model}")
+        logger.info("Original model: %s", original_model)
     else:
-        print("[quest_compare] WARNING: could not determine original model")
-        print("[quest_compare] Will not be able to restore. Set --original to override.")
+        logger.warning("could not determine original model")
+        logger.warning("Will not be able to restore. Set --original to override.")
 
     if dry_run:
-        print("[quest_compare] Dry run — would compare:")
+        logger.info("Dry run — would compare:")
         for frag in fragments:
-            print(f"  {frag}")
+            logger.info("  %s", frag)
         return 0
 
     # ── 2. Run each model ───────────────────────────────────────
@@ -557,9 +565,9 @@ def run_compare(
     all_ok = True
 
     for fragment in fragments:
-        print(f"\n{'=' * 60}")
-        print(f"[quest_compare] Testing model: {fragment}")
-        print(f"{'=' * 60}")
+        logger.info("\n%s", '=' * 60)
+        logger.info("Testing model: %s", fragment)
+        logger.info("%s", '=' * 60)
 
         # Resolve alias for scene naming
         alias = _resolve_model_alias(fragment)
@@ -583,7 +591,7 @@ def run_compare(
                 f"VRAM pre-flight: {alias} spills (~{gb} GiB needed "
                 f"at ctx={ctx}) — skipping"
             )
-            print(f"  [fit] {msg}")
+            logger.warning("  [fit] %s", msg)
             result["error"] = msg
             results.append(result)
             all_ok = False
@@ -643,34 +651,34 @@ def run_compare(
         results.append(result)
 
     # ── 3. Print comparison table ──────────────────────────────
-    print(f"\n{'=' * 60}")
-    print("[quest_compare] COMPARISON TABLE")
-    print(f"{'=' * 60}")
-    print(_build_comparison_table(results, full_pipeline=full_pipeline))
+    logger.info("\n%s", '=' * 60)
+    logger.info("COMPARISON TABLE")
+    logger.info("%s", '=' * 60)
+    logger.info("%s", _build_comparison_table(results, full_pipeline=full_pipeline))
 
     # ── 4. Restore original model ──────────────────────────────
     if original_model:
         # Safe restore: clear start-limit-hit so a prior OOM
         # doesn't block recovery.
-        print("\n[quest_compare] Resetting failed state on llama service...")
+        logger.info("\nResetting failed state on llama service...")
         _reset_failed_llama()
 
-        print(f"[quest_compare] Restoring original model: {original_model}")
+        logger.info("Restoring original model: %s", original_model)
         if _swap_model(original_model):
             _wait_for_health(expected_alias=original_model)
-            print("[quest_compare] Original model restored.")
+            logger.info("Original model restored.")
         else:
-            print("[quest_compare] ERROR: failed to restore original model!")
+            logger.error("ERROR: failed to restore original model!")
             all_ok = False
     else:
-        print("\n[quest_compare] No original model recorded — skipping restore.")
+        logger.info("\nNo original model recorded — skipping restore.")
 
     # ── Summary ─────────────────────────────────────────────────
     ok_count = sum(1 for r in results if not r.get("error"))
-    print(f"\n[quest_compare] Done. {ok_count}/{len(results)} models succeeded.")
+    logger.info("\nDone. %d/%d models succeeded.", ok_count, len(results))
     for r in results:
         status = "OK" if not r.get("error") else f"FAIL ({r['error']})"
-        print(f"  {r['alias']}: {status}")
+        logger.info("  %s: %s", r['alias'], status)
 
     return 0 if all_ok else 1
 

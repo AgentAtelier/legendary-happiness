@@ -11,6 +11,7 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import shutil
@@ -20,6 +21,8 @@ from pathlib import Path
 import room_shell
 from publish import copy_asset_family
 from scene_compiler import compile_scene, resolve_unique_glbs_with_npc
+
+logger = logging.getLogger(__name__)
 
 
 def _find_godot() -> str:
@@ -94,9 +97,9 @@ def _pre_import(build_path: Path, godot_bin: str) -> None:
         # Non-zero import can happen on first open — the import cache
         # may still be usable.  Warn but don't fail.
         stderr_tail = result.stderr.strip()[-500:] if result.stderr else ""
-        print(f"[scaffold] WARNING: godot --import exited {result.returncode}")
+        logger.warning("godot --import exited %d", result.returncode)
         if stderr_tail:
-            print(f"[scaffold]   stderr: {stderr_tail}")
+            logger.warning("  stderr: %s", stderr_tail)
 
 
 
@@ -159,7 +162,7 @@ def scaffold_project(
     if build_path.exists():
         shutil.rmtree(build_path)
     shutil.copytree(template, build_path)
-    print(f"[scaffold] Template copied → {build_path}")
+    logger.info("Template copied → %s", build_path)
 
     # ── 4b. Task 7: Copy per-room shell GLB if available ─────────
     # P12 (AUDIT-05 de-dup): resolve the cached shell GLB BEFORE
@@ -200,7 +203,7 @@ def scaffold_project(
                   palette=palette,
                   shell_glb_path=(str(shell_path) if shell_path else None),
                   shell_decisions=_shell_d)
-    print(f"[scaffold] Scene compiled → {scene_path}")
+    logger.info("Scene compiled → %s", scene_path)
 
     # ── 2b. Generate palette class textures (0.6b fix) ────────────
     # The scene compiler emits ext_resource Texture2D refs to
@@ -220,12 +223,12 @@ def scaffold_project(
         assets_dir = build_path / "assets"
         n = generate_class_textures(palette, class_set, str(assets_dir))
         if n:
-            print(f"[scaffold] Palette class textures written: {n} PNG(s)")
+            logger.info("Palette class textures written: %d PNG(s)", n)
 
     # ── 3. Set main_scene ───────────────────────────────────────
     pg = build_path / "project.godot"
     _set_main_scene(pg, "res://scenes/main.tscn")
-    print("[scaffold] main_scene set → res://scenes/main.tscn")
+    logger.info("main_scene set → res://scenes/main.tscn")
 
     # ── 4. Copy asset families ──────────────────────────────────
     unique_glbs = resolve_unique_glbs_with_npc(manifest)
@@ -238,11 +241,11 @@ def scaffold_project(
             str(assets_dir),
         )
         if copied:
-            print(f"[scaffold] Copied {category}_{material}: {len(copied)} files")
+            logger.info("Copied %s_%s: %d files", category, material, len(copied))
         else:
-            print(f"[scaffold] WARNING: no files for {category}_{material} in {library_dir}")
+            logger.warning("no files for %s_%s in %s", category, material, library_dir)
         total_copied += len(copied)
-    print(f"[scaffold] Total asset files copied: {total_copied}")
+    logger.info("Total asset files copied: %d", total_copied)
 
     _copy_room_shell(str(shell_path) if shell_path else None, str(assets_dir))
 
@@ -260,7 +263,7 @@ def scaffold_project(
             lighting_plan, placements, tier=_tier, samples=64,
         )
         result = lighting_bake.bake_and_apply(scene_desc, str(build_path))
-        print(f"[scaffold] Lighting bake: tier={result['tier']} status={result['status']}")
+        logger.info("Lighting bake: tier=%s status=%s", result['tier'], result['status'])
 
     # ── 6. Pre-import (single pass) ──────────────────────────────
     # All assets (template, families, shell GLB, class textures,
@@ -268,6 +271,6 @@ def scaffold_project(
     # is sufficient to build the complete .godot/imported cache.
     gb = godot_bin or _find_godot()
     _pre_import(build_path, gb)
-    print(f"[scaffold] Pre-import done → {build_path}")
+    logger.info("Pre-import done → %s", build_path)
 
     return build_path

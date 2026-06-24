@@ -11,6 +11,8 @@ Subcommands:
         scaffold disposable project → builds/<name>/.
 """
 
+import logging
+import os
 import sys
 from pathlib import Path
 
@@ -24,8 +26,17 @@ if _foundry_dir not in sys.path:
 from decisions import render_cli as _render_decisions_cli
 from runner import forge, forge_from_request
 
+logger = logging.getLogger(__name__)
+
 
 def main() -> int:
+    # 0.9b: configure root logger once at CLI entry.  Honours FORGE_LOG_LEVEL
+    # so operators can dial verbosity without code changes; default INFO.
+    logging.basicConfig(
+        level=os.environ.get("FORGE_LOG_LEVEL", "INFO"),
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
+
     # -- subcommand routing
     if len(sys.argv) >= 2 and sys.argv[1] == "publish":
         from publish import _main as publish_main
@@ -47,32 +58,42 @@ def main() -> int:
             lexicon = sys.argv[req_idx + 2]
             lib_dir = sys.argv[req_idx + 3]
         except IndexError:
+            # Usage errors stay on stdout (print) so they're visible regardless of
+            # the log level — they need to reach the user even if logging is muted.
             print("usage: python -m foundry --request \"<text>\" <lexicon.json> <library_dir>")
             return 2
 
         result = forge_from_request(request_text, lexicon, lib_dir)
         status = "PASS" if result.gate.passed else "FAIL"
-        print(f"[{status}] {result.glb_path}  registered={result.registered}")
+        # Terminal-facing result line: keep [PASS]/[FAIL] prefix (semantic
+        # content, not a redundant module tag); surface through logger.info
+        # so the level gates it but the content is unchanged.
+        logger.info("[%s] %s  registered=%s", status, result.glb_path, result.registered)
         for reason in result.gate.reasons:
-            print(f"  - {reason}")
+            logger.info("  - %s", reason)
         # Surface any Decision Points the material resolver emitted
         # (multi-member family, no material keyword, ambiguity).
         # render_cli suppresses `info` decisions and is a no-op for [].
+        # NOTE: this line stays as `print` — quest_compare._parse_quest_output
+        # also reads these lines, and the trailing newline is part of the
+        # contract.
         rendered = _render_decisions_cli(result.decisions)
         if rendered.strip():
             print(rendered)
         return 0 if result.gate.passed else 1
 
     if len(sys.argv) != 4:
+        # Usage errors stay on stdout (print) so they're visible regardless of
+        # the log level — they need to reach the user even if logging is muted.
         print("usage: python -m foundry <spec.json> <lexicon.json> <library_dir>")
         print("       python -m foundry --request \"<text>\" <lexicon.json> <library_dir>")
         print("       python -m foundry publish <library_dir> <project_dir> <lexicon_path>")
         return 2
     result = forge(sys.argv[1], sys.argv[2], sys.argv[3])
     status = "PASS" if result.gate.passed else "FAIL"
-    print(f"[{status}] {result.glb_path}  registered={result.registered}")
+    logger.info("[%s] %s  registered=%s", status, result.glb_path, result.registered)
     for reason in result.gate.reasons:
-        print(f"  - {reason}")
+        logger.info("  - %s", reason)
     return 0 if result.gate.passed else 1
 
 
@@ -153,17 +174,19 @@ def _cmd_quest(args: list[str]) -> int:
     from interpreter import Interpreter
     from room_layout import layout_room
 
-    print(f"[quest] Interpreting prompt: {parsed.request!r}")
+    logger.info("Interpreting prompt: %r", parsed.request)
     seed = parsed.seed
     if seed is not None:
-        print(f"[quest] Seed: {seed}")
+        logger.info("Seed: %d", seed)
 
     interp = Interpreter()
     brief, interp_decisions = interp.interpret(parsed.request, llm, seed)
-    print(f"[quest] Brief: theme={brief['theme_tag']}  scale={brief['scale']}"
-          f"  features={len(brief['key_features'])}")
+    logger.info(
+        "Brief: theme=%s  scale=%s  features=%d",
+        brief['theme_tag'], brief['scale'], len(brief['key_features']),
+    )
     if brief["unmapped"]:
-        print(f"[quest] Unmapped: {', '.join(brief['unmapped'])}")
+        logger.info("Unmapped: %s", ', '.join(brief['unmapped']))
 
     room_plan, room_decisions = _plan_room_with_fallback(
         brief, llm, seed
@@ -178,14 +201,18 @@ def _cmd_quest(args: list[str]) -> int:
     room_decisions.extend(control_decisions)
     manifest, room_size, layout_decisions = layout_room(room_plan, seed=seed,
                                                          npc_count=npc_count)
-    print(f"[quest] Room: {room_size['w']}x{room_size['d']} m, "
-          f"{len(manifest)} entities")
+    logger.info(
+        "Room: %sx%s m, %d entities",
+        room_size['w'], room_size['d'], len(manifest),
+    )
 
     # ── Task 6: Plan lighting BEFORE the shell (windows drive openings) ──
     from lighting_planner import plan_lighting
     lighting_plan = plan_lighting(brief, room_size, manifest, seed=seed or 0)
-    print(f"[quest] Lighting: {len(lighting_plan['sources'])} sources, "
-          f"{len(lighting_plan['windows'])} windows")
+    logger.info(
+        "Lighting: %d sources, %d windows",
+        len(lighting_plan['sources']), len(lighting_plan['windows']),
+    )
 
     # Build any (category, material) the room needs that isn't in the library.
     ensure_decisions = ensure_assets(manifest, parsed.library_dir, parsed.lexicon)
@@ -200,7 +227,10 @@ def _cmd_quest(args: list[str]) -> int:
         "key", "book", "cup", "gem", "bottle", "scroll", "coin-pouch",
         "candle", "dagger", "ring",
     )}
-    print(f"[quest] Planning quests for {npc_count} NPCs via Brief: {parsed.request!r}")
+    logger.info(
+        "Planning quests for %d NPCs via Brief: %r",
+        npc_count, parsed.request,
+    )
     specs, quest_decisions = planner.plan_multi(
         brief, manifest, llm,
         npc_count=npc_count, seed=seed,
@@ -212,6 +242,10 @@ def _cmd_quest(args: list[str]) -> int:
         target = spec.get("target_entity", "?")
         npc_role = spec.get("npc_role", "villager")
         npc_id = spec.get("npc_id", "?")
+        # Multi-NPC `[quest] {npc_id} ({role}): target=...` lines and the
+        # indented `greet:/ask:/wrong:/thank:` dialogue lines stay as plain
+        # `print`: quest_compare.py — `_parse_quest_output` — parses them
+        # by exact prefix and extracts this output into the comparison table.
         print(f"[quest] {npc_id} ({npc_role}): target={target}")
         dialogue = spec.get("dialogue", {})
         for key in ("greet", "ask", "wrong", "thank"):
@@ -226,7 +260,7 @@ def _cmd_quest(args: list[str]) -> int:
     # ── Palette: derive scene palette from theme anchor + mood ──
     from palette import build_palette
     palette = build_palette(room_theme, seed or 0)
-    print(f"[quest] Palette: {len(palette['roles'])} roles")
+    logger.info("Palette: %d roles", len(palette['roles']))
 
     template_dir = str(_Path2(__file__).resolve().parent / "godot_template")
     build_path = scaffold_project(
@@ -242,7 +276,7 @@ def _cmd_quest(args: list[str]) -> int:
         lighting_plan=lighting_plan,
         palette=palette,
     )
-    print(f"[quest] Build scaffolded: {build_path}")
+    logger.info("Build scaffolded: %s", build_path)
 
     # B5: Write manifest alongside quest_data for multi-model comparison
     import json as _json
@@ -263,11 +297,11 @@ def _cmd_quest(args: list[str]) -> int:
         palette=palette,
         manifest_ref=str(manifest_path.relative_to(build_path)),
     )
-    print(f"[quest] Build state saved: {build_path / 'build_state.json'}")
+    logger.info("Build state saved: %s", build_path / 'build_state.json')
 
     # Show quest data path
     data_path = str(build_path / "scenes" / "main_quest_data.json")
-    print(f"[quest] Quest data: {data_path}")
+    logger.info("Quest data: %s", data_path)
 
     # ── Spine: Write build report ────────────────────────────
     from report import build_report_dict, render_build_report
@@ -281,14 +315,16 @@ def _cmd_quest(args: list[str]) -> int:
         _json.dumps(report_dict, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    print(report_txt)
+    logger.info("%s", report_txt)
 
     # ── Surface any Decision Points ───────────────────────────
     rendered = _render_decisions_cli(decisions)
     if rendered.strip():
+        # Decision-Point JSON rendered to stdout stays as plain `print` —
+        # downstream consumers (operators / scripts) parse the line directly.
         print(rendered)
 
-    print(f"[quest] Done. Launch: godot --path {build_path}")
+    logger.info("Done. Launch: godot --path %s", build_path)
     return 0
 
 
@@ -359,7 +395,7 @@ def _cmd_visual_eval(args: list[str]) -> int:
 
     wl = result.get("worklist", [])
     if wl:
-        print(f"Worklist: {len(wl)} items flagged for regen")
+        logger.info("Worklist: %d items flagged for regen", len(wl))
 
     # WS-5: Auto-reroll flagged assets
     if parsed.reroll and wl:
@@ -369,7 +405,10 @@ def _cmd_visual_eval(args: list[str]) -> int:
             lexicon_path = parsed.lexicon
         else:
             lexicon_path = str(Path(__file__).resolve().parent.parent / "engine" / "devforge" / "spatial" / "asset_lexicon.json")
-        print(f"[reroll] Auto-rerolling {len(wl)} flagged items (max {parsed.max_rerolls} attempts each)...")
+        logger.info(
+            "Auto-rerolling %d flagged items (max %d attempts each)...",
+            len(wl), parsed.max_rerolls,
+        )
         outcomes = reroll_flagged(
             worklist_path=worklist_path,
             lexicon_path=str(lexicon_path),
@@ -378,11 +417,13 @@ def _cmd_visual_eval(args: list[str]) -> int:
         )
         for oc in outcomes:
             status = "PASS" if oc.get("last_result", {}).get("gate_passed") else "FAIL"
-            print(f"  [{status}] {oc['prop_id']} — {oc['rerolls']} attempt(s)")
+            # Keep the [PASS]/[FAIL] prefix — it's semantic content, not a
+            # redundant module tag — and surface via logger.info.
+            logger.info("  [%s] %s — %d attempt(s)", status, oc['prop_id'], oc['rerolls'])
 
     report = result.get("catalog_report") or result.get("scene_report")
     if report:
-        print(report.get("md", "")[:2000])
+        logger.info("%s", report.get("md", "")[:2000])
 
     return 0
 
@@ -404,8 +445,8 @@ def _plan_room_with_fallback(
     try:
         return planner.plan(brief, llm, seed=seed)
     except ValueError as e:
-        print(f"[quest] RoomPlanner parse failure: {e}")
         # T-1: Fall back to minimal default room plan
+        logger.warning("RoomPlanner parse failure: %s", e)
         decisions = [
             make_decision(
                 code="room.planner_parse_fallback",
@@ -429,7 +470,7 @@ def _plan_room_with_fallback(
                 {"category": "shelf", "material": "worn_oak", "count": 1},
             ],
         }
-        print("[quest] Falling back to default room plan")
+        logger.warning("Falling back to default room plan")
         return default_plan, decisions
 
 

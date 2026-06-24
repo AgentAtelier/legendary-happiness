@@ -6,12 +6,15 @@ ops instead of greyboxes."""
 from __future__ import annotations
 
 import json
+import logging
 import re
 import shutil
 from pathlib import Path
 from typing import TypedDict
 
 from library import register_variant
+
+logger = logging.getLogger(__name__)
 
 
 class PublishedEntry(TypedDict):
@@ -189,7 +192,7 @@ def _main() -> int:
         sys.path.insert(0, _foundry_dir)
 
     if len(sys.argv) < 4:
-        print(
+        logger.warning(
             "usage: python -m foundry.publish <library_dir> <project_dir>"
             " <lexicon_path> [assets_subdir]"
         )
@@ -202,13 +205,15 @@ def _main() -> int:
 
     result = publish(library_dir, project_dir, lexicon_path, assets_subdir)
 
-    print(f"Published {len(result['published'])}:")
+    logger.info("Published %d:", len(result['published']))
     for entry in result["published"]:
-        print(f"  {entry['id']} [{entry['material_id']}] → {entry['res_path']}")
+        logger.info(
+            "  %s [%s] → %s", entry['id'], entry['material_id'], entry['res_path']
+        )
 
-    print(f"\nSkipped {len(result['skipped'])}:")
+    logger.info("\nSkipped %d:", len(result['skipped']))
     for entry in result["skipped"]:
-        print(f"  {entry['file']}: {entry['reason']}")
+        logger.info("  %s: %s", entry['file'], entry['reason'])
 
     return 0
 
