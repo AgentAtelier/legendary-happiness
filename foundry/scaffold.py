@@ -72,20 +72,13 @@ def _set_main_scene(project_godot: Path, scene_path: str) -> None:
     project_godot.write_text(text)
 
 
-def _pre_import(build_path: Path, godot_bin: str, *, label: str = "first") -> None:
+def _pre_import(build_path: Path, godot_bin: str) -> None:
     """Run Godot headless import to build the .godot cache.
 
-    Called twice in ``scaffold_project``: once before
-    ``_copy_room_shell`` has run (``label="first"``) and once after
-    (``label="after-shell"``).  The second pass is the import-ordering
-    fix for the showcase2 batch: ``shell.glb`` (and its image-side
-    textures) only land in ``builds/<name>/assets/`` AFTER the first
-    pass, so without a second pass those files never reach
-    ``.godot/imported/*.ctex`` — materials render magenta and the
-    load log contains "Compressed texture file is corrupt".  The
-    second pass is idempotent (Godot skips already-imported files).
-    ``label`` appears in warnings to disambiguate which pass failed.
-
+    Called exactly once in ``scaffold_project`` AFTER all assets
+    (template, asset families, shell GLB, class textures) are in
+    place — a single pass is sufficient when everything lands before
+    the import.
     """
     cmd = [
         godot_bin, "--headless",
@@ -102,9 +95,9 @@ def _pre_import(build_path: Path, godot_bin: str, *, label: str = "first") -> No
         # Non-zero import can happen on first open — the import cache
         # may still be usable.  Warn but don't fail.
         stderr_tail = result.stderr.strip()[-500:] if result.stderr else ""
-        print(f"[scaffold] WARNING: godot --import ({label}) exited {result.returncode}")
+        print(f"[scaffold] WARNING: godot --import exited {result.returncode}")
         if stderr_tail:
-            print(f"[scaffold]   {label} stderr: {stderr_tail}")
+            print(f"[scaffold]   stderr: {stderr_tail}")
 
 
 
@@ -169,16 +162,45 @@ def scaffold_project(
     shutil.copytree(template, build_path)
     print(f"[scaffold] Template copied → {build_path}")
 
+    # ── 4b. Task 7: Copy per-room shell GLB if available ─────────
+    # P12 (AUDIT-05 de-dup): resolve the cached shell GLB BEFORE
+    # compile_scene() so the kwarg bindings (shell_glb_path,
+    # shell_decisions) are bound when compile_scene() reads them.
+    # compile_scene no longer calls room_shell.ensure_room_shell
+    # itself — scaffold_project owns the cache write site (single
+    # call, deterministic ordering).
+    # Task 6: pass windows= from the lighting plan (Task 2 adds the kwarg).
+    _room_w = 20.0
+    _room_d = 20.0
+    _room_h = 3.0
+    if room_size:
+        _room_w = float(room_size.get("w", _room_w))
+        _room_d = float(room_size.get("d", _room_d))
+    _windows = lighting_plan.get("windows", []) if lighting_plan else []
+    try:
+        shell_path, _shell_d = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme,
+                                                   windows=_windows)
+    except TypeError:
+        # windows= kwarg not accepted yet (Task 2 adds it)
+        shell_path, _shell_d = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme)
     # ── 2. Compile scene ────────────────────────────────────────
     scenes_dir = build_path / "scenes"
     scenes_dir.mkdir(exist_ok=True)
     scene_path = str(scenes_dir / "main.tscn")
     # C-4: Handle both single dict (backward compat) and list
     specs = quest_specs if isinstance(quest_specs, list) else [quest_specs]
+    # P12 (AUDIT-05 de-dup): scene_compiler.compile_scene no longer
+    # calls room_shell.ensure_room_shell internally — we resolved
+    # the cached GLB above (the only call site) and thread both
+    # the path + decision points in.  Default behaviour unchanged:
+    # None keeps the inline box-shell fallback for callers that
+    # never hit the cache.
     compile_scene(specs, manifest, scene_path, assets_subdir="assets",
                   room_size=room_size, theme=theme, camera_mode=camera_mode,
                   lighting_plan=lighting_plan,
-                  palette=palette)
+                  palette=palette,
+                  shell_glb_path=(str(shell_path) if shell_path else None),
+                  shell_decisions=_shell_d)
     print(f"[scaffold] Scene compiled → {scene_path}")
 
     # ── 2b. Generate palette class textures (0.6b fix) ────────────
@@ -223,48 +245,11 @@ def scaffold_project(
         total_copied += len(copied)
     print(f"[scaffold] Total asset files copied: {total_copied}")
 
-    # ── 4b. Task 7: Copy per-room shell GLB if available ─────────
-    # The shell textures (shell_{stone,timber}_*.png) AND class
-    # textures (class_{stone,wood}_*.png) ride in with the template
-    # copy automatically — they live in godot_template/assets/.
-    # Resolve the cached shell GLB via room_shell (same args
-    # compile_scene uses internally).  Cache hit is cheap; Blender
-    # runs only on first use for a given (w,d,theme) tuple.
-    # Task 6: pass windows= from the lighting plan (Task 2 adds the kwarg).
-    _room_w = 20.0
-    _room_d = 20.0
-    _room_h = 3.0
-    if room_size:
-        _room_w = float(room_size.get("w", _room_w))
-        _room_d = float(room_size.get("d", _room_d))
-    _windows = lighting_plan.get("windows", []) if lighting_plan else []
-    try:
-        shell_path, _shell_d = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme,
-                                                   windows=_windows)
-    except TypeError:
-        # windows= kwarg not accepted yet (Task 2 adds it)
-        shell_path, _shell_d = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme)
     _copy_room_shell(str(shell_path) if shell_path else None, str(assets_dir))
-
-    # ── 5. Pre-import pass 1 ─────────────────────────────────────
-    # Imports the template's bundled assets + the GLB families copied
-    # in step 4.  At this point room_shell.glb may not yet be in
-    # builds/<name>/assets/.
-    gb = godot_bin or _find_godot()
-    _pre_import(build_path, gb, label="first")
-
-    # ── 5b. Pre-import pass 2 (after _copy_room_shell) ────────────
-    # Import-ordering fix: anything copied in step 4b lands in
-    # builds/<name>/assets/ AFTER pass 1, so without this second pass
-    # those files never reach .godot/imported/*.ctex — materials render
-    # magenta and the load log contains "Compressed texture file is
-    # corrupt".  Idempotent: Godot skips already-imported files.
-    _pre_import(build_path, gb, label="after-shell")
-    print(f"[scaffold] Pre-imports done → {build_path}")
 
     # ── Task 6: Bake-and-apply lighting (tier ≥ 1) ────────────────
     if lighting_plan:
-        from scene_compiler import bake_and_apply, build_lighting_scene_desc
+        import lighting_bake
         _blender_available = shutil.which("blender") is not None
         _tier = 2 if _blender_available else 0
         placements = [{"glb": f"{e.get('category','?')}_{e.get('material','?')}.glb",
@@ -272,10 +257,18 @@ def scaffold_project(
                                      e.get("x", 0), e.get("y", 0), e.get("z", 0)],
                        "static": not e.get("decor", False)}
                       for e in manifest]
-        scene_desc = build_lighting_scene_desc(
+        scene_desc = lighting_bake.build_scene_desc(
             lighting_plan, placements, tier=_tier, samples=64,
         )
-        result = bake_and_apply(scene_desc, str(build_path))
+        result = lighting_bake.bake_and_apply(scene_desc, str(build_path))
         print(f"[scaffold] Lighting bake: tier={result['tier']} status={result['status']}")
+
+    # ── 6. Pre-import (single pass) ──────────────────────────────
+    # All assets (template, families, shell GLB, class textures,
+    # baked lighting results) are now in place — one import pass
+    # is sufficient to build the complete .godot/imported cache.
+    gb = godot_bin or _find_godot()
+    _pre_import(build_path, gb)
+    print(f"[scaffold] Pre-import done → {build_path}")
 
     return build_path

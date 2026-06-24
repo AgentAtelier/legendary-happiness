@@ -17,12 +17,15 @@ from scene_compiler import (
     _fmt_pos,
     _glb_res_path,
     _parse_scene_text,
-    _prop_half_extents,
-    _resolve_prop_overlaps,
     _resolve_unique_glbs,
     compile_scene,
     read_quest_data,
 )
+# AUDIT-05 P12 cleanup: these live in placement.py now (moved in P8 broad-
+# phase grid).  Import from the canonical home rather than via
+# scene_compiler's re-export, which is dead (no in-body use) and ruff
+# would prune again.
+from placement import _prop_half_extents, _resolve_prop_overlaps
 
 # ── Test manifest ────────────────────────────────────────────────
 
@@ -2829,8 +2832,17 @@ def _minimal_manifest():
     ]
 
 
-def _compile_with_shell(manifest=None, room_size=None, theme=None):
-    """Helper: compile with room_size + theme, return text and parsed."""
+def _compile_with_shell(manifest=None, room_size=None, theme=None, *,
+                        shell_glb_path=None, shell_decisions=None):
+    """Helper: compile with room_size + theme, return text and parsed.
+
+    P12 (AUDIT-05 de-dup): ``shell_glb_path`` and ``shell_decisions``
+    are forwarded to ``compile_scene`` directly.  When None (the
+    default) we exercise the inline box-shell fallback path; when a
+    path is supplied, the GLB-shell branch is taken.  Pre-P12 the
+    Task-6 tests monkeypatched ``room_shell.ensure_room_shell`` to
+    inject the path, but that call now lives entirely in scaffold.py.
+    """
     spec = dict(_QUEST_SPEC)
     man = manifest or _minimal_manifest()
     spec["target_entity"] = man[0]["id"]
@@ -2839,7 +2851,12 @@ def _compile_with_shell(manifest=None, room_size=None, theme=None):
     ) as f:
         out = f.name
     try:
-        compile_scene(spec, man, out, room_size=room_size, theme=theme)
+        compile_scene(
+            spec, man, out,
+            room_size=room_size, theme=theme,
+            shell_glb_path=shell_glb_path,
+            shell_decisions=shell_decisions,
+        )
         text = Path(out).read_text(encoding="utf-8")
         return text
     finally:
@@ -2853,7 +2870,8 @@ def test_shell_glb_path_emits_instance_and_triplanar(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB")
     monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
-    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study",
+                              shell_glb_path=str(glb))
     assert "shell.glb" in tscn
     assert "uv1_triplanar = true" in tscn and "uv1_world_triplanar = true" in tscn
 
@@ -2927,7 +2945,10 @@ def test_glb_shell_emits_shell_instance_node(monkeypatch, tmp_path):
     glb = tmp_path / "shell.glb"
     glb.write_bytes(b"GLB-fake")
     monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
-    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    tscn = _compile_with_shell(
+        room_size={"w": 8, "d": 6}, theme="study",
+        shell_glb_path=str(glb),
+    )
     parsed = _parse_scene_text(tscn)
     shell_nodes = [n for n in parsed["nodes"] if n["name"] == "Shell"]
     assert len(shell_nodes) == 1, (
@@ -2953,7 +2974,10 @@ def test_glb_shell_emits_stone_and_timber_children(monkeypatch, tmp_path):
     glb = tmp_path / "shell.glb"
     glb.write_bytes(b"GLB-fake")
     monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
-    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    tscn = _compile_with_shell(
+        room_size={"w": 8, "d": 6}, theme="study",
+        shell_glb_path=str(glb),
+    )
     parsed = _parse_scene_text(tscn)
 
     stone = [n for n in parsed["nodes"] if n["name"] == "stone"]
@@ -2994,7 +3018,8 @@ def test_glb_shell_drops_box_shell_visible_nodes(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
     monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
-    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study",
+                              shell_glb_path=str(glb))
     parsed = _parse_scene_text(tscn)
     node_names = {n["name"] for n in parsed["nodes"]}
 
@@ -3035,7 +3060,8 @@ def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
     monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
-    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study",
+                              shell_glb_path=str(glb))
     sub_ids = {sr["id"] for sr in _parse_scene_text(tscn)["sub_resources"]}
 
     # Box-shell sub_resources that MUST NOT be emitted.
@@ -3217,7 +3243,8 @@ def test_palette_glb_shell_overrides_use_class_materials(monkeypatch, tmp_path):
     try:
         sc.compile_scene(spec, m, out,
                          room_size={"w": 8, "d": 6},
-                         theme="stone_keep", palette=pal)
+                         theme="stone_keep", palette=pal,
+                         shell_glb_path=str(glb))
         t = Path(out).read_text(encoding="utf-8")
         # Shell stone/timber children use palette class materials
         assert 'material_override = SubResource("mat_stone")' in t
@@ -3242,7 +3269,8 @@ def test_glb_shell_branch_keeps_navigation_and_lights(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
     monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
-    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
+    tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study",
+                              shell_glb_path=str(glb))
     parsed = _parse_scene_text(tscn)
     sub_types = {sr["type"] for sr in parsed["sub_resources"]}
     node_names = {n["name"] for n in parsed["nodes"]}
@@ -3361,7 +3389,8 @@ def test_asset_ensure_rss_guard_triggers_serial_fallback(monkeypatch):
     def track_build(cat, mat, lib, lex):
         built.append((cat, mat))
         return None
-    import json as _json, tempfile as _tf
+    import json as _json
+    import tempfile as _tf
     _lex = _tf.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
     _json.dump({"assets": {"table": {"footprint": {"width":1,"depth":1},"height":1}}}, _lex)
     _lex.close()
@@ -3376,3 +3405,126 @@ def test_asset_ensure_rss_guard_triggers_serial_fallback(monkeypatch):
     _os.unlink(_lex.name)
     assert any(d.code == "asset.rss_guard" for d in decisions)
     assert built == [("table", "worn_oak")]  # built serially despite max_workers=4
+
+
+# ═════════════════════════════════════════════════════════════════════
+#  AUDIT-05 P12: de-dup — scene_compiler no longer calls ensure_room_shell
+# ═════════════════════════════════════════════════════════════════════
+
+def test_compile_scene_does_not_call_ensure_room_shell(monkeypatch, tmp_path):
+    """P12 regression guard: ``scene_compiler.compile_scene`` must NOT
+    invoke ``room_shell.ensure_room_shell``.  The call is owned by
+    ``scaffold.py`` (the cache-writing site) and threaded in via the
+    ``shell_glb_path=`` kwarg.
+
+    Implementation: replace ``ensure_room_shell`` with a fail-fast
+    sentinel — if any unchanged branch in ``compile_scene`` invokes it,
+    this fires.
+    """
+    import room_shell
+
+    def fail_if_called(*_a, **_kw):
+        raise AssertionError(
+            "P12 regression: compile_scene called "
+            "room_shell.ensure_room_shell — the de-dup is broken"
+        )
+
+    monkeypatch.setattr(room_shell, "ensure_room_shell", fail_if_called)
+
+    spec = dict(_QUEST_SPEC)
+    man = _minimal_manifest()
+    spec["target_entity"] = man[0]["id"]
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(
+            spec, man, out,
+            room_size={"w": 8, "d": 6}, theme="study",
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+    # GLB-shell branch also must not invoke the cache resolver.
+    glb = tmp_path / "shell.glb"
+    glb.write_bytes(b"GLB-fake")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(
+            spec, man, out,
+            room_size={"w": 8, "d": 6}, theme="study",
+            shell_glb_path=str(glb),
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_scaffold_still_calls_ensure_room_shell():
+    """P12 sibling test: scaffold keeps the cache write while
+    ``compile_scene`` loses it.
+
+    Source-inspection check (robust against runtime exceptions):
+      1. ``scaffold.py`` source still contains the
+         ``room_shell.ensure_room_shell`` call expression.
+      2. ``scaffold.py`` threads ``shell_glb_path`` and
+         ``shell_decisions`` into ``compile_scene``.
+      3. ``scene_compiler.py`` source does NOT contain the string
+         ``room_shell.ensure_room_shell`` anywhere.
+      4. ``scene_compiler.compile_scene`` accepts the new kwargs.
+    """
+    scaffold_src = (
+        Path(__file__).parent.parent.joinpath("scaffold.py").read_text()
+    )
+    assert (
+        "shell_path, _shell_d = room_shell.ensure_room_shell("
+        in scaffold_src
+    ), (
+        "P12: scaffold.py no longer contains the "
+        "room_shell.ensure_room_shell call site.  Scaffold must own the "
+        "cache write — without it, scene_compiler cannot get the shell "
+        "GLB path."
+    )
+    assert "shell_glb_path=" in scaffold_src, (
+        "P12: scaffold.py must forward shell_glb_path into compile_scene."
+    )
+    assert "shell_decisions=" in scaffold_src, (
+        "P12: scaffold.py must forward shell_decisions into compile_scene."
+    )
+
+    scene_compiler_src = (
+        Path(__file__).parent.parent.joinpath("scene_compiler.py").read_text()
+    )
+    # The call expression must NOT appear on any non-comment line of
+    # scene_compiler.py.  Docstring + block-comment references are
+    # allowed (they document the de-dup rationale); only live call
+    # sites count.
+    import re
+    bad = re.search(
+        r"(?m)^([^#\n]*room_shell\.ensure_room_shell\()",
+        scene_compiler_src,
+    )
+    assert bad is None, (
+        "P12 regression: scene_compiler has a live reference to "
+        "room_shell.ensure_room_shell on a code line.  The call must "
+        "live entirely in scaffold.py; if you re-introduce it here, "
+        "document why with a comment."
+    )
+
+    import inspect
+
+    from scene_compiler import compile_scene
+    sig = inspect.signature(compile_scene)
+    for kw in ("shell_glb_path", "shell_decisions"):
+        assert kw in sig.parameters, (
+            f"P12: compile_scene must accept {kw}= kwarg; signature: {sig}"
+        )

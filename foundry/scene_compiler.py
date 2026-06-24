@@ -9,13 +9,18 @@ Mirrors ``foundry/publish.py`` for path/resource handling.
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple, TypedDict
+from typing import List, Tuple, TypedDict
 
 import navmesh
-import room_shell
+from _constants import _SUN_BASIS_INTERIOR_TUPLE as _SUN_BASIS
+from category_registry import COLLISION_SIZES
+
+# P12 (AUDIT-05 de-dup): room_shell.ensure_room_shell is no longer
+# called from ``compile_scene`` — the call lives in ``scaffold.py``
+# (the cache-owning site).  The module is still imported by tests
+# directly (``import room_shell``), so we don't re-export here.
 from comp_tags import (
     _NPC_BODY_CATEGORY,
     _NPC_BODY_MATERIAL,
@@ -23,18 +28,15 @@ from comp_tags import (
     _SHELL_SCRIPTS,
     _TAG_TABLE,
 )
-from _constants import _SUN_BASIS_INTERIOR_TUPLE as _SUN_BASIS
-from category_registry import COLLISION_SIZES
+from lighting_resolve import _resolve_lighting
 from material_classes import CLASSES, class_for
 from placement import (
     _find_open_npc_positions,
     _get_prop_footprints,
     _guard_player_spawn,
-    _prop_half_extents,
     _resolve_prop_overlaps,
     rest_offset,
 )
-from lighting_resolve import _resolve_lighting
 from scene_data import write_sidecar_data
 from tscn_writer import (
     ext_resource,
@@ -619,6 +621,9 @@ def compile_scene(
     lighting_plan: dict | None = None,  # Generative lighting plan (hearth/torch/candle/window + env)
     palette: dict | None = None,          # Scene palette for per-class material override
     decisions_out: list | None = None,    # Phase 0.3: mutable list for threading decisions back
+    *,
+    shell_glb_path: str | None = None,   # P12: cached shell GLB (caller-supplied; compile_scene no longer calls ensure_room_shell)
+    shell_decisions: list | None = None, # P12: Decision Points from the cache resolver (forwarded into decisions_out)
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.
 
@@ -791,10 +796,14 @@ def compile_scene(
             })
 
     # ── Task 6: Shell GLB + carved navmesh ─────────────────────
-    shell_glb_path = None
-    shell_decisions: list = []
-    if not is_outdoor:
-        shell_glb_path, shell_decisions = room_shell.ensure_room_shell(room_w, room_d, _ROOM_HEIGHT, theme)
+    # P12 (AUDIT-05 de-dup): ``compile_scene`` no longer calls
+    # ``room_shell.ensure_room_shell`` itself — the call lives entirely
+    # in ``foundry/scaffold.py`` (the cache-owning site).  Scaffold
+    # threads the result in here via ``shell_glb_path`` (the path to
+    # the cached shell.glb) and ``shell_decisions`` (the Decision
+    # Points returned by the cache resolver).  When the caller passes
+    # ``shell_glb_path=None`` we fall back to the inline box-shell
+    # path (preserves today’s deterministic-by-default test behavior).
     if shell_decisions and decisions_out is not None:
         decisions_out.extend(shell_decisions)
 
