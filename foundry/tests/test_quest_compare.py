@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import quest_compare
 
-
 # ── Bug #1: the comparison table was blind to dialogue ──────────────
 # `_run_quest` stripped each line and then matched a 2-space-indented
 # prefix ("  greet:"), so after the strip the indent was gone and the

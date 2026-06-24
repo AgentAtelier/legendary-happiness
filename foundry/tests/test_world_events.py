@@ -12,19 +12,16 @@ Tests assert:
 
 from __future__ import annotations
 
-import pytest
-
 from world_events import (
     EVENT_CATALOGUE,
     EventType,
-    check_precursors,
-    pick_events,
     affected_rooms,
-    generate_consequences,
-    spawn_emergent_quest,
+    check_precursors,
     fire_events,
+    generate_consequences,
+    pick_events,
+    spawn_emergent_quest,
 )
-
 
 # ── Catalogue validity ──────────────────────────────────────────
 

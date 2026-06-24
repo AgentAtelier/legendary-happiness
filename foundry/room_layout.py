@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from category_registry import FURNITURE, CARRYABLES, FURNITURE_TOP_Y, COLLISION_SIZES
+from _constants import DEFAULT_RNG_SEED
+from category_registry import CARRYABLES, COLLISION_SIZES, FURNITURE, FURNITURE_TOP_Y
 from decisions import Choice, DecisionPoint, make_decision
 
 CELL = 1.8            # grid cell pitch (m) — one furniture item per cell.
@@ -76,7 +77,7 @@ def layout_room(plan: dict, seed: int | None = None, npc_count: int = 1) -> Tupl
     # plans produce identical layouts.
     if len(placed) < len(cells):
         import random as _random
-        _rng = _random.Random(42)
+        _rng = _random.Random(DEFAULT_RNG_SEED)
         spread_cells = list(cells)
         _rng.shuffle(spread_cells)
         spread_cells = spread_cells[:len(placed)]

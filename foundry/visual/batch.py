@@ -20,8 +20,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List
 
 # Inspection prompts. Phrased to make the VLM report what it ACTUALLY sees
 # (rather than rubber-stamp "looks fine"), and to flag an empty/blank frame —
@@ -46,10 +45,10 @@ SCENE_PROMPT = (
 def run_batch(
     *,
     out_dir: str,
-    library_dir: Optional[str] = None,
-    builds_dir: Optional[str] = None,
-    baseline_path: Optional[str] = None,
-    angles: Optional[List[float]] = None,
+    library_dir: str | None = None,
+    builds_dir: str | None = None,
+    baseline_path: str | None = None,
+    angles: List[float] | None = None,
     catalog: bool = True,
     scenes: bool = True,
     # Injectables for testing (default = real modules)
@@ -151,7 +150,7 @@ def run_batch(
 def _run_prop_catalog(
     lib: Path,
     out_path: Path,
-    angles: Optional[List[float]],
+    angles: List[float] | None,
     capture_prop,
     check_image,
     aesthetic_score_fn,
@@ -210,7 +209,7 @@ def _run_prop_catalog(
 def _run_scene_regression(
     builds_dir: Path,
     out_path: Path,
-    angles: Optional[List[float]],
+    angles: List[float] | None,
     capture_scene,
     check_image,
     aesthetic_score_fn,

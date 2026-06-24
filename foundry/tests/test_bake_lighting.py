@@ -18,7 +18,7 @@ import pytest
 BLENDER = shutil.which("blender")
 BAKE = str(Path(__file__).resolve().parents[1] / "blender" / "bake_lighting.py")
 
-pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(BLENDER is None, reason="blender not installed"), pytest.mark.blender]
 
 _DESC = {
     "placements": [

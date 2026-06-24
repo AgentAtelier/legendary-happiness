@@ -23,8 +23,8 @@ _foundry_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _foundry_dir not in sys.path:
     sys.path.insert(0, _foundry_dir)
 
-from materials import MATERIAL_PALETTE
 from glb_postprocess import inject_occlusion_texture as _inject_occlusion_texture
+from materials import MATERIAL_PALETTE
 
 
 def _argv():
@@ -1582,7 +1582,7 @@ def _build_terrain_geometry(params):
     the planner that places the building/flora — each row's Blender Y is set to
     ``-gz``.
     """
-    from terrain_field import make_field, height_at
+    from terrain_field import height_at, make_field
     extent = float(params.get("extent", 40.0))
     res = max(8, int(params.get("resolution", 48)))
     field = make_field(
@@ -2503,7 +2503,7 @@ def apply_entropy(mesh_data, age, seed):
 def main():
     args = _argv()
     spec_path, out_glb = args[0], args[1]
-    spec = json.load(open(spec_path, "r", encoding="utf-8"))
+    spec = json.load(open(spec_path, encoding="utf-8"))
 
     # Derive deterministic seeds from the spec.
     entropy_seed = _derive_entropy_seed(spec)

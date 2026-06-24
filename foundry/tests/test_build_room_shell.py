@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 blender = shutil.which("blender")
-pytestmark = pytest.mark.skipif(blender is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(blender is None, reason="blender not installed"), pytest.mark.blender]
 
 GEN = Path(__file__).resolve().parent.parent / "blender" / "build_room_shell.py"
 

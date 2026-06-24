@@ -37,9 +37,8 @@ def table_spec():
 def test_build_sidecar_validates_against_real_schema(table_spec):
     """build_sidecar for a table spec passes validation with jsonschema
     using the real engine-side schema file."""
-    from sidecar import build_sidecar
-
     import jsonschema
+    from sidecar import build_sidecar
 
     schema = json.loads(Path(_SCHEMA_PATH).read_text(encoding="utf-8"))
     sidecar = build_sidecar(table_spec)
@@ -98,9 +97,8 @@ def test_build_sidecar_has_procedural_required_keys(table_spec):
 
 def test_chair_spec_sidecar_validates():
     """A chair spec sidecar also validates."""
-    from sidecar import build_sidecar
-
     import jsonschema
+    from sidecar import build_sidecar
 
     schema = json.loads(Path(_SCHEMA_PATH).read_text(encoding="utf-8"))
     spec = {

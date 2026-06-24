@@ -28,12 +28,12 @@ quality rate (rate × population).  Used by the friction report later.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List
 
 from eval.harness import RunRecord
 from eval.signals import compute_signals, record_tier
-
 
 # ── SampleResult ──────────────────────────────────────────────────────
 
@@ -60,8 +60,8 @@ def stratify_and_sample(
     seed: int,
     clean_baseline_n: int,
     signals_fn: Callable[[RunRecord], set] = compute_signals,
-    problem_cap: Optional[int] = None,
-    low_severity_cap: Optional[int] = 8,
+    problem_cap: int | None = None,
+    low_severity_cap: int | None = 8,
 ) -> SampleResult:
     """Pick a deterministic, statistically-sound probe set.
 

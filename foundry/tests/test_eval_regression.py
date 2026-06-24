@@ -14,9 +14,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
-
 # ── Fake LLM ─────────────────────────────────────────────────────────
 
 _TABLE_SPEC = json.dumps({
@@ -44,7 +41,7 @@ def test_match_golden_passes(tmp_path):
 
     # Save a golden expectation matching what the fake LLM + resolver produce.
     # The stub LLM returns a table spec; resolver for "a table" → worn_oak, age=0.15.
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
     req_hash = _request_hash("a table")
     _save_expectation(
         str(exp_dir), req_hash,
@@ -71,7 +68,7 @@ def test_material_mismatch_hard_fail(tmp_path):
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
 
     # Golden says wrought_iron, but resolver for "a table" → worn_oak.
     req_hash = _request_hash("a table")
@@ -101,7 +98,7 @@ def test_age_mismatch_hard_fail(tmp_path):
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
 
     # Golden says age=0.8, but planner for "a table" (no wear word) → age=0.15.
     req_hash = _request_hash("a table")
@@ -129,7 +126,7 @@ def test_generator_mismatch_tracked_only(tmp_path):
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
 
     # Golden says chair, but stub LLM returns table.
     req_hash = _request_hash("a table")
@@ -163,7 +160,7 @@ def test_update_rewrites_expectation(tmp_path):
     exp_dir.mkdir()
 
     # First: save a WRONG golden.
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
     req_hash = _request_hash("a table")
     _save_expectation(
         str(exp_dir), req_hash,
@@ -198,7 +195,7 @@ def test_aggregate_score_mixed(tmp_path):
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
 
     # Request 1: correct golden → passes
     _save_expectation(
@@ -245,11 +242,11 @@ def test_no_expectation_passed_is_none(tmp_path):
 # ── Report builders ──────────────────────────────────────────────────
 
 def test_build_report_dict_shape(tmp_path):
-    from eval.regression import run_regression, build_report_dict
+    from eval.regression import build_report_dict, run_regression
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
     _save_expectation(
         str(exp_dir), _request_hash("a table"),
         {"generator": "table", "material": "worn_oak", "age": 0.15},
@@ -271,11 +268,11 @@ def test_build_report_dict_shape(tmp_path):
 
 
 def test_build_report_md_pass(tmp_path):
-    from eval.regression import run_regression, build_report_dict, build_report_md
+    from eval.regression import build_report_dict, build_report_md, run_regression
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
     _save_expectation(
         str(exp_dir), _request_hash("a table"),
         {"generator": "table", "material": "worn_oak", "age": 0.15},
@@ -295,11 +292,11 @@ def test_build_report_md_pass(tmp_path):
 
 
 def test_build_report_md_fail(tmp_path):
-    from eval.regression import run_regression, build_report_dict, build_report_md
+    from eval.regression import build_report_dict, build_report_md, run_regression
 
     exp_dir = tmp_path / "expectations"
     exp_dir.mkdir()
-    from eval.regression import _save_expectation, _request_hash
+    from eval.regression import _request_hash, _save_expectation
     _save_expectation(
         str(exp_dir), _request_hash("a table"),
         {"generator": "table", "material": "wrought_iron", "age": 0.8},

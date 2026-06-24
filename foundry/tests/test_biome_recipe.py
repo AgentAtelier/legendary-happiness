@@ -8,7 +8,6 @@ Point (legibility). Pure + deterministic.
 from __future__ import annotations
 
 import pytest
-
 from biome_recipe import DENSITY_MULT, validate_biome_recipe
 from biome_table import resolve_biome
 

@@ -15,12 +15,10 @@ import json
 import socket
 
 import pytest
-
-from compiler import compile_spec, PARAM_RANGES
+from compiler import PARAM_RANGES, compile_spec
 from decisions import DecisionPoint
-from llm import normalize_gbnf, load_grammar, FoundryLLM
+from llm import FoundryLLM, load_grammar, normalize_gbnf
 from planner import AssetPlanner
-
 
 # ── Grammar normalisation tests ────────────────────────────────────
 
@@ -430,7 +428,7 @@ def _llama_server_reachable() -> bool:
         s = socket.create_connection(("127.0.0.1", 8002), timeout=2)
         s.close()
         return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
+    except (TimeoutError, ConnectionRefusedError, OSError):
         return False
 
 

@@ -7,16 +7,13 @@ is validated without requiring real model weights.
 
 from __future__ import annotations
 
-import json
-import math
 from pathlib import Path
-from unittest.mock import patch
 
-from PIL import Image as PILImage
 import pytest
 
 # Reset module-level cache between tests
 import visual.aesthetic as _aesthetic
+from PIL import Image as PILImage
 
 
 @pytest.fixture(autouse=True)

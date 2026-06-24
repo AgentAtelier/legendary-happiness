@@ -15,10 +15,11 @@ import math
 import os
 from typing import Dict, List
 
+from _constants import SUN_BASIS_EXTERIOR
 from exterior_planner import ExteriorPlan
 
-# Sun basis (a fixed pleasant angle); biome sets its energy.
-_SUN_XFORM = "0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5"
+# Sun basis from shared constants (a fixed pleasant angle); biome sets its energy.
+_SUN_XFORM = SUN_BASIS_EXTERIOR
 
 
 def _transform3d(x: float, y: float, z: float, yaw: float = 0.0, scale: float = 1.0) -> str:

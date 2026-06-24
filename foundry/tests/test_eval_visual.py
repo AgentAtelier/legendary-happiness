@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from eval.visual import compute_visual_signals
 
-
 # ── compute_visual_signals ────────────────────────────────────────
 
 def test_clean_prop():

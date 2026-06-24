@@ -30,7 +30,6 @@ from eval.signals import (
     size_mismatch_detail,
 )
 
-
 # ── Public entry points ───────────────────────────────────────────────
 
 

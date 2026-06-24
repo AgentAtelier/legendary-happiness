@@ -3,9 +3,11 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from library import (
-    LIVE_LEXICON, read_envelope, register_asset, register_variant,
+    LIVE_LEXICON,
+    read_envelope,
+    register_asset,
+    register_variant,
 )
 
 

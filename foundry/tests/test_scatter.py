@@ -8,7 +8,6 @@ instance sits on the terrain; categories come only from the biome.
 from __future__ import annotations
 
 import pytest
-
 from biome_table import resolve_biome
 from scatter import scatter
 from terrain_field import height_at, make_field, slope_at

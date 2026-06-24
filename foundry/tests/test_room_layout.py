@@ -168,7 +168,7 @@ def test_carryables_on_real_surface_or_floor():
     """Quality B2: Every carryable's y equals a real host-surface top
     with (x,z) inside that host's footprint, OR it's a floor item at
     floor height."""
-    from category_registry import COLLISION_SIZES, FURNITURE_TOP_Y, CARRYABLES as _CARR
+    from category_registry import CARRYABLES as _CARR, COLLISION_SIZES, FURNITURE_TOP_Y
     plan = {"room_size": {"w": 8.0, "d": 8.0},
             "props": [
                 {"category": "table", "material": "worn_oak", "count": 2},

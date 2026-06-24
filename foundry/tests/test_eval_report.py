@@ -8,15 +8,13 @@ corpus-loader + corpus-file shape tests (no live llm/Blender).
 
 from __future__ import annotations
 
-from typing import List
 from pathlib import Path
+from typing import List
 
 import pytest
-
 from eval.harness import RunRecord
-from eval.sampler import SampleResult, stratify_and_sample
 from eval.report import build_friction_report, load_corpus
-
+from eval.sampler import stratify_and_sample
 
 # ── helpers ───────────────────────────────────────────────────────────
 
@@ -323,7 +321,8 @@ def test_build_friction_report_seed_and_stratum_sizes_propagated():
 
 def test_load_corpus_returns_only_non_comment_non_blank_lines():
     """load_corpus(file) strips `#` comments and blanks (pure utility)."""
-    import tempfile, textwrap
+    import tempfile
+    import textwrap
     tmp = tempfile.NamedTemporaryFile(
         mode="w", suffix=".txt", delete=False, encoding="utf-8"
     )
@@ -412,8 +411,8 @@ def test_build_friction_report_smoke_run_through_synthetic_records():
 # digest sections are populated when the source records contain these
 # signals.
 
-from materials import MATERIAL_PALETTE
 from compiler import PARAM_RANGES
+from materials import MATERIAL_PALETTE
 
 
 def _conflict_record(i: int) -> RunRecord:

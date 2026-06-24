@@ -12,11 +12,12 @@ import json
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Callable, List
+from typing import List
 
-from decisions import Choice, DecisionPoint, make_decision
+from decisions import Choice, DecisionPoint
 
 
 def _forge_category(category: str, material: str, library_dir: str, lexicon_path: str):

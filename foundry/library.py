@@ -6,8 +6,8 @@ later reads — but instancing the asset into a live scene is a LATER slice."""
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 
 # Real lexicon: repo_root/engine/devforge/spatial/asset_lexicon.json
 # This file is foundry/library.py → parents[1] is repo root.

@@ -12,9 +12,9 @@ The fallback firing IS itself an event (feeds P2).
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
-from decisions import Choice, DecisionPoint, make_decision
+from decisions import DecisionPoint, make_decision
 
 # ── Validation constants ──────────────────────────────────────────
 

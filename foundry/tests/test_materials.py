@@ -1,6 +1,6 @@
 """Unit tests for materials.py — WS-3.1 new materials + seeded variation."""
 
-from materials import MATERIAL_PALETTE, material_variation, material_ids
+from materials import MATERIAL_PALETTE, material_ids, material_variation
 
 
 def test_new_materials_exist():

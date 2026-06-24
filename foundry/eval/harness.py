@@ -15,10 +15,10 @@ from __future__ import annotations
 import json
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
-
+from typing import Any, List, Tuple
 
 # ── RunRecord ──────────────────────────────────────────────────────────
 
@@ -28,13 +28,13 @@ class RunRecord:
     """The structured outcome of one NL request through the chain."""
 
     request: str
-    spec: Optional[dict]
+    spec: dict | None
     decisions: List[dict]
-    gate_passed: Optional[bool]
+    gate_passed: bool | None
     gate_reasons: List[str]
     built: bool
-    error: Optional[str]
-    glb_path: Optional[str]
+    error: str | None
+    glb_path: str | None
     seconds: float
 
 
@@ -44,12 +44,12 @@ class QuestRecord:
     (behaviour-gen → scene-compile).  Mirrors RunRecord for the quest layer."""
 
     room_theme: str
-    quest_spec: Optional[dict]
+    quest_spec: dict | None
     decisions: List[dict]
     compiled: bool
-    scene_path: Optional[str]
+    scene_path: str | None
     manifest: List[dict]
-    error: Optional[str]
+    error: str | None
     seconds: float
 
 
@@ -80,7 +80,7 @@ def quest_records_to_jsonl(records: List[QuestRecord]) -> str:
 
 
 def _default_plan(
-    request: str, llm: Callable[[str, Optional[str]], str]
+    request: str, llm: Callable[[str, str | None], str]
 ) -> Tuple[dict, List]:
     """Import AssetPlanner lazily so tests injecting ``plan`` don't pull
     Blender/llama paths."""
@@ -101,13 +101,13 @@ def _default_forge(
 
 def run_corpus(
     requests: List[str],
-    llm: Callable[[str, Optional[str]], str],
+    llm: Callable[[str, str | None], str],
     lexicon_path: str,
     library_dir: str,
     *,
     build: bool = True,
-    plan: Optional[Callable[..., Tuple[dict, List]]] = None,
-    forge: Optional[Callable[[str, str, str], Any]] = None,
+    plan: Callable[..., Tuple[dict, List]] | None = None,
+    forge: Callable[[str, str, str], Any] | None = None,
 ) -> List[RunRecord]:
     """Run *requests* through the foundry pipeline, capturing structured
     records.  NEVER raises out of the per-request loop.
@@ -200,11 +200,11 @@ def run_corpus(
 def run_quest_corpus(
     room_themes: List[str],
     manifest: List[dict],
-    llm: Callable[[str, Optional[str]], str],
+    llm: Callable[[str, str | None], str],
     scene_output_dir: str,
     *,
-    plan_quest: Optional[Callable[..., Tuple[dict, List]]] = None,
-    compile_scene_fn: Optional[Callable[..., str]] = None,
+    plan_quest: Callable[..., Tuple[dict, List]] | None = None,
+    compile_scene_fn: Callable[..., str] | None = None,
 ) -> List[QuestRecord]:
     """Run *room_themes* through the quest pipeline, capturing structured
     records.  NEVER raises out of the per-request loop.

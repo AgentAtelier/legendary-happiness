@@ -149,10 +149,9 @@ def _cmd_quest(args: list[str]) -> int:
     llm = FoundryLLM(**llm_kwargs)
 
     # ── Spine: Interpret → Brief → RoomPlanner ────────────────
-    from interpreter import Interpreter
-    from room_planner import RoomPlanner
-    from room_layout import layout_room
     from asset_ensure import ensure_assets
+    from interpreter import Interpreter
+    from room_layout import layout_room
 
     print(f"[quest] Interpreting prompt: {parsed.request!r}")
     seed = parsed.seed
@@ -220,9 +219,15 @@ def _cmd_quest(args: list[str]) -> int:
 
     # ── Step 2: Compile scene into scaffolded project ──────────
     # P-G: pass the theme to scene_compiler for per-theme lighting.
-    from scaffold import scaffold_project
     from pathlib import Path as _Path2
+
+    from scaffold import scaffold_project
     room_theme = brief["theme_tag"]
+    # ── Palette: derive scene palette from theme anchor + mood ──
+    from palette import build_palette
+    palette = build_palette(room_theme, seed or 0)
+    print(f"[quest] Palette: {len(palette['roles'])} roles")
+
     template_dir = str(_Path2(__file__).resolve().parent / "godot_template")
     build_path = scaffold_project(
         name=parsed.scene,
@@ -235,6 +240,7 @@ def _cmd_quest(args: list[str]) -> int:
         theme=room_theme,
         camera_mode=parsed.camera,
         lighting_plan=lighting_plan,
+        palette=palette,
     )
     print(f"[quest] Build scaffolded: {build_path}")
 
@@ -248,7 +254,7 @@ def _cmd_quest(args: list[str]) -> int:
     print(f"[quest] Quest data: {data_path}")
 
     # ── Spine: Write build report ────────────────────────────
-    from report import render_build_report, build_report_dict
+    from report import build_report_dict, render_build_report
     report_txt = render_build_report(brief, decisions, manifest)
     report_dict = build_report_dict(brief, decisions, manifest)
 
@@ -279,6 +285,7 @@ def _cmd_visual_eval(args: list[str]) -> int:
             [--baseline <path>] [--no-catalog] [--no-scenes]
     """
     import argparse
+
     from visual.batch import run_batch
 
     parser = argparse.ArgumentParser(
@@ -373,8 +380,8 @@ def _plan_room_with_fallback(
     If that also fails, return a minimal default room plan + a
     Decision Point so the quest never crashes on junk output.
     """
+    from decisions import Choice, make_decision
     from room_planner import RoomPlanner
-    from decisions import make_decision, Choice
 
     planner = RoomPlanner()
 

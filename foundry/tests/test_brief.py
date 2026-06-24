@@ -7,15 +7,12 @@ constructor, and validate_brief() with Decision Point emission.
 
 from __future__ import annotations
 
-import pytest
-
-
 # ── Constants shape ────────────────────────────────────────────────
 
 
 def test_themes_and_categories_are_imported_live():
     """THEMES and CATEGORIES come from the engine, not hardcoded."""
-    from brief import THEMES, CATEGORIES
+    from brief import CATEGORIES, THEMES
 
     assert isinstance(THEMES, tuple)
     assert len(THEMES) >= 12  # at least the 12 known
@@ -470,7 +467,7 @@ def test_validate_brief_drops_features_subsumed_by_theme_or_characters():
     (e.g. 'blacksmith's forge', 'an apprentice') must NOT reach `unmapped` —
     otherwise the build report contradicts itself ('can't build a blacksmith's
     forge' right after building one). A genuinely novel feature still surfaces."""
-    from brief import validate_brief, THEMES, CATEGORIES
+    from brief import CATEGORIES, THEMES, validate_brief
     raw = {
         "theme_tag": "blacksmith",
         "setting": "a blacksmith's forge",

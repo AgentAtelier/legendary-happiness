@@ -23,8 +23,7 @@ The module is extractable as a standalone dungeon-graph tool.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple, Set
-
+from typing import Dict, List, Set, Tuple
 
 # ── Grid-room type ──────────────────────────────────────────────
 

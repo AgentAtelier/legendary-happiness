@@ -21,14 +21,14 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from hunyuan_postprocess import content_cache_key
 
 DEFAULT_ROOT = Path.home() / ".cache" / "forge" / "hunyuan"
 
 
-def _root(root: Optional[str | Path]) -> Path:
+def _root(root: str | Path | None) -> Path:
     r = Path(root) if root else DEFAULT_ROOT
     for sub in ("queue", "cache", "done"):
         (r / sub).mkdir(parents=True, exist_ok=True)
@@ -45,15 +45,15 @@ def make_key(spec: dict) -> str:
     )
 
 
-def cache_path(key: str, *, root: Optional[str | Path] = None) -> Path:
+def cache_path(key: str, *, root: str | Path | None = None) -> Path:
     return _root(root) / "cache" / f"{key}.glb"
 
 
-def is_cached(key: str, *, root: Optional[str | Path] = None) -> bool:
+def is_cached(key: str, *, root: str | Path | None = None) -> bool:
     return cache_path(key, root=root).exists()
 
 
-def enqueue(spec: dict, *, root: Optional[str | Path] = None) -> dict:
+def enqueue(spec: dict, *, root: str | Path | None = None) -> dict:
     """Enqueue an asset job (idempotent). Returns ``{key, status, glb}`` where
     status is ``"cached"`` (already built) or ``"queued"``."""
     r = _root(root)
@@ -69,7 +69,7 @@ def enqueue(spec: dict, *, root: Optional[str | Path] = None) -> dict:
     return {"key": key, "status": "queued", "glb": str(cp)}
 
 
-def pending_jobs(*, root: Optional[str | Path] = None) -> List[dict]:
+def pending_jobs(*, root: str | Path | None = None) -> List[dict]:
     """All queued jobs, priority-ordered (the filename's ``<prio>_<key>`` sorts)."""
     r = _root(root)
     out: List[dict] = []
@@ -81,13 +81,13 @@ def pending_jobs(*, root: Optional[str | Path] = None) -> List[dict]:
     return out
 
 
-def next_job(*, root: Optional[str | Path] = None) -> Optional[dict]:
+def next_job(*, root: str | Path | None = None) -> dict | None:
     """The highest-priority pending job, or None (the server drains these)."""
     jobs = pending_jobs(root=root)
     return jobs[0] if jobs else None
 
 
-def complete(key: str, *, root: Optional[str | Path] = None) -> None:
+def complete(key: str, *, root: str | Path | None = None) -> None:
     """Archive a job after its ``cache/<key>.glb`` has been written."""
     r = _root(root)
     for f in (r / "queue").glob(f"*_{key}.json"):

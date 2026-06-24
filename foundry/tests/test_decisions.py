@@ -12,7 +12,6 @@ import json
 
 import pytest
 
-
 # ── SEVERITY / dataclass shape ─────────────────────────────────────
 
 
@@ -96,7 +95,7 @@ def test_make_decision_unspecified_template():
 
 def test_make_decision_unknown_code_raises():
     """An unknown code is a programming error — fail loud."""
-    from decisions import Choice, make_decision
+    from decisions import make_decision
 
     with pytest.raises(KeyError):
         make_decision(
@@ -287,8 +286,8 @@ def test_forge_result_default_decisions_is_empty_list():
     """ForgeResult.decisions defaults to an empty list — runs anywhere,
     no blender dependency (lives here instead of test_runner.py to avoid
     the BLENDER pytestmark skipif on a pure dataclass test)."""
-    from runner import ForgeResult
     from gate import GateResult
+    from runner import ForgeResult
 
     result = ForgeResult(
         glb_path="/tmp/fake.glb",
@@ -308,9 +307,9 @@ def test_forge_result_default_decisions_is_empty_list():
 def test_forge_result_accepts_decisions_in_constructor():
     """The planner path populates ForgeResult(decisions=...) with the
     resolver's output."""
-    from runner import ForgeResult
+    from decisions import make_decision
     from gate import GateResult
-    from decisions import Choice, make_decision
+    from runner import ForgeResult
 
     dp = make_decision(
         code="material.family_defaulted",

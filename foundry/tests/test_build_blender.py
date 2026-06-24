@@ -7,14 +7,13 @@ from pathlib import Path
 
 import pytest
 import trimesh
-
-from library import read_envelope, LIVE_LEXICON
+from library import LIVE_LEXICON, read_envelope
 
 BLENDER = shutil.which("blender")
 BUILD = str(Path(__file__).resolve().parents[1] / "blender" / "build_asset.py")
 SPEC = str(Path(__file__).resolve().parents[1] / "specs" / "table.json")
 
-pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(BLENDER is None, reason="blender not installed"), pytest.mark.blender]
 
 
 def test_build_exports_a_valid_table(tmp_path):
@@ -140,8 +139,9 @@ def test_build_granite_table_passes_gate(tmp_path):
 def test_granite_texture_is_grey_and_low_saturation(tmp_path):
     """The granite baked texture has mean colour in the grey range
     and lower saturation than wood."""
-    import numpy as np
     from io import BytesIO
+
+    import numpy as np
     from PIL import Image
     from pygltflib import GLTF2
 
@@ -243,6 +243,7 @@ def test_iron_table_metallic_factor_is_one(tmp_path):
     behaviour is preserved.
     """
     from io import BytesIO
+
     import numpy as np
     from PIL import Image
     from pygltflib import GLTF2
@@ -825,6 +826,7 @@ def _glb_has_full_pbr_set(glb_path: str) -> dict:
     Returns: {"baseColor": bool, "metallicRoughness": bool, "normal": bool}
     """
     from io import BytesIO
+
     import numpy as np
     from PIL import Image
     from pygltflib import GLTF2
@@ -969,7 +971,9 @@ def _parse_glb_json(glb_path):
 def test_occlusion_texture_present_in_glb():
     """Fix-Batch-1 Task 3: A freshly-built GLB must carry an
     ``occlusionTexture`` referencing the ORM image."""
-    import tempfile, os, subprocess
+    import os
+    import subprocess
+    import tempfile
     spec_path = os.path.join(os.path.dirname(__file__), "..", "specs", "table.json")
     find_py = os.path.join(os.path.dirname(__file__), "..", "blender", "build_asset.py")
     with tempfile.NamedTemporaryFile(suffix=".glb", delete=False) as tf:

@@ -59,7 +59,6 @@ def test_compose_empty_parts_raises():
     """compose raises ValueError with empty parts list."""
     sys.modules.pop("bpy", None)
     sys.modules.pop("bmesh", None)
-    from blender import kitbash
     # Mock bpy to bypass the RuntimeError
     import blender.kitbash as kb
     kb._HAS_BPY = True
@@ -76,7 +75,7 @@ def test_kitbash_library_global_singleton():
     """kitbash_library is a module-level singleton."""
     sys.modules.pop("bpy", None)
     sys.modules.pop("bmesh", None)
-    from blender.kitbash import kitbash_library, KitbashLibrary
+    from blender.kitbash import KitbashLibrary, kitbash_library
     assert isinstance(kitbash_library, KitbashLibrary)
 
 

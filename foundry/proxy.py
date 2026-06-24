@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -70,7 +68,7 @@ def voxelize_glb(
     out_ply: str,
     *,
     resolution: int = 64,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     pad: float = 0.05,
 ) -> int:
     """Convert a GLB mesh into an ASCII .ply voxel point cloud.
@@ -106,7 +104,7 @@ def voxelize_glb(
 
 # ── internal helpers ─────────────────────────────────────────────
 
-def _load_watertight(glb_path: str) -> "trimesh.Trimesh":
+def _load_watertight(glb_path: str) -> trimesh.Trimesh:
     """Load a GLB and return a single watertight Trimesh.
 
     Raises RuntimeError if trimesh is unavailable; warns (but does not
@@ -139,7 +137,7 @@ def _load_watertight(glb_path: str) -> "trimesh.Trimesh":
 
 
 def _compute_grid(
-    mesh: "trimesh.Trimesh",
+    mesh: trimesh.Trimesh,
     resolution: int,
     pad: float,
 ) -> tuple[np.ndarray, np.ndarray, float]:
@@ -161,7 +159,7 @@ def _compute_grid(
 
 
 def _sample_voxels(
-    mesh: "trimesh.Trimesh",
+    mesh: trimesh.Trimesh,
     bbox_lo: np.ndarray,
     bbox_hi: np.ndarray,
     resolution: int,

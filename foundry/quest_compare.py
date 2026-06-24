@@ -26,7 +26,7 @@ import sys
 import textwrap
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Tuple
 
 import requests
 
@@ -50,7 +50,7 @@ _BUILDS_DIR = _REPO_ROOT / "builds"
 _last_smoke_error: str = ""
 
 
-def _get_current_model() -> Optional[str]:
+def _get_current_model() -> str | None:
     """Query the hub for the currently-loaded model alias.
 
     Uses ``/api/models`` — it returns the active model's ``alias`` at the
@@ -142,7 +142,7 @@ def _swap_model(fragment: str) -> bool:
                 continue
 
     if exit_code is None:
-        print(f"  [swap] ERROR: could not determine exit code from stream")
+        print("  [swap] ERROR: could not determine exit code from stream")
         return False
 
     if exit_code != 0:
@@ -153,7 +153,7 @@ def _swap_model(fragment: str) -> bool:
     return True
 
 
-def _wait_for_health(expected_alias: Optional[str] = None) -> bool:
+def _wait_for_health(expected_alias: str | None = None) -> bool:
     """Poll llama /health until it responds 200. Optionally verify the
     running model alias matches *expected_alias* via /props.
 
@@ -525,7 +525,7 @@ def run_compare(
     fragments: list[str],
     prefix: str,
     dry_run: bool = False,
-    original_model: Optional[str] = None,
+    original_model: str | None = None,
     full_pipeline: bool = False,
     run_playthrough: bool = False,
     npc_count: int = 2,
@@ -659,7 +659,7 @@ def run_compare(
         print(f"[quest_compare] Restoring original model: {original_model}")
         if _swap_model(original_model):
             _wait_for_health(expected_alias=original_model)
-            print(f"[quest_compare] Original model restored.")
+            print("[quest_compare] Original model restored.")
         else:
             print("[quest_compare] ERROR: failed to restore original model!")
             all_ok = False

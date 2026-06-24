@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from soul import (
     AXES,
     SUBSTRATE_TRAITS,
@@ -11,7 +9,6 @@ from soul import (
     tone_descriptor,
     validate_soul,
 )
-
 
 # ── default_soul ──────────────────────────────────────────────────
 

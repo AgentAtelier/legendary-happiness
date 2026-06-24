@@ -11,7 +11,6 @@ import json
 
 import pytest
 import requests
-
 from visual.vlm import (
     PROP_DEFAULTS,
     PROP_SCHEMA,
@@ -26,7 +25,6 @@ from visual.vlm import (
     _pick_defaults,
     check_image,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────
 

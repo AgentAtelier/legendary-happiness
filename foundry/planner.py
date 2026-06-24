@@ -7,12 +7,13 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import List, Tuple
 
+from age_resolver import resolve_age
 from compiler import PARAM_RANGES, compile_spec
 from decisions import DecisionPoint
-from age_resolver import resolve_age
 from material_resolver import resolve_material
 
 log = logging.getLogger(__name__)
@@ -161,7 +162,7 @@ class AssetPlanner:
 
         return data
 
-    def plan(self, request: str, llm: Callable[[str, Optional[str]], str]) -> Tuple[dict, List[DecisionPoint]]:
+    def plan(self, request: str, llm: Callable[[str, str | None], str]) -> Tuple[dict, List[DecisionPoint]]:
         """Plan an asset-spec from a natural-language request.
 
         Args:

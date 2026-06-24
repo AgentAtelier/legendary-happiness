@@ -23,8 +23,8 @@ import math as _math
 import random as _random
 
 try:
-    import bpy
     import bmesh as _bmesh
+    import bpy
     _HAS_BPY = True
 except ImportError:
     _HAS_BPY = False

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import math
 import random
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import List, Tuple
 
 from terrain_field import Field, height_at, slope_at
 
@@ -31,8 +32,8 @@ def scatter(
     biome: dict,
     seed: int,
     *,
-    extent: Optional[float] = None,
-    exclusions: Optional[Sequence[Exclusion]] = None,
+    extent: float | None = None,
+    exclusions: Sequence[Exclusion] | None = None,
     slope_max: float = 1.2,
     scale_range: Tuple[float, float] = (0.8, 1.3),
 ) -> List[dict]:

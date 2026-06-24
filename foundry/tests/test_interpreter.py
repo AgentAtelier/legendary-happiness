@@ -8,10 +8,8 @@ test_behaviour_gen.py / test_room_planner.py pattern.
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 import pytest
-
 
 # ── build_prompt ───────────────────────────────────────────────────
 
@@ -119,10 +117,9 @@ def test_interpret_valid_json_passthrough():
     """Stub returns valid JSON → interpret yields Brief with
     source_prompt set, no error decisions."""
     from interpreter import Interpreter
-    from brief import THEMES
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return json.dumps({
             "theme_tag": "blacksmith",
             "scale": "medium",
@@ -152,10 +149,9 @@ def test_interpret_parse_fallback():
     """Stub returns unparseable text → Brief.minimal + parse_fallback
     decision.  Never raises."""
     from interpreter import Interpreter
-    from brief import THEMES
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return "not json at all"
 
     interp = Interpreter()
@@ -177,12 +173,11 @@ def test_interpret_passes_json_schema_to_llm():
     thinkers (14B/27B) ramble in prose, making parse() fail and souls
     never engage."""
     from interpreter import Interpreter
-    from brief import brief_json_schema
 
     seen_schemas: list = []
 
-    def capturing_llm(prompt: str, grammar: Optional[str] = None,
-                      json_schema: Optional[dict] = None) -> str:
+    def capturing_llm(prompt: str, grammar: str | None = None,
+                      json_schema: dict | None = None) -> str:
         seen_schemas.append(json_schema)
         return json.dumps({
             "theme_tag": "wizard",
@@ -205,8 +200,8 @@ def test_interpret_llm_exception_handled():
     """LLM raises an exception → Brief.minimal + parse_fallback, no raise."""
     from interpreter import Interpreter
 
-    def crashing_llm(prompt: str, grammar: Optional[str] = None,
-                     json_schema: Optional[dict] = None) -> str:
+    def crashing_llm(prompt: str, grammar: str | None = None,
+                     json_schema: dict | None = None) -> str:
         raise RuntimeError("LLM server down")
 
     interp = Interpreter()
@@ -221,8 +216,8 @@ def test_interpret_valid_with_unmapped_features():
     """Stub returns features with unknown categories → unmapped in Brief."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return json.dumps({
             "theme_tag": "kitchen",
             "scale": "large",
@@ -245,8 +240,8 @@ def test_interpret_star_theme_passthrough():
     """Valid Brief with theme_tag=\"*\" is accepted without error."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return json.dumps({
             "theme_tag": "*",
             "scale": "large",
@@ -266,8 +261,8 @@ def test_interpret_extracts_characters():
     from interpreter import Interpreter
     from soul import default_soul
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return json.dumps({
             "theme_tag": "blacksmith",
             "scale": "medium",
@@ -295,8 +290,8 @@ def test_interpret_no_characters_stays_empty():
     """Interpreter returns no characters → characters stays []."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return json.dumps({
             "theme_tag": "tavern",
             "scale": "medium",
@@ -311,8 +306,8 @@ def test_interpret_character_with_soul():
     """Interpreter stub returns a character with soul → soul survives into Brief."""
     from interpreter import Interpreter
 
-    def fake_llm(prompt: str, grammar: Optional[str] = None,
-                 json_schema: Optional[dict] = None) -> str:
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
         return json.dumps({
             "theme_tag": "blacksmith",
             "scale": "medium",
@@ -354,8 +349,8 @@ def test_parse_strips_think_block_with_braces_in_reasoning():
 def test_parse_strips_unclosed_think_to_end():
     """An unclosed <think> (model truncated mid-thought) leaves no valid JSON;
     parse must not pick a brace out of the reasoning."""
-    from interpreter import Interpreter
     import pytest as _pytest
+    from interpreter import Interpreter
     resp = '<think>\nLet me think about {"setting": ...\nmore reasoning'
     with _pytest.raises(ValueError):
         Interpreter.parse(resp)

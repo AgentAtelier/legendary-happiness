@@ -1,9 +1,7 @@
 """Tests for room_control — theme tables + global guards (C-0)."""
 from __future__ import annotations
 
-import pytest
-
-from room_control import apply_rules, _match_theme, THEME_TABLE
+from room_control import THEME_TABLE, _match_theme, apply_rules
 
 
 def test_match_theme_hermit():
@@ -150,8 +148,8 @@ def test_apply_rules_carryable_and_new_prop_pass_through():
 def test_apply_rules_injects_carryables_for_multi_npc():
     """EB-7: With npc_count=3 and no carryables in plan, apply_rules
     injects carryable categories so layout_room has them."""
-    from room_control import apply_rules
     from category_registry import CARRYABLES
+    from room_control import apply_rules
     plan = {"room_size": {"w": 8, "d": 8}, "props": [
         {"category": "table", "material": "worn_oak", "count": 2},
         {"category": "chair", "material": "worn_oak", "count": 1},
@@ -168,7 +166,6 @@ def test_apply_rules_injects_carryables_for_multi_npc():
 def test_apply_rules_no_injection_when_enough_carryables():
     """EB-7: With npc_count=1 (default) and enough carryables, no injection."""
     from room_control import apply_rules
-    from category_registry import CARRYABLES
     plan = {"room_size": {"w": 6, "d": 6}, "props": [
         {"category": "key", "material": "wrought_iron", "count": 2},
         {"category": "table", "material": "worn_oak", "count": 1},
@@ -243,7 +240,7 @@ def test_rug_is_fabric_in_workshop_theme():
 def test_rug_is_fabric_across_all_themes():
     """Quality C: For every THEME_TABLE theme, a room containing a rug
     yields the rug with a material in the fabric family."""
-    from room_control import apply_rules, THEME_TABLE
+    from room_control import THEME_TABLE, apply_rules
     _FABRIC = frozenset({"linen", "wool", "silk"})
     for row in THEME_TABLE:
         theme = row["theme"]

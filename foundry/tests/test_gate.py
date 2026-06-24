@@ -1,5 +1,4 @@
 import trimesh
-
 from gate import gate_asset
 
 FOOTPRINT = {"width": 1.5, "depth": 1.0}

@@ -16,18 +16,19 @@ import json
 import os
 import threading
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 # ── Injectables (overridden in tests) ────────────────────────────────
 
 #: Callable ``(request: str) -> (spec: dict, decisions: list)``.
 #: Set via ``configure_forge()``; tests inject a fake that skips Blender.
-_plan_fn: Optional[Callable[[str], Tuple[dict, List]]] = None
+_plan_fn: Callable[[str], Tuple[dict, List]] | None = None
 
 #: Callable ``(spec: dict, decisions: list, library_dir: str) -> dict``.
 #: Returns ``{glb_path, gate_passed, registered}``.
-_forge_fn: Optional[Callable[[dict, List, str], dict]] = None
+_forge_fn: Callable[[dict, List, str], dict] | None = None
 
 #: Library directory for forge output.
 _library_dir: str = ""

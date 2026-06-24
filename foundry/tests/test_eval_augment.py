@@ -12,9 +12,6 @@ no qwen.  Tests cover:
 
 from __future__ import annotations
 
-import json
-
-
 # ── Fake paraphraser + fake llm ───────────────────────────────────────
 
 
@@ -44,7 +41,7 @@ def _stub_llm():
 
 def test_dedup_removes_normalized_duplicate(tmp_path):
     """Two requests that normalize to the same text → one kept."""
-    from eval.augment import augment_corpus, _normalize, _request_key
+    from eval.augment import _request_key, augment_corpus
     out = tmp_path / "corpus.txt"
 
     requests, stats = augment_corpus(
@@ -114,7 +111,7 @@ def test_output_capped_by_target(tmp_path):
 
 def test_generators_all_covered(tmp_path):
     """The generated corpus includes all four generator families."""
-    from eval.augment import augment_corpus, _GENERATOR_NOUNS
+    from eval.augment import _GENERATOR_NOUNS, augment_corpus
     out = tmp_path / "corpus.txt"
 
     requests, stats = augment_corpus(
@@ -249,7 +246,7 @@ _QUEST_MANIFEST = [
 
 def test_augment_quest_corpus_dedup(tmp_path):
     """The quest corpus is dedup'd — no duplicate normalized room themes."""
-    from eval.augment import augment_quest_corpus, _request_key
+    from eval.augment import _request_key, augment_quest_corpus
     out = tmp_path / "quest_corpus.txt"
 
     themes, stats = augment_quest_corpus(
@@ -376,7 +373,7 @@ def test_augment_quest_corpus_stats_keys(tmp_path):
 
 def test_augment_quest_corpus_room_themes_have_expected_format(tmp_path):
     """Generated themes are natural-language room descriptions."""
-    from eval.augment import augment_quest_corpus, _NPC_ROLES, _ROOM_TYPES
+    from eval.augment import _NPC_ROLES, augment_quest_corpus
     out = tmp_path / "quest_corpus.txt"
 
     themes, _stats = augment_quest_corpus(

@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import json
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import List
 
+from decisions import make_decision
 from hunyuan_postprocess import content_cache_key
 
 # baker(scene_desc, out_dir) -> list[str] of artifact paths written under out_dir.
@@ -34,7 +36,16 @@ def _placements_sig(placements: list) -> list:
 
 
 def bake_key(scene_desc: dict) -> str:
-    """Stable content-address for a lighting bake (layout + sun + sky + tier + samples + interior lights)."""
+    """Stable content-address for a lighting bake (layout + sun + sky + tier + samples + interior lights + palette + GLB mtimes)."""
+    # Phase 0.8: include palette hash + per-placement GLB mtime so a
+    # recolour or regenerated GLB invalidates the bake.
+    glb_signals: list = []
+    for p in scene_desc.get("placements", []):
+        glb_path = p.get("glb", "")
+        try:
+            glb_signals.append(Path(glb_path).stat().st_mtime_ns)
+        except OSError:
+            glb_signals.append(0)
     payload = json.dumps(
         {
             "p": _placements_sig(scene_desc.get("placements", [])),
@@ -47,17 +58,19 @@ def bake_key(scene_desc: dict) -> str:
                     [round(float(c),4) for c in l.get("color", ())],
                     round(float(l.get("energy",0.0)),4)]
                    for l in scene_desc.get("interior_lights", [])],
+            "palette": scene_desc.get("palette"),
+            "glb_mtimes": glb_signals,
         },
         sort_keys=True,
     )
-    return content_cache_key(proxy_hash=payload, seed=0, model_version="bake-1")
+    return content_cache_key(proxy_hash=payload, seed=0, model_version="bake-2")
 
 
 def _cache_dir(root: Path, key: str) -> Path:
     return root / "lighting" / key
 
 
-def is_cached(scene_desc: dict, *, cache_root: Optional[str | Path] = None) -> bool:
+def is_cached(scene_desc: dict, *, cache_root: str | Path | None = None) -> bool:
     """True if this scene's bake is already cached."""
     root = Path(cache_root) if cache_root else DEFAULT_ROOT
     cd = _cache_dir(root, bake_key(scene_desc))
@@ -65,7 +78,7 @@ def is_cached(scene_desc: dict, *, cache_root: Optional[str | Path] = None) -> b
 
 
 def bake_scene(scene_desc: dict, *, baker: Baker,
-               cache_root: Optional[str | Path] = None) -> dict:
+               cache_root: str | Path | None = None) -> dict:
     """Return ``{tier, status, artifacts}``.
 
     status ∈ {"realtime" (tier 0), "cached", "baked", "fallback"}.
@@ -94,8 +107,22 @@ def bake_scene(scene_desc: dict, *, baker: Baker,
             shutil.move(str(a), str(dst))
             out.append(str(dst))
         return {"tier": tier, "status": "baked", "artifacts": sorted(out)}
-    except Exception:
+    except Exception as exc:
         # Bake failed (HIP OOM, unwrap error, …) → realtime, scene still renders.
-        return {"tier": 0, "status": "fallback", "artifacts": []}
+        # Phase 0.3: emit a loud Decision Point — no more silent degradation.
+        dp = make_decision(
+            code="bake.cycles_failed",
+            stage="bake",
+            severity="error",
+            context={
+                "exception_class": type(exc).__name__,
+                "exception_reason": str(exc)[:200],
+            },
+            choices=(),
+        )
+        return {
+            "tier": 0, "status": "fallback", "artifacts": [],
+            "decisions": [dp],
+        }
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

@@ -44,12 +44,11 @@ can surface WHY a record was flagged.
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Set
+from typing import List, Set
 
+from category_registry import DECOR_CATEGORIES
 from compiler import PARAM_RANGES
 from material_resolver import material_cues, resolve_material
-from category_registry import DECOR_CATEGORIES
-
 
 # ── Size words ────────────────────────────────────────────────────────
 # Each size word maps to:
@@ -98,8 +97,7 @@ _MATERIAL_KEYWORDS: tuple[tuple[str, str], ...] = (
 # ── Wear lexicons ────────────────────────────────────────────────────
 # Single-sourced in foundry/wear_words.py; imported for backward compat
 # so other modules can continue to reference signals.AGED_WORDS etc.
-from wear_words import AGED_WORDS, NEW_WORDS, _AGE_BAND_SPLIT  # noqa: F401
-
+from wear_words import _AGE_BAND_SPLIT, AGED_WORDS, NEW_WORDS  # noqa: F401
 
 # ── Severity classification (slice 2) ───────────────────────────────────────
 # Each objective-signal tag is bucketed into a severity tier so the
@@ -178,7 +176,7 @@ def decision_codes(record) -> List[str]:
     return [d.get("code", "?") for d in (record.decisions or [])]
 
 
-def size_mismatch_detail(request: str, spec: dict) -> Optional[dict]:
+def size_mismatch_detail(request: str, spec: dict) -> dict | None:
     """Public, detail-returning twin of the internal size-mismatch check
     used by ``compute_signals``.  Returns None when there is no size
     mismatch; otherwise a flat dict so the friction report can render
@@ -562,7 +560,7 @@ def quest_decision_codes(record) -> List[str]:
 
 # P-K: decor-never-target invariant ───────────────────────────────────
 
-def check_decor_never_target(record) -> Optional[str]:
+def check_decor_never_target(record) -> str | None:
     """P-K: Return a signal tag if the quest target_entity is a decor item.
 
     Decor items (rugs, paintings) should never be fetch-quest targets
@@ -645,7 +643,7 @@ _CARRYABLE_CATEGORIES = {
 
 # C-2: multi-item inventory check ────────────────────────────────────
 
-def check_multi_item_possible(record) -> Optional[str]:
+def check_multi_item_possible(record) -> str | None:
     """C-2: Return a signal tag if the manifest has ≥2 carryable items,
     making multi-item inventory testable.  Low-severity — informative."""
     manifest = getattr(record, "manifest", None) or []
@@ -662,7 +660,7 @@ def check_multi_item_possible(record) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def check_multi_npc_distinct_targets(record, npc_count: int = 2) -> Optional[str]:
+def check_multi_npc_distinct_targets(record, npc_count: int = 2) -> str | None:
     """EB-7: Return None if all NPC quest specs have distinct targets.
     Returns 'multi_npc_distinct_targets' signal tag if any two NPCs
     share the same target_entity (which should be impossible post-fix).
@@ -696,7 +694,7 @@ def check_multi_npc_distinct_targets(record, npc_count: int = 2) -> Optional[str
     return None
 
 
-def check_room_not_monochrome(record) -> Optional[str]:
+def check_room_not_monochrome(record) -> str | None:
     """EB-7: Return 'room_not_monochrome' signal if the manifest uses
     ≥2 distinct materials (excluding decor). Low-severity — informative.
     Returns None if monochrome."""
@@ -711,7 +709,7 @@ def check_room_not_monochrome(record) -> Optional[str]:
     return None
 
 
-def check_fabric_in_fabric_themes(record, theme: str = "") -> Optional[str]:
+def check_fabric_in_fabric_themes(record, theme: str = "") -> str | None:
     """EB-7: Return 'fabric_in_fabric_themes' signal if the manifest
     contains any fabric material (linen, wool, silk). Low-severity —
     informative.  Fabric materials should appear in themes that allow
@@ -729,7 +727,7 @@ def check_fabric_in_fabric_themes(record, theme: str = "") -> Optional[str]:
     return None
 
 
-def check_target_is_carryable(record) -> Optional[str]:
+def check_target_is_carryable(record) -> str | None:
     """P-E: Return a signal tag if the quest target_entity is NOT a
     carryable item (i.e. it's furniture or decor) AND carryables exist
     in the manifest.  If there are no carryables at all, the room is
@@ -756,7 +754,7 @@ def check_target_is_carryable(record) -> Optional[str]:
     return None  # target not in manifest (handled by quest_no_target)
 
 
-def check_target_named_in_dialogue(record) -> Optional[str]:
+def check_target_named_in_dialogue(record) -> str | None:
     """P-E: Return a signal tag if the quest target's category or material
     adjective is not mentioned in any dialogue line, AND carryables exist.
 
@@ -818,7 +816,7 @@ SIGNAL_SEVERITY["multi_item_possible"] = "low"
 #  B0: Multi-NPC winnable/reachability oracle
 # ═══════════════════════════════════════════════════════════════════════
 
-def check_all_npcs_winnable(record) -> Optional[str]:
+def check_all_npcs_winnable(record) -> str | None:
     """B0: Return 'quest_all_npcs_winnable' if every NPC in the quest
     specs has a target that is both gettable (exists in manifest AND is
     a carryable category) and deliverable (NPC role present + objective
@@ -888,7 +886,7 @@ SIGNAL_SEVERITY["fabric_in_fabric_themes"] = "low"
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def check_dialogue_not_all_canned(record) -> Optional[str]:
+def check_dialogue_not_all_canned(record) -> str | None:
     """Spine Slice 2: Return 'dialogue_not_all_canned' when at least one
     NPC's dialogue source is 'model' or 'grammared' (i.e. the build is
     NOT 100% canned fallbacks).
@@ -939,7 +937,7 @@ _SOUL_TRAITS = ("courage", "generosity", "stability")
 _SOUL_AXES = ("security", "belonging", "agency", "satiation")
 
 
-def check_every_npc_has_valid_soul(record) -> Optional[str]:
+def check_every_npc_has_valid_soul(record) -> str | None:
     """Spine Slice 3: Return 'every_npc_has_valid_soul' when every NPC
     spec has a 'soul' with all 7 values in [-1.0, 1.0].
 
@@ -979,7 +977,7 @@ def check_every_npc_has_valid_soul(record) -> Optional[str]:
     return "every_npc_has_valid_soul"
 
 
-def check_soul_tones_vary(record) -> Optional[str]:
+def check_soul_tones_vary(record) -> str | None:
     """Spine Slice 3: Return 'soul_tones_vary' when ≥2 NPCs exist and
     their tone_descriptor strings are not all identical (souls actually
     differentiate characters).

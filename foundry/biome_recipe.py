@@ -13,7 +13,7 @@ deterministic, so the resolved biome is fully captured in the seeded spec.
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from biome_table import resolve_biome
 from decisions import Choice, DecisionPoint, make_decision
@@ -22,7 +22,7 @@ from decisions import Choice, DecisionPoint, make_decision
 DENSITY_MULT = {"low": 0.5, "medium": 1.0, "high": 1.7}
 
 
-def validate_biome_recipe(raw: Optional[dict]) -> Tuple[dict, List[DecisionPoint]]:
+def validate_biome_recipe(raw: dict | None) -> Tuple[dict, List[DecisionPoint]]:
     """Resolve + clamp an LLM ``biome_recipe`` to a safe biome dict.
 
     Returns ``(biome, decisions)`` where *biome* mirrors a BIOME_TABLE row

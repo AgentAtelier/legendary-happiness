@@ -13,17 +13,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 import trimesh
-from PIL import Image
-from pygltflib import GLTF2
-
 from compiler import SpecError, compile_spec
 from gate import gate_asset
+from PIL import Image
+from pygltflib import GLTF2
 
 BLENDER = shutil.which("blender")
 BUILD = str(Path(__file__).resolve().parents[1] / "blender" / "build_asset.py")
 SPEC = str(Path(__file__).resolve().parents[1] / "specs" / "table.json")
 
-pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(BLENDER is None, reason="blender not installed"), pytest.mark.blender]
 
 FOOTPRINT = {"width": 2.0, "depth": 1.5}
 HEIGHT = 1.2

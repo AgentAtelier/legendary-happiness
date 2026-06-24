@@ -12,9 +12,9 @@ Key concepts:
   - Geometry NEVER stored — referenced by asset_hash only.
 """
 
-from world.model import Intent, Placement, ProposeResult, World
 from world.invariants import check_invariants
 from world.log import append_event, replay, restore, snapshot
+from world.model import Intent, Placement, ProposeResult, World
 
 __all__ = [
     "Placement", "World", "Intent", "ProposeResult",

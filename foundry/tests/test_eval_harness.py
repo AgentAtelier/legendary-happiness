@@ -9,17 +9,13 @@ forge (no llm / no Blender in the test path).
 from __future__ import annotations
 
 import json
-import socket
-from dataclasses import asdict
-from typing import List, Optional
 
 import pytest
-
 
 # ── Helpers: a valid spec WITHOUT a 'material' key (resolver drives it) ──
 
 
-def _fake_llm_valid(_prompt: str, _grammar: Optional[str]) -> str:
+def _fake_llm_valid(_prompt: str, _grammar: str | None) -> str:
     return json.dumps({
         "asset_id": "table",
         "generator": "table",
@@ -177,7 +173,7 @@ def test_records_to_jsonl_round_trips_per_line():
 def test_run_corpus_writes_jsonl_with_one_line_per_record():
     """The records produced by run_corpus round-trip cleanly through
     records_to_jsonl."""
-    from eval.harness import run_corpus, records_to_jsonl
+    from eval.harness import records_to_jsonl, run_corpus
     from planner import AssetPlanner
 
     requests = ["a table", "a chair"]

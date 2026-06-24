@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
-
 from exterior_planner import plan_exterior
 from terrain_field import height_at
 

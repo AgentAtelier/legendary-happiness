@@ -8,7 +8,6 @@ diverge. Determinism is the contract: same (params, seed) → identical heights.
 from __future__ import annotations
 
 import pytest
-
 from terrain_field import height_at, make_field, slope_at
 
 

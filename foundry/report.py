@@ -9,8 +9,6 @@ from the Brief, pipeline Decision Points, and room manifest.
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 
 def build_report_dict(
     brief: dict,

@@ -10,9 +10,10 @@ action never calls the LLM.
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import List, Tuple
 
-from decisions import Choice, DecisionPoint, make_decision
+from decisions import DecisionPoint, make_decision
 
 # ── Validation constants ──────────────────────────────────────────
 
@@ -112,7 +113,7 @@ def _material_adjective(material: str) -> str:
 def generate_examine(
     room_theme: str,
     manifest: list[dict],
-    llm: Callable[[str, Optional[str]], str],
+    llm: Callable[[str, str | None], str],
 ) -> Tuple[dict[str, str], List[DecisionPoint]]:
     """Generate examine flavour text for every prop in *manifest*.
 

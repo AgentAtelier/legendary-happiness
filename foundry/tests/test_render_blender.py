@@ -10,7 +10,7 @@ RENDER = str(Path(__file__).resolve().parents[1] / "blender" / "render_asset.py"
 BUILD = str(Path(__file__).resolve().parents[1] / "blender" / "build_asset.py")
 SPEC = str(Path(__file__).resolve().parents[1] / "specs" / "table.json")
 
-pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(BLENDER is None, reason="blender not installed"), pytest.mark.blender]
 
 
 def test_render_writes_png(tmp_path):

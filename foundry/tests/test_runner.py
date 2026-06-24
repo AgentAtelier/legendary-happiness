@@ -5,7 +5,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from decisions import DecisionPoint
 from library import LIVE_LEXICON
 from runner import forge, forge_from_request
@@ -125,8 +124,7 @@ def test_forge_from_request_writes_decisions_into_sidecar(tmp_path, monkeypatch)
     """forge_from_request: planner.plan() emits decisions → sidecar
     carries them under top-level 'decisions'."""
     import json as _json
-    from material_resolver import resolve_material
-    from sidecar import build_sidecar
+
 
     lexicon = tmp_path / "asset_lexicon.json"
     shutil.copy(LIVE_LEXICON, lexicon)
@@ -138,7 +136,6 @@ def test_forge_from_request_writes_decisions_into_sidecar(tmp_path, monkeypatch)
     def _stub_build(spec_path, out_glb, blender):
         Path(out_glb).write_bytes(b"")
 
-    from runner import _build as real_build
     monkeypatch.setattr("runner._build", _stub_build)
     # Stub gate_asset to always-fail so we don't depend on trimesh/blender.
     # NOTE: runner.py does `from gate import gate_asset`, so to override

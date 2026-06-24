@@ -13,13 +13,11 @@ file system output.  Godot-in-the-loop tests are in test_godot_smoke.py.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
-
 from publish import copy_asset_family
-from scaffold import _find_godot, _set_main_scene, scaffold_project
+from scaffold import _set_main_scene, scaffold_project
 from scene_compiler import resolve_unique_glbs_with_npc
 
 # ── Test data ─────────────────────────────────────────────────────────
@@ -316,15 +314,14 @@ def test_scaffold_runs_post_shell_import_pass(tmp_path, monkeypatch):
          ``_pre_import`` invocation (second pass imports what
          just got copied).
     """
-    import scaffold
     import room_shell as _room_shell
+    import scaffold
     from scene_compiler import compile_scene  # noqa: F401  (used by scaffold)
-    from publish import copy_asset_family
 
     call_log: list[tuple[str, dict]] = []
 
-    def fake_ensure_room_shell(w, d, wall_height, theme, seed=0, cache_root=None):
-        return tmp_path / "fake" / "shell.glb"
+    def fake_ensure_room_shell(w, d, wall_height, theme, seed=0, cache_root=None, windows=()):
+        return (tmp_path / "fake" / "shell.glb", [])
 
     def fake_copy_room_shell(glb_path, dest_assets_dir):
         call_log.append(("copy_room_shell", {"path": glb_path}))

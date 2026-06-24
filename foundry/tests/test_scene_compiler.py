@@ -11,20 +11,18 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from scene_compiler import (
     PlacedEntity,
-    _resolve_unique_glbs,
-    _glb_res_path,
     _ext_resource_block,
     _fmt_pos,
+    _glb_res_path,
     _parse_scene_text,
-    _resolve_prop_overlaps,
     _prop_half_extents,
+    _resolve_prop_overlaps,
+    _resolve_unique_glbs,
     compile_scene,
     read_quest_data,
 )
-
 
 # ── Test manifest ────────────────────────────────────────────────
 
@@ -1279,7 +1277,7 @@ def test_ambient_light_energy_emitted():
         compile_scene(spec, man, out, theme="dungeon")
         text = Path(out).read_text(encoding="utf-8")
         assert "ambient_light_energy" in text, (
-            f"Quality A: missing ambient_light_energy in Environment"
+            "Quality A: missing ambient_light_energy in Environment"
         )
     finally:
         Path(out).unlink()
@@ -2067,7 +2065,7 @@ def test_outdoor_room_has_scatter_vegetation():
         node_names = {n["name"] for n in parsed["nodes"]}
         # Scatter placements should appear as scatter_{cat}_{idx}
         assert "scatter_tree_0" in node_names, f"CB-7: missing scatter_tree_0 in {sorted(node_names)}"
-        assert "scatter_shrub_1" in node_names, f"CB-7: missing scatter_shrub_1"
+        assert "scatter_shrub_1" in node_names, "CB-7: missing scatter_shrub_1"
     finally:
         Path(out).unlink()
         data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
@@ -2286,7 +2284,8 @@ def test_realtime_omnilight_transform_uses_y_up_pos():
 
 
 def test_tier0_skips_bake(monkeypatch):
-    import scene_compiler as sc, lighting_bake
+    import lighting_bake
+    import scene_compiler as sc
     called = []
     monkeypatch.setattr(lighting_bake, "bake_scene", lambda *a, **k: called.append(1) or {"tier":0,"status":"realtime","artifacts":[]})
     sc.bake_and_apply(sc.build_lighting_scene_desc(
@@ -2298,6 +2297,309 @@ def test_tier0_skips_bake(monkeypatch):
 # ═══════════════════════════════════════════════════════════════════════
 #  Task 6: GLB shell + triplanar + carved navmesh + fallback
 # ═══════════════════════════════════════════════════════════════════════
+
+# ═════════════════════════════════════════════════════════════════
+#  3.3 — Shadow budget: grid fill lights are shadow_enabled=false
+# ═════════════════════════════════════════════════════════════════
+
+def test_grid_fill_lights_shadow_disabled():
+    """3.3: Grid fill lights (from _build_interior_lights) must have
+    shadow_enabled = false.  Only plan-sourced lights (PlanLight*)
+    get shadow_enabled = true."""
+    import scene_compiler as sc
+    # No lighting_plan → interior lights come from the grid builder
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], _minimal_manifest(), out,
+                         room_size={"w": 8, "d": 6}, theme="study")
+        t = Path(out).read_text(encoding="utf-8")
+        # Every grid light named InteriorLight* should have shadow_enabled = false.
+        import re
+        sections = re.split(r'\[node name="([^"]+)" type="OmniLight3D"[^\]]*\]', t)
+        grid_names = []
+        for i in range(1, len(sections), 2):
+            node_name = sections[i]
+            props = sections[i + 1]
+            if "InteriorLight" in node_name:
+                grid_names.append(node_name)
+                assert "shadow_enabled = false" in props, (
+                    f"3.3: grid light {node_name} must have shadow_enabled = false, "
+                    f"got props: {props[:200]}"
+                )
+        assert len(grid_names) >= 1, (
+            f"3.3: expected ≥1 InteriorLight grid node in 8×6 room, "
+            f"got {grid_names}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_plan_sources_shadow_enabled_grid_absent():
+    """3.3: With a lighting_plan, plan-sourced lights (PlanLight*)
+    keep shadow_enabled = true, and NO InteriorLight* grid fill
+    lights exist."""
+    import scene_compiler as sc
+    plan = {
+        "sources": [
+            {"type": "hearth", "pos": (0, 0.5, -3), "color": (1, 0.6, 0.3),
+             "energy": 6, "range": 6, "flicker": True},
+            {"type": "torch", "pos": (2, 2.2, -3), "color": (1, 0.7, 0.4),
+             "energy": 3, "range": 4, "flicker": True},
+        ],
+        "windows": [],
+        "sun": {"color": (0.5, 0.6, 0.85), "energy": 0.8,
+                "direction": (-0.3, -0.6, -0.5)},
+        "sky": {"top": (0.4, 0.45, 0.6), "ambient_energy": 0.4},
+        "environment": {"ambient_color": (0.4, 0.4, 0.45),
+                        "ambient_energy": 0.6,
+                        "fog_color": (0.15, 0.15, 0.2),
+                        "fog_energy": 0.1, "tonemap": 2, "exposure": 1.2},
+    }
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], _minimal_manifest(), out,
+                         room_size={"w": 8, "d": 6}, theme="study",
+                         lighting_plan=plan)
+        t = Path(out).read_text(encoding="utf-8")
+        import re
+        # No InteriorLight grid fill nodes
+        omni_names = re.findall(r'\[node name="(\w+)" type="OmniLight3D"', t)
+        grid = [n for n in omni_names if "InteriorLight" in n]
+        assert len(grid) == 0, (
+            f"3.3: no InteriorLight grid lights when lighting_plan is given, got {grid}"
+        )
+        # PlanLight nodes exist and have shadow_enabled = true
+        plan_lights = [n for n in omni_names if "PlanLight" in n]
+        assert len(plan_lights) == 2, (
+            f"3.3: expected 2 PlanLight nodes, got {plan_lights}"
+        )
+        sections = re.split(r'\[node name="([^"]+)" type="OmniLight3D"[^\]]*\]', t)
+        for i in range(1, len(sections), 2):
+            node_name = sections[i]
+            props = sections[i + 1]
+            if "PlanLight" in node_name:
+                assert "shadow_enabled = true" in props, (
+                    f"3.3: PlanLight {node_name} must have shadow_enabled = true, "
+                    f"got props: {props[:200]}"
+                )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+# ═════════════════════════════════════════════════════════════════
+#  0.6b — Palette materials in compiled .tscn
+# ═════════════════════════════════════════════════════════════════
+
+def test_palette_emits_per_class_material_sub_resources():
+    """0.6b: When palette is provided, the compiled .tscn contains
+    one StandardMaterial3D sub_resource per material class with
+    albedo_color = the palette role color."""
+    import scene_compiler as sc
+    from palette import build_palette
+    palette = build_palette("stone_keep", 0)
+    man = _minimal_manifest()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], man, out, palette=palette)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        # Palette class material sub_resources should exist
+        sub_ids = {s["id"] for s in parsed.get("sub_resources", [])}
+        # worn_oak → wood class
+        assert "mat_wood" in sub_ids, (
+            f"0.6b: expected mat_wood sub_resource, got {sub_ids}"
+        )
+        # Verify albedo_color is the palette role color
+        roles = palette["roles"]
+        # wood → midtone role
+        wood_color = roles["midtone"]
+        expected_color = (
+            f"albedo_color = Color({wood_color[0]}, {wood_color[1]}, "
+            f"{wood_color[2]}, 1)"
+        )
+        assert expected_color in text, (
+            f"0.6b: mat_wood should have palette midtone color {wood_color}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_palette_emits_class_texture_ext_resources():
+    """0.6b: When palette is provided, Texture2D ext_resources are
+    emitted for each class (albedo + normal)."""
+    import scene_compiler as sc
+    from palette import build_palette
+    palette = build_palette("stone_keep", 0)
+    man = _minimal_manifest()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], man, out, palette=palette)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        paths = {r["path"] for r in parsed.get("ext_resources", [])}
+        assert "res://assets/class_wood_albedo.png" in paths, (
+            f"0.6b: missing class_wood_albedo.png in ext_resources, got {paths}"
+        )
+        assert "res://assets/class_wood_normal.png" in paths
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_palette_prop_model_gets_surface_override():
+    """0.6b: Prop model nodes get surface_material_override with the
+    palette class material when palette is provided."""
+    import scene_compiler as sc
+    from palette import build_palette
+    palette = build_palette("stone_keep", 0)
+    man = _minimal_manifest()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        sc.compile_scene([], man, out, palette=palette)
+        text = Path(out).read_text(encoding="utf-8")
+        # The prop model node (table_0_model) should have
+        # surface_material_override/0 = SubResource("mat_wood")
+        assert 'surface_material_override/0 = SubResource("mat_wood")' in text, (
+            "0.6b: table_0_model should have mat_wood override"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+# ═════════════════════════════════════════════════════════════════
+#  Phase 0.4 guard: Palette recolor (AUDIT-04 T6)
+# ═════════════════════════════════════════════════════════════════
+
+def test_palette_recolor_tscn_differs():
+    """Phase 0.4 guard (AUDIT-04 T6): The same manifest compiled with
+    two different palettes must produce .tscn output that DIFFERS —
+    specifically in the ``albedo_color`` of the per-class material
+    sub-resources (``mat_<cls>``).  If the .tscn is identical, the
+    palette is not actually being wired through.
+    """
+    import scene_compiler as sc
+    from palette import build_palette
+    palette_a = build_palette("stone_keep", 0)
+    palette_b = build_palette("woodland", 0)
+    man = _minimal_manifest()
+
+    def _compile(pa):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+            out = f.name
+        try:
+            sc.compile_scene([], man, out, palette=pa)
+            t = Path(out).read_text(encoding="utf-8")
+            return t
+        finally:
+            Path(out).unlink()
+            data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+            if data_file.exists():
+                data_file.unlink()
+
+    t_a = _compile(palette_a)
+    t_b = _compile(palette_b)
+
+    assert t_a != t_b, (
+        "Phase 0.4: .tscn must differ across palettes — palette not "
+        "wired through to compiled output"
+    )
+    # Sanity: both must contain the per-class material marker
+    assert "mat_wood" in t_a
+    assert "mat_wood" in t_b
+    # The albedo_color line must differ (the actual recolour signal)
+    import re
+    colors_a = re.findall(r'albedo_color = Color\([^)]+\)', t_a)
+    colors_b = re.findall(r'albedo_color = Color\([^)]+\)', t_b)
+    assert colors_a, "no albedo_color found in palette A tscn"
+    assert colors_b, "no albedo_color found in palette B tscn"
+    assert colors_a != colors_b, (
+        f"Phase 0.4: albedo_color must differ across palettes; "
+        f"both got {colors_a}"
+    )
+
+
+def test_cross_process_determinism_tscn():
+    """Phase 0.4 guard (AUDIT-04 T5/T19): The same fixed manifest +
+    palette must produce byte-identical .tscn output when compiled in
+    SEPARATE Python subprocesses with PYTHONHASHSEED=0 and
+    PYTHONHASHSEED=42 — proving no dict-iteration order leaks into
+    the generated scene.
+
+    Uses ``_minimal_manifest`` with a fixed palette (no Blender, no
+    LLM — pure deterministic compile).
+    """
+    import os as _os
+    import subprocess
+    import sys as _sys
+
+    manifest_repr = (
+        "[{'id':'table_0','category':'table','material':'worn_oak',"
+        "'wear':0.5,'x':1.0,'y':0.0,'z':-1.5}]"
+    )
+    palette_repr = (
+        "{'roles':{'base':(0.5,0.48,0.45),'midtone':(0.6,0.55,0.5),"
+        "'accent':(0.7,0.6,0.55),'trim':(0.3,0.28,0.25),"
+        "'sky':(0.5,0.55,0.65)},"
+        "'theme':'stone_keep','seed':0}"
+    )
+    # Build a single-file script so tempfile cleanup is self-contained
+    code = (
+        f"import tempfile, sys, os; "
+        f"sys.path.insert(0, 'foundry'); "
+        f"from scene_compiler import compile_scene; "
+        f"palette = {palette_repr}; "
+        f"manifest = {manifest_repr}; "
+        f"p = tempfile.mktemp(suffix='.tscn'); "
+        f"compile_scene([], manifest, p, palette=palette); "
+        f"import hashlib; "
+        f"print(hashlib.sha256(open(p,'rb').read()).hexdigest()); "
+        f"os.unlink(p); "
+        f"dq = p.replace('.tscn', '_quest_data.json'); "
+        f"os.unlink(dq) if os.path.exists(dq) else None"
+    )
+    proj_root = str(Path(__file__).resolve().parent.parent.parent)
+    env0 = {**_os.environ, "PYTHONHASHSEED": "0"}
+    env42 = {**_os.environ, "PYTHONHASHSEED": "42"}
+    r0 = subprocess.run(
+        [_sys.executable, "-c", code],
+        capture_output=True, text=True, timeout=15,
+        cwd=proj_root, env=env0,
+    )
+    r42 = subprocess.run(
+        [_sys.executable, "-c", code],
+        capture_output=True, text=True, timeout=15,
+        cwd=proj_root, env=env42,
+    )
+    assert r0.returncode == 0, f"subprocess seed=0 failed: {r0.stderr}"
+    assert r42.returncode == 0, f"subprocess seed=42 failed: {r42.stderr}"
+    h0 = r0.stdout.strip()
+    h42 = r42.stdout.strip()
+    assert h0 == h42, (
+        f"Phase 0.4: .tscn must be PYTHONHASHSEED-independent; "
+        f"seed=0 → {h0} vs seed=42 → {h42}"
+    )
+    # Sanity: the hash must be non-empty (must have compiled something)
+    assert len(h0) == 64, f"expected sha256 hex, got {h0!r}"
+
 
 def _minimal_manifest():
     """Minimal manifest for Task 6 tests."""
@@ -2330,7 +2632,7 @@ def _compile_with_shell(manifest=None, room_size=None, theme=None):
 def test_shell_glb_path_emits_instance_and_triplanar(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
     assert "shell.glb" in tscn
     assert "uv1_triplanar = true" in tscn and "uv1_world_triplanar = true" in tscn
@@ -2338,7 +2640,7 @@ def test_shell_glb_path_emits_instance_and_triplanar(monkeypatch, tmp_path):
 
 def test_no_glb_falls_back_to_box_shell(monkeypatch):
     import room_shell
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: None)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (None, []))
     tscn = _compile_with_shell()
     assert "floor_vis_mesh" in tscn  # inline box shell still present
 
@@ -2387,7 +2689,7 @@ def _default_box_shell():
     """
     import room_shell
     _orig = room_shell.ensure_room_shell
-    room_shell.ensure_room_shell = lambda *a, **k: None
+    room_shell.ensure_room_shell = lambda *a, **k: (None, [])
     try:
         yield
     finally:
@@ -2404,7 +2706,7 @@ def test_glb_shell_emits_shell_instance_node(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"
     glb.write_bytes(b"GLB-fake")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
     parsed = _parse_scene_text(tscn)
     shell_nodes = [n for n in parsed["nodes"] if n["name"] == "Shell"]
@@ -2430,7 +2732,7 @@ def test_glb_shell_emits_stone_and_timber_children(monkeypatch, tmp_path):
     import room_shell
     glb = tmp_path / "shell.glb"
     glb.write_bytes(b"GLB-fake")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
     parsed = _parse_scene_text(tscn)
 
@@ -2471,7 +2773,7 @@ def test_glb_shell_drops_box_shell_visible_nodes(monkeypatch, tmp_path):
     """
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
     parsed = _parse_scene_text(tscn)
     node_names = {n["name"] for n in parsed["nodes"]}
@@ -2512,7 +2814,7 @@ def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
     """
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
     sub_ids = {sr["id"] for sr in _parse_scene_text(tscn)["sub_resources"]}
 
@@ -2686,7 +2988,7 @@ def test_palette_glb_shell_overrides_use_class_materials(monkeypatch, tmp_path):
     pal = build_palette("stone_keep", 0)
     glb = tmp_path / "shell.glb"
     glb.write_bytes(b"GLB-fake")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     spec = dict(_QUEST_SPEC)
     m = _minimal_manifest()
     spec["target_entity"] = m[0]["id"]
@@ -2719,7 +3021,7 @@ def test_glb_shell_branch_keeps_navigation_and_lights(monkeypatch, tmp_path):
     """
     import room_shell
     glb = tmp_path / "shell.glb"; glb.write_bytes(b"GLB-fake")
-    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: glb)
+    monkeypatch.setattr(room_shell, "ensure_room_shell", lambda *a, **k: (glb, []))
     tscn = _compile_with_shell(room_size={"w": 8, "d": 6}, theme="study")
     parsed = _parse_scene_text(tscn)
     sub_types = {sr["type"] for sr in parsed["sub_resources"]}

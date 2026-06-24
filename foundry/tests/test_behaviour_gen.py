@@ -20,11 +20,8 @@ import json
 import socket
 
 import pytest
-
-from behaviour_gen import QuestBehaviourPlanner, _validate_npc_role, _DEFAULT_NPC_ROLE, _MAX_NPC_ROLE_LEN
-from decisions import DecisionPoint
-from llm import normalize_gbnf, load_grammar
-
+from behaviour_gen import _DEFAULT_NPC_ROLE, _MAX_NPC_ROLE_LEN, QuestBehaviourPlanner, _validate_npc_role
+from llm import load_grammar
 
 # ── Test manifest (4 props) ──────────────────────────────────────
 
@@ -674,7 +671,7 @@ def test_plan_different_seeds_different_output():
         "a room", _MANIFEST_4, _make_seeded_fake_llm(99), seed=99
     )
     assert spec1 != spec2, (
-        f"Different seeds should produce different specs"
+        "Different seeds should produce different specs"
     )
 
 
@@ -719,7 +716,7 @@ def test_room_planner_different_seeds_different_output():
     plan1, _ = planner.plan("a room", _make_seeded_room_fake_llm(42), seed=42)
     plan2, _ = planner.plan("a room", _make_seeded_room_fake_llm(99), seed=99)
     assert plan1 != plan2, (
-        f"Different seeds should produce different room plans"
+        "Different seeds should produce different room plans"
     )
 
 
@@ -742,8 +739,8 @@ def test_room_planner_live_seed_reproducible():
     if not _llama_server_reachable():
         pytest.skip("llama.cpp server not reachable at 127.0.0.1:8002")
 
-    from room_planner import RoomPlanner
     from llm import FoundryLLM
+    from room_planner import RoomPlanner
 
     planner = RoomPlanner()
     llm1 = FoundryLLM(seed=42)
@@ -779,7 +776,7 @@ def _llama_server_reachable() -> bool:
         s = socket.create_connection(("127.0.0.1", 8002), timeout=2)
         s.close()
         return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
+    except (TimeoutError, ConnectionRefusedError, OSError):
         return False
 
 
@@ -1076,8 +1073,8 @@ def test_plan_multi_grammared_fallback_for_missing_npc():
     assert len(fb_dps) == 1
     assert fb_dps[0].context["npc_id"] == "npc_1"
 
-    # Should NOT have quest.missing_npc for npc_1
-    missing_dps = [d for d in decs if d.code == "quest.missing_npc"]
+    # Should NOT have quest.llm_retry_failed for npc_1
+    missing_dps = [d for d in decs if d.code == "quest.llm_retry_failed"]
     assert not [d for d in missing_dps if d.context.get("npc_id") == "npc_1"]
 
     # Targets remain distinct
@@ -1086,7 +1083,7 @@ def test_plan_multi_grammared_fallback_for_missing_npc():
 
 
 def test_plan_multi_both_multi_and_grammared_fail():
-    """When both multi-call and plan() fail → canned default + quest.missing_npc."""
+    """When both multi-call and plan() fail → canned default + quest.llm_retry_failed."""
     planner = QuestBehaviourPlanner()
 
     carry_manifest = [
@@ -1104,8 +1101,8 @@ def test_plan_multi_both_multi_and_grammared_fail():
     )
 
     assert len(specs) == 2
-    # Should have quest.missing_npc for BOTH NPCs (grammared fallback also failed)
-    missing_dps = [d for d in decs if d.code == "quest.missing_npc"]
+    # Should have quest.llm_retry_failed for BOTH NPCs (grammared fallback also failed)
+    missing_dps = [d for d in decs if d.code == "quest.llm_retry_failed"]
     assert len(missing_dps) == 2
 
     # Grammared fallback DPs should NOT be present (they failed too)
@@ -1181,7 +1178,7 @@ def test_plan_multi_prompt_contains_tone_from_soul():
     assert len(captured_prompt) == 1
     prompt_text = captured_prompt[0]
     assert "timid" in prompt_text, f"expected 'timid' in prompt, got:\n{prompt_text[:500]}"
-    assert "bold" in prompt_text, f"expected 'bold' in prompt"
+    assert "bold" in prompt_text, "expected 'bold' in prompt"
     assert "hermit is a timid character" in prompt_text
     assert "blacksmith is a bold character" in prompt_text
 
@@ -1190,7 +1187,6 @@ def test_plan_multi_every_spec_has_soul_key():
     """Every spec returned by plan_multi has a 'soul' key with the full shape,
     including NPCs with no named character → default_soul()."""
     planner = QuestBehaviourPlanner()
-    from soul import default_soul
 
     carry_manifest = [
         {"id": "key_0", "category": "key", "material": "wrought_iron"},

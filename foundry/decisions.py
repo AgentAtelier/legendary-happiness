@@ -15,9 +15,9 @@ only ``render_cli`` knows about presentation.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Tuple
-
+from typing import Tuple
 
 # SEVERITY string constants — the four known severities.
 SEVERITY: Tuple[str, ...] = ("info", "assumption", "ambiguous", "error")
@@ -298,6 +298,31 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "soul {field} missing/invalid; defaulted to 0.0.",
         # plain
         "No value was given for {field}, so a neutral 0.0 was used.",
+    ),
+    # ── Phase 0.3: loud failures (no more silent degradation) ──
+    "bake.cycles_failed": (
+        # technical
+        "lighting bake failed ({exception_class}: {exception_reason}); fell back to realtime tier-0.",
+        # plain
+        "The lighting bake failed ({exception_reason}), so the scene uses realtime lights instead.",
+    ),
+    "shell.blender_unavailable": (
+        # technical
+        "Blender binary not found on PATH; fell back to inline box shell.",
+        # plain
+        "Blender isn't installed, so the room uses a simple box instead of a detailed shell.",
+    ),
+    "shell.build_failed": (
+        # technical
+        "room shell Blender build failed (rc={returncode}); fell back to inline box shell.",
+        # plain
+        "The detailed room shell couldn't be built, so a simple box shell was used instead.",
+    ),
+    "quest.llm_retry_failed": (
+        # technical
+        "{npc_id}: multi-call AND grammared-fallback BOTH failed ({exception_class}); fell back to canned default NPC.",
+        # plain
+        "The quest generator failed completely for one NPC, so a default NPC with canned dialogue was used.",
     ),
 }
 

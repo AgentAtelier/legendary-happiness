@@ -22,7 +22,7 @@ class SpecError(ValueError):
 
 
 def load_spec(path: str) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

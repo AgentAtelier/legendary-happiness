@@ -9,9 +9,9 @@ import json
 import re
 import shutil
 from pathlib import Path
-from typing import List, Optional, Tuple, TypedDict
+from typing import List, TypedDict
 
-from library import register_asset, register_variant
+from library import register_variant
 
 
 class PublishedEntry(TypedDict):

@@ -1,14 +1,15 @@
 """Pytest config for the foundry suite.
 
-Registers a ``blender`` marker and auto-applies it to every test module that
-gates on a Blender binary (these spawn real Blender subprocesses and are slow —
-minutes for the whole group). Fast iteration:
+Registers markers:
+- ``blender``: tests that spawn a Blender subprocess (slow).  Apply
+  explicitly with ``pytestmark = pytest.mark.blender`` at module level.
+  Fast iteration:
+      .venv/bin/python -m pytest -m "not blender" -q
+- ``godot_heavy``: tests that launch Godot headless and are expensive
+  or intermittently flaky due to software-rendering timing.
 
-    .venv/bin/python -m pytest -m "not blender" -q     # everything except Blender bakes
-    .venv/bin/python -m pytest -m blender -q           # only the Blender-gated tests
-
-The orchestrator runs the full suite (including ``-m blender``); the CLI AI runs
-``-m "not blender"`` to stay inside its time budget.
+The orchestrator runs the full suite; the CLI AI runs ``-m "not blender"``
+to stay inside its time budget.
 """
 
 
@@ -17,23 +18,7 @@ def pytest_configure(config):
         "markers",
         "blender: spawns a Blender subprocess (slow). Deselect with -m 'not blender'.",
     )
-
-
-def pytest_collection_modifyitems(config, items):
-    import functools
-    import pytest
-
-    @functools.lru_cache(maxsize=None)
-    def _spawns_blender(path: str) -> bool:
-        try:
-            src = open(path, encoding="utf-8").read()
-        except OSError:
-            return False
-        return "blender" in src.lower() and any(
-            tok in src for tok in ("subprocess", "--background", "--python")
-        )
-
-    for item in items:
-        path = getattr(getattr(item, "module", None), "__file__", None)
-        if path and _spawns_blender(path):
-            item.add_marker(pytest.mark.blender)
+    config.addinivalue_line(
+        "markers",
+        "godot_heavy(reason): expensive Godot-headless test, may be intermittent.",
+    )

@@ -6,10 +6,7 @@ baseline save/load, and regression_delta comparison.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-import pytest
 
 from visual.report import (
     load_baseline,
@@ -17,7 +14,6 @@ from visual.report import (
     render_visual_report,
     save_baseline,
 )
-
 
 # ── Canned test data ─────────────────────────────────────────────
 

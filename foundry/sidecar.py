@@ -5,12 +5,11 @@ so the live pipeline can reason about assets without opening the GLB."""
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional, Sequence
 
 from decisions import DecisionPoint, to_dict as _decision_to_dict
-
 
 # Resolved at module load: sidecar.py lives in foundry/ → parents[1] is repo root.
 _SCHEMA_PATH = str(
@@ -41,7 +40,7 @@ def validate_sidecar(sidecar: dict) -> None:
 def build_sidecar(
     spec: dict,
     glb_filename: str = "",
-    decisions: Optional[Sequence[DecisionPoint]] = None,
+    decisions: Sequence[DecisionPoint] | None = None,
 ) -> dict:
     """Produce a sidecar dict VALID against the ``procedural`` branch of the
     asset-metadata schema.
@@ -62,7 +61,7 @@ def build_sidecar(
     sidecar: dict = {
         "asset_id": spec["asset_id"],
         "pipeline_type": "procedural",
-        "creation_date": datetime.now(timezone.utc).isoformat(),
+        "creation_date": datetime.now(UTC).isoformat(),
         "style_version": "0.1.0",
         "procedural": {
             "geometry_template_id": spec["generator"],

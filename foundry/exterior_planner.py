@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from biome_recipe import validate_biome_recipe
 from scatter import scatter
@@ -47,9 +47,9 @@ def plan_exterior(
     seed: int,
     *,
     extent: float = _DEFAULT_EXTENT,
-    room_dims: Optional[Tuple[float, float]] = None,
+    room_dims: Tuple[float, float] | None = None,
     slope_max: float = 1.2,
-) -> Optional[ExteriorPlan]:
+) -> ExteriorPlan | None:
     """Return an :class:`ExteriorPlan`, or ``None`` if exterior is disabled."""
     ext_brief = (brief or {}).get("exterior") or {}
     if not ext_brief.get("enabled"):
@@ -111,7 +111,7 @@ def plan_exterior(
     )
 
 
-def _normalize_names(raw: Optional[dict]) -> dict:
+def _normalize_names(raw: dict | None) -> dict:
     raw = raw or {}
     scene_name = raw.get("scene_name")
     lore = raw.get("landmark_lore")

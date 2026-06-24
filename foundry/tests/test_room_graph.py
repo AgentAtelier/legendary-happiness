@@ -10,20 +10,17 @@ Tests assert:
 
 from __future__ import annotations
 
-import pytest
-
 from room_graph import (
-    build_grid_rooms,
-    build_spanning_tree,
+    _wall_between,
     build_doors,
+    build_grid_rooms,
     build_room_graph,
-    has_path,
-    validate_start_exit_path,
+    build_spanning_tree,
     door_position_on_wall,
     get_doors_for_room,
-    _wall_between,
+    has_path,
+    validate_start_exit_path,
 )
-
 
 # ── Grid builder ─────────────────────────────────────────────────
 

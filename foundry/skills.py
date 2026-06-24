@@ -23,8 +23,7 @@ combat 25, "dodge_roll" at combat 50).
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
+from typing import Dict, List
 
 # ── Skill domain definitions ────────────────────────────────────
 

@@ -17,10 +17,9 @@ from __future__ import annotations
 import base64
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
-
 
 # ── Schemas (json_schema structures for llama.cpp) ───────────────
 
@@ -99,8 +98,8 @@ def check_image(
     temperature: float = 0.1,
     max_tokens: int = 256,
     timeout_s: int = 60,
-    seed: Optional[int] = None,
-    defaults: Optional[Dict[str, Any]] = None,
+    seed: int | None = None,
+    defaults: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Run a VLM structured visual check on a single PNG.
 
@@ -167,7 +166,7 @@ def _build_payload(
     *,
     temperature: float,
     max_tokens: int,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> Dict[str, Any]:
     """Construct the OpenAI-compatible chat/completions multimodal payload.
 
@@ -270,7 +269,7 @@ def _parse_response(
     return result
 
 
-def _extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
+def _extract_json_from_text(text: str) -> Dict[str, Any] | None:
     """Try to extract a JSON object from text (code fences, markdown, etc.)."""
     import re
 

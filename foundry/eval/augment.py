@@ -28,9 +28,9 @@ from __future__ import annotations
 
 import hashlib
 import random
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple
-
+from typing import Dict, List, Set, Tuple
 
 # ── Slot lexicons (single-sourced from resolver / wear_words) ─────────
 
@@ -170,8 +170,8 @@ def _is_valid(request: str, llm=None) -> bool:
     if llm is None:
         llm = _stub_llm_for_validity()
     try:
-        from planner import AssetPlanner
         from compiler import compile_spec
+        from planner import AssetPlanner
         spec, _decisions = AssetPlanner().plan(request, llm)
         compile_spec(spec)
         return True
@@ -269,8 +269,8 @@ def augment_corpus(
     target: int = 250,
     seed: int = 1337,
     dry_run: bool = False,
-    llm: Optional[Callable] = None,
-    paraphrase: Optional[Callable] = None,
+    llm: Callable | None = None,
+    paraphrase: Callable | None = None,
 ) -> Tuple[List[str], dict]:
     """Generate an augmented corpus via lexicon-driven slot-filling.
 
@@ -510,6 +510,7 @@ def _quest_is_valid(room_theme: str, manifest: list[dict], llm=None) -> bool:
         llm = _stub_quest_llm()
     try:
         import tempfile
+
         from behaviour_gen import QuestBehaviourPlanner
         from scene_compiler import compile_scene
 
@@ -545,8 +546,8 @@ def augment_quest_corpus(
     target: int = 60,
     seed: int = 1337,
     dry_run: bool = False,
-    llm: Optional[Callable] = None,
-    paraphrase: Optional[Callable] = None,
+    llm: Callable | None = None,
+    paraphrase: Callable | None = None,
 ) -> Tuple[List[str], dict]:
     """Generate a fetch-quest corpus via room-themed slot-filling.
 

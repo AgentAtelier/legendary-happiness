@@ -20,7 +20,7 @@ BLENDER = shutil.which("blender")
 BUILD = str(Path(__file__).resolve().parents[1] / "blender" / "build_asset.py")
 SPEC = str(Path(__file__).resolve().parents[1] / "specs" / "table.json")
 
-pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(BLENDER is None, reason="blender not installed"), pytest.mark.blender]
 
 
 def _read_pbr_factors(glb_path: str) -> dict:
@@ -34,6 +34,7 @@ def _read_pbr_factors(glb_path: str) -> dict:
     the scalar fallback or the texture channel.
     """
     from io import BytesIO
+
     import numpy as np
     from PIL import Image
     from pygltflib import GLTF2

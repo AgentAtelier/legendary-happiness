@@ -25,8 +25,9 @@ The module is extractable as a standalone event-engine tool.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Tuple
 
+from _constants import DEFAULT_RNG_SEED
 
 # ── Event type ───────────────────────────────────────────────────
 
@@ -378,7 +379,7 @@ def pick_events(
     tick_count: int = 0,
     needs: Dict[str, float] | None = None,
     room_recent_events: List[str] | None = None,
-    seed: int = 42,
+    seed: int = DEFAULT_RNG_SEED,
 ) -> List[str]:
     """Pick *num_events* event types whose precursors are satisfied.
 
@@ -425,7 +426,7 @@ def fire_events(
     all_rooms: List[Tuple[int, int]] | None = None,
     existing_npc_ids: List[str] | None = None,
     manifest_entities: List[str] | None = None,
-    seed: int = 42,
+    seed: int = DEFAULT_RNG_SEED,
 ) -> List[dict]:
     """Pick, generate, and return fired event dicts.
 

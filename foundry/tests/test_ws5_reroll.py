@@ -1,13 +1,9 @@
 """Unit tests for WS-5 V auto-reroll integration (foundry/__main__.py + visual/batch.py)."""
 
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from visual.batch import reroll_flagged
-
 
 # ── reroll_flagged ──────────────────────────────────────────────
 

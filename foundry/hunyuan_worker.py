@@ -9,11 +9,10 @@ server is the model load itself.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
-
-import trimesh
+from collections.abc import Callable
 
 import hunyuan_queue as q
+import trimesh
 from hunyuan_postprocess import decimate, scale_normalize, sit_on_ground
 
 # A job spec → raw generated mesh. The server passes a Hunyuan-backed impl; tests
@@ -39,8 +38,8 @@ def process_job(job: dict, infer_fn: InferFn, *, root=None,
 
 
 def drain(infer_fn: InferFn, *, root=None, max_jobs: int = 0,
-          on_done: Optional[Callable[[dict, str], None]] = None,
-          on_error: Optional[Callable[[dict, Exception], None]] = None) -> int:
+          on_done: Callable[[dict, str], None] | None = None,
+          on_error: Callable[[dict, Exception], None] | None = None) -> int:
     """Drain the queue (highest priority first) until empty or *max_jobs* reached.
     Returns the number of jobs processed.
 

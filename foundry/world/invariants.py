@@ -14,7 +14,7 @@ Tiered invariants:
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from decisions import DecisionPoint, make_decision
 from world.model import World
@@ -23,7 +23,7 @@ from world.model import World
 def check_invariants(
     world: World,
     *,
-    material_palette: Optional[Dict[str, Any]] = None,
+    material_palette: Dict[str, Any] | None = None,
     max_per_zone: int = 100,
 ) -> List[DecisionPoint]:
     """Run all invariants against *world*.

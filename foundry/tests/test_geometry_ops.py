@@ -1,7 +1,6 @@
 """Unit tests for foundry.blender.geometry_ops — WS-3.3."""
 
 import sys
-import math
 
 # geometry_ops imports bpy which is only available inside Blender.
 # All tests mock the Blender API.

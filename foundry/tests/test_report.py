@@ -4,9 +4,7 @@ Tests the four-section build report: understood, built, assumed, couldnt_do.
 """
 from __future__ import annotations
 
-import pytest
-
-from decisions import Choice, DecisionPoint, make_decision
+from decisions import DecisionPoint, make_decision
 
 
 def _dp(code: str, severity: str, plain: str) -> DecisionPoint:
@@ -123,8 +121,8 @@ def test_report_features_missing_from_manifest_not_in_built():
 
 def test_report_assumed_section():
     """Assumed section collects assumption/ambiguous DPs."""
-    from report import build_report_dict
     import decisions as dec
+    from report import build_report_dict
 
     brief = {
         "setting": "test", "mood": [], "scale": "medium",
@@ -143,8 +141,8 @@ def test_report_assumed_section():
 
 def test_report_couldnt_do_section():
     """Couldn't do = unmapped features + error-severity DPs."""
-    from report import build_report_dict
     import decisions as dec
+    from report import build_report_dict
 
     brief = {
         "setting": "test", "mood": [], "scale": "medium",
@@ -228,8 +226,8 @@ def test_render_build_report_has_four_section_headers():
 
 def test_render_build_report_includes_unmapped_in_couldnt_do():
     """An unmapped feature appears under Couldn't do in the rendered string."""
-    from report import render_build_report
     import decisions as dec
+    from report import render_build_report
 
     brief = {
         "setting": "test", "mood": [], "scale": "medium",
@@ -311,8 +309,8 @@ def test_report_characters_show_soul_tone():
 def test_report_built_npc_dialogue_sources_grammared():
     """When a grammared fallback DP fires for npc_1 → that NPC's dialogue
     source is 'grammared'."""
-    from report import build_report_dict
     from decisions import make_decision
+    from report import build_report_dict
 
     brief = {
         "setting": "test", "mood": [], "scale": "medium",
@@ -330,8 +328,8 @@ def test_report_built_npc_dialogue_sources_grammared():
 
 def test_report_built_npc_dialogue_sources_canned():
     """When quest.missing_npc fires for npc_0 → dialogue source 'canned'."""
-    from report import build_report_dict
     from decisions import make_decision
+    from report import build_report_dict
 
     brief = {
         "setting": "test", "mood": [], "scale": "medium",
@@ -363,8 +361,8 @@ def test_report_built_npc_dialogue_sources_model_default():
 
 def test_render_report_includes_characters_and_sources():
     """Rendered report includes characters (with soul tone) and NPC dialogue sources."""
-    from report import render_build_report
     from decisions import make_decision
+    from report import render_build_report
 
     brief = {
         "setting": "a blacksmith's forge",

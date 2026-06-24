@@ -10,9 +10,7 @@ import json
 from pathlib import Path
 
 import pytest
-
 from visual.batch import run_batch
-
 
 # ── Mock factories ──────────────────────────────────────────────
 

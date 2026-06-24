@@ -10,9 +10,7 @@ Tests construct synthetic RunRecords directly — no live pipeline.
 from __future__ import annotations
 
 import pytest
-
 from eval.harness import RunRecord
-
 
 # ── helpers: build a synthetic RunRecord ──────────────────────────────
 
@@ -1157,8 +1155,8 @@ def test_eb7_signals_in_severity_map():
 
 def test_brief_valid_for_clean_minimal_brief():
     """A Brief.minimal produces brief_valid."""
-    from eval.signals import check_brief_valid
     from brief import minimal
+    from eval.signals import check_brief_valid
 
     b = minimal("a blacksmith's forge")
     result = check_brief_valid(b)

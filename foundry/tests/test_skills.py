@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
-
 from skills import (
     SKILL_DOMAINS,
-    new_skill_state,
+    all_skills,
+    enemy_spec,
     gain_xp,
-    tick_decay,
     get_affordances,
     get_level,
-    all_skills,
     new_player_skills,
+    new_skill_state,
     skill_level_to_bonus,
-    enemy_spec,
+    tick_decay,
 )
-
 
 # ── Domain validity ─────────────────────────────────────────────
 

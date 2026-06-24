@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
 from llm import load_grammar as _load_grammar
@@ -111,7 +112,7 @@ class RoomPlanner:
     def plan(
         self,
         brief: dict | str,
-        llm: Callable[[str, Optional[str]], str],
+        llm: Callable[[str, str | None], str],
         seed: int | None = None,
     ) -> Tuple[dict, List[DecisionPoint]]:
         """Plan a room from a Brief dict (or raw string).

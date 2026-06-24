@@ -36,7 +36,7 @@ from pygltflib import GLTF2
 BLENDER = shutil.which("blender")
 BUILD = str(Path(__file__).resolve().parents[1] / "blender" / "build_asset.py")
 
-pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(BLENDER is None, reason="blender not installed"), pytest.mark.blender]
 
 
 def _build_with_spec(spec_dict, tmp_path, basename):

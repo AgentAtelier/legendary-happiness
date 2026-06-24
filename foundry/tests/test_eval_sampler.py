@@ -18,10 +18,8 @@ from __future__ import annotations
 from typing import List
 
 import pytest
-
 from eval.harness import RunRecord
 from eval.sampler import SampleResult, estimate_clean_rate, stratify_and_sample
-
 
 # ── helpers ───────────────────────────────────────────────────────────
 

@@ -7,12 +7,10 @@ NEVER stored in the model.
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
-from decisions import Choice, DecisionPoint
-
+from decisions import DecisionPoint
 
 # ── Data classes ──────────────────────────────────────────────────────
 
@@ -70,7 +68,7 @@ def propose(
     world: World,
     intent: Intent,
     *,
-    material_palette: Optional[Dict[str, Any]] = None,
+    material_palette: Dict[str, Any] | None = None,
     max_per_zone: int = 100,
 ) -> ProposeResult:
     """Validate *intent* against *world* and either accept (append event,

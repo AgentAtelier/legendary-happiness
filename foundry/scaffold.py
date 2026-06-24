@@ -16,7 +16,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 import room_shell
 from publish import copy_asset_family
@@ -135,6 +135,7 @@ def scaffold_project(
     theme: str | None = None,
     camera_mode: str = "first",
     lighting_plan: dict | None = None,  # Task 6: generative lighting plan
+    palette: dict | None = None,        # Scene palette for per-class material override
 ) -> Path:
     """Scaffold a fresh, disposable Godot project.
 
@@ -176,8 +177,29 @@ def scaffold_project(
     specs = quest_specs if isinstance(quest_specs, list) else [quest_specs]
     compile_scene(specs, manifest, scene_path, assets_subdir="assets",
                   room_size=room_size, theme=theme, camera_mode=camera_mode,
-                  lighting_plan=lighting_plan)
+                  lighting_plan=lighting_plan,
+                  palette=palette)
     print(f"[scaffold] Scene compiled → {scene_path}")
+
+    # ── 2b. Generate palette class textures (0.6b fix) ────────────
+    # The scene compiler emits ext_resource Texture2D refs to
+    # class_{cls}_albedo.png / class_{cls}_normal.png.  Without
+    # those files on disk Godot's scene loader fatally Parse
+    # Errors and the SubViewport capture produces blank PNGs.
+    if palette is not None:
+        from material_classes import class_for
+        from palette import generate_class_textures
+        class_set: set = set()
+        for entry in manifest:
+            cls = class_for(entry.get("material", "default"))
+            class_set.add(cls)
+        # Shell classes are always stone + wood (when GLB shell exists)
+        class_set.add("stone")
+        class_set.add("wood")
+        assets_dir = build_path / "assets"
+        n = generate_class_textures(palette, class_set, str(assets_dir))
+        if n:
+            print(f"[scaffold] Palette class textures written: {n} PNG(s)")
 
     # ── 3. Set main_scene ───────────────────────────────────────
     pg = build_path / "project.godot"
@@ -217,11 +239,11 @@ def scaffold_project(
         _room_d = float(room_size.get("d", _room_d))
     _windows = lighting_plan.get("windows", []) if lighting_plan else []
     try:
-        shell_path = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme,
+        shell_path, _shell_d = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme,
                                                    windows=_windows)
     except TypeError:
         # windows= kwarg not accepted yet (Task 2 adds it)
-        shell_path = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme)
+        shell_path, _shell_d = room_shell.ensure_room_shell(_room_w, _room_d, _room_h, theme)
     _copy_room_shell(str(shell_path) if shell_path else None, str(assets_dir))
 
     # ── 5. Pre-import pass 1 ─────────────────────────────────────
@@ -242,7 +264,7 @@ def scaffold_project(
 
     # ── Task 6: Bake-and-apply lighting (tier ≥ 1) ────────────────
     if lighting_plan:
-        from scene_compiler import build_lighting_scene_desc, bake_and_apply
+        from scene_compiler import bake_and_apply, build_lighting_scene_desc
         _blender_available = shutil.which("blender") is not None
         _tier = 2 if _blender_available else 0
         placements = [{"glb": f"{e.get('category','?')}_{e.get('material','?')}.glb",

@@ -56,7 +56,7 @@ def _cmd_augment(args: argparse.Namespace) -> int:
 def _cmd_augment_quest(args: argparse.Namespace) -> int:
     """Generate a fetch-quest corpus — room-themed prompts for the full
     quest pipeline (P6)."""
-    from eval.augment import augment_quest_corpus, _NPC_ROLES
+    from eval.augment import _NPC_ROLES, augment_quest_corpus
 
     print(f"[augment-quest] target={args.target}  seed={args.seed}  "
           f"dry_run={args.dry_run}")
@@ -95,7 +95,7 @@ def _cmd_augment_quest(args: argparse.Namespace) -> int:
 
 def _cmd_stability(args: argparse.Namespace) -> int:
     from eval.report import load_corpus
-    from eval.stability import run_stability, build_report_dict, build_report_md
+    from eval.stability import build_report_dict, build_report_md, run_stability
 
     requests = load_corpus(args.corpus)
     if not requests:
@@ -145,8 +145,8 @@ def _cmd_stability(args: argparse.Namespace) -> int:
 
 
 def _cmd_regression(args: argparse.Namespace) -> int:
+    from eval.regression import build_report_dict, build_report_md, run_regression
     from eval.report import load_corpus
-    from eval.regression import run_regression, build_report_dict, build_report_md
 
     requests = load_corpus(args.corpus)
     if not requests:
@@ -194,10 +194,10 @@ def _cmd_regression(args: argparse.Namespace) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
-    from eval.harness import run_corpus, records_to_jsonl
-    from eval.signals import compute_signals
-    from eval.sampler import stratify_and_sample
+    from eval.harness import records_to_jsonl, run_corpus
     from eval.report import build_friction_report, load_corpus
+    from eval.sampler import stratify_and_sample
+    from eval.signals import compute_signals
 
     # --no-build actually toggles (positive build=False).
     build = not args.no_build

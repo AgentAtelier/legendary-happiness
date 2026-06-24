@@ -12,7 +12,6 @@ Decision codes tested:
 
 from __future__ import annotations
 
-
 # ── Confident matches (no decision point) ────────────────────────────
 
 def test_old_chair_resolves_to_0_8_no_decision():
@@ -271,8 +270,8 @@ def test_wear_word_as_substring_does_not_match():
 
 def test_returns_decision_point_type():
     """The list items must be DecisionPoint instances, not raw dicts."""
-    from decisions import DecisionPoint
     from age_resolver import resolve_age
+    from decisions import DecisionPoint
 
     _, decisions = resolve_age("a table")
     assert len(decisions) == 1

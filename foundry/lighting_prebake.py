@@ -13,16 +13,15 @@ Layout (default ``~/.cache/forge/lighting_queue/``):
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import lighting_bake
 
 DEFAULT_QUEUE = Path.home() / ".cache" / "forge" / "lighting_queue"
 
 
-def _qroot(queue_root: Optional[str | Path]) -> Path:
+def _qroot(queue_root: str | Path | None) -> Path:
     r = Path(queue_root) if queue_root else DEFAULT_QUEUE
     r.mkdir(parents=True, exist_ok=True)
     return r

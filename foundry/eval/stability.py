@@ -16,16 +16,14 @@ in tests.  Outputs report.md + report.json.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from collections.abc import Callable
+from typing import Dict, List, Tuple
 
 # ── Core entry point ──────────────────────────────────────────────────
 
 
 def _default_plan(
-    request: str, llm: Callable[[str, Optional[str]], str]
+    request: str, llm: Callable[[str, str | None], str]
 ) -> Tuple[dict, List]:
     from planner import AssetPlanner
     return AssetPlanner().plan(request, llm)
@@ -53,8 +51,8 @@ def run_stability(
     *,
     runs: int = 5,
     seed: int = 1337,
-    llm: Optional[Callable[[str, Optional[str]], str]] = None,
-    plan: Optional[Callable[..., Tuple[dict, List]]] = None,
+    llm: Callable[[str, str | None], str] | None = None,
+    plan: Callable[..., Tuple[dict, List]] | None = None,
 ) -> Tuple[List[dict], float]:
     """Run *requests* through the planner N times, measuring variance.
 

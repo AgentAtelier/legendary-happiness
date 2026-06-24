@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import colorsys
+
 from palette import build_palette
 
 
@@ -39,3 +40,26 @@ def test_seed_varies_within_mood():
     b = build_palette("stone_keep", 7)["roles"]["base"]
     assert a != b  # perturbed
     assert abs(_v(a) - _v(b)) < 0.25  # but stays near the mood value
+
+
+def _s(rgb):  # HSV saturation
+    return colorsys.rgb_to_hsv(*rgb)[1]
+
+
+def test_grey_stays_grey():
+    """Anchor with low saturation (<0.15) yields a base role with
+    saturation < ~0.25 — grey stays grey, not over-saturated by mood."""
+    pal = build_palette("stone_keep", 0)
+    base_rgb = pal["roles"]["base"]
+    base_s = _s(base_rgb)
+    assert base_s < 0.25, (
+        f"grey anchor should stay desaturated, got s={base_s:.3f}"
+    )
+    
+    # shadow / midtone / highlight are derived from base and
+    # should also stay desaturated.
+    for role in ("shadow", "midtone", "highlight"):
+        role_s = _s(pal["roles"][role])
+        assert role_s < 0.25, (
+            f"{role} should stay desaturated, got s={role_s:.3f}"
+        )

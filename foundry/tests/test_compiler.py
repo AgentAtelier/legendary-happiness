@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from compiler import SpecError, compile_spec, load_spec
 
 

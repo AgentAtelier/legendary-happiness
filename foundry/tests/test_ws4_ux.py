@@ -1,7 +1,6 @@
 """Unit tests for WS-4 UX shell scripts — prompt_screen, build_report_panel, day_night atmosphere."""
 
 from pathlib import Path
-import re
 
 GD_SCRIPTS = Path(__file__).resolve().parents[1] / "godot_template" / "scripts"
 

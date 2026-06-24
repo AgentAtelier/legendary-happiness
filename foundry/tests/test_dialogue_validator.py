@@ -18,15 +18,13 @@ After the fix:
 from __future__ import annotations
 
 import pytest
-
+from category_registry import REGISTRY
 from dialogue_validator import (
-    _references_quest,
     _CATEGORY_SYNONYMS,
+    _references_quest,
     validate_dialogue,
     validate_line,
 )
-from category_registry import REGISTRY
-
 
 # ── Core fix tests (the C4 bug) ────────────────────────────────
 

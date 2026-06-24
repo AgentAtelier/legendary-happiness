@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 blender = shutil.which("blender")
-pytestmark = pytest.mark.skipif(blender is None, reason="blender not installed")
+pytestmark = [pytest.mark.skipif(blender is None, reason="blender not installed"), pytest.mark.blender]
 
 GEN = Path(__file__).resolve().parent.parent / "blender" / "shell_materials.py"
 
@@ -27,8 +27,8 @@ def test_generates_stone_and_timber_with_contrast(tmp_path):
         assert (tmp_path / n).exists(), f"missing {n}"
 
     # Anti-regression: albedo must have real contrast (old grey mush ~0.15 spread)
-    from PIL import Image
     import numpy as np
+    from PIL import Image
     for surf in ("stone", "timber"):
         a = np.asarray(Image.open(tmp_path / f"shell_{surf}_albedo.png").convert("RGB")) / 255.0
         lum = a @ [0.2126, 0.7152, 0.0722]

@@ -25,8 +25,8 @@ Usage (inside Blender):
 import hashlib as _hashlib
 
 try:
-    import bpy
     import bmesh as _bmesh
+    import bpy
     _HAS_BPY = True
 except ImportError:
     _HAS_BPY = False

@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
+from typing import List, Tuple
 
-from brief import THEMES, CATEGORIES, VALID_SCALES, minimal, validate_brief, brief_json_schema
+from brief import CATEGORIES, THEMES, brief_json_schema, minimal, validate_brief
 from decisions import Choice, DecisionPoint, make_decision
-
 
 # ── Prompt template ────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ class Interpreter:
     def interpret(
         self,
         prompt: str,
-        llm: Callable[[str, Optional[str]], str],
+        llm: Callable[[str, str | None], str],
         seed: int | None = None,
     ) -> Tuple[dict, List[DecisionPoint]]:
         """Interpret a free-form user prompt into a validated Brief.

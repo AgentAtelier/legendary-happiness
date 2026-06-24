@@ -9,10 +9,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
 
 from world.model import Intent, Placement, World, propose
-
 
 # ── Public API ────────────────────────────────────────────────────────
 

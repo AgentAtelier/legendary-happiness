@@ -21,11 +21,9 @@ Without weights, scores return ``None`` with ``_load_error=True``
 from __future__ import annotations
 
 import os
-import struct
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-import numpy as np
 from PIL import Image
 
 try:
@@ -40,7 +38,7 @@ except ImportError:
 
 # ── Cache for lazy-loaded model ──────────────────────────────────
 
-_model_cache: Optional[Dict[str, Any]] = None
+_model_cache: Dict[str, Any] | None = None
 _load_attempted: bool = False
 
 
@@ -51,7 +49,7 @@ def aesthetic_score(
     *,
     model_name: str = "ViT-B-32",
     pretrained: str = "laion2b_s34b_b79k",
-    head_weights: Optional[str] = None,
+    head_weights: str | None = None,
     device: str = "cpu",
 ) -> Dict[str, Any]:
     """Score the aesthetic quality of a PNG image.
@@ -96,9 +94,9 @@ def aesthetic_score(
 def _load_model(
     model_name: str,
     pretrained: str,
-    head_weights: Optional[str],
+    head_weights: str | None,
     device: str,
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any] | None:
     """Load CLIP model + aesthetic head.  Returns None on failure."""
     try:
         import open_clip
@@ -139,7 +137,7 @@ def _load_model(
     }
 
 
-def _find_head_weights(embed_dim: int) -> Optional[str]:
+def _find_head_weights(embed_dim: int) -> str | None:
     """Locate the LAION aesthetic head weights file.
 
     Checks (in order):

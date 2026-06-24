@@ -1,15 +1,14 @@
 """Tests for npc_sim — G2 needs + utility-action loop (CB-3)."""
 
-import pytest
 from npc_sim import (
-    NEED_NAMES,
+    ACTION_CATALOGUE,
     NEED_DEFAULTS,
+    NEED_NAMES,
     default_needs,
+    generate_npc_needs,
+    select_action,
     tick_needs,
     urgency,
-    ACTION_CATALOGUE,
-    select_action,
-    generate_npc_needs,
 )
 
 

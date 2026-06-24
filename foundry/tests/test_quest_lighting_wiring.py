@@ -1,20 +1,51 @@
-"""Task 6: Integration test — lighting plan wired into the quest build path.
+"""Task 6: Integration test — lighting plan + palette wired into the quest build path.
 
 Verifies:
 - plan_lighting runs BEFORE room_shell.ensure_room_shell
 - windows= is passed through to ensure_room_shell
 - lighting_plan= is passed to compile_scene
+- palette= is passed to compile_scene via scaffold_project
 """
 from __future__ import annotations
+
+import sys
 
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _isolate_scaffold_modules():
+    """Phase 0.7: Stash/restore scaffold + dependencies in sys.modules
+    so this test always gets a fresh import — no importlib.reload
+    identity bleed from earlier suite tests."""
+    saved = {}
+    target_prefixes = (
+        "scaffold", "scene_compiler", "room_shell",
+        "lighting_planner", "lighting_bake", "room_control",
+    )
+    for mod_name, mod in list(sys.modules.items()):
+        if any(mod_name == pfx or mod_name.startswith(pfx + ".") for pfx in target_prefixes):
+            saved[mod_name] = mod
+            del sys.modules[mod_name]
+    yield
+    # Restore original modules
+    for mod_name in list(sys.modules):
+        if any(mod_name == pfx or mod_name.startswith(pfx + ".") for pfx in target_prefixes):
+            if mod_name not in saved:
+                del sys.modules[mod_name]
+    for mod_name, mod in saved.items():
+        sys.modules[mod_name] = mod
+
+
 def test_plan_runs_before_shell(monkeypatch, tmp_path):
     """Lighting plan must run before the shell in the quest scaffold path."""
+    # Phase 0.7: sys.modules stash/restore fixture replaces
+    # importlib.reload; this gives a truly clean import of scaffold
+    # rather than a re-executed module that bleeds state from
+    # earlier suite tests.
     import lighting_planner
     import room_shell
-    import scene_compiler as sc
+    import scaffold
 
     order: list[str] = []
 
@@ -33,21 +64,20 @@ def test_plan_runs_before_shell(monkeypatch, tmp_path):
     def fake_shell(*a, **k):
         order.append("shell")
         assert "windows" in k, "ensure_room_shell must receive windows= kwarg"
-        return None
+        return (None, [])
     monkeypatch.setattr(room_shell, "ensure_room_shell", fake_shell)
 
-    # Monkeypatch compile_scene to be a no-op (we only want to verify wiring)
+    # Monkeypatch scaffold's local ``compile_scene`` binding directly.
+    # scaffold.scaffold_project uses ``from scene_compiler import compile_scene``
+    # which captures the function at import time.  Patching scaffold.compile_scene
+    # works whether scaffold was freshly imported (this test) or already in
+    # sys.modules from an earlier suite test (e.g. test_scaffold.py).
     compile_called = []
 
-    def fake_compile(*a, lighting_plan=None, **k):
-        compile_called.append(lighting_plan)
+    def fake_compile(*a, lighting_plan=None, palette=None, **k):
+        compile_called.append((lighting_plan, palette))
         return "/tmp/fake.tscn"
-    monkeypatch.setattr(sc, "compile_scene", fake_compile)
-
-    # Now drive the quest build path via scaffold.scaffold_project
-    # The test only verifies that the lighting_plan flows through;
-    # a full quest run requires LLM + Blender which aren't available here.
-    import scaffold
+    monkeypatch.setattr(scaffold, "compile_scene", fake_compile)
 
     # Prepare minimal template + library for scaffold_project
     template = tmp_path / "template"
@@ -99,12 +129,17 @@ def test_plan_runs_before_shell(monkeypatch, tmp_path):
         out_root=str(tmp_path / "builds"),
         godot_bin="true",
         lighting_plan=lighting_plan,
+        palette={"roles": {"base": (0.5, 0.48, 0.45)}, "theme": "stone_keep", "seed": 0},
     )
 
-    # Verify compile_scene was called with the lighting_plan
+    # Verify compile_scene was called with the lighting_plan + palette
     assert len(compile_called) == 1, (
         f"compile_scene should be called exactly once, got {len(compile_called)}"
     )
-    assert compile_called[0] is not None, "compile_scene should receive lighting_plan"
-    assert compile_called[0]["windows"] == lighting_plan["windows"]
-    assert compile_called[0]["environment"]["ambient_energy"] == 0.6
+    called_lp, called_pal = compile_called[0]
+    assert called_lp is not None, "compile_scene should receive lighting_plan"
+    assert called_lp["windows"] == lighting_plan["windows"]
+    assert called_lp["environment"]["ambient_energy"] == 0.6
+    assert called_pal is not None, "compile_scene should receive palette"
+    assert called_pal["theme"] == "stone_keep"
+    assert "roles" in called_pal

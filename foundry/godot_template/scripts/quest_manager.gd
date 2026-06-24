@@ -148,7 +148,12 @@ func _ready() -> void:
 
 
 func _load_quests() -> void:
-	var scene_path: String = get_tree().current_scene.scene_file_path
+	# -s script mode (screenshot/probe) — no scene is loaded, so
+	# current_scene is null.  Bail out cleanly instead of crashing.
+	var cs := get_tree().current_scene
+	if cs == null:
+		return
+	var scene_path: String = cs.scene_file_path
 	if scene_path == "":
 		return
 	var data_path: String = scene_path.replace(".tscn", "_quest_data.json")

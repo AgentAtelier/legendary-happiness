@@ -15,11 +15,12 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import List, Tuple
 
 from decisions import Choice, DecisionPoint, make_decision
-from dialogue_validator import validate_dialogue, validate_idle_barks, get_canned_idle_barks
+from dialogue_validator import validate_dialogue, validate_idle_barks
 from soul import default_soul, tone_descriptor
 
 log = logging.getLogger(__name__)
@@ -455,7 +456,7 @@ class QuestBehaviourPlanner:
         self,
         room_theme: str,
         manifest: list[dict],
-        llm: Callable[[str, Optional[str]], str],
+        llm: Callable[[str, str | None], str],
         seed: int | None = None,
         carryable_ids: set[str] | None = None,
     ) -> Tuple[dict, List[DecisionPoint]]:
@@ -610,7 +611,7 @@ class QuestBehaviourPlanner:
         self,
         brief: dict | str,
         manifest: list[dict],
-        llm: Callable[[str, Optional[str]], str],
+        llm: Callable[[str, str | None], str],
         *,
         npc_count: int = 2,
         seed: int | None = None,
@@ -821,13 +822,16 @@ class QuestBehaviourPlanner:
 
             if not raw or not isinstance(raw, dict):
                 # Both multi-call and grammared fallback failed → canned default.
-                # Emit quest.missing_npc (truly canned case).
+                # Phase 0.3: emit quest.llm_retry_failed (loud failure).
                 decisions.append(
                     make_decision(
-                        code="quest.missing_npc",
+                        code="quest.llm_retry_failed",
                         stage="planner",
-                        severity="assumption",
-                        context={"npc_id": npc_id},
+                        severity="error",
+                        context={
+                            "npc_id": npc_id,
+                            "exception_class": "LLM/parse-failure",
+                        },
                         choices=(),
                     )
                 )
@@ -969,7 +973,7 @@ class QuestBehaviourPlanner:
             specs.append(spec)
 
         # ── CB-1: Validate every objective + chain via quest_validator ──
-        from quest_validator import objective_winnable, chain_solvable
+        from quest_validator import chain_solvable, objective_winnable
         npc_id_set: set[str] = set(npc_ids)
         for i, spec in enumerate(specs):
             obj = spec.get("objective", {})

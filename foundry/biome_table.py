@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from typing import Tuple
 
-
 BIOME_TABLE: list[dict] = [
     {
         "biome": "snow_forest",

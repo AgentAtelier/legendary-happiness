@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from typing import Dict, List, Tuple
 
 # ── Hashing ──────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ def _request_hash(request: str) -> str:
 # ── Expectation I/O ──────────────────────────────────────────────────
 
 
-def _load_expectation(expectations_dir: str, req_hash: str) -> Optional[dict]:
+def _load_expectation(expectations_dir: str, req_hash: str) -> dict | None:
     path = Path(expectations_dir) / f"{req_hash}.json"
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
@@ -57,7 +57,7 @@ def _save_expectation(expectations_dir: str, req_hash: str, spec: dict):
 
 
 def _default_plan(
-    request: str, llm: Callable[[str, Optional[str]], str]
+    request: str, llm: Callable[[str, str | None], str]
 ) -> Tuple[dict, List]:
     from planner import AssetPlanner
     return AssetPlanner().plan(request, llm)
@@ -70,8 +70,8 @@ def run_regression(
     requests: List[str],
     expectations_dir: str,
     *,
-    llm: Optional[Callable[[str, Optional[str]], str]] = None,
-    plan: Optional[Callable] = None,
+    llm: Callable[[str, str | None], str] | None = None,
+    plan: Callable | None = None,
     update: bool = False,
 ) -> Tuple[List[dict], dict]:
     """Run *requests* once each through the planner, comparing output

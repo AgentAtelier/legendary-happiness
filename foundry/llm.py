@@ -7,7 +7,6 @@ so the foundry stays standalone (no engine imports).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import requests
 
@@ -69,8 +68,8 @@ class FoundryLLM:
     def __call__(
         self,
         prompt: str,
-        grammar: Optional[str] = None,
-        json_schema: Optional[dict] = None,
+        grammar: str | None = None,
+        json_schema: dict | None = None,
     ) -> str:
         """Generate a response.  Callable signature: (prompt, grammar, json_schema) -> str.
 

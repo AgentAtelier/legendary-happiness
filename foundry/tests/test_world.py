@@ -13,15 +13,8 @@ Tests cover:
 
 from __future__ import annotations
 
-import json
-import tempfile
-from pathlib import Path
-
-import pytest
-
-from world.model import Intent, Placement, ProposeResult, World, propose
-from world.log import append_event, replay, snapshot, restore
-
+from world.log import append_event, replay, restore, snapshot
+from world.model import Intent, Placement, World, propose
 
 # ── Helpers ───────────────────────────────────────────────────────────
 

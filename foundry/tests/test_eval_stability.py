@@ -16,9 +16,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
-
 # ── Fake LLM helpers ──────────────────────────────────────────────────
 
 def _fake_stable(prompt: str, grammar):
@@ -288,7 +285,7 @@ def test_determinism_same_seed_same_output():
 # ── Report builders ──────────────────────────────────────────────────
 
 def test_build_report_dict_shape():
-    from eval.stability import run_stability, build_report_dict
+    from eval.stability import build_report_dict, run_stability
 
     per_request, score = run_stability(
         ["a table"],
@@ -311,7 +308,7 @@ def test_build_report_dict_shape():
 
 
 def test_build_report_dict_with_unstable():
-    from eval.stability import run_stability, build_report_dict
+    from eval.stability import build_report_dict, run_stability
 
     llm = _make_counting_llm([_TABLE_SPEC, _CHAIR_SPEC])
     per_request, score = run_stability(
@@ -329,7 +326,7 @@ def test_build_report_dict_with_unstable():
 
 
 def test_build_report_md_stable():
-    from eval.stability import run_stability, build_report_dict, build_report_md
+    from eval.stability import build_report_dict, build_report_md, run_stability
 
     per_request, score = run_stability(
         ["a table"],
@@ -346,7 +343,7 @@ def test_build_report_md_stable():
 
 
 def test_build_report_md_unstable():
-    from eval.stability import run_stability, build_report_dict, build_report_md
+    from eval.stability import build_report_dict, build_report_md, run_stability
 
     llm = _make_counting_llm([_TABLE_SPEC, _CHAIR_SPEC])
     per_request, score = run_stability(

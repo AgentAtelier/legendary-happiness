@@ -14,11 +14,9 @@ so the scaffolding + config path is validated without a real Godot.
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
-
 from visual.screenshot import (
     _ensure_capture_scene,
     _read_manifest,
@@ -27,7 +25,6 @@ from visual.screenshot import (
     capture_prop,
     capture_scene,
 )
-
 
 # ── _set_capture_config ────────────────────────────────────────────
 
@@ -355,3 +352,115 @@ def test_capture_scene_custom_angles_radius(tmp_path):
         godot_bin="true",
     )
     assert isinstance(result, list)
+
+
+# ═════════════════════════════════════════════════════════════════
+#  Problem A/B regression: real capture on m1_lit → PNGs > 15 KB
+# ═════════════════════════════════════════════════════════════════
+
+def test_m1_lit_captures_are_non_blank():
+    """Regression: capture builds/m1_lit and assert each PNG > 15 KB.
+
+    A Parse Error (e.g. missing palette class textures) produces
+    blank solid-colour PNGs of ~2 KB.  A properly rendering interior
+    scene with lights + palette materials produces > 15 KB PNGs.
+
+    Skip if the build doesn't exist OR if Godot falls back to the
+    dummy renderer (no GPU available — e.g. forge-llama hogging it).
+    """
+    import shutil
+    import tempfile
+    m1_path = Path(__file__).resolve().parents[2] / "builds" / "m1_lit"
+    if not m1_path.exists():
+        pytest.skip("m1_lit build not available")
+    if not shutil.which("godot"):
+        pytest.skip("godot binary not available")
+    with tempfile.TemporaryDirectory() as td:
+        try:
+            paths = capture_scene(str(m1_path), td, godot_bin="godot")
+        except RuntimeError as e:
+            if "dummy renderer" in str(e):
+                pytest.skip(
+                    "Godot dummy renderer active — "
+                    "no real GL context available for capture"
+                )
+            raise
+        assert len(paths) >= 1, (
+            f"expected >= 1 captured PNG from m1_lit, got {paths}"
+        )
+        for p in paths:
+            size = Path(p).stat().st_size
+            assert size > 15000, (
+                f"m1_lit capture {Path(p).name} is {size} bytes "
+                f"(expected > 15000 — blank frame is ~2200 bytes)"
+            )
+
+
+def test_parse_error_stderr_raises_runtime_error(monkeypatch, tmp_path):
+    """When Godot stderr contains 'Parse Error', _run_godot_capture
+    raises RuntimeError instead of returning silently with blank PNGs."""
+    import subprocess
+
+    from visual.screenshot import _ensure_capture_scene, _run_godot_capture
+
+    build = tmp_path / "build"
+    build.mkdir()
+    (build / "project.godot").write_text(
+        "[application]\n\nconfig/name=\"Test\"\n"
+    )
+    (build / "scenes").mkdir()
+    (build / "scenes" / "main.tscn").write_text("[gd_scene]\n")
+    _ensure_capture_scene(str(build))
+
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append(args)
+        # Return a subprocess-like result with Parse Error in stderr
+        class FakeResult:
+            returncode = 0
+            stderr = (
+                "ERROR: Parse Error: Could not parse line 233 of "
+                "res://scenes/main.tscn: Couldn't find file: "
+                "res://assets/class_fabric_albedo.png"
+            )
+        return FakeResult()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match="Parse Error"):
+        _run_godot_capture(str(build), "godot")
+
+
+def test_failed_load_stderr_raises_runtime_error(monkeypatch, tmp_path):
+    """When Godot stderr contains 'Failed to load resource',
+    _run_godot_capture raises RuntimeError."""
+    import subprocess
+
+    from visual.screenshot import _ensure_capture_scene, _run_godot_capture
+
+    build = tmp_path / "build"
+    build.mkdir()
+    (build / "project.godot").write_text(
+        "[application]\n\nconfig/name=\"Test\"\n"
+    )
+    (build / "scenes").mkdir()
+    (build / "scenes" / "main.tscn").write_text("[gd_scene]\n")
+    _ensure_capture_scene(str(build))
+
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append(args)
+        class FakeResult:
+            returncode = 1
+            stderr = (
+                "ERROR: Failed to load resource: "
+                "res://assets/class_metal_albedo.png"
+            )
+        return FakeResult()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    with pytest.raises(RuntimeError, match="Godot capture failed"):
+        _run_godot_capture(str(build), "godot")

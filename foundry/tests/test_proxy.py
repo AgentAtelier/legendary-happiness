@@ -1,8 +1,5 @@
 """Unit tests for foundry.proxy — WS-5 deterministic voxel proxy."""
 
-import json
-import os
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +19,6 @@ from proxy import (
     _write_ply,
     voxelize_glb,
 )
-
 
 # ── helpers ─────────────────────────────────────────────────────
 

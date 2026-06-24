@@ -14,10 +14,10 @@ import re
 from pathlib import Path
 from typing import Dict, List, Tuple, TypedDict
 
-
-from category_registry import COLLISION_SIZES
 import navmesh
 import room_shell
+from _constants import _SUN_BASIS_INTERIOR_TUPLE as _SUN_BASIS, DEFAULT_RNG_SEED
+from category_registry import COLLISION_SIZES
 from material_classes import CLASSES, class_for
 
 # ── Manifest entry shape ─────────────────────────────────────────
@@ -84,7 +84,7 @@ def _b3_emit_item_metadata(lines: list[str], category: str) -> None:
         lines.append('metadata/_forge_contents = ""')
     # CB-2: place-on-surface — furniture with a top surface for placing items
     if entry.get("furniture_top_y") is not None:
-        lines.append(f'metadata/_forge_surface_tag = "place"')
+        lines.append('metadata/_forge_surface_tag = "place"')
         lines.append(f'metadata/_forge_surface_y = {float(entry["furniture_top_y"])}')
 
 # ── Shell scripts ──────────────────────────────────────────────
@@ -155,8 +155,6 @@ _ROOM_WALL_THICKNESS = 0.4
 _ROOM_FLOOR_THICKNESS = 0.2
 
 # ── Light defaults (Item 1) ──────────────────────────────────────
-
-_LIGHT_DIRECTION = (-0.5, -0.75, 0.433013)  # DirectionalLight rotation basis
 _LIGHT_HEIGHT = 8.0
 _AMBIENT_COLOR = (0.15, 0.15, 0.2, 1.0)
 _BACKGROUND_COLOR = (0.05, 0.05, 0.1, 1.0)
@@ -499,7 +497,7 @@ def _build_interior_lights(
                 f"light_color = Color({interior_color[0]}, {interior_color[1]}, {interior_color[2]}, 1)",
                 f"light_energy = {interior_energy}",
                 f"omni_range = {_fmt_pos(room_diag)}",
-                "shadow_enabled = true",
+                "shadow_enabled = false",
             ],
         })
     return lights
@@ -538,8 +536,10 @@ def _build_room_nodes(
      "props": ['environment = SubResource("world_env")']},
     ]
     # DirectionalLight3D (Item 1) — P-G: per-theme colour + energy
+    # Sun basis from _constants (deterministic shared anchor)
+    _sb = _SUN_BASIS
     dl_props = [
-        f"transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, {_fmt_pos(_LIGHT_HEIGHT)}, 0)",
+        f"transform = Transform3D({_sb[0]}, {_sb[1]}, {_sb[2]}, {_sb[3]}, {_sb[4]}, {_sb[5]}, {_sb[6]}, {_sb[7]}, {_sb[8]}, 0, {_fmt_pos(_LIGHT_HEIGHT)}, 0)",
     ]
     if directional_color is not None:
         dl_props.append(
@@ -760,7 +760,7 @@ def _find_open_npc_positions(
     manifest: list[dict],
     room_w: float,
     room_d: float,
-    seed: int = 42,
+    seed: int = DEFAULT_RNG_SEED,
 ) -> list[tuple[float, float]]:
     """Quality B1: Find open-floor (x,z) positions for NPCs with clearance
     from prop footprints and player spawn (0,0).  Distributes NPCs across
@@ -946,6 +946,7 @@ def compile_scene(
     exterior_plan: dict | None = None,  # CB-7: ExteriorPlan data for outdoor rooms
     lighting_plan: dict | None = None,  # Generative lighting plan (hearth/torch/candle/window + env)
     palette: dict | None = None,          # Scene palette for per-class material override
+    decisions_out: list | None = None,    # Phase 0.3: mutable list for threading decisions back
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.
 
@@ -1046,7 +1047,7 @@ def compile_scene(
     # CB-4: Add door entities from room_graph
     door_entities: list[dict] = []
     if room_graph and current_room is not None:
-        from room_graph import get_doors_for_room, door_position_on_wall
+        from room_graph import door_position_on_wall, get_doors_for_room
         room_doors = get_doors_for_room(current_room, room_graph.get("doors", []))
         for dd in room_doors:
             fr, to = tuple(dd["from_room"]), tuple(dd["to_room"])
@@ -1214,8 +1215,11 @@ def compile_scene(
 
     # ── Task 6: Shell GLB + carved navmesh ─────────────────────
     shell_glb_path = None
+    shell_decisions: list = []
     if not is_outdoor:
-        shell_glb_path = room_shell.ensure_room_shell(room_w, room_d, _ROOM_HEIGHT, theme)
+        shell_glb_path, shell_decisions = room_shell.ensure_room_shell(room_w, room_d, _ROOM_HEIGHT, theme)
+    if shell_decisions and decisions_out is not None:
+        decisions_out.extend(shell_decisions)
 
     # ── Palette-driven material classes ─────────────────────────
     # When a palette is provided, compute the set of material classes
@@ -1336,7 +1340,7 @@ def compile_scene(
         all_rooms=all_rooms,
         existing_npc_ids=npc_ids,
         manifest_entities=manifest_entity_ids,
-        seed=42,
+        seed=DEFAULT_RNG_SEED,
     )
 
     quest_data: dict = {
@@ -1525,7 +1529,7 @@ def compile_scene(
     lines.append(
         "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)"
     )
-    lines.append(f'[node name="FloorCollision" type="CollisionShape3D" parent="Floor"]')
+    lines.append('[node name="FloorCollision" type="CollisionShape3D" parent="Floor"]')
     lines.append(f'shape = SubResource("{floor_sub_id}")')
     lines.append("")
 
@@ -1769,7 +1773,7 @@ def compile_scene(
         # CB-7: BoneAttachment3D on Hips bone — carries the GLB body mesh
         lines.append(f'[node name="HipsAttachment" type="BoneAttachment3D" parent="{npc_id}"]')
         lines.append('bone_name = "Hips"')
-        lines.append(f'skeleton = NodePath("../Skeleton")')
+        lines.append('skeleton = NodePath("../Skeleton")')
         lines.append("")
 
         # NPC body GLB instance — now attached to the Hips bone
@@ -1780,7 +1784,7 @@ def compile_scene(
 
         # NPC nameplate
         lines.append(f'[node name="Nameplate" type="Label3D" parent="{npc_id}"]')
-        lines.append(f"transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)")
+        lines.append("transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)")
         lines.append(f'text = "{npc_role}"')
         lines.append("billboard = 1")
         lines.append("horizontal_alignment = 1")
@@ -1830,7 +1834,7 @@ def compile_scene(
     # Player CollisionShape3D (FIX-1c) — placed AFTER the Player node
     # so it's a child of Player.
     lines.append(
-        f'[node name="PlayerCollision" type="CollisionShape3D" parent="Player"]'
+        '[node name="PlayerCollision" type="CollisionShape3D" parent="Player"]'
     )
     lines.append(f'shape = SubResource("{player_sub_id}")')
     lines.append("")

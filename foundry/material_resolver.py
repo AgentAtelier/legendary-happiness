@@ -21,7 +21,6 @@ from typing import List, Tuple
 from decisions import Choice, DecisionPoint, make_decision
 from materials import MATERIAL_PALETTE
 
-
 # ── Keyword maps ──────────────────────────────────────────────────
 # Specific keywords (most specific wins): a keyword → material_id.
 # Declaration order is tiebreak if a request matches several specific

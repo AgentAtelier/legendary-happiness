@@ -7,13 +7,11 @@ and quest chains (depends_on DAG). No LLM, no I/O.
 from __future__ import annotations
 
 import pytest
-
 from quest_validator import (
     OBJECTIVE_TYPES,
     chain_solvable,
     objective_winnable,
 )
-
 
 # ── Fixtures: a small manifest with a carryable, a surface, and decor ──
 
