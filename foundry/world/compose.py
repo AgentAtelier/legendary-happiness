@@ -19,9 +19,13 @@ normal points +X is "east", -X "west", -Z "north", +Z "south", +Y "up"
 
 from __future__ import annotations
 
+import tscn_writer as tw
+from world.assembly import footprint_centre
 from world.model import World
 from world.query import neighbors
 from world.validation import EPS, aabb
+
+_IDENTITY = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
 # axis index -> (face at the MAX side, face at the MIN side)
 _AXIS_FACES = {0: ("east", "west"), 1: ("up", "down"), 2: ("south", "north")}
@@ -71,3 +75,36 @@ def space_openings(world: World, space_id: str) -> list[dict]:
             "size": list(portal.size),
         })
     return out
+
+
+def build_world_tscn(
+    world: World, scene_paths: dict[str, str], *, spawn_space: str | None = None
+) -> str:
+    """The parent ``world.tscn``: instance each space's PackedScene at its
+    footprint CENTRE (the per-space scene is centred on its own origin, so
+    translating by the centre lands it correctly in world space) + a
+    ``PlayerSpawn`` marker at the spawn space's centre.
+
+    ``scene_paths`` maps ``space_id -> "res://…"`` for the per-space scenes
+    (produced by the stack-gated compile step). This kernel is PURE and
+    deterministic — given the same world + paths it returns byte-identical
+    text — so it is fully testable without Godot. Spaces sorted by id.
+    """
+    spaces = [sid for sid in sorted(world.nodes) if sid in scene_paths]
+    if not spaces:
+        raise ValueError("build_world_tscn: no spaces with scene paths")
+    spawn = spawn_space if spawn_space in spaces else spaces[0]
+
+    lines = [f"[gd_scene load_steps={len(spaces) + 1} format=3]", ""]
+    ext_ids = {sid: f"{i}_{sid}" for i, sid in enumerate(spaces, start=1)}
+    for sid in spaces:
+        lines.append(tw.ext_resource("PackedScene", scene_paths[sid], ext_ids[sid]))
+    lines += ["", '[node name="World" type="Node3D"]', ""]
+    for sid in spaces:
+        lines.append(tw.node_header(sid, parent=".", instance=ext_ids[sid]))
+        lines.append(f"transform = {tw.transform3d(_IDENTITY, footprint_centre(world.nodes[sid].footprint))}")
+        lines.append("")
+    lines.append(tw.node_header("PlayerSpawn", type="Marker3D", parent="."))
+    lines.append(f"transform = {tw.transform3d(_IDENTITY, footprint_centre(world.nodes[spawn].footprint))}")
+    lines.append("")
+    return "\n".join(lines)

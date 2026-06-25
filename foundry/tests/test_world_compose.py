@@ -1,5 +1,6 @@
-"""Unit 3 e2e — portal→wall-opening geometry (the de-risking kernel)."""
-from world.compose import space_openings
+"""Unit 3 e2e — portal→wall-opening geometry + parent-scene kernel."""
+import pytest
+from world.compose import build_world_tscn, space_openings
 from world.operations import apply_op, replay
 
 
@@ -60,3 +61,56 @@ def test_space_with_no_portals_has_no_openings():
 
 def test_missing_space_is_empty():
     assert space_openings(replay([]), "ghost") == []
+
+
+# ── build_world_tscn (parent-scene kernel) ─────────────────────────────
+
+def _two_space_world():
+    w = replay([])
+    w = apply_op(w, _space("hall", (0, 0, 0)))    # centre (4,2,4)
+    w = apply_op(w, _space("court", (0, 0, -8)))   # centre (4,2,-4)
+    return w
+
+
+_PATHS = {"hall": "res://scenes/hall.tscn", "court": "res://scenes/court.tscn"}
+
+
+def test_world_tscn_header_and_ext_resources():
+    t = build_world_tscn(_two_space_world(), _PATHS)
+    assert t.startswith("[gd_scene load_steps=3 format=3]")   # 2 spaces + 1
+    # ids follow sorted space order: court (1), hall (2)
+    assert '[ext_resource type="PackedScene" path="res://scenes/court.tscn" id="1_court"]' in t
+    assert '[ext_resource type="PackedScene" path="res://scenes/hall.tscn" id="2_hall"]' in t
+
+
+def test_world_tscn_instances_each_space_at_its_footprint_centre():
+    t = build_world_tscn(_two_space_world(), _PATHS)
+    # instance= INSIDE the brackets (the node_header fix), placed at the centre
+    assert '[node name="hall" parent="." instance=ExtResource("2_hall")]' in t
+    assert "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2, 4)" in t       # hall centre
+    assert "transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2, -4)" in t      # court centre
+
+
+def test_world_tscn_has_root_and_spawn():
+    t = build_world_tscn(_two_space_world(), _PATHS, spawn_space="court")
+    assert '[node name="World" type="Node3D"]' in t
+    assert '[node name="PlayerSpawn" type="Marker3D" parent="."]' in t
+    # spawn at the court centre (4,2,-4)
+    spawn_block = t.split('PlayerSpawn')[1]
+    assert "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2, -4)" in spawn_block
+
+
+def test_world_tscn_deterministic():
+    w = _two_space_world()
+    assert build_world_tscn(w, _PATHS) == build_world_tscn(w, _PATHS)
+
+
+def test_world_tscn_default_spawn_is_first_sorted_space():
+    t = build_world_tscn(_two_space_world(), _PATHS)  # no spawn_space → "court" (sorts before "hall")
+    spawn_block = t.split('PlayerSpawn')[1]
+    assert "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2, -4)" in spawn_block  # court centre
+
+
+def test_world_tscn_requires_scene_paths():
+    with pytest.raises(ValueError):
+        build_world_tscn(_two_space_world(), {})
