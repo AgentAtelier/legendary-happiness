@@ -499,11 +499,21 @@ def _stub_quest_llm():
     return _stub
 
 
-def _quest_is_valid(room_theme: str, manifest: list[dict], llm=None) -> bool:
-    """Return True if *room_theme* produces a valid quest spec.
+def _quest_is_valid(
+    room_theme: str, manifest: list[dict], llm=None,
+) -> tuple[bool, bool]:
+    """Return ``(is_valid, has_decisions)`` for *room_theme*.
 
-    Runs QuestBehaviourPlanner.plan() + compile_scene() in a temp dir.
-    Uses a FAKE llm by default (deterministic).
+    is_valid      — True iff ``QuestBehaviourPlanner.plan()`` +
+                    ``compile_scene()`` both succeed.
+    has_decisions — True iff ``plan()`` emitted >= 1 Decision Point
+                    (i.e. the request exercises at least one rule of
+                    the quest resolver).
+
+    Phase B: caching this boolean halves ``augment_quest_corpus``'
+    cost — the second ``planner.plan()`` round-trip per surviving
+    request becomes a dict lookup.  Pinned by
+    ``test_quest_is_valid_returns_cached_decision_status``.
     """
     if llm is None:
         llm = _stub_quest_llm()
@@ -514,26 +524,12 @@ def _quest_is_valid(room_theme: str, manifest: list[dict], llm=None) -> bool:
         from scene_compiler import compile_scene
 
         planner = QuestBehaviourPlanner()
-        spec, _decisions = planner.plan(room_theme, manifest, llm)
+        spec, decisions = planner.plan(room_theme, manifest, llm)
         with tempfile.TemporaryDirectory() as td:
             compile_scene(spec, manifest, f"{td}/test.tscn")
-        return True
+        return True, bool(decisions)
     except Exception:
-        return False
-
-
-def _quest_fires_decision(room_theme: str, manifest: list[dict], llm=None) -> bool:
-    """Return True if *room_theme* causes QuestBehaviourPlanner to emit
-    at least one Decision Point."""
-    if llm is None:
-        llm = _stub_quest_llm()
-    try:
-        from behaviour_gen import QuestBehaviourPlanner
-        planner = QuestBehaviourPlanner()
-        _spec, decisions = planner.plan(room_theme, manifest, llm)
-        return len(decisions) > 0
-    except Exception:
-        return False
+        return False, False
 
 
 # ── Public entry point (quest) ──────────────────────────────────
@@ -608,12 +604,18 @@ def augment_quest_corpus(
 
     dedup_rate = 1.0 - (len(unique) / max(len(adv_themes) + len(raw_themes), 1))
 
-    # 5. Quest validity filter
+    # 5. Quest validity filter — cache has_decisions so step 7 is free.
+    # Phase B: replaces a former second planner.plan() round-trip per
+    # surviving request.  Decision firers are still counted correctly
+    # via the decision_status dict below.
     valid: list[str] = []
+    decision_status: dict[str, bool] = {}
     rejected: int = 0
     for req in unique:
-        if _quest_is_valid(req, manifest, llm):
+        ok, has_dec = _quest_is_valid(req, manifest, llm)
+        if ok:
             valid.append(req)
+            decision_status[req] = has_dec
         else:
             rejected += 1
 
@@ -621,11 +623,12 @@ def augment_quest_corpus(
     if len(valid) > target:
         valid = valid[:target]
 
-    # 7. Count decision firers
-    decision_firers: int = 0
-    for req in valid:
-        if _quest_fires_decision(req, manifest, llm):
-            decision_firers += 1
+    # 7. Count decision firers (cache hit; no plan() round-trip).
+    # Sliding the cap after the cache is fill-safe: decision_status
+    # still covers the surviving `valid[:target]`.
+    decision_firers: int = sum(
+        1 for req in valid if decision_status.get(req, False)
+    )
 
     # 8. Compute stats
     role_counts: dict[str, int] = {}

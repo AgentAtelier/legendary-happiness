@@ -397,3 +397,44 @@ def test_augment_quest_corpus_room_themes_have_expected_format(tmp_path):
     # Themes are non-empty strings
     for t in themes:
         assert isinstance(t, str) and len(t) > 0
+
+
+def test_quest_is_valid_returns_cached_decision_status():
+    """Phase B: _quest_is_valid now returns (is_valid, has_decisions)
+    so augment_quest_corpus can skip the second planner.plan()
+    round-trip per surviving request.
+
+    Catching the regression: the prior signature returned ``bool``
+    only — calling code that did ``if _quest_is_valid(...)`` would
+    still work (Truthy bool), but the cached boolean was thrown away.
+    """
+    from eval.augment import _quest_is_valid
+    result = _quest_is_valid("a hermit's shack", _QUEST_MANIFEST)
+    assert isinstance(result, tuple), (
+        f"_quest_is_valid must return (bool, bool) for the Phase B "
+        f"cache; got {type(result).__name__}"
+    )
+    assert len(result) == 2
+    is_valid, has_decisions = result
+    assert isinstance(is_valid, bool)
+    assert isinstance(has_decisions, bool)
+
+
+def test_quest_corpus_decision_firers_match_per_request(tmp_path):
+    """Phase B behavioural invariant: stats['decision_firers'] for
+    augment_quest_corpus must reflect the cache-wired count, not a
+    second planner.plan() call.  Bound check: <= len(valid) and
+    <= target.
+    """
+    from eval.augment import augment_quest_corpus
+    themes, stats = augment_quest_corpus(
+        str(tmp_path / "quest.txt"),
+        manifest=_QUEST_MANIFEST,
+        target=30,
+        seed=42,
+    )
+    assert 0 <= stats["decision_firers"] <= len(themes), (
+        f"decision_firers out of bounds: {stats['decision_firers']} "
+        f"vs {len(themes)} surviving themes"
+    )
+    assert stats["decision_firers"] <= stats["target"]
