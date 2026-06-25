@@ -270,6 +270,7 @@ def _compile_and_probe(quest_spec, manifest, tmp_dir: str, probe_script: str = "
 # ── Tests ─────────────────────────────────────────────────────────────
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="integration: launches real Godot subprocess per test even when no probe runs")
 def test_mesh_count_positive():
     """FIX-0: MeshInstance3D_count > 0 (props rendered).
 
@@ -290,6 +291,7 @@ def test_mesh_count_positive():
 
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="integration: launches real Godot subprocess per test")
 def test_floor_collision_exists():
     """FIX-0: Floor StaticBody3D + CollisionShape3D (BoxShape) exists.
 
@@ -306,6 +308,7 @@ def test_floor_collision_exists():
 
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="integration: launches real Godot subprocess per test")
 def test_player_collision_exists():
     """FIX-0: Player has a CollisionShape3D.
 
@@ -322,6 +325,7 @@ def test_player_collision_exists():
 
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="integration: launches real Godot subprocess per test")
 def test_no_resource_errors_in_stderr():
     """FIX-0: Zero 'Resource file not found' / 'non-existent resource'
     errors in Godot stderr.
@@ -501,6 +505,7 @@ def test_multi_npc_playthrough():
 # ── P-D: Close the smoke-probe gap ───────────────────────────────────
 
 @pytest.mark.skipif(not _godot_available(), reason="Godot not found or assets/template missing")
+@pytest.mark.godot_heavy(reason="integration: launches real Godot subprocess per test even without probe")
 def test_no_script_errors_on_plain_launch():
     """P-D: A plain headless launch (no probe script) produces 0 lines
     matching SCRIPT ERROR|Parse Error|Failed to load script.

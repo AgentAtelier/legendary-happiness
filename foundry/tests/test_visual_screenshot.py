@@ -358,6 +358,7 @@ def test_capture_scene_custom_angles_radius(tmp_path):
 #  Problem A/B regression: real capture on m1_lit → PNGs > 15 KB
 # ═════════════════════════════════════════════════════════════════
 
+@pytest.mark.godot_heavy(reason="integration: launches real Godot subprocess to capture PNGs of builds/m1_lit")
 def test_m1_lit_captures_are_non_blank():
     """Regression: capture builds/m1_lit and assert each PNG > 15 KB.
 

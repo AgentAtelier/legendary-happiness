@@ -16,6 +16,7 @@ SPEC = str(Path(__file__).resolve().parents[1] / "specs" / "table.json")
 pytestmark = pytest.mark.skipif(BLENDER is None, reason="blender not installed")
 
 
+@pytest.mark.blender
 def test_forge_table_end_to_end(tmp_path):
     lexicon = tmp_path / "asset_lexicon.json"
     shutil.copy(LIVE_LEXICON, lexicon)
@@ -33,8 +34,10 @@ def test_forge_table_end_to_end(tmp_path):
     assert data["assets"]["table"]["path"] == result.glb_path
 
 
+@pytest.mark.blender
 def test_forge_names_by_material(tmp_path):
     """Forged output file and sidecar are named {asset_id}_{material}."""
+    # Marked blender: this test calls runner.forge() → Blender subprocess.
     lexicon = tmp_path / "asset_lexicon.json"
     shutil.copy(LIVE_LEXICON, lexicon)
     library_dir = tmp_path / "library"
@@ -58,8 +61,10 @@ def test_forge_names_by_material(tmp_path):
     validate_sidecar(sidecar)
 
 
+@pytest.mark.blender
 def test_forge_two_materials_no_overwrite(tmp_path):
     """Forging the same asset_id with two materials produces two distinct files."""
+    # Marked blender: this test calls runner.forge() twice → 2× Blender subprocess.
     lexicon = tmp_path / "asset_lexicon.json"
     shutil.copy(LIVE_LEXICON, lexicon)
     library_dir = tmp_path / "library"
@@ -100,9 +105,11 @@ def test_forge_two_materials_no_overwrite(tmp_path):
 # ── Slice 11: ForgeResult.decisions + sidecar threading ──────────────
 
 
+@pytest.mark.blender
 def test_forge_emits_sidecar_without_decisions_key(tmp_path):
     """The explicit-spec forge() path: sidecar has NO 'decisions' key
-    (resolver doesn't run; material is given)."""
+    (resolver doesn't run; material is given).
+    Marked blender: this test calls runner.forge() → Blender subprocess."""
     lexicon = tmp_path / "asset_lexicon.json"
     shutil.copy(LIVE_LEXICON, lexicon)
     library_dir = tmp_path / "library"
