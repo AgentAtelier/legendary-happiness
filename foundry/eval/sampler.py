@@ -112,7 +112,7 @@ def stratify_and_sample(
     # ── 1. Compute signals + populate strata (full population)
     # ───────────────────────────────────
     stratum_to_indices: dict[str, list[int]] = {}
-    record_tags: dict[int, Set[str]] = {}
+    record_tags: dict[int, set[str]] = {}
     for idx, rec in enumerate(records):
         tags = (signals_fn(rec) or set())
         if not tags:

@@ -1,22 +1,46 @@
-"""foundry.world — world-model slice 1 (coherence foundation, Prompt 8).
+"""foundry.world — World model + operation log (sub-project a, unit 1).
 
-A deterministic, validate-before-commit world model with an append-only
-event log.  STANDALONE — not wired into the live pipeline yet.
+The world is the FOLD of an append-only operation log. Operations are
+authoritative; prompts (added later in unit b) are provenance only.
 
-Key concepts:
-  - ``Placement``: an asset placed in the world (id, asset_hash, attrs).
-  - ``World``: an ordered list of Placements.
-  - ``Intent``: a WHOLE small object (add or replace one placement).
-  - ``propose(world, intent)``: validate → accept or reject with Decision Points.
-  - Event log: JSONL, replay via ``replay(path) -> World``.
-  - Geometry NEVER stored — referenced by asset_hash only.
+Public API:
+
+  model       — Entity, Portal, SpaceNode, World, seed_from_id
+  operations  — apply_op, replay, WorldOpError
+  hashing     — canonical_json, world_state_hash, node_content_hash
+  persistence — save_world, load_world, world_to_snapshot
+
+See the prompt-of-record: docs/current/WORLD-ENGINE.md §4 + §6.
 """
 
-from world.invariants import check_invariants
-from world.log import append_event, replay, restore, snapshot
-from world.model import Intent, Placement, ProposeResult, World
+from world.hashing import canonical_json, node_content_hash, world_state_hash
+from world.model import (
+    Entity,
+    Portal,
+    SpaceNode,
+    World,
+    seed_from_id,
+)
+from world.operations import WorldOpError, apply_op, replay
+from world.persistence import load_world, save_world, world_to_snapshot
 
 __all__ = [
-    "Placement", "World", "Intent", "ProposeResult",
-    "check_invariants", "append_event", "replay", "restore", "snapshot",
+    # model
+    "Entity",
+    "Portal",
+    "SpaceNode",
+    "World",
+    "seed_from_id",
+    # operations
+    "WorldOpError",
+    "apply_op",
+    "replay",
+    # hashing
+    "canonical_json",
+    "node_content_hash",
+    "world_state_hash",
+    # persistence
+    "load_world",
+    "save_world",
+    "world_to_snapshot",
 ]

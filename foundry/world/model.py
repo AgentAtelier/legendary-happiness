@@ -1,143 +1,135 @@
-"""World model dataclasses and the ``propose`` entry point.
+"""World model dataclasses (sub-project a, unit 1).
 
-All state is immutable-friendly — ``propose`` works on a STAGED copy
-and only commits on accept.  Geometry is referenced by ``asset_hash``,
-NEVER stored in the model.
+A world is the fold of an append-only operation log (see ``world.operations``).
+The model here defines the structure that operations fold into:
+
+    World  ─ nodes: dict[str, SpaceNode]
+           ─ portals: dict[str, Portal]
+           ─ op_log: list[dict]
+           ─ world_bible: {world, region, site}
+
+    SpaceNode  ─ id, seed, brief, footprint
+                  entities, portals (ref ids), gen_version
+
+    Portal     ─ id, from_space, to_space, position(s), size(s)
+
+    Entity     ─ id, type, pos, properties
+
+Determinism — every dataclass is replaceable via ``dataclasses.replace``
+and is named such that ``A == B`` is content-address equality.  No
+attribute is mutated in place after construction; the applier always
+constructs new top-level containers.
+
+NOT frozen: ``Entity``, ``Portal``, ``SpaceNode``, ``World`` are unfrozen
+because Entity has a ``properties`` dict (mutable for tree-set), and the
+whole world-model is replace-rewritten, never mutated.  The contract
+"do not mutate; use dataclasses.replace" is enforced by all callers in
+``world/operations.py``.
 """
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from decisions import DecisionPoint
-
-# ── Data classes ──────────────────────────────────────────────────────
+# ── Seed derivation ────────────────────────────────────────────────────
 
 
-@dataclass(frozen=True)
-class Placement:
-    """One asset placed in the world.  Geometry is referenced by
-    ``asset_hash`` — never stored in the model."""
+def seed_from_id(space_id: str) -> int:
+    """Deterministic 64-bit seed for a space id.
+
+    Same id → same seed across processes (sha256 is deterministic).
+    Caps at 64-bit unsigned so it fits cleanly into Godot's int64.
+
+    This is the per-node seed isolation that anchors Wall W1: every
+    space has its OWN seed so a change in one space cannot ripple its
+    determinism into another.
+    """
+    digest = hashlib.sha256(space_id.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=False)
+
+
+# ── Entity / Portal ────────────────────────────────────────────────────
+
+
+@dataclass
+class Entity:
+    """One placed thing inside a SpaceNode (id, type, position, props)."""
 
     id: str
-    asset_hash: str                     # opaque hash; geometry is derived
-    attrs: dict[str, Any] = field(default_factory=dict)
-    # Typical attrs: material, generator, zone
+    type: str
+    pos: tuple[float, float, float]
+    properties: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Portal:
+    """An edge between two SpaceNodes — bidirectional, recorded in both
+    spaces' ``portals`` lists so each space can discover it locally."""
+
+    id: str
+    from_space: str
+    to_space: str
+    position: tuple[float, float, float]
+    size: tuple[float, float]
+
+
+# ── SpaceNode ──────────────────────────────────────────────────────────
+
+
+@dataclass
+class SpaceNode:
+    """One node of the World-DAG.
+
+    ``brief`` is the structured intent (mirrors the existing Forge Brief —
+    same shape, same generator).  ``footprint`` is the space's AABB in
+    world coordinates (``{"origin":[x,y,z], "size":[w,h,d]}``).
+
+    ``portals`` is a list of portal ids (the actual portals live in
+    ``World.portals``); every portal has both its ``from_space`` AND
+    ``to_space`` ids in their respective lists so each space can
+    inventory its connections from a single read.
+
+    ``seed`` is a 64-bit int, derived from ``id`` when ``add_space`` is
+    called without an explicit seed.  ``gen_version`` is the generator
+    version pin (unit 3 will use this for replay).
+    """
+
+    id: str
+    seed: int
+    brief: dict[str, Any] = field(default_factory=dict)
+    footprint: dict[str, list[float]] = field(default_factory=dict)
+    entities: list[Entity] = field(default_factory=list)
+    portals: list[str] = field(default_factory=list)
+    gen_version: str = "v1"
+
+
+# ── World ──────────────────────────────────────────────────────────────
+
+
+def _default_world_bible() -> dict[str, dict]:
+    """The hierarchical World Bible (Cohesion Contract root — sub-project c).
+
+    Three nested layers: ``world`` -> ``region`` -> ``site``.  Empty by
+    default; downstream op-flows and validators populate them.  This
+    factory returns a fresh dict on every call so no two Worlds share
+    the same default object.
+    """
+    return {"world": {}, "region": {}, "site": {}}
 
 
 @dataclass
 class World:
-    """The world state: an ordered list of Placements.
+    """The persistent world state — the fold of its op_log.
 
-    This is the canonical state.  The event log is a separate concern
-    (see ``foundry.world.log``)."""
-
-    placements: list[Placement] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class Intent:
-    """A WHOLE small change proposal — never a diff.
-
-    ``action`` is ``"add"`` or ``"replace"``.
-    ``placement`` is the full Placement to add or the replacement for
-    an existing placement (matched by ``placement.id``)."""
-
-    action: str          # "add" | "replace"
-    placement: Placement
-
-
-@dataclass
-class ProposeResult:
-    """The outcome of ``propose``.
-
-    ``accepted`` → the intent was applied (event appended).
-    ``world`` → the new World (STAGED copy when rejected, committed when accepted).
-    ``decisions`` → Decision Points emitted by invariants."""
-
-    accepted: bool
-    world: World
-    decisions: list[DecisionPoint] = field(default_factory=list)
-
-
-# ── Propose ───────────────────────────────────────────────────────────
-
-
-def propose(
-    world: World,
-    intent: Intent,
-    *,
-    material_palette: dict[str, Any] | None = None,
-    max_per_zone: int = 100,
-) -> ProposeResult:
-    """Validate *intent* against *world* and either accept (append event,
-    return new World) or reject (return STAGED copy with Decision Points).
-
-    Args:
-        world: Current world state.
-        intent: A whole change proposal (``add`` or ``replace``).
-        material_palette: Dict of known materials for referential integrity.
-            If None, defaults to ``materials.MATERIAL_PALETTE``.
-        max_per_zone: Maximum placements per zone (budget invariant).
-
-    Returns:
-        ``ProposeResult`` with the outcome.
+    The durable truth is the op_log (replayable from the file); ``nodes``,
+    ``portals`` and ``world_bible`` are the materialized state derived
+    by folding that log via ``apply_op``.  Both views agree because
+    ``apply_op`` is PURE and deterministic.
     """
-    from foundry.world.invariants import check_invariants
 
-    # Work on a staged copy.
-    staged = World(placements=list(world.placements))
-
-    # Apply the intent to the staged copy.
-    if intent.action == "add":
-        staged.placements.append(intent.placement)
-    elif intent.action == "replace":
-        replaced = False
-        for i, p in enumerate(staged.placements):
-            if p.id == intent.placement.id:
-                staged.placements[i] = intent.placement
-                replaced = True
-                break
-        if not replaced:
-            # Replacement target not found → add instead (idempotent).
-            staged.placements.append(intent.placement)
-    else:
-        return ProposeResult(
-            accepted=False,
-            world=world,
-            decisions=[
-                DecisionPoint(
-                    code="world.unknown_action",
-                    stage="world-model",
-                    severity="error",
-                    technical=f"unknown intent action: {intent.action!r}",
-                    plain=f"Unknown action: {intent.action}.",
-                    context={"action": intent.action},
-                    choices=(),
-                )
-            ],
-        )
-
-    # Run tiered invariants.
-    decisions = check_invariants(
-        staged, material_palette=material_palette, max_per_zone=max_per_zone
-    )
-
-    # Separate HARD decisions (blocking) from SOFT (warn-only).
-    hard_decisions = [d for d in decisions if d.severity == "error"]
-    soft_decisions = [d for d in decisions if d.severity != "error"]
-
-    if hard_decisions:
-        return ProposeResult(
-            accepted=False,
-            world=world,   # return ORIGINAL world on reject
-            decisions=hard_decisions,
-        )
-
-    # Accepted — return the staged world.
-    return ProposeResult(
-        accepted=True,
-        world=staged,
-        decisions=soft_decisions,
-    )
+    nodes: dict[str, SpaceNode] = field(default_factory=dict)
+    op_log: list[dict] = field(default_factory=list)
+    portals: dict[str, Portal] = field(default_factory=dict)
+    world_bible: dict[str, dict] = field(default_factory=_default_world_bible)
