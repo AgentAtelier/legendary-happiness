@@ -129,7 +129,7 @@ def test_parse_valid_json():
 
 def test_parse_json_without_fences():
     planner = AssetPlanner()
-    raw = '{"asset_id":"table","generator":"table","material":"worn_oak","params":{"top_width":1.2,"top_depth":0.7,"top_thickness":0.05,"leg_height":0.55,"leg_radius":0.04,"leg_inset":0.08}}'
+    raw = '{"asset_id":"table","generator":"table","material":"worn_oak","params":{"top_width":1.2,"top_depth":0.7,"top_thickness":0.05,"leg_height":0.55,"leg_radius":0.04,"leg_inset":0.08}}'  # noqa: E501  test-data
     spec = planner.parse(raw)
     assert spec["asset_id"] == "table"
     assert spec["params"]["top_width"] == 1.2

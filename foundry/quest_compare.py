@@ -280,7 +280,7 @@ def _compute_quest_signals(scene_name: str) -> dict:
         from eval.signals import compute_quest_signals
 
         data = json.loads(data_file.read_text(encoding="utf-8"))
-        manifest = json.loads((builds_dir / "scenes" / "main_manifest.json").read_text(encoding="utf-8")) if (builds_dir / "scenes" / "main_manifest.json").exists() else []
+        manifest = json.loads((builds_dir / "scenes" / "main_manifest.json").read_text(encoding="utf-8")) if (builds_dir / "scenes" / "main_manifest.json").exists() else []  # noqa: E501  literal
         quest_specs = [v for _, v in data.get("npcs", {}).items()]
         qr = SimpleNamespace(
             error=None, compiled=True, room_theme="", decisions=[],

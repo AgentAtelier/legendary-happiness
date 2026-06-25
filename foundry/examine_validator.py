@@ -70,7 +70,7 @@ Write ONE line of flavour text (8-160 chars). Be evocative but brief.
 No dialogue, no jokes, no meta-commentary — just atmospheric description.
 Output ONLY the flavour text — no quotes, no prefix, no explanation.
 
-Flavour text:"""
+Flavour text:"""  # noqa: E501  literal
 
 
 def _validate_flavour_line(line: str) -> bool:

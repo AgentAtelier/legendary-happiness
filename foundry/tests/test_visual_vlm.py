@@ -267,7 +267,7 @@ def test_extract_json_multiline_object():
 
 def test_parse_valid_json():
     result = _parse_response(
-        '{"textured": true, "material_reads_right": true, "has_holes_or_deformity": false, "floating_bits": false, "notes": "clean"}',
+        '{"textured": true, "material_reads_right": true, "has_holes_or_deformity": false, "floating_bits": false, "notes": "clean"}',  # noqa: E501  test-data
         PROP_DEFAULTS,
         PROP_SCHEMA,
     )
@@ -310,7 +310,7 @@ def test_parse_missing_keys_filled_from_defaults():
 def test_parse_extra_keys_stripped():
     """Extra keys not in schema are not included in result."""
     result = _parse_response(
-        '{"textured": true, "material_reads_right": true, "has_holes_or_deformity": false, "floating_bits": false, "notes": "ok", "extra_field": "should be removed"}',
+        '{"textured": true, "material_reads_right": true, "has_holes_or_deformity": false, "floating_bits": false, "notes": "ok", "extra_field": "should be removed"}',  # noqa: E501  test-data
         PROP_DEFAULTS,
         PROP_SCHEMA,
     )
@@ -319,7 +319,7 @@ def test_parse_extra_keys_stripped():
 
 def test_parse_scene_schema():
     result = _parse_response(
-        '{"floater": false, "clipping": true, "ceiling_visible": true, "npcs_on_floor": true, "composition_ok": false, "theme_coherent": true, "notes": "clipping on left wall"}',
+        '{"floater": false, "clipping": true, "ceiling_visible": true, "npcs_on_floor": true, "composition_ok": false, "theme_coherent": true, "notes": "clipping on left wall"}',  # noqa: E501  test-data
         SCENE_DEFAULTS,
         SCENE_SCHEMA,
     )

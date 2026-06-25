@@ -181,9 +181,9 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
     # targets) rather than crash the build.
     "quest.carryables_short": (
         # technical
-        "room has {carryable_count} carryables for {npc_count} NPCs; layout_room should have injected the missing ones — proceeding round-robin.",
+        "room has {carryable_count} carryables for {npc_count} NPCs; layout_room should have injected the missing ones — proceeding round-robin.",  # noqa: E501  logmsg
         # plain
-        "Only {carryable_count} pick-up-able item(s) for {npc_count} NPCs — sharing targets so the build can still finish.",
+        "Only {carryable_count} pick-up-able item(s) for {npc_count} NPCs — sharing targets so the build can still finish.",  # noqa: E501  logmsg
     ),
     "quest.idle_bark_fallback": (
         # technical
@@ -275,7 +275,7 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         # technical
         "{npc_id}: multi-call failed; retried via grammar-constrained plan().",
         # plain
-        "The ungrammared multi-NPC call failed for one NPC, so I retried that NPC through the reliable single-NPC path to get themed dialogue.",
+        "The ungrammared multi-NPC call failed for one NPC, so I retried that NPC through the reliable single-NPC path to get themed dialogue.",  # noqa: E501  logmsg
     ),
     # ── CB-1: quest depth (objective types + chains) ──
     "quest.objective_not_winnable": (

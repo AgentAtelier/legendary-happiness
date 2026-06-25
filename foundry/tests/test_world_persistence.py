@@ -17,7 +17,6 @@ from world.hashing import canonical_json
 from world.operations import replay
 from world.persistence import load_world, save_world
 
-
 # ── Round-trip equality ──────────────────────────────────────────────
 
 

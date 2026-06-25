@@ -177,7 +177,7 @@ def test_carryables_on_real_surface_or_floor():
                 {"category": "book", "material": "worn_oak", "count": 1},
             ]}
     manifest, _, _ = layout_room(plan)
-    furniture = [e for e in manifest if e["category"] not in ("rug", "painting", "key", "book", "gem", "cup", "bottle", "scroll", "coin-pouch", "candle", "dagger", "ring")]
+    furniture = [e for e in manifest if e["category"] not in ("rug", "painting", "key", "book", "gem", "cup", "bottle", "scroll", "coin-pouch", "candle", "dagger", "ring")]  # noqa: E501  test-data
     carryables = [e for e in manifest if e.get("category") in _CARR and not e.get("decor")]
     for carry in carryables:
         if carry.get("surface") == "floor":

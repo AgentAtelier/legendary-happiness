@@ -11,10 +11,8 @@ is itself a specification of what "the world data model" must be.
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 
 from world.model import Entity, Portal, SpaceNode, World, seed_from_id
-
 
 # ── Helpers ───────────────────────────────────────────────────────────
 

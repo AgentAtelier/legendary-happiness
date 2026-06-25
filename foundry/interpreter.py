@@ -62,7 +62,7 @@ Available placeable object categories (pick from these for key_features[].catego
 
 User's description: {prompt}
 
-Output JSON now:"""
+Output JSON now:"""  # noqa: E501  prompt
 
 
 class Interpreter:

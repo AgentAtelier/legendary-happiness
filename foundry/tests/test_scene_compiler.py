@@ -2506,7 +2506,7 @@ def test_realtime_omnilight_transform_uses_y_up_pos():
 def test_tier0_skips_bake(monkeypatch):
     import lighting_bake
     called = []
-    monkeypatch.setattr(lighting_bake, "bake_scene", lambda *a, **k: called.append(1) or {"tier":0,"status":"realtime","artifacts":[]})
+    monkeypatch.setattr(lighting_bake, "bake_scene", lambda *a, **k: called.append(1) or {"tier":0,"status":"realtime","artifacts":[]})  # noqa: E501  test-data
     lighting_bake.bake_and_apply(lighting_bake.build_scene_desc(
         {"sources":[],"sun":{},"sky":{}}, [], tier=0, samples=1), build_dir="/tmp/x")
     # tier 0 short-circuits inside lighting_bake before calling the baker

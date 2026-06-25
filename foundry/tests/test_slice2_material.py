@@ -190,7 +190,7 @@ def test_all_materials_keep_baked_texture_and_uvs(tmp_path):
 
         # (a) gltf.images non-empty
         assert gltf.images is not None, f"[{material}] gltf.images is None"
-        assert len(gltf.images) > 0, f"[{material}] expected embedded images, got {len(gltf.images) if gltf.images else 0}"
+        assert len(gltf.images) > 0, f"[{material}] expected embedded images, got {len(gltf.images) if gltf.images else 0}"  # noqa: E501  test-data
 
         # (b) baseColorTexture is wired
         mat = gltf.materials[0]

@@ -43,7 +43,7 @@ Each prop has:
 
 Example category choices: table, chair, shelf, cabinet, rug, painting. Theme the choices: a blacksmith leans wrought_iron and denser; a hermit leans worn_oak and sparse.
 
-Output JSON now:"""
+Output JSON now:"""  # noqa: E501  literal
 
 
 class RoomPlanner:

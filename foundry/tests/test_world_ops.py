@@ -15,10 +15,8 @@ Spec-locked properties (the test ENCODES them):
 from __future__ import annotations
 
 import pytest
-
-from world.model import SpaceNode, World, seed_from_id
+from world.model import World, seed_from_id
 from world.operations import WorldOpError, apply_op, replay
-
 
 # ── Op builders ──────────────────────────────────────────────────────
 

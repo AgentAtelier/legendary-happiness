@@ -22,9 +22,8 @@ import hashlib
 import json
 
 from world.hashing import canonical_json, node_content_hash, world_state_hash
-from world.model import Entity, Portal, SpaceNode, World
+from world.model import Entity, SpaceNode, World
 from world.operations import replay
-
 
 # ── canonical_json: sort-key stability ───────────────────────────────
 

@@ -1,7 +1,6 @@
 """Unit tests for materials.py — WS-3.1 new materials + seeded variation."""
 
 import pytest
-
 from materials import MATERIAL_PALETTE, material_ids, material_variation
 
 
@@ -73,7 +72,7 @@ def test_variation_preserves_family():
 @pytest.mark.parametrize("seed", range(100))
 def test_variation_roughness_in_range(seed):
     """Roughness stays in [0, 1] after jitter (parametrized over 100 seeds)."""
-    mat = {"family": "stone", "base_rgb": (0.5, 0.5, 0.5), "mottle_rgb": (0.3, 0.3, 0.3), "roughness": 0.5, "metallic": 0.0}
+    mat = {"family": "stone", "base_rgb": (0.5, 0.5, 0.5), "mottle_rgb": (0.3, 0.3, 0.3), "roughness": 0.5, "metallic": 0.0}  # noqa: E501  test-data
     v = material_variation(mat, seed=seed)
     assert 0.0 <= v["roughness"] <= 1.0, f"roughness out of range at seed {seed}"
 
@@ -81,7 +80,7 @@ def test_variation_roughness_in_range(seed):
 @pytest.mark.parametrize("seed", range(100))
 def test_variation_metallic_in_range(seed):
     """Metallic stays in [0, 1] after jitter (parametrized over 100 seeds)."""
-    mat = {"family": "metal", "tint_rgb": (0.1, 0.1, 0.1), "base_rgb": (0.2, 0.2, 0.2), "roughness": 0.4, "metallic": 0.5}
+    mat = {"family": "metal", "tint_rgb": (0.1, 0.1, 0.1), "base_rgb": (0.2, 0.2, 0.2), "roughness": 0.4, "metallic": 0.5}  # noqa: E501  test-data
     v = material_variation(mat, seed=seed)
     assert 0.0 <= v["metallic"] <= 1.0, f"metallic out of range at seed {seed}"
 

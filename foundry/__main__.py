@@ -404,7 +404,7 @@ def _cmd_visual_eval(args: list[str]) -> int:
         if parsed.lexicon:
             lexicon_path = parsed.lexicon
         else:
-            lexicon_path = str(Path(__file__).resolve().parent.parent / "engine" / "devforge" / "spatial" / "asset_lexicon.json")
+            lexicon_path = str(Path(__file__).resolve().parent.parent / "engine" / "devforge" / "spatial" / "asset_lexicon.json")  # noqa: E501  literal
         logger.info(
             "Auto-rerolling %d flagged items (max %d attempts each)...",
             len(wl), parsed.max_rerolls,

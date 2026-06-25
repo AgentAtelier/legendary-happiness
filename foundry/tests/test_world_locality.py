@@ -17,12 +17,8 @@ will be caught by these tests.
 
 from __future__ import annotations
 
-import dataclasses
-
 from world.hashing import node_content_hash
-from world.model import World
 from world.operations import apply_op, replay
-
 
 # ── Move-entity LOCALITY ─────────────────────────────────────────────
 

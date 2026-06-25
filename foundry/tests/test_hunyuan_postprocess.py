@@ -60,7 +60,7 @@ def test_cache_key_deterministic_and_distinct():
     assert a != c
 
 
-_MUG = "/home/mrg/dev/hunyuan-spike/Hunyuan3D-Omni/omni_inference_results/3domni_voxel/1c1ff58afbf4455ca80228d280f86aef.glb"
+_MUG = "/home/mrg/dev/hunyuan-spike/Hunyuan3D-Omni/omni_inference_results/3domni_voxel/1c1ff58afbf4455ca80228d280f86aef.glb"  # noqa: E501  path
 
 
 @pytest.mark.skipif(not os.path.exists(_MUG), reason="Hunyuan sample mesh absent")

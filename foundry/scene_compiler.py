@@ -622,7 +622,7 @@ def compile_scene(
     palette: dict | None = None,          # Scene palette for per-class material override
     decisions_out: list | None = None,    # Phase 0.3: mutable list for threading decisions back
     *,
-    shell_glb_path: str | None = None,   # P12: cached shell GLB (caller-supplied; compile_scene no longer calls ensure_room_shell)
+    shell_glb_path: str | None = None,   # P12: cached shell GLB (caller-supplied; compile_scene no longer calls ensure_room_shell)  # noqa: E501  literal
     shell_decisions: list | None = None, # P12: Decision Points from the cache resolver (forwarded into decisions_out)
 ) -> str:
     """Compile quest specs + manifest into a Godot .tscn file.

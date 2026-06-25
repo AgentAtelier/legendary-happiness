@@ -131,7 +131,7 @@ def _apply_bake_artifacts(bake_result: dict, build_dir: str) -> None:
 
 
 def bake_key(scene_desc: dict) -> str:
-    """Stable content-address for a lighting bake (layout + sun + sky + tier + samples + interior lights + palette + GLB mtimes)."""
+    """Stable content-address for a lighting bake (layout + sun + sky + tier + samples + interior lights + palette + GLB mtimes)."""  # noqa: E501  literal
     # Phase 0.8: include palette hash + per-placement GLB mtime so a
     # recolour or regenerated GLB invalidates the bake.
     glb_signals: list = []
