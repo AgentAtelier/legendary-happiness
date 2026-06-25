@@ -41,6 +41,7 @@ ignore = [
 "**/tests/**" = ["F401", "F821", "F811", "E402"]                      # tests use local imports + module-level skip()
 "**/blender/**" = ["E402"]                                            # blender scripts set sys.path before importing materials.py
 "__main__.py" = ["E402"]                                              # CLI bootstrap: sys.path.insert(0, _foundry_dir) then bare imports
+"world_cli.py" = ["E402"]                                           # Same CLI bootstrap pattern as __main__.py
 
 [tool.ruff.format]
 quote-style = "double"
