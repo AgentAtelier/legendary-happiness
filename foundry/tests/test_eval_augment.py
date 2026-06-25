@@ -230,9 +230,13 @@ def test_request_key_same_for_normalized_duplicate():
     assert _request_key("a table") != _request_key("a chair")
 
 
-# ═══════════════════════════════════════════════════════════════════════
-#  P6: augment_quest_corpus — fetch-quest corpus generation
-# ═══════════════════════════════════════════════════════════════════════
+# ── P6: augment_quest_corpus — fetch-quest corpus generation ────────────
+# Intentionally LEFT in the fast gate (no `blender`/`godot_heavy`/`live`
+# marker): these are CPU-bound pure-Python work, the `_stub_llm()` returns
+# canned JSON, and `_QUEST_MANIFEST` is inline data.  Marking would require
+# a new marker category; that's a separate decision.
+
+
 
 _QUEST_MANIFEST = [
     {"id": "table_0", "category": "table", "material": "worn_oak",
