@@ -118,6 +118,11 @@ now built on the World-DAG instead of the disposable path.
 
 ## 7. The first concrete step
 
+**Build progress (sub-project a):** ✅ **unit 1** (`world/` — model, operations, hashing, persistence;
+116 tests: locality + cross-process determinism) · ✅ **unit 2** (`world/validation.py` — the W3 AABB
+gate: `validate_op`/`apply_op_checked`, structured `Violation`s; 21 tests) · ⏳ **unit 3** (deterministic
+Godot assembly of a multi-space world — builds on `scene_compiler`, needs Godot verification).
+
 Sub-project (a)'s spine: **human-authored JSON-patch → World-DAG → deterministic Godot assembly, with the
 validation gate — no LLM.** A human writes `{op: add_space, ...}` / `{op: add_portal, ...}` /
 `{op: move_entity, target: throne_001, ...}`, the engine assembles it deterministically, and the gate
