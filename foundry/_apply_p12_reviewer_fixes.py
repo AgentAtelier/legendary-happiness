@@ -5,7 +5,16 @@
 3. _default_box_shell autouse fixture docstring note.
 4+5. _compile_with_shell helper docstring update.
 """
+
+import logging
+import os
 from pathlib import Path
+
+logging.basicConfig(
+    level=os.environ.get("FORGE_LOG_LEVEL", "INFO"),
+    format="%(levelname)s:%(name)s:%(message)s",
+)
+logger = logging.getLogger(__name__)
 
 p = Path("tests/test_scene_compiler.py")
 t = p.read_text(encoding="utf-8")
@@ -259,7 +268,7 @@ new5 = '''def _compile_with_shell(manifest=None, room_size=None, theme=None, *,
 if old5 in t:
     t = apply("(4+5) helper docstring", old5, new5)
 else:
-    print("(4+5) helper docstring: signature differs from expected — skipping")
+    logger.warning("(4+5) helper docstring: signature differs from expected — skipping")
 
 p.write_text(t, encoding="utf-8")
-print("P12 reviewer fixes applied.")
+logger.info("P12 reviewer fixes applied.")

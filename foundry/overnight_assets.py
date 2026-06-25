@@ -153,7 +153,7 @@ if __name__ == "__main__":
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
     if a.cmd == "count":
-        print(len(SPECS))
+        logger.info(str(len(SPECS)))
     elif a.cmd == "one":
         prep_one(a.index)
     elif a.cmd == "prep":

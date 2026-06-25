@@ -128,8 +128,10 @@ def _cmd_stability(args: argparse.Namespace) -> int:
 
     requests = load_corpus(args.corpus)
     if not requests:
-        print(f"error: corpus {args.corpus!r} is empty (after skipping "
-              f"comments/blanks).", file=sys.stderr)
+        logger.error(
+            "corpus %r is empty (after skipping comments/blanks).",
+            args.corpus,
+        )
         return 2
 
     logger.info(
@@ -143,7 +145,7 @@ def _cmd_stability(args: argparse.Namespace) -> int:
         try:
             from llm import FoundryLLM
         except Exception as exc:
-            print(f"error: could not import FoundryLLM: {exc}", file=sys.stderr)
+            logger.error("could not import FoundryLLM: %s", exc)
             return 3
         llm = FoundryLLM()
     else:
@@ -183,8 +185,10 @@ def _cmd_regression(args: argparse.Namespace) -> int:
 
     requests = load_corpus(args.corpus)
     if not requests:
-        print(f"error: corpus {args.corpus!r} is empty (after skipping "
-              f"comments/blanks).", file=sys.stderr)
+        logger.error(
+            "corpus %r is empty (after skipping comments/blanks).",
+            args.corpus,
+        )
         return 2
 
     expectations_dir = args.expectations or str(Path(args.out_dir) / "expectations")
@@ -193,7 +197,7 @@ def _cmd_regression(args: argparse.Namespace) -> int:
         try:
             from llm import FoundryLLM
         except Exception as exc:
-            print(f"error: could not import FoundryLLM: {exc}", file=sys.stderr)
+            logger.error("could not import FoundryLLM: %s", exc)
             return 3
         llm = FoundryLLM()
     else:
@@ -245,7 +249,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         try:
             from llm import FoundryLLM  # type: ignore
         except Exception as exc:
-            print(f"error: could not import FoundryLLM: {exc}", file=sys.stderr)
+            logger.error("could not import FoundryLLM: %s", exc)
             return 3
         llm = FoundryLLM()
     else:
@@ -255,8 +259,10 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     requests = load_corpus(args.corpus)
     if not requests:
-        print(f"error: corpus {args.corpus!r} is empty (after skipping "
-              f"comments/blanks).", file=sys.stderr)
+        logger.error(
+            "corpus %r is empty (after skipping comments/blanks).",
+            args.corpus,
+        )
         return 2
 
     logger.info(
