@@ -2524,6 +2524,16 @@ def main():
     assign_uvs(mesh)
     apply_material(mesh, spec.get("material", "default"), seed=material_offset, spec=spec)
 
+    # ── Capture real mesh AABB min-y for prop grounding ──
+    # Blender is Z-up; glTF export converts to Y-up, so Blender Z-min
+    # becomes the GLB's AABB min-y in Godot space.
+    if spec.get("generator") not in _FLAT_GENERATORS:
+        aabb_min_y = min((v.co.z for v in mesh.vertices), default=0.0)
+        # Write alongside the GLB so scene_compiler can read it.
+        aabb_path = out_glb.replace(".glb", ".aabb.json")
+        with open(aabb_path, "w", encoding="utf-8") as af:
+            json.dump({"aabb_min_y": aabb_min_y}, af)
+
     bpy.ops.export_scene.gltf(
         filepath=out_glb, export_format="GLB", use_selection=False
     )

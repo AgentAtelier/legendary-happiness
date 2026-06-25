@@ -27,12 +27,13 @@ def _argv():
 # ── node graphs ─────────────────────────────────────────────────
 
 def build_stone_nodes(nodes, links, seed):
-    """Ashlar stone: multi-octave tone × dark mortar joints. High contrast.
+    """Ashlar stone walls: multi-octave tone × dark mortar joints. High contrast.
+    Task 4: multi-octave Voronoi blend breaks up single-octave procedural tell.
     Returns (color_socket, height_socket)."""
     tc = nodes.new("ShaderNodeTexCoord")
     mp = nodes.new("ShaderNodeMapping")
     mp.vector_type = "TEXTURE"
-    mp.inputs["Scale"].default_value = (3, 3, 3)
+    mp.inputs["Scale"].default_value = (5, 5, 5)  # Task 3: increased from 3
     mp.inputs["Location"].default_value = (seed, seed, 0)
     links.new(tc.outputs["Object"], mp.inputs["Vector"])
 
@@ -43,18 +44,44 @@ def build_stone_nodes(nodes, links, seed):
     n.inputs["Roughness"].default_value = 0.65
     links.new(mp.outputs["Vector"], n.inputs["Vector"])
 
-    # ashlar block joints: distance-to-edge -> thin dark mortar lines
-    v = nodes.new("ShaderNodeTexVoronoi")
-    v.feature = "DISTANCE_TO_EDGE"
-    v.inputs["Scale"].default_value = 6.0
-    links.new(mp.outputs["Vector"], v.inputs["Vector"])
+    # Task 4: multi-octave Voronoi blend — three scales mixed to break
+    # the recognizable single-octave procedural look.
+    v1 = nodes.new("ShaderNodeTexVoronoi")
+    v1.feature = "DISTANCE_TO_EDGE"
+    v1.inputs["Scale"].default_value = 6.0
+    links.new(mp.outputs["Vector"], v1.inputs["Vector"])
+
+    v2 = nodes.new("ShaderNodeTexVoronoi")
+    v2.feature = "DISTANCE_TO_EDGE"
+    v2.inputs["Scale"].default_value = 12.0
+    links.new(mp.outputs["Vector"], v2.inputs["Vector"])
+
+    v3 = nodes.new("ShaderNodeTexVoronoi")
+    v3.feature = "DISTANCE_TO_EDGE"
+    v3.inputs["Scale"].default_value = 24.0
+    links.new(mp.outputs["Vector"], v3.inputs["Vector"])
+
+    # Blend voronoi octaves
+    v_mix1 = nodes.new("ShaderNodeMixRGB")
+    v_mix1.blend_type = "MIX"
+    v_mix1.inputs["Factor"].default_value = 0.4
+    links.new(v1.outputs["Distance"], v_mix1.inputs["Color1"])
+    links.new(v2.outputs["Distance"], v_mix1.inputs["Color2"])
+
+    v_mix2 = nodes.new("ShaderNodeMixRGB")
+    v_mix2.blend_type = "MIX"
+    v_mix2.inputs["Factor"].default_value = 0.25
+    links.new(v_mix1.outputs["Color"], v_mix2.inputs["Color1"])
+    links.new(v3.outputs["Distance"], v_mix2.inputs["Color2"])
+
+    # Mortar joint ramp from blended Voronoi
     joints = nodes.new("ShaderNodeValToRGB")
     j = joints.color_ramp.elements
     j[0].position = 0.0
     j[0].color = (0.05, 0.05, 0.05, 1)   # mortar (dark, recessed)
     j[1].position = 0.06
     j[1].color = (1, 1, 1, 1)            # stone face
-    links.new(v.outputs["Distance"], joints.inputs["Factor"])
+    links.new(v_mix2.outputs["Color"], joints.inputs["Factor"])
 
     # stone face color with real contrast (warm grey, spread > 0.35)
     face = nodes.new("ShaderNodeValToRGB")
@@ -71,6 +98,55 @@ def build_stone_nodes(nodes, links, seed):
     links.new(face.outputs["Color"], mul.inputs["Color1"])
     links.new(joints.outputs["Color"], mul.inputs["Color2"])
     return mul.outputs["Color"], joints.outputs["Color"]
+
+
+def build_roof_nodes(nodes, links, seed):
+    """Roof/ceiling: darker, higher roughness, distinct from wall stone.
+    Subtle wood-plank-like grain + darker tone so the ceiling reads as
+    a different surface from the walls.
+    Returns (color_socket, height_socket)."""
+    tc = nodes.new("ShaderNodeTexCoord")
+    mp = nodes.new("ShaderNodeMapping")
+    mp.vector_type = "TEXTURE"
+    mp.inputs["Scale"].default_value = (4, 4, 4)
+    mp.inputs["Location"].default_value = (seed + 10, seed, 0)
+    links.new(tc.outputs["Object"], mp.inputs["Vector"])
+
+    n = nodes.new("ShaderNodeTexNoise")
+    n.inputs["Scale"].default_value = 5.0
+    n.inputs["Detail"].default_value = 6.0
+    n.inputs["Roughness"].default_value = 0.7
+    links.new(mp.outputs["Vector"], n.inputs["Vector"])
+
+    # Subtle plank-like banding along one axis
+    planks = nodes.new("ShaderNodeTexWave")
+    planks.wave_type = "BANDS"
+    planks.inputs["Scale"].default_value = 2.0
+    links.new(mp.outputs["Vector"], planks.inputs["Vector"])
+
+    seams = nodes.new("ShaderNodeValToRGB")
+    s = seams.color_ramp.elements
+    s[0].position = 0.0
+    s[0].color = (0.08, 0.07, 0.06, 1)   # seam
+    s[1].position = 0.05
+    s[1].color = (1, 1, 1, 1)
+    links.new(planks.outputs["Color"], seams.inputs["Factor"])
+
+    # Darker tone ramp (distinct from warm wall stone)
+    tone = nodes.new("ShaderNodeValToRGB")
+    t = tone.color_ramp.elements
+    t[0].position = 0.0
+    t[0].color = (0.20, 0.18, 0.16, 1)   # dark brown-grey
+    t[1].position = 1.0
+    t[1].color = (0.52, 0.48, 0.44, 1)   # light roof tone
+    links.new(n.outputs["Factor"], tone.inputs["Factor"])
+
+    mul = nodes.new("ShaderNodeMixRGB")
+    mul.blend_type = "MULTIPLY"
+    mul.inputs["Factor"].default_value = 1.0
+    links.new(tone.outputs["Color"], mul.inputs["Color1"])
+    links.new(seams.outputs["Color"], mul.inputs["Color2"])
+    return mul.outputs["Color"], seams.outputs["Color"]
 
 
 def build_timber_nodes(nodes, links, seed):
@@ -245,7 +321,8 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
 
     surfaces = [
-        ("stone", build_stone_nodes, 1.0, 0.9, 0.0),
+        ("wall", build_stone_nodes, 1.0, 0.9, 0.0),
+        ("roof", build_roof_nodes, 3.0, 0.85, 0.0),
         ("timber", build_timber_nodes, 2.0, 0.7, 0.0),
     ]
     for prefix, builder, seed, rough, metal in surfaces:

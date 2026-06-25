@@ -94,6 +94,7 @@ def build_shell(w, d, wall_h, seed=0.0, windows=(), **kw):
     rang = math.atan2(apex - wall_h, w / 2.0)
 
     stone = bmesh.new()
+    roof = bmesh.new()
     timber = bmesh.new()
 
     # floor (timber): top at z=0
@@ -119,21 +120,22 @@ def build_shell(w, d, wall_h, seed=0.0, windows=(), **kw):
     # ridge beam (timber) along Y
     _beam(timber, (0, 0, apex), (beam, d, beam))
 
-    # roof boards (stone) — two slopes, slightly above the rafters
+    # roof boards (roof) — two slopes, slightly above the rafters, distinct from walls
     off = beam * 0.6
-    _beam(stone, (-w / 4, 0, zc + off), (rlen, d, board_t), ry=-rang)
-    _beam(stone, ( w / 4, 0, zc + off), (rlen, d, board_t), ry=+rang)
+    _beam(roof, (-w / 4, 0, zc + off), (rlen, d, board_t), ry=-rang)
+    _beam(roof, ( w / 4, 0, zc + off), (rlen, d, board_t), ry=+rang)
 
-    return stone, timber
+    return stone, roof, timber
 
 
 def main():
     out, w, d, wall_h, theme, seed, windows = _args()
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
-    stone_bm, timber_bm = build_shell(w, d, wall_h, seed=seed, windows=windows)
+    stone_bm, roof_bm, timber_bm = build_shell(w, d, wall_h, seed=seed, windows=windows)
 
-    for bm, name, rgb in [(stone_bm, "stone", (0.6, 0.58, 0.54)),
+    for bm, name, rgb in [(stone_bm, "wall", (0.6, 0.58, 0.54)),
+                          (roof_bm, "roof", (0.48, 0.45, 0.42)),
                           (timber_bm, "timber", (0.4, 0.26, 0.13))]:
         me = bpy.data.meshes.new(name)
         bm.to_mesh(me)
