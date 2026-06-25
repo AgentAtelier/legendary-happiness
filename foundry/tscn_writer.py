@@ -35,18 +35,18 @@ def node_header(
 ) -> str:
     """Return a ``[node ...]`` header line.
 
-    When *instance* is given, ``instance=ExtResource(...)`` is appended
-    (space, no comma) and *type* is omitted (Godot 4 convention).
+    When *instance* is given, ``instance=ExtResource(...)`` is written INSIDE
+    the brackets (Godot 4 requires all node attributes inside ``[node ...]``;
+    a trailing ``] instance=...`` does not parse).
     """
     parts: list[str] = [f'name="{name}"']
     if type is not None:
         parts.append(f'type="{type}"')
     if parent is not None:
         parts.append(f'parent="{parent}"')
-    result = f"[node {' '.join(parts)}]"
     if instance is not None:
-        result += f' instance=ExtResource("{instance}")'
-    return result
+        parts.append(f'instance=ExtResource("{instance}")')
+    return f"[node {' '.join(parts)}]"
 
 
 def transform3d(

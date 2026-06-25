@@ -70,7 +70,7 @@ def test_node_header_instance_no_type():
     """When instance= is given, type= is omitted (Godot 4 convention for
     PackedScene instances on the header line)."""
     result = node_header("table_0_model", parent="table_0", instance="1")
-    assert result == '[node name="table_0_model" parent="table_0"] instance=ExtResource("1")'
+    assert result == '[node name="table_0_model" parent="table_0" instance=ExtResource("1")]'
     assert "type=" not in result, "instance= header should not include type="
 
 
