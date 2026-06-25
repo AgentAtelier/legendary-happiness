@@ -5,6 +5,12 @@
 # 500-line file-length gate).  This script is the fast feedback one — just
 # lint, ~3 s on the full tree.
 #
+# Scope: run from foundry/ (where the venv lives) with `ruff check .` so the
+# pyproject.toml at the repo root is the single source of truth for rule
+# selection, ignores, and excluded paths (`extend-exclude`).  The handful of
+# deliberate-style rules that the project chooses to ignore are documented
+# in docs/current/ACCEPTED.md.
+#
 # Usage:
 #   scripts/lint.sh          # lint-only (default)
 #   scripts/lint.sh --fix     # apply safe auto-fixes (e.g. sort imports)
@@ -15,8 +21,19 @@
 
 set -euo pipefail
 
+# Resolve the script's own dir so we can `cd foundry` deterministically
+# regardless of the caller's CWD.  Running ruff from foundry/ matches the
+# convention in AGENTS.md (every developer runs commands from foundry/).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FOUNDRY_DIR="$SCRIPT_DIR/../foundry"
+if [ ! -d "$FOUNDRY_DIR" ]; then
+    echo "ERROR: foundry/ not found relative to $SCRIPT_DIR" >&2
+    exit 2
+fi
+cd "$FOUNDRY_DIR"
+
 RUFF=""
-for venv in "$PWD/foundry/.venv/bin/ruff" "$PWD/hub/.venv/bin/ruff" "$(command -v ruff || true)"; do
+for venv in "$PWD/.venv/bin/ruff" "$PWD/../hub/.venv/bin/ruff" "$(command -v ruff || true)"; do
     if [ -x "$venv" ]; then RUFF="$venv"; break; fi
 done
 if [ -z "$RUFF" ]; then
@@ -31,7 +48,7 @@ ARGS=(check)
 if [ "${1:-}" = "--fix" ]; then
     ARGS+=(--fix)
 fi
-ARGS+=(foundry/ hub/)
+ARGS+=(.)
 
 echo "=== ruff ${ARGS[*]} ==="
 if ! "$RUFF" "${ARGS[@]}"; then
@@ -44,7 +61,7 @@ fi
 if [ "${1:-}" = "--stats" ] || [ "${2:-}" = "--stats" ]; then
     echo ""
     echo "=== ruff statistics ==="
-    "$RUFF" check foundry/ hub/ --statistics || true
+    "$RUFF" check . --statistics || true
 fi
 
 echo ""

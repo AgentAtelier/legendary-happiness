@@ -19,10 +19,10 @@ prompt contradicts this file, the task prompt wins — but call out the conflict
 
 ## Lint gate (Phase 0.9 — recurrence-preventer)
 
-Run **before** every commit that touches Python under `foundry/` or `hub/`:
+Run **before** every commit that touches Python under `foundry/`:
 
 ```bash
-scripts/lint.sh                # ruff check only
+scripts/lint.sh                # ruff check . (from foundry/, enforced gate)
 scripts/lint.sh --fix          # apply safe auto-fixes first, then re-check
 ```
 
@@ -31,6 +31,21 @@ The linter is `ruff` (installed via `foundry/requirements-dev.txt`); rule select
 **Safe auto-fixes only** — `UP006`/`UP007`/`UP024` are deferred to the Phase 1.4
 `scene_compiler.py` decompose (see `AUDIT-03 Q12`).  Distinct from `scripts/check.sh`,
 which adds `ruff format --check` + the 500-line file-length gate.
+
+### 🛑 Definition of done = BOTH gates green
+
+Every implementation turn must end with **both** of these passing:
+
+```bash
+cd foundry && .venv/bin/ruff check .        # ruff: exit 0, ZERO violations
+cd foundry && .venv/bin/python -m pytest -m "not blender and not godot_heavy and not live" -q  # pytest fast gate
+```
+
+A clean Ruff AND a green fast gate is the **minimum** bar; add the full
+suite (`-q` without `-m`) and the Godot-in-the-loop gate (`test_godot_smoke.py`)
+on top — see below.  Ruff-green with the fast-gate red is **not done**; a
+red fast-gate with ruff-green is **not done**.  Reported-as-done turns must
+paste both lines literally.
 
 ## 🔴 Always run the FULL test suite — never a subset
 
@@ -45,6 +60,18 @@ cd foundry && .venv/bin/python -m pytest tests/test_godot_smoke.py -q  # THE God
 Report the **total** count (e.g. "816 passed") — never a hand-picked subset like "133 key tests
 pass".  A green subset over a red full suite is how bugs (AO not wired, missing imports, material
 drift) ship undetected.
+
+### ⚡ Fast gate (stack-down safe, no hang)
+
+The **fast gate** must NEVER hang and must NOT depend on the live LLM/hub stack:
+
+```
+cd foundry && .venv/bin/python -m pytest -m "not blender and not godot_heavy and not live" -q
+```
+
+This excludes Blender subprocess tests, heavy Godot-headless tests, and stack-dependent
+``@pytest.mark.live`` tests (llama :8002, hub :8003, live client imports).
+The global ``timeout = 120`` in ``pyproject.toml`` ensures no test can hang the gate.
 
 ### 🛑 The Godot gate is non-negotiable (this has been a recurring false-green)
 
