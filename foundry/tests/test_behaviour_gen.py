@@ -733,6 +733,7 @@ def test_room_planner_accepts_seed():
     assert room_plan["props"][0]["count"] == 2
 
 
+@pytest.mark.live
 def test_room_planner_live_seed_reproducible():
     """P-H-1: With a real FoundryLLM + seed, two plan() calls produce
     identical room plans (requires llama server)."""
@@ -780,6 +781,7 @@ def _llama_server_reachable() -> bool:
         return False
 
 
+@pytest.mark.live
 def test_plan_live_produces_valid_quest_spec():
     """Integration: real LLM produces a quest spec with a valid target_entity
     and all required fields."""

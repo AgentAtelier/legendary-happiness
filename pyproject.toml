@@ -38,3 +38,8 @@ skip-magic-trailing-comma = false
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.pytest.ini_options]
+# Backstop only — the real fix for hangs is marking stack-dependent tests `live`.
+# 60s is well above the slowest legit test (~7s); a stray hang costs 60s, not 120.
+timeout = 60

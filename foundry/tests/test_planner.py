@@ -432,6 +432,7 @@ def _llama_server_reachable() -> bool:
         return False
 
 
+@pytest.mark.live
 def test_plan_live_produces_buildable_spec():
     """Integration: real LLM produces a spec that passes compile_spec.
 
@@ -575,6 +576,7 @@ def test_plan_cabinet_with_fake_llm():
     compile_spec(spec)
 
 
+@pytest.mark.live
 def test_plan_live_chair_produces_buildable_spec():
     """Integration: real LLM produces a chair spec from 'a simple wooden chair'.
     'wooden' => family_defaulted decision.
