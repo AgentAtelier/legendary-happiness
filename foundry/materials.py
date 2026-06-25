@@ -5,6 +5,8 @@ roughness parameters.
 This is a plain data module, standalone (no engine/devforge imports).
 """
 
+import random as _random
+
 MATERIAL_PALETTE = {
     "worn_oak": {
         "family": "wood",
@@ -97,9 +99,6 @@ MATERIAL_PALETTE = {
         "metallic": 0.08,
     },
 }
-
-
-import random as _random
 
 
 def material_variation(mat: dict, seed: int = 0) -> dict:

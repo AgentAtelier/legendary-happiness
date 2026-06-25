@@ -20,6 +20,7 @@ from pathlib import Path
 
 from decisions import Choice, DecisionPoint, make_decision
 from dialogue_validator import validate_dialogue, validate_idle_barks
+from llm import load_grammar as _load_grammar
 from soul import default_soul, tone_descriptor
 
 log = logging.getLogger(__name__)
@@ -27,8 +28,6 @@ log = logging.getLogger(__name__)
 _GRAMMAR_PATH = str(Path(__file__).resolve().parent / "grammar" / "quest_spec.gbnf")
 
 # ── Load grammar once at module level ────────────────────────────
-
-from llm import load_grammar as _load_grammar
 
 _GRAMMAR = _load_grammar(_GRAMMAR_PATH)
 
@@ -192,7 +191,7 @@ Carryable items available: key_0
 
 Room theme: {room_theme}
 
-Output JSON now:"""
+Output JSON now:"""  # noqa: E501  prompt
 
 # C-4: Multi-NPC prompt — one LLM call generates N quests with distinct
 # roles and unique targets.  The LLM sees all NPC IDs so it can pick
@@ -332,7 +331,7 @@ Example with a deliver quest (npc_0 asks player to bring item to npc_1):
 Room theme: {room_theme}
 NPC IDs: {npc_ids}
 
-Output JSON now:"""
+Output JSON now:"""  # noqa: E501  prompt
 
 
 class QuestBehaviourPlanner:

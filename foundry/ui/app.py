@@ -19,6 +19,13 @@ import uuid
 from collections.abc import Callable
 from pathlib import Path
 
+# FastAPI imports are intentionally hoisted to the top so the app + routes
+# can be constructed below.  No sys.path gymnastics; pure standard library
+# + third-party imports.
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
 # ── Injectables (overridden in tests) ────────────────────────────────
 
 #: Callable ``(request: str) -> (spec: dict, decisions: list)``.
@@ -61,10 +68,6 @@ _MAX_DECISIONS = 100
 
 
 # ── FastAPI app ──────────────────────────────────────────────────────
-
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Forge UI")
 

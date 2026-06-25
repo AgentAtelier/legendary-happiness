@@ -13,6 +13,7 @@ from pathlib import Path
 from age_resolver import resolve_age
 from compiler import PARAM_RANGES, compile_spec
 from decisions import DecisionPoint
+from llm import load_grammar as _load_grammar
 from material_resolver import resolve_material
 
 log = logging.getLogger(__name__)
@@ -20,8 +21,6 @@ log = logging.getLogger(__name__)
 _GRAMMAR_PATH = str(Path(__file__).resolve().parent / "grammar" / "asset_spec.gbnf")
 
 # ── Load grammar once at module level ────────────────────────────
-
-from llm import load_grammar as _load_grammar
 
 _GRAMMAR = _load_grammar(_GRAMMAR_PATH)
 
@@ -120,7 +119,7 @@ Request: "a wooden bookcase with a slightly worn look"
 
 Request: {request}
 
-Output JSON now:"""
+Output JSON now:"""  # noqa: E501  prompt
 
 
 class AssetPlanner:

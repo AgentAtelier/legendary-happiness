@@ -235,7 +235,9 @@ def run_quest_corpus(
         from decisions import to_dict as _decision_to_dict
         _serialize_decision = _decision_to_dict
     except ImportError:
-        _serialize_decision = lambda d: {"repr": repr(d)}
+
+        def _serialize_decision(d):
+            return {"repr": repr(d)}
 
     records: list[QuestRecord] = []
     for idx, theme in enumerate(room_themes):

@@ -45,9 +45,11 @@ from __future__ import annotations
 
 import re
 
+from brief import THEMES as _BRIEF_THEMES  # spine-slice-1 schema validation; hoisted to top
 from category_registry import DECOR_CATEGORIES
 from compiler import PARAM_RANGES
 from material_resolver import material_cues, resolve_material
+from wear_words import _AGE_BAND_SPLIT, AGED_WORDS, NEW_WORDS  # noqa: F401  (re-exported via signals.{AGED,NEW}_WORDS)
 
 # ── Size words ────────────────────────────────────────────────────────
 # Each size word maps to:
@@ -96,7 +98,7 @@ _MATERIAL_KEYWORDS: tuple[tuple[str, str], ...] = (
 # ── Wear lexicons ────────────────────────────────────────────────────
 # Single-sourced in foundry/wear_words.py; imported for backward compat
 # so other modules can continue to reference signals.AGED_WORDS etc.
-from wear_words import _AGE_BAND_SPLIT, AGED_WORDS, NEW_WORDS  # noqa: F401
+#   (The import itself lives at the top of this module.)
 
 # ── Severity classification (slice 2) ───────────────────────────────────────
 # Each objective-signal tag is bucketed into a severity tier so the
@@ -377,11 +379,7 @@ def material_conflict_detail(request: str):
     }
 
 
-# ═══════════════════════════════════════════════════════════════════════
-#  Spine: brief_valid — Brief schema validation signal (spine slice 1)
-# ═══════════════════════════════════════════════════════════════════════
 
-from brief import THEMES as _BRIEF_THEMES  # noqa: E402
 
 
 def check_brief_valid(brief: dict | None) -> dict:

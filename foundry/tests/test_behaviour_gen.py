@@ -128,7 +128,7 @@ def test_parse_valid_quest_json():
 
 def test_parse_with_markdown_fences():
     planner = QuestBehaviourPlanner()
-    raw = '```json\n{"npc_role":"hermit","target_entity":"table_0","dialogue":{"greet":"Hi","ask":"Find a book","wrong":"Not it","thank":"Thanks"},"objective":{"type":"fetch","target":"table_0","giver":"npc"}}\n```'
+    raw = '```json\n{"npc_role":"hermit","target_entity":"table_0","dialogue":{"greet":"Hi","ask":"Find a book","wrong":"Not it","thank":"Thanks"},"objective":{"type":"fetch","target":"table_0","giver":"npc"}}\n```'  # noqa: E501  test-data
     spec = planner.parse(raw)
     assert spec["npc_role"] == "hermit"
     assert spec["target_entity"] == "table_0"
@@ -136,7 +136,7 @@ def test_parse_with_markdown_fences():
 
 def test_parse_with_think_tags():
     planner = QuestBehaviourPlanner()
-    raw = '<think>I should pick a hermit</think>\n{"npc_role":"hermit","target_entity":"table_0","dialogue":{"greet":"Hi","ask":"Find a book","wrong":"Not it","thank":"Thanks"},"objective":{"type":"fetch","target":"table_0","giver":"npc"}}'
+    raw = '<think>I should pick a hermit</think>\n{"npc_role":"hermit","target_entity":"table_0","dialogue":{"greet":"Hi","ask":"Find a book","wrong":"Not it","thank":"Thanks"},"objective":{"type":"fetch","target":"table_0","giver":"npc"}}'  # noqa: E501  test-data
     spec = planner.parse(raw)
     assert spec["npc_role"] == "hermit"
 
@@ -841,7 +841,8 @@ def test_plan_multi_recovers_from_malformed_json():
     """C-4 robustness: a weak model's malformed multi-NPC JSON must not crash —
     every NPC still gets a winnable quest with a distinct target."""
     planner = QuestBehaviourPlanner()
-    bad_llm = lambda prompt, grammar=None, **kw: "{not valid json at all"
+    def bad_llm(prompt, grammar=None, **kw):
+        return "{not valid json at all"
     specs, decisions = planner.plan_multi("a tavern", _MANIFEST_4, bad_llm, npc_count=2)
     assert len(specs) == 2
     targets = [s["target_entity"] for s in specs]

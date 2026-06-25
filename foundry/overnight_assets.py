@@ -43,8 +43,9 @@ WORK = Path.home() / ".cache" / "forge" / "overnight_work"
 
 # ── Art direction: the curated hero set (category, material, params, target m) ──
 # Sizes are real-world metres (post-bake scale-normalize envelope).
-_S = lambda cat, mat, dims, **p: {"category": cat, "material": mat, "params": p,
-                                  "target_dims": list(dims)}
+def _S(cat, mat, dims, **p):
+    return {"category": cat, "material": mat, "params": p,
+            "target_dims": list(dims)}
 
 SPECS = [
     _S("barrel", "weathered_pine", (0.6, 0.9, 0.6), radius=0.3, height=0.9, staves=12),

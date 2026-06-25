@@ -123,7 +123,7 @@ def test_load_watertight_returns_trimesh(tmp_path):
 @pytest.mark.skipif(not _HAS_TRIMESH, reason="trimesh not installed")
 def test_load_watertight_missing_file():
     """_load_watertight raises on missing GLB."""
-    with pytest.raises(Exception):
+    with pytest.raises((FileNotFoundError, OSError, ValueError)):
         _load_watertight("/nonexistent/path/mesh.glb")
 
 
