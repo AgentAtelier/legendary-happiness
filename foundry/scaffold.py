@@ -217,8 +217,12 @@ def scaffold_project(
         for entry in manifest:
             cls = class_for(entry.get("material", "default"))
             class_set.add(cls)
-        # Shell classes are always stone + wood (when GLB shell exists)
+        # Shell classes are always stone + wood (when GLB shell exists).
+        # Task 2: roof uses the distinct "rock" class so it doesn't share
+        # the walls' "stone" material — keep in sync with scene_compiler's
+        # palette_classes computation.
         class_set.add("stone")
+        class_set.add("rock")
         class_set.add("wood")
         assets_dir = build_path / "assets"
         n = generate_class_textures(palette, class_set, str(assets_dir))

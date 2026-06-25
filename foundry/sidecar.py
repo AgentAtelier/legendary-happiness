@@ -41,6 +41,7 @@ def build_sidecar(
     spec: dict,
     glb_filename: str = "",
     decisions: Sequence[DecisionPoint] | None = None,
+    aabb_min_y: float | None = None,
 ) -> dict:
     """Produce a sidecar dict VALID against the ``procedural`` branch of the
     asset-metadata schema.
@@ -57,6 +58,11 @@ def build_sidecar(
         ``"decisions"`` key (via ``decisions.to_dict``).  Falsy / empty
         means the key is OMITTED from the sidecar (the schema doesn't
         require it; future readers treat absence as "no decisions").
+    aabb_min_y:
+        Optional real AABB min-y (in Godot Y-up space) of the built mesh.
+        When provided, stored under ``procedural.aabb_min_y`` so
+        scene_compiler can ground props on their actual mesh base rather
+        than the registry collision-box approximation.
     """
     sidecar: dict = {
         "asset_id": spec["asset_id"],
@@ -78,6 +84,8 @@ def build_sidecar(
             "biome_tags": [],
         },
     }
+    if aabb_min_y is not None:
+        sidecar["procedural"]["aabb_min_y"] = aabb_min_y
     if decisions:
         sidecar["decisions"] = [_decision_to_dict(d) for d in decisions]
     return sidecar

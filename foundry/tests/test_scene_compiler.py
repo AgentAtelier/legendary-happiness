@@ -16,7 +16,7 @@ import pytest
 # phase grid).  Import from the canonical home rather than via
 # scene_compiler's re-export, which is dead (no in-body use) and ruff
 # would prune again.
-from placement import _prop_half_extents, _resolve_prop_overlaps
+from placement import _prop_half_extents, _resolve_prop_overlaps, rest_offset
 from scene_compiler import (
     PlacedEntity,
     _ext_resource_block,
@@ -27,6 +27,7 @@ from scene_compiler import (
     compile_scene,
     read_quest_data,
 )
+from tscn_writer import fmt_float
 
 # ── Test manifest ────────────────────────────────────────────────
 
@@ -400,6 +401,113 @@ def test_no_capsule_mesh_sub_resource():
     text, _, _ = _compile_and_parse()
     assert "npc_mesh" not in text
     assert "npc_mat" not in text
+
+
+def test_compile_scene_empty_quests_no_humanoid_reference():
+    """Task 5: When quest_specs is empty and no NPC entities in manifest,
+    the compiled scene has NO humanoid GLB ext_resource reference."""
+    import tempfile
+    from pathlib import Path
+
+    from scene_compiler import _parse_scene_text
+    manifest: list[PlacedEntity] = [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 1.0, "y": 0.0, "z": 0.0},
+    ]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tscn", delete=False) as f:
+        out = f.name
+    try:
+        compile_scene([], manifest, out)
+        text = Path(out).read_text(encoding="utf-8")
+        parsed = _parse_scene_text(text)
+        paths = {r["path"] for r in parsed["ext_resources"]}
+        assert "humanoid_rough_granite.glb" not in str(paths), (
+            f"Task 5: humanoid GLB should not be in ext_resources when "
+            f"quest_specs is empty. Got paths: {paths}"
+        )
+        # Verify no NPC nodes exist
+        node_names = {n["name"] for n in parsed["nodes"]}
+        assert "npc_0" not in node_names, (
+            "Task 5: no NPC node should be emitted with empty quest_specs"
+        )
+        assert "Body" not in node_names, (
+            "Task 5: no NPC Body node should be emitted with empty quest_specs"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_compile_scene_grounds_prop_on_real_aabb_from_assets_sibling_dir(tmp_path):
+    """Task 1: compile_scene must look for <category>_<material>.aabb.json
+    in the SIBLING ``assets/`` dir of the scene's own directory (matching
+    scaffold.py's ``build/scenes/main.tscn`` + ``build/assets/*.glb``
+    layout) — not in the scene file's own directory.  When a real AABB
+    is recorded, prop_y must reflect it instead of the COLLISION_SIZES
+    registry approximation.
+    """
+    import json
+
+    from category_registry import COLLISION_SIZES
+
+    scenes_dir = tmp_path / "scenes"
+    scenes_dir.mkdir()
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    # Real AABB min-y deliberately far from the registry's -sy/2 approx.
+    real_aabb_min_y = -0.05
+    (assets_dir / "table_worn_oak.aabb.json").write_text(
+        json.dumps({"aabb_min_y": real_aabb_min_y})
+    )
+
+    out = str(scenes_dir / "main.tscn")
+    manifest: list[PlacedEntity] = [
+        {"id": "table_0", "category": "table", "material": "worn_oak",
+         "wear": 0.5, "x": 1.0, "y": 0.0, "z": 0.0},
+    ]
+    try:
+        compile_scene([], manifest, out)
+        text = Path(out).read_text(encoding="utf-8")
+
+        registry_sy = COLLISION_SIZES["table"][1]
+        registry_prop_y = rest_offset(-registry_sy / 2.0)
+        real_prop_y = rest_offset(real_aabb_min_y)
+        assert abs(registry_prop_y - real_prop_y) > 1e-6, (
+            "test fixture must pick an AABB that differs from the registry "
+            "approximation, otherwise this test can't distinguish them"
+        )
+
+        # Inspect table_0's OWN transform line (a substring search over the
+        # whole scene is fragile — "0.3" also matches radii, colours, etc.).
+        lines = text.splitlines()
+        tform = None
+        for i, ln in enumerate(lines):
+            if ln.startswith('[node name="table_0"'):
+                tform = next(
+                    (f for f in lines[i + 1:] if f.startswith("transform =")),
+                    None,
+                )
+                break
+        assert tform is not None, "table_0 node/transform not found in scene"
+
+        # The real-AABB-derived prop_y MUST be the transform's Y...
+        assert f", {fmt_float(real_prop_y)}, " in tform, (
+            f"compile_scene did not ground the prop on the real AABB "
+            f"min-y ({real_aabb_min_y}); expected Y={real_prop_y} in {tform!r}"
+        )
+        # ...and NOT the registry collision-box approximation.
+        assert f", {fmt_float(registry_prop_y)}, " not in tform, (
+            f"compile_scene used the COLLISION_SIZES fallback "
+            f"({registry_prop_y}) even though a real .aabb.json was "
+            f"available in the sibling assets/ dir: {tform!r}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
 
 
 # ── Different target entity ──────────────────────────────────────
@@ -3072,12 +3180,12 @@ def test_glb_shell_emits_shell_instance_node(monkeypatch, tmp_path):
     )
 
 
-def test_glb_shell_emits_stone_and_timber_children(monkeypatch, tmp_path):
-    """Task 6 fix: shell.glb exposes two top-level meshes named
-    'stone' and 'timber' (built by foundry/blender/build_room_shell.py
+def test_glb_shell_emits_wall_roof_and_timber_children(monkeypatch, tmp_path):
+    """Task 2 fix: shell.glb exposes three top-level meshes named
+    'wall', 'roof' and 'timber' (built by foundry/blender/build_room_shell.py
     via ``bpy.data.objects.new(name, me)``).  Overriding them with our
     triplanar StandardMaterials propagates the right albedo/roughness
-    per surface — stone walls/roof boards, timber floor/rafters/posts.
+    per surface — stone walls, roof boards, timber floor/rafters/posts.
     """
     import room_shell
     glb = tmp_path / "shell.glb"
@@ -3089,17 +3197,25 @@ def test_glb_shell_emits_stone_and_timber_children(monkeypatch, tmp_path):
     )
     parsed = _parse_scene_text(tscn)
 
-    stone = [n for n in parsed["nodes"] if n["name"] == "stone"]
+    wall = [n for n in parsed["nodes"] if n["name"] == "wall"]
+    roof = [n for n in parsed["nodes"] if n["name"] == "roof"]
     timber = [n for n in parsed["nodes"] if n["name"] == "timber"]
-    assert len(stone) == 1, (
-        f"expected 1 'stone' override child of Shell, got {len(stone)}; "
+    assert len(wall) == 1, (
+        f"expected 1 'wall' override child of Shell, got {len(wall)}; "
+        f"node names: {[n['name'] for n in parsed['nodes']]}"
+    )
+    assert len(roof) == 1, (
+        f"expected 1 'roof' override child of Shell, got {len(roof)}; "
         f"node names: {[n['name'] for n in parsed['nodes']]}"
     )
     assert len(timber) == 1, (
         f"expected 1 'timber' override child of Shell, got {len(timber)}"
     )
-    assert stone[0]["parent"] == "Shell", (
-        f"stone override must be parented to Shell, got {stone[0]['parent']!r}"
+    assert wall[0]["parent"] == "Shell", (
+        f"wall override must be parented to Shell, got {wall[0]['parent']!r}"
+    )
+    assert roof[0]["parent"] == "Shell", (
+        f"roof override must be parented to Shell, got {roof[0]['parent']!r}"
     )
     assert timber[0]["parent"] == "Shell", (
         f"timber override must be parented to Shell, got {timber[0]['parent']!r}"
@@ -3107,8 +3223,11 @@ def test_glb_shell_emits_stone_and_timber_children(monkeypatch, tmp_path):
     # material_override lines are not parsed by _parse_scene_text
     # (the prefix isn't in its recognised property list), so verify
     # the raw text contains the right override + SubResource refs.
-    assert 'material_override = SubResource("shell_stone_mat")' in tscn, (
-        "stone child must apply shell_stone_mat via material_override"
+    assert 'material_override = SubResource("shell_wall_mat")' in tscn, (
+        "wall child must apply shell_wall_mat via material_override"
+    )
+    assert 'material_override = SubResource("shell_roof_mat")' in tscn, (
+        "roof child must apply shell_roof_mat via material_override"
     )
     assert 'material_override = SubResource("shell_timber_mat")' in tscn, (
         "timber child must apply shell_timber_mat via material_override"
@@ -3196,7 +3315,7 @@ def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
     # StandardMaterial3Ds remain as sub_resources.
     parsed = _parse_scene_text(tscn)
     ext_ids = {r["id"] for r in parsed["ext_resources"]}
-    for tex_id in ("tex_stone_a", "tex_stone_n", "tex_stone_o",
+    for tex_id in ("tex_wall_a", "tex_wall_n", "tex_wall_o",
                    "tex_timber_a", "tex_timber_n", "tex_timber_o"):
         assert tex_id in ext_ids, (
             f"GLB shell branch must contain ext_resource {tex_id!r}; "
@@ -3204,9 +3323,9 @@ def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
         )
     # Verify the ext_resource paths are correct .png references
     for ext_id, expected_suffix in [
-        ("tex_stone_a", "shell_stone_albedo.png"),
-        ("tex_stone_n", "shell_stone_normal.png"),
-        ("tex_stone_o", "shell_stone_orm.png"),
+        ("tex_wall_a", "shell_wall_albedo.png"),
+        ("tex_wall_n", "shell_wall_normal.png"),
+        ("tex_wall_o", "shell_wall_orm.png"),
         ("tex_timber_a", "shell_timber_albedo.png"),
         ("tex_timber_n", "shell_timber_normal.png"),
         ("tex_timber_o", "shell_timber_orm.png"),
@@ -3216,12 +3335,12 @@ def test_glb_shell_drops_box_shell_sub_resources(monkeypatch, tmp_path):
         assert matching[0]["path"].endswith(expected_suffix), (
             f"{ext_id} path should end with {expected_suffix}, got {matching[0]['path']}"
         )
-    for sid in ("shell_stone_mat", "shell_timber_mat"):
+    for sid in ("shell_wall_mat", "shell_timber_mat"):
         assert sid in sub_ids, (
             f"GLB shell branch must contain sub_resource {sid!r}; got: {sorted(sub_ids)}"
         )
     # Stone/timber texture IDs must NOT appear as sub_resources.
-    for sid in ("tex_stone_a", "tex_stone_n", "tex_stone_o",
+    for sid in ("tex_wall_a", "tex_wall_n", "tex_wall_o",
                 "tex_timber_a", "tex_timber_n", "tex_timber_o"):
         assert sid not in sub_ids, (
             f"Texture {sid!r} must NOT be a sub_resource (it's an ext_resource); "
@@ -3336,7 +3455,9 @@ def test_palette_override_on_model_nodes(monkeypatch):
 
 def test_palette_glb_shell_overrides_use_class_materials(monkeypatch, tmp_path):
     """When palette is provided AND a GLB shell is available, the shell
-    stone/timber children use the palette class materials."""
+    wall/roof/timber children use the palette class materials. Task 2:
+    roof must use a DIFFERENT class ("rock") than the walls ("stone")
+    so the ceiling doesn't share the walls' material even in palette mode."""
     import room_shell
     import scene_compiler as sc
     from palette import build_palette
@@ -3355,12 +3476,21 @@ def test_palette_glb_shell_overrides_use_class_materials(monkeypatch, tmp_path):
                          theme="stone_keep", palette=pal,
                          shell_glb_path=str(glb))
         t = Path(out).read_text(encoding="utf-8")
-        # Shell stone/timber children use palette class materials
+        # Shell wall/roof/timber children use palette class materials
         assert 'material_override = SubResource("mat_stone")' in t
+        assert 'material_override = SubResource("mat_rock")' in t
         assert 'material_override = SubResource("mat_wood")' in t
         # Class materials exist as sub_resources
         assert 'sub_resource type="StandardMaterial3D" id="mat_stone"' in t
+        assert 'sub_resource type="StandardMaterial3D" id="mat_rock"' in t
         assert 'sub_resource type="StandardMaterial3D" id="mat_wood"' in t
+        # The "wall" node must override with mat_stone, "roof" with mat_rock
+        wall_idx = t.index('[node name="wall" parent="Shell"]')
+        roof_idx = t.index('[node name="roof" parent="Shell"]')
+        wall_block = t[wall_idx:roof_idx]
+        roof_block = t[roof_idx:roof_idx + 200]
+        assert 'SubResource("mat_stone")' in wall_block
+        assert 'SubResource("mat_rock")' in roof_block
     finally:
         Path(out).unlink()
         data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")

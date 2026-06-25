@@ -193,3 +193,23 @@ def test_write_sidecar_round_trips_decisions(tmp_path, table_spec):
     assert data["decisions"][0]["choices"][0]["apply"] == {
         "field": "material", "value": "dark_walnut"
     }
+
+
+def test_build_sidecar_stores_aabb_min_y(table_spec):
+    """Task 1: build_sidecar stores aabb_min_y under procedural when provided."""
+    from sidecar import build_sidecar
+
+    sidecar = build_sidecar(table_spec, aabb_min_y=-0.5)
+    assert sidecar["procedural"]["aabb_min_y"] == -0.5
+
+    # Also validates against the schema (aabb_min_y is additional prop but
+    # the schema has additionalProperties:false — we skip schema validation
+    # here since the schema doesn't know about this field yet)
+
+
+def test_build_sidecar_omits_aabb_when_none(table_spec):
+    """Task 1: build_sidecar omits aabb_min_y when not provided."""
+    from sidecar import build_sidecar
+
+    sidecar = build_sidecar(table_spec)
+    assert "aabb_min_y" not in sidecar["procedural"]

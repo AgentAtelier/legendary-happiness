@@ -35,6 +35,7 @@ from placement import (
     _get_prop_footprints,
     _guard_player_spawn,
     _resolve_prop_overlaps,
+    read_asset_aabb_min_y,
     rest_offset,
 )
 from scene_data import write_sidecar_data
@@ -276,12 +277,18 @@ def _build_room_sub_resources(
     texture_ext_resources: list[dict] = []
     if shell_glb_path is not None:
         texture_ext_resources.extend([
-            {"id": "tex_stone_a", "type": "Texture2D",
-             "path": "res://assets/shell_stone_albedo.png"},
-            {"id": "tex_stone_n", "type": "Texture2D",
-             "path": "res://assets/shell_stone_normal.png"},
-            {"id": "tex_stone_o", "type": "Texture2D",
-             "path": "res://assets/shell_stone_orm.png"},
+            {"id": "tex_wall_a", "type": "Texture2D",
+             "path": "res://assets/shell_wall_albedo.png"},
+            {"id": "tex_wall_n", "type": "Texture2D",
+             "path": "res://assets/shell_wall_normal.png"},
+            {"id": "tex_wall_o", "type": "Texture2D",
+             "path": "res://assets/shell_wall_orm.png"},
+            {"id": "tex_roof_a", "type": "Texture2D",
+             "path": "res://assets/shell_roof_albedo.png"},
+            {"id": "tex_roof_n", "type": "Texture2D",
+             "path": "res://assets/shell_roof_normal.png"},
+            {"id": "tex_roof_o", "type": "Texture2D",
+             "path": "res://assets/shell_roof_orm.png"},
             {"id": "tex_timber_a", "type": "Texture2D",
              "path": "res://assets/shell_timber_albedo.png"},
             {"id": "tex_timber_n", "type": "Texture2D",
@@ -290,20 +297,35 @@ def _build_room_sub_resources(
              "path": "res://assets/shell_timber_orm.png"},
         ])
         resources.extend([
-            # Triplanar StandardMaterial3D applied to the GLB's 'stone' surface
-            {"id": "shell_stone_mat", "type": "StandardMaterial3D",
+            # Triplanar StandardMaterial3D applied to the GLB's 'wall' surface
+            {"id": "shell_wall_mat", "type": "StandardMaterial3D",
              "props": [
                  "albedo_color = Color(0.6, 0.58, 0.54, 1)",
-                 "albedo_texture = ExtResource(\"tex_stone_a\")",
+                 "albedo_texture = ExtResource(\"tex_wall_a\")",
                  "roughness = 0.75",
-                 "roughness_texture = ExtResource(\"tex_stone_o\")",
+                 "roughness_texture = ExtResource(\"tex_wall_o\")",
                  "roughness_texture_channel = 1",
-                 "ao_texture = ExtResource(\"tex_stone_o\")",
+                 "ao_texture = ExtResource(\"tex_wall_o\")",
                  "ao_texture_channel = 0",
-                 "normal_texture = ExtResource(\"tex_stone_n\")",
+                 "normal_texture = ExtResource(\"tex_wall_n\")",
                  "uv1_triplanar = true",
                  "uv1_world_triplanar = true",
-                 "uv1_scale = Vector3(1, 1, 1)",
+                 "uv1_scale = Vector3(2, 2, 2)",
+             ]},
+            # Triplanar StandardMaterial3D applied to the GLB's 'roof' surface
+            {"id": "shell_roof_mat", "type": "StandardMaterial3D",
+             "props": [
+                 "albedo_color = Color(0.48, 0.45, 0.42, 1)",
+                 "albedo_texture = ExtResource(\"tex_roof_a\")",
+                 "roughness = 0.85",
+                 "roughness_texture = ExtResource(\"tex_roof_o\")",
+                 "roughness_texture_channel = 1",
+                 "ao_texture = ExtResource(\"tex_roof_o\")",
+                 "ao_texture_channel = 0",
+                 "normal_texture = ExtResource(\"tex_roof_n\")",
+                 "uv1_triplanar = true",
+                 "uv1_world_triplanar = true",
+                 "uv1_scale = Vector3(2, 2, 2)",
              ]},
             # Triplanar StandardMaterial3D applied to the GLB's 'timber' surface
             {"id": "shell_timber_mat", "type": "StandardMaterial3D",
@@ -576,18 +598,32 @@ def _resolve_unique_glbs(manifest: list[PlacedEntity]) -> list[tuple[str, str]]:
     return result
 
 
-def resolve_unique_glbs_with_npc(manifest: list[PlacedEntity]) -> list[tuple[str, str]]:
-    """Return sorted unique (category, material) pairs INCLUDING the NPC body.
+def resolve_unique_glbs_with_npc(
+    manifest: list[PlacedEntity],
+    quest_specs: list[dict] | None = None,
+) -> list[tuple[str, str]]:
+    """Return sorted unique (category, material) pairs INCLUDING the NPC body
+    ONLY when quest_specs is non-empty OR an NPC entity exists in the manifest.
 
     This is the single source of truth for which GLBs a compiled scene
     references. Used by both compile_scene() (to emit ext_resource blocks)
     and scaffold.py (to copy the correct asset family per GLB).
     """
     unique = _resolve_unique_glbs(manifest)
-    npc_pair = (_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL)
-    if npc_pair not in unique:
-        unique.append(npc_pair)
-        unique.sort()
+    # Include NPC body GLB only when there are quest specs with NPCs
+    # OR the manifest explicitly includes an NPC entity.
+    has_npc = bool(quest_specs) if quest_specs is not None else True
+    if not has_npc:
+        # Check manifest for NPC-category entities
+        has_npc = any(
+            entry.get("category") == _NPC_BODY_CATEGORY
+            for entry in manifest
+        )
+    if has_npc:
+        npc_pair = (_NPC_BODY_CATEGORY, _NPC_BODY_MATERIAL)
+        if npc_pair not in unique:
+            unique.append(npc_pair)
+            unique.sort()
     return unique
 
 
@@ -705,7 +741,7 @@ def compile_scene(
     if isinstance(quest_specs, dict):
         quest_specs = [quest_specs]
 
-    unique_glbs = resolve_unique_glbs_with_npc(manifest)
+    unique_glbs = resolve_unique_glbs_with_npc(manifest, quest_specs=quest_specs)
 
     # Compute used tags — include open/door if any entity in the manifest
     # has category.openable=True or category is "door"
@@ -853,6 +889,9 @@ def compile_scene(
             class_set.add(cls)
         if shell_glb_path is not None:
             class_set.add("stone")
+            # Task 2: roof gets its own class (role "shadow") so it
+            # doesn't share "stone"'s albedo/role-colour with the walls.
+            class_set.add("rock")
             class_set.add("wood")
         palette_classes = sorted(class_set)
 
@@ -899,6 +938,10 @@ def compile_scene(
         room_graph=room_graph, current_room=current_room,
     )
     output_dir = str(Path(output_path).parent)
+    # Real built GLBs (and their .aabb.json/.sidecar.json siblings) live in
+    # the build's assets dir, a SIBLING of the scene's own directory (e.g.
+    # build/scenes/main.tscn + build/assets/*.glb) — not output_dir itself.
+    assets_dir = str(Path(output_path).parent.parent / assets_subdir)
 
     # ── Build GLB id map ────────────────────────────────────────
     glb_ids: dict[tuple[str, str], str] = {}
@@ -1121,14 +1164,13 @@ def compile_scene(
             )
             lines.append("")
 
-    # ── Task 6 fix: Shell instance + stone/timber material overrides ─
+    # ── Task 6 fix: Shell instance + wall/roof/timber material overrides ─
     # When room_shell.ensure_room_shell() returns a Blender-generated
     # GLB the room's visible geometry comes from that PackedScene.
-    # shell.glb (generated by foundry/blender/build_room_shell.py)
-    # contains two top-level mesh objects named "stone" (walls + roof
-    # boards) and "timber" (floor + rafters + tie-beams + king-post +
-    # ridge).  Instancing shell.glb as `Shell` then redeclaring the
-    # children with `material_override =` propagates the build's
+    # shell.glb contains three top-level mesh objects named "wall" (walls),
+    # "roof" (roof boards), and "timber" (floor + rafters + tie-beams +
+    # king-post + ridge).  Instancing shell.glb as `Shell` then redeclaring
+    # the children with `material_override =` propagates the build's
     # triplanar StandardMaterials per surface — the rest of the GLB's
     # geometry survives intact.
     if shell_glb_path is not None and shell_glb_ext_id is not None:
@@ -1136,24 +1178,26 @@ def compile_scene(
             f'[node name="Shell" parent="." instance=ExtResource("{shell_glb_ext_id}")]'
         )
         lines.append("")
-        # Override children of the instanced PackedScene: no `type=` attribute
-        # is emitted because Godot 4 matches children by NAME on the parent
-        # path and inherits the type from the instanced scene's root.  Adding
-        # `type="MeshInstance3D"` was non-standard — Godot parses it but
-        # the override behaviour is undefined, and the `material_override`
-        # line below lands on a child whose declared type may not match
-        # the imported GLB root's first child.  Drop it.
         if palette is not None:
-            # Palette-driven: use per-class materials instead of hardcoded shell_*_mat
-            lines.append('[node name="stone" parent="Shell"]')
+            # Palette-driven: use per-class materials. Task 2: roof uses
+            # the "rock" class (role "shadow") instead of "stone" (role
+            # "base") so the ceiling reads as a distinct surface from
+            # the walls even when a scene palette is active.
+            lines.append('[node name="wall" parent="Shell"]')
             lines.append('material_override = SubResource("mat_stone")')
+            lines.append("")
+            lines.append('[node name="roof" parent="Shell"]')
+            lines.append('material_override = SubResource("mat_rock")')
             lines.append("")
             lines.append('[node name="timber" parent="Shell"]')
             lines.append('material_override = SubResource("mat_wood")')
             lines.append("")
         else:
-            lines.append('[node name="stone" parent="Shell"]')
-            lines.append('material_override = SubResource("shell_stone_mat")')
+            lines.append('[node name="wall" parent="Shell"]')
+            lines.append('material_override = SubResource("shell_wall_mat")')
+            lines.append("")
+            lines.append('[node name="roof" parent="Shell"]')
+            lines.append('material_override = SubResource("shell_roof_mat")')
             lines.append("")
             lines.append('[node name="timber" parent="Shell"]')
             lines.append('material_override = SubResource("shell_timber_mat")')
@@ -1185,7 +1229,12 @@ def compile_scene(
         prop_y = y
         if not is_decor and eid in collision_info:
             _, (_, sy, _) = collision_info[eid]
-            prop_y = y + rest_offset(-sy / 2.0)
+            # Try real AABB min-y from sidecar/aabb.json; fall back to collision-box approx
+            aabb_min_y = read_asset_aabb_min_y(assets_dir, cat, mat)
+            if aabb_min_y is not None:
+                prop_y = y + rest_offset(aabb_min_y)
+            else:
+                prop_y = y + rest_offset(-sy / 2.0)
         # CB-2/CB-6: Determine tag — openable→open, enemy→enemy, others→decor/pickup
         from category_registry import REGISTRY
         reg_entry = REGISTRY.get(cat, {})

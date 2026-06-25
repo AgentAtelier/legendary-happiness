@@ -7,6 +7,9 @@ rest offset, prop half-extents.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from _constants import DEFAULT_RNG_SEED
 from category_registry import COLLISION_SIZES
 from decisions import make_decision
@@ -47,6 +50,35 @@ def rest_offset(aabb_min_y: float) -> float:
     """Y to add to a prop transform so its AABB base rests on the floor (y=0).
     Props whose origin is at their centre float without this offset."""
     return -float(aabb_min_y)
+
+
+def read_asset_aabb_min_y(
+    assets_dir: str,
+    category: str,
+    material: str,
+) -> float | None:
+    """Read the real AABB min-y for a built asset from its sidecar or
+    .aabb.json file.  Returns None when the data is unavailable, in which
+    case the caller should fall back to the registry collision-box
+    approximation.
+
+    Checks both ``<basename>.aabb.json`` (written by build_asset.py) and
+    ``<basename>.sidecar.json`` (written by runner.py).
+    """
+    basename = f"{category}_{material}"
+    # Check .aabb.json first (direct from build_asset.py)
+    aabb_path = Path(assets_dir) / f"{basename}.aabb.json"
+    if aabb_path.exists():
+        data = json.loads(aabb_path.read_text(encoding="utf-8"))
+        return float(data["aabb_min_y"])
+    # Check sidecar (written by runner.py)
+    sidecar_path = Path(assets_dir) / f"{basename}.sidecar.json"
+    if sidecar_path.exists():
+        data = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        aabb = data.get("procedural", {}).get("aabb_min_y")
+        if aabb is not None:
+            return float(aabb)
+    return None
 
 
 def _get_prop_footprints(
