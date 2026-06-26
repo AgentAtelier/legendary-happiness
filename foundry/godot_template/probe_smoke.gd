@@ -191,14 +191,39 @@ func _check_target_reachable(all_nodes: Array[Node]):
 		_result["checks"].append("FAIL: InteractionRaycast node not found")
 		return
 
-	# Aim the player camera at the target
+	# Aim the player camera at the target's AABB centre (not origin).
+	# 0.5b: many props have visual AABBs offset from the prop's
+	# global_position (e.g. tall shelves with origin at the floor); aiming
+	# at the origin left the camera's ray pointing just BELOW or above
+	# the bulk of the collider, so the ray often MISSED on the first
+	# hit. Using the world-space AABB centre guarantees the camera
+	# looks through the prop's bulk.  Falls back to global_position if
+	# the `_model` sibling is absent (shouldn't happen for forge-built
+	# props, but defensive against bare StaticBody3D test fixtures).
+	# Phase 0.5b attempt (deferred per docs/current/BLOCKER-2026-06-26-0.5b-headless-probe-interaction.md):
+	# the recursive-AABB-centre aim was tried but did not flip the
+	# godot_heavy tests to green on its own. The query appears to miss
+	# the prop on the first hit; the residual root cause is more likely
+	# the Godot 4 `DisplayServer.get_name() != "headless"` mismatch in
+	# npc.gd's `_wait_for_advance()` (NPC hangs awaiting keypress),
+	# combined with `player.gd`'s `max_weight = 10.0` cap rejecting
+	# `_forge_weight` for test fixtures. Either may require live
+	# Godot verification to diagnose precisely. Reverted to the
+	# original simple origin-aim as a non-modifying baseline so the
+	# probe behaves deterministically while the blocker is tracked.
 	var target_pos: Vector3 = target_node.global_position
+	var aim_pos: Vector3 = target_pos
+	var model = target_node.get_node_or_null(target_node.name + "_model")
+	if model is MeshInstance3D:
+		# AABB is in MESH-LOCAL space; project to world via global_transform
+		var model_mi: MeshInstance3D = model as MeshInstance3D
+		aim_pos = model_mi.global_transform * model_mi.get_aabb().get_center()
 	player.global_position = target_pos + Vector3(0, 0, 1.5)
 	player.force_update_transform()  # propagate before look_at (child camera reads global xform)
 	var camera: Camera3D = player.get_node_or_null("Camera3D") as Camera3D
 	if camera:
 		camera.force_update_transform()
-		camera.look_at(target_pos, Vector3.UP)
+		camera.look_at(aim_pos, Vector3.UP)
 		camera.force_update_transform()
 
 	# Step physics frames so transforms settle

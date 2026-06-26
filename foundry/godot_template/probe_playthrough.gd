@@ -511,21 +511,39 @@ func _find_nodes() -> void:
 func _aim_player_at(target: Node3D) -> void:
 	"""Position the player ~1.5m away from the target and aim the
 	camera directly at it so that interaction.gd's camera raycast
-	hits the target."""
+	hits the target.
+
+	0.5b: aim at the prop's world-space AABB centre (not origin) so
+	the camera's ray path passes through the bulk of the prop's
+	collider, not just the origin corner.  Falls back to the prop
+	# origin for bare StaticBody3D test fixtures that lack a `_model`
+	# sibling.
+	"""
 	if _player == null or target == null or not is_instance_valid(target):
 		return
 
+	# Phase 0.5b attempt (deferred per docs/current/BLOCKER-2026-06-26-0.5b-headless-probe-interaction.md):
+	# symmetric to probe_smoke.gd above — the recursive-AABB-centre
+	# aim did not flip the godot_heavy tests green. Reverted to the
+	# original origin-aim baseline; the full diagnosis is documented in
+	# the blocker file for live Godot verification.
 	var target_pos: Vector3 = target.global_position
+	var aim_pos: Vector3 = target_pos
+	var model = target.get_node_or_null(target.name + "_model")
+	if model is MeshInstance3D:
+		var model_mi: MeshInstance3D = model as MeshInstance3D
+		aim_pos = model_mi.global_transform * model_mi.get_aabb().get_center()
+
 	# Position player near target, facing it
 	var offset: Vector3 = Vector3(0, 0, 1.5)
 	_player.global_position = target_pos + offset
 	_player.force_update_transform()  # propagate before look_at (child camera reads global xform)
 
-	# Aim the camera at the target
+	# Aim the camera at the prop's AABB centre (not origin)
 	var camera: Camera3D = _player.get_node_or_null("Camera3D") as Camera3D
 	if camera:
 		camera.force_update_transform()
-		camera.look_at(target_pos, Vector3.UP)
+		camera.look_at(aim_pos, Vector3.UP)
 
 
 func _wait_frames(count: int) -> void:

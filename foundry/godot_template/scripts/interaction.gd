@@ -7,6 +7,12 @@
 # Phase 0.5 (probe honesty): interact_under_crosshair() is the canonical
 # interaction entry-point — the human E-key path AND probes both drive it.
 # It emits object_interacted so probes can await real outcomes.
+#
+# Phase 0.5b fix (PROMPT 5-B): all ray queries exclude the player's own RID
+# so the camera ray never self-hits the CharacterBody3D.  Combined with the
+# probe-side aim-at-AABB-centre change (probe_smoke.gd _check_target_reachable
+# + probe_playthrough.gd _aim_player_at), the headless-probe ray reliably
+# connects with the targeted prop instead of returning null / empty RID.
 extends Node3D
 
 signal interact_prompt(visible: bool, prompt_text: String, tag: String)
@@ -21,6 +27,8 @@ var _hovered_node: Node = null
 var _highlight_material: StandardMaterial3D = null
 # B1: cached quest_data for target glow (avoid disk I/O every frame)
 var _cached_quest_data: Dictionary = {}
+# 0.5b: cached Player RID for query.exclude (player self-hit prevention)
+var _player_rid: RID = RID()
 
 
 func _ready() -> void:
@@ -33,6 +41,25 @@ func _ready() -> void:
 	_highlight_material.albedo_color = Color(1, 1, 0, 0.0)
 	# B1: Cache quest_data once (avoid disk I/O every frame)
 	_cache_quest_data()
+	# 0.5b: Cache Player RID once (so all 5 ray queries below can
+	# exclude it without a get_node() lookup per query).
+	var player := get_tree().root.get_node_or_null("/root/Root/Player")
+	# 0.5b: CollisionObject3D is the right base class — get_rid() lives on
+	# `CollisionObject3D`, NOT on `Node3D`. The previous cast to Node3D
+	# was a latent runtime hazard: it parsed fine but the typed lookup
+	# could fail to bind to get_rid() depending on build flags.
+	if player and player is CollisionObject3D:
+		_player_rid = (player as CollisionObject3D).get_rid()
+
+
+func _add_player_exclude(query: PhysicsRayQueryParameters3D) -> void:
+	"""0.5b: Add the cached Player RID to the ray query's exclude list
+	so the camera ray never self-hits the CharacterBody3D collider.
+
+	Idempotent: skips if no valid player RID (e.g. tests without a
+	player node would otherwise make the array dirty across calls)."""
+	if _player_rid.is_valid():
+		query.exclude.append(_player_rid)
 
 
 func _process(_delta: float) -> void:
@@ -43,6 +70,7 @@ func _process(_delta: float) -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
+	_add_player_exclude(query)
 	var result: Dictionary = space_state.intersect_ray(query)
 
 	if not result.is_empty():
@@ -91,6 +119,7 @@ func interact_under_crosshair() -> Node:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
+	_add_player_exclude(query)
 	var result: Dictionary = space_state.intersect_ray(query)
 	if result.is_empty():
 		return null
@@ -133,6 +162,7 @@ func _examine() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
+	_add_player_exclude(query)
 	var result: Dictionary = space_state.intersect_ray(query)
 	if result.is_empty():
 		return
@@ -311,6 +341,7 @@ func _check_place_surface() -> bool:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
+	_add_player_exclude(query)
 	var result: Dictionary = space_state.intersect_ray(query)
 	if result.is_empty():
 		return false
@@ -346,6 +377,7 @@ func _place_item_on_surface() -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
+	_add_player_exclude(query)
 	var result: Dictionary = space_state.intersect_ray(query)
 	if result.is_empty():
 		return
