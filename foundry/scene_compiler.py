@@ -104,6 +104,14 @@ _ROOM_FLOOR_THICKNESS = 0.2
 _LIGHT_HEIGHT = 8.0
 _AMBIENT_COLOR = (0.15, 0.15, 0.2, 1.0)
 _BACKGROUND_COLOR = (0.05, 0.05, 0.1, 1.0)
+# PROMPT 6-A.A — SDFGI baked at compile time.  Values match
+# foundry/godot_template/scripts/day_night.gd lines 166-170 so the
+# realtime SDFGI rig starts on the moment the scene loads (no flicker
+# while _process() runs for the first time).  Interior-grade tuning:
+#   · min_cell_size = 0.2    (Godot docs: ~0.5 outdoor, ~0.2 indoor)
+#   · cascade0_distance = 12 (covers ~4–12 m interior room cone)
+_SDFGI_MIN_CELL_SIZE = 0.2
+_SDFGI_CASCADE0_DISTANCE = 12.0
 
 # Player spawn offset (FIX-1): player sits at (0, PLAYER_SPAWN_Y, 0)
 # to be clear of the floor (top at y=0) and props.
@@ -223,6 +231,15 @@ def _build_room_sub_resources(
          "glow_hdr_bleed_threshold = 1.3",
          "glow_hdr_bleed_scale = 1.0",
          "glow_hdr_luminance_cap = 12.0",
+         # PROMPT 6-A.A: SDFGI (Signed Distance Field Global
+         # Illumination) — baked at compile time so the scene loads
+         # with GI bounce already active.  day_night.gd overrides
+         # bounce_feedback at runtime for the day/night cycle; the
+         # min_cell_size + cascade0_distance are static and live here.
+         "sdfgi_enabled = true",
+         "sdfgi_use_occlusion = true",
+         f"sdfgi_min_cell_size = {_SDFGI_MIN_CELL_SIZE}",
+         f"sdfgi_cascade0_distance = {_SDFGI_CASCADE0_DISTANCE}",
          # B2: Fog (exponential — day_night.gd adjusts at runtime)
          "fog_enabled = true",
          "fog_mode = 0",

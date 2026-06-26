@@ -1344,6 +1344,143 @@ def test_lighting_table_has_fog_and_exposure():
         assert "exposure" in entry, f"{theme}: missing exposure"
 
 
+# ═══════════════════════════════════════════════════════════════════════
+#  PROMPT 6-A.A — Bake SDFGI into the Environment sub_resource.
+#
+#  Background: SDFGI (Signed Distance Field Global Illumination) is the
+#  missing GI layer per MATURITY-LEAP-BACKLOG §1 EASY.  Today SDFGI is
+#  set ONLY at runtime in foundry/godot_template/scripts/day_night.gd
+#  (lines 166-170).  This task bakes the same properties into the
+#  .tscn at compile time so SDFGI is active the instant the scene
+#  loads (no flicker between compile-time default and runtime override,
+#  and so headless smoke screenshots taken before any _process tick
+#  captures the GI bounce).
+#
+#  Tuning rationale:
+#    sdfgi_min_cell_size = 0.2
+#      Godot docs recommend ~0.5 for outdoor simulation and ~0.2 for
+#      interior detail.  Interior rooms (4-12 m) need 0.2 so thin walls,
+#      furniture AABBs, and small corners resolve correctly.
+#    sdfgi_cascade0_distance = 12.0
+#      The first cascade (tightest, highest resolution) covers 12 m of
+#      world space — sufficient for the largest interior room dimension.
+#      The queue's "sdfgi_max_distance" is colloquial; the actual Godot
+#      binding is sdfgi_cascade0_distance (match what day_night.gd uses).
+#
+#  Format of these tests:
+#    Each one extracts the Environment sub_resource block (between
+#    ``[sub_resource type="Environment" id="world_env"]`` and the next
+#    ``]``) and asserts the property lives INSIDE the block.  A naive
+#    ``assert "sdfgi_enabled" in text`` would pass even if the property
+#    leaked outside the Environment (e.g. into a node property line),
+#    which is the kind of false-positive that misled three prior bundles.
+# ═══════════════════════════════════════════════════════════════════════
+
+def _forge_environment_block(text: str) -> str:
+    """Return the slice of *text* that contains the Environment
+    sub_resource block, terminated at the closing bracket on its own
+    line.  Used by the PROMPT 6-A.A tests to assert SDFGI properties
+    land inside the Environment and not somewhere else in the .tscn.
+
+    Note: ``text.find("]")`` would land on the OPENING-LINE bracket
+    (``[sub_resource type="Environment" id="world_env"]``) and return
+    a slice containing only the header — that bug shipped in pass-1 of
+    PROMPT 6-A.A and was caught by the TDD-red-then-green cycle.
+    The fix is to search for the Godot convention ``\\n]`` (closing
+    bracket on its own line, ahead of the next section)."""
+    env_idx = text.find('[sub_resource type="Environment" id="world_env"]')
+    assert env_idx != -1, "Environment sub_resource missing from .tscn"
+    # Skip past the opening-line ']' so we land on the BLOCK-CLOSING ']'
+    # (which is on its own line, conventionally preceded by '\n').
+    close_idx = text.find("\n]", env_idx + 1)
+    assert close_idx != -1, (
+        "Environment sub_resource has no block-closing ']' line in .tscn"
+    )
+    return text[env_idx:close_idx + 2]
+
+
+def test_environment_block_has_sdfgi_enabled():
+    """PROMPT 6-A.A: ``sdfgi_enabled = true`` is baked into the
+    Environment sub_resource at compile time (no longer only at runtime).
+    After this lands, day_night.gd's _apply_cycle() runtime SET becomes
+    a redundant write-to-same-value (no behavior change)."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        env_block = _forge_environment_block(text)
+        assert "sdfgi_enabled = true" in env_block, (
+            "PROMPT 6-A.A: sdfgi_enabled = true not baked into the "
+            f"Environment sub_resource block. Block:\n{env_block}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_environment_block_has_sdfgi_tuning_for_interiors():
+    """PROMPT 6-A.A: SDFGI tuning (min_cell_size + cascade0 distance)
+    is baked at the values day_night.gd already uses at runtime:
+    0.2 / 12.0.  Covers ~4-12 m interior room cone."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        env_block = _forge_environment_block(text)
+        assert "sdfgi_min_cell_size = 0.2" in env_block, (
+            "PROMPT 6-A.A: sdfgi_min_cell_size should be 0.2 (interior), "
+            f"got block:\n{env_block}"
+        )
+        assert "sdfgi_cascade0_distance = 12" in env_block, (
+            "PROMPT 6-A.A: sdfgi_cascade0_distance should be 12.0 (covers "
+            f"~4-12 m interior rooms), got block:\n{env_block}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
+def test_environment_block_has_sdfgi_uses_occlusion():
+    """PROMPT 6-A.A: ``sdfgi_use_occlusion = true`` is baked so SDFGI
+    actually darkens cavities (corners feel enclosed).  Without this,
+    sdfgi only adds bounce light and rooms feel flat — defeating the
+    visual-leap point.  Godot 4's default is true; we set it
+    explicitly so a future default flip wouldn't silently regress."""
+    spec = dict(_QUEST_SPEC)
+    man = _MANIFEST
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".tscn", delete=False
+    ) as f:
+        out = f.name
+    try:
+        compile_scene(spec, man, out)
+        text = Path(out).read_text(encoding="utf-8")
+        env_block = _forge_environment_block(text)
+        assert "sdfgi_use_occlusion = true" in env_block, (
+            "PROMPT 6-A.A: sdfgi_use_occlusion = true not baked; cavity "
+            f"darkening will depend on engine default. Block:\n{env_block}"
+        )
+    finally:
+        Path(out).unlink()
+        data_file = Path(out).with_name(f"{Path(out).stem}_quest_data.json")
+        if data_file.exists():
+            data_file.unlink()
+
+
 # ── B2: Light-emitting props ──────────────────────────────────────
 
 def test_lantern_prop_has_light_child():
