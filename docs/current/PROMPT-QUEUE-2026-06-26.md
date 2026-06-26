@@ -80,6 +80,7 @@ JSON-patch operations → the engine assembles a deterministic Godot scene → t
 rejects impossible patches. NO LLM yet.
 
 ## PROMPT 2-A · Unit 1.5 — human-patch CLI (`forge world`)
+> ✅ **DONE** — landed on Forge `feat/exterior-and-props` commit `74dc4a3`<br>> (`feat(world-cli): PROMPT 2-A — forge world apply (batch ops) + show --json`).<br>> `foundry/world_cli.py`: `apply` (atomic batch via `apply_op_checked`; saves ONLY after full batch succeeds)<br>> + `show --json` (LLM-consumable `world.query.world_index`); `foundry/__main__.py`: `forge world` routing.<br>> Tests 15/15 in `foundry/tests/test_world_cli.py`; ruff exit 0; full `pytest tests/` 1761 passed.
 
 > **Verify first:** grep `foundry/` for `"forge world"` and `"world apply"` — the CLI may
 > already be partially wired. Read `foundry/__main__.py` (or the entry-point for `forge`
@@ -236,6 +237,7 @@ These are the three open M1 items from `ROADMAP.md` that were not blocking the e
 > modes for 3 assets (wood table, granite shelf, iron lantern)."
 
 ## PROMPT 5-B · M1.0.5b — headless interaction ray-aim (`godot_heavy` fix)
+> ☑ **PIVOT per queue stop rule** — landed on Forge `feat/exterior-and-props` commit `a5ce97d`<br>> (`fix(probe-interaction): Phase 0.5b partial pivot — INTERACTION.RAYCAST defended, blocker documented`).<br>> Queue says: "If after investigation the fix is more complex than the 1-line estimate, document<br>> exactly what the blocker is and leave the tests marked `godot_heavy` — do NOT loosen or delete them."<br>> After 2 unsuccessful fix attempts (recursive AABB-centre aim + `CollisionObject3D` cast), pivoted.<br>> Kept 3 sound fixes in `interaction.gd`: `_player_rid: RID` cache, `_add_player_exclude(query)` on 5 ray sites,<br>> `CollisionObject3D` cast.  Reverted recursive-AABB aim to origin-aim baseline in `probe_smoke.gd` +<br>> `probe_playthrough.gd` with explanatory pivot comment.  3 `@pytest.mark.godot_heavy` tests have their<br>> reason updated to point at `docs/current/BLOCKER-2026-06-26-0.5b-headless-probe-interaction.md`<br>> (3-pronged diagnosis: `npc.gd` `DisplayServer` idiom, `player.gd` weight cap, `interaction.gd` `hit_from_inside`).<br>> AUDIT-A baseline `3 failed, 5 passed` matches pre-pass-1 → no regression from the pivot.<br>> LOCAL == REMOTE at `a5ce97d`.
 
 > **Context:** 3 tests are marked `@pytest.mark.godot_heavy` and skipped in the fast gate.
 > They test `interact_under_crosshair()` in `interaction.gd` but fail headless because the
