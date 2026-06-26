@@ -311,3 +311,149 @@ def test_material_variation_locks_step_within_one_call():
         f"within one call share the same dh (and thus rotate identically in"
         f" hue)"
     )
+
+
+# ───── PROMPT 6-A 2/4: apply_instance_jitter public surface ─────
+
+def test_apply_instance_jitter_returns_a_copy_not_mutation_of_input():
+    """PROMPT 6-A 2/4: apply_instance_jitter() returns a NEW dict;
+    the input dict's object identity is preserved (no in-place mutation).
+    Critical invariant: hot-path callers can safely re-use a single
+    MATERIAL_PALETTE entry across many asset_ids without cross-pollution.
+    """
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    base = MATERIAL_PALETTE["worn_oak"]
+    snapshot = dict(base)  # deep copy of the outermost dict (RGB tuples are immutable)
+    out = apply_instance_jitter(base, asset_id="chair_a", material_name="worn_oak")
+    assert out is not base, "must return a NEW dict reference (not the input)"
+    assert base == snapshot, (
+        "input dict must be unchanged after apply_instance_jitter; if this fails, "
+        "the helper is mutating MATERIAL_PALETTE in-place and seeds would alias"
+    )
+
+
+def test_apply_instance_jitter_produces_new_variant_for_palette_entry():
+    """PROMPT 6-A 2/4: per-instance jitter must produce a NEW variant for
+    a known palette entry. We sweep across asset_ids 0..9 and require
+    >= 8 of them to yield a distinct grain_light_rgb from the base.
+    (Two collisions in ten SHA-256-derived seeds is mathematically unlikely.)
+    """
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    base = MATERIAL_PALETTE["worn_oak"]
+    base_light = base["grain_light_rgb"]
+    distinct = 0
+    for i in range(10):
+        out = apply_instance_jitter(base, asset_id=f"chair_{i}", material_name="worn_oak")
+        if out["grain_light_rgb"] != base_light:
+            distinct += 1
+    assert distinct >= 8, (
+        f"per-instance jitter produced only {distinct}/10 distinct variants of "
+        f"grain_light_rgb vs base; expected >= 8 (the lockstep design should "
+        f"vary the family hue within the +/-5 deg envelope for almost every id)"
+    )
+
+
+def test_apply_instance_jitter_is_deterministic_for_same_inputs():
+    """PROMPT 6-A 2/4: identical (mat, asset_id, material_name) -> byte-identical
+    copy on every call. Two independent invocations must compare equal.
+    """
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    a = apply_instance_jitter(MATERIAL_PALETTE["dark_walnut"], "shelf_42", "dark_walnut")
+    b = apply_instance_jitter(MATERIAL_PALETTE["dark_walnut"], "shelf_42", "dark_walnut")
+    assert a == b, (
+        "two independent apply_instance_jitter calls with identical inputs "
+        "differed - SHA-256 seed determinism regression"
+    )
+
+
+def test_apply_instance_jitter_distinct_for_distinct_asset_ids_same_palette():
+    """PROMPT 6-A 2/4: load-bearing queue-concern test -- the prior
+    `distinct_for_distinct_material_names` was too weak (it used two
+    DIFFERENT base palettes, so it would pass even if SHA-256 dedup
+    were completely broken, since the BASE PALETTES already diverge).
+
+    This is the actual user-visible scenario: two tables of the SAME
+    material (`worn_oak`) with DIFFERENT asset_ids must look distinct.
+    If SHA-256 dedup is broken the test FAILS because the per-instance
+    RNG stream would collide; the prior weak test could not catch this
+    regression."""
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    base = MATERIAL_PALETTE["worn_oak"]
+    a = apply_instance_jitter(base, asset_id="table_alpha", material_name="worn_oak")
+    b = apply_instance_jitter(base, asset_id="table_beta",  material_name="worn_oak")
+    # PROMPT 6-A reviewer-4 final: a != b is the rigorous invariant --
+    # _apply_hsv_jitter_to_rgbs only mutates RGB triplets (locked-step),
+    # so dict inequality is *equivalent* to "any RGB key differs." The
+    # prior grain_light_rgb-specific check was brittle belt-and-suspenders:
+    # for worn_oak only family+grain_light+grain_dark are present, so a
+    # per-key sweep of 6 names collapses to 2. Keeping a != b matches
+    # the queue's user-facing claim ("two same-material props look
+    # visibly different") without over-promising coverage we can't
+    # deliver for a half-formed palette like worn_oak.
+    assert a != b, (
+        f"two same-palette different-asset_id jittered variants compared "
+        f"equal (grain_light a={a.get('grain_light_rgb')!r}, "
+        f"grain_light b={b.get('grain_light_rgb')!r}) -- SHA-256 dedup "
+        f"regression: per-instance jitter should produce distinct RGB "
+        f"for distinct asset_ids"
+    )
+
+
+def test_apply_instance_jitter_distinct_for_distinct_material_names():
+    """PROMPT 6-A 2/4 (orthogonal smoke): same asset_id paired with two
+    distinct material names produces visibly different variants. NOTE
+    this is dominated by the BASE PALETTE difference, not by the
+    SHA-256 seed; the load-bearing same-palette different-asset_id
+    test is `test_apply_instance_jitter_distinct_for_distinct_asset_ids_same_palette`
+    above. This test stays as an orthogonal seed-keyspace smoke."""
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    a = apply_instance_jitter(MATERIAL_PALETTE["worn_oak"], "table_x", "worn_oak")
+    b = apply_instance_jitter(MATERIAL_PALETTE["dark_walnut"], "table_x", "dark_walnut")
+    assert a != b
+    assert a["grain_light_rgb"] != b["grain_light_rgb"]
+
+
+def test_apply_instance_jitter_stays_within_queue_envelope():
+    """PROMPT 6-A 2/4: per-channel max drift vs the base palette entry
+    must stay within the queue-envelope guard (h +/-5 deg, S +/-10 %,
+    V +/-8 %; round-trip RGB error is bounded). Per-channel max delta
+    <= 0.18 is a conservative ceiling that absorbs the S+V combined
+    envelope plus a small numeric-RGB-roundtrip float error.
+    """
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    base = MATERIAL_PALETTE["worn_oak"]
+    FLOOR = 0.18
+    for i in range(20):
+        out = apply_instance_jitter(base, asset_id=f"chair_e_{i}", material_name="worn_oak")
+        for key in ("grain_light_rgb", "grain_dark_rgb"):
+            delta = max(abs(base[key][c] - out[key][c]) for c in range(3))
+            assert delta <= FLOOR, (
+                f"{key} drifted {delta:.4f} from base; max-permitted is {FLOOR}; "
+                f"this asset_id sent the jitter out of the queue envelope"
+            )
+
+
+def test_apply_instance_jitter_grey_material_still_shifts_visibly():
+    """PROMPT 6-A 2/4: near-grey materials (S approx 0 makes hue rotation
+    invisible on RGB) must still differ from the base via the value and/or
+    saturation jitter. This is the per-instance counterpart to the
+    material_variation grey guard test."""
+    from materials import MATERIAL_PALETTE, apply_instance_jitter
+    base = MATERIAL_PALETTE["rough_granite"]
+    # Loop a handful of asset_ids -- if a particular seed landed on a
+    # trivially-zero (dS=0, dV=0) triple, another seed almost certainly
+    # won't. Binary != is a robust backstop: at least one channel moved.
+    any_changed = False
+    for i in range(5):
+        out = apply_instance_jitter(base, asset_id=f"granite_{i}", material_name="rough_granite")
+        if out["base_rgb"] != base["base_rgb"]:
+            any_changed = True
+            break
+        if out["mottle_rgb"] != base["mottle_rgb"]:
+            any_changed = True
+            break
+    assert any_changed, (
+        "rough_granite is a grey material (S approx 0 -> hue rotation invisible), "
+        "but the value/saturation jitter must still produce a visible shift on "
+        "at least one channel for at least one of 5 seeds"
+    )

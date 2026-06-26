@@ -24,7 +24,11 @@ if _foundry_dir not in sys.path:
     sys.path.insert(0, _foundry_dir)
 
 from glb_postprocess import inject_occlusion_texture as _inject_occlusion_texture
-from materials import MATERIAL_PALETTE
+
+# PROMPT 6-A commit 2: `apply_instance_jitter` is the build_asset pre-bake
+# hook that per-instance-jitters the matte colours (queue binding: HSV jitter
+# seed = hash(asset_id + material_name), bounds hue +/-5 deg, S +/-10 %, V +/-8 %).
+from materials import MATERIAL_PALETTE, apply_instance_jitter
 
 
 def _argv():
@@ -2260,6 +2264,18 @@ def apply_material(mesh, material_name, seed=0.0, spec=None):
     mat_info = MATERIAL_PALETTE.get(material_name, MATERIAL_PALETTE["worn_oak"])
     roughness = mat_info.get("roughness", 0.65)
 
+    # PROMPT 6-A commit 2: per-instance HSV micro-jitter so two same-
+    # material assets in a room aren't pixel-identical. Seed =
+    # hash(asset_id + NUL + material_name); jitter bounds hue +/-5 deg,
+    # S +/-10 %, V +/-8 % (queue envelope). Roughness baseline is
+    # captured BEFORE the jitter so the scalar stays palette-sourced;
+    # the jitter only fires on RGB triplets. Fallback chain:
+    # spec["asset_id"] -> material_name -> so a missing id surfaces as
+    # deterministic per-material drift rather than aliasing every
+    # missing-id asset onto a single shared seed.
+    asset_id = (spec or {}).get("asset_id") or material_name
+    mat_info = apply_instance_jitter(mat_info, asset_id, material_name)
+
     mat = bpy.data.materials.new(material_name)
     mat.use_nodes = True
     mesh.materials.append(mat)
@@ -2273,6 +2289,10 @@ def apply_material(mesh, material_name, seed=0.0, spec=None):
     # ── Shared tail: BSDF + material output ──────────────────
     bsdf = nodes.new("ShaderNodeBsdfPrincipled")
     bsdf.inputs["Roughness"].default_value = roughness
+    # PROMPT 6-A scope: _apply_hsv_jitter_to_rgbs iterates RGB triplets
+    # only. The `roughness` and `metallic` scalars here are palette-
+    # sourced; broadening the helper would silently bake per-instance
+    # drift into the GLB. See materials.py.
     bsdf.inputs["Metallic"].default_value = mat_info.get("metallic", 0.0)
     bsdf.location = (800, 300)
 

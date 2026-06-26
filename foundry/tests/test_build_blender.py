@@ -3,11 +3,15 @@ import os
 import shutil
 import struct
 import subprocess
+from io import BytesIO
 from pathlib import Path
 
+import numpy as np
 import pytest
 import trimesh
 from library import LIVE_LEXICON, read_envelope
+from PIL import Image
+from pygltflib import GLTF2
 
 BLENDER = shutil.which("blender")
 BUILD = str(Path(__file__).resolve().parents[1] / "blender" / "build_asset.py")
@@ -955,8 +959,124 @@ def test_orm_r_channel_has_ao_for_stone(tmp_path):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Fix-Batch-1 Task 3: occlusionTexture in GLB JSON
-# ═══════════════════════════════════════════════════════════════════════
+
+# ===== PROMPT 6-A 2/4: per-instance HSV jitter survives Blender bake =====
+# Load-bearing integration assertion: build the SAME spec twice with
+# different asset_id values, parse each GLB's baseColorTexture, and
+# assert the mean RGB differs by a measurable amount. Without this
+# test, the helper could be live-but-dead (computed but never reached
+# by apply_material, or reached but rinsed out by the EMIT bake /
+# Linear / sRGB roundtrip).
+def _read_base_color_mean(glb_path: str) -> tuple[int, int, int]:
+    """Parse a GLB and return (mean_R, mean_G, mean_B) in 8-bit [0,255].
+    Defensive: walks the glTF texture chain rather than reading
+    gltf.images[0] directly -- after the AO + ORM bakes, the GLB carries
+    multiple images and Blender's emission order isn't guaranteed.
+
+    PROMPT 6-A 2/4: heavy deps (numpy / PIL.Image / pygltflib.GLTF2 /
+    BytesIO) are imported at module top so this helper, which is called
+    3 times in the loop of test_two_distinct_asset_ids_..., doesn't pay
+    the import overhead 3x."""
+
+
+    gltf = GLTF2().load(glb_path)
+    mat = gltf.materials[0]
+    pbr = mat.pbrMetallicRoughness
+    bct = pbr.baseColorTexture
+    assert bct is not None and bct.index is not None, (
+        "expected baseColorTexture to be present (slice 3 contract)"
+    )
+    tex = gltf.textures[bct.index]
+    img_entry = gltf.images[tex.source]
+    bv = gltf.bufferViews[img_entry.bufferView]
+    blob = gltf.binary_blob()
+    png_bytes = blob[bv.byteOffset:bv.byteOffset + bv.byteLength]
+    arr = np.array(Image.open(BytesIO(png_bytes)))
+    if arr.ndim == 3 and arr.shape[2] >= 3:
+        rgb = arr[:, :, :3].astype(np.float64)
+    else:
+        rgb = np.stack([arr] * 3, axis=-1).astype(np.float64)
+    return (
+        int(round(float(rgb[:, :, 0].mean()))),
+        int(round(float(rgb[:, :, 1].mean()))),
+        int(round(float(rgb[:, :, 2].mean()))),
+    )
+
+
+def test_two_distinct_asset_ids_produce_different_base_color_means(tmp_path):
+    """PROMPT 6-A 2/4 integration assertion -- HARDENED.
+
+    Sample THREE (alpha, beta) seed pairs and require the per-pair
+    baseColorTexture mean RGB to differ by >= 2 bytes on at least
+    one channel. The original single-pair version risked flaking on
+    a rare hash-pair that lands a near-zero triple (queue envelope
+    hue +/-5 deg can produce partial cancellation across two
+    particular asset_ids); sampling 3 pairs makes the per-pair
+    failure rate well below test-budget brittleness.
+
+    Each pair rebuilds at Blender speed so total wall time is ~3x,
+    but the fast gate skips @pytest.mark.blender (this test runs
+    in the full suite or via `pytest tests/test_build_blender.py -v`)."""
+    # PROMPT 6-A reviewer-3 hardening: structurally distinct asset_id
+    # pairs so the SHA-256-derived (dh, ds, dv) triples for each pair
+    # land in disjoint regions of the rng space; the prior `_N` suffix
+    # only varied one digit which can cluster similar seeds.
+    # NOTE: the asset_ids below are seed-space diversity only -- the spec
+    # s `generator` is hardcoded `"table"`, so all 6 bakes are dark_walnut
+    # tables with different per-instance HSV seeds. We are NOT exercising
+    # mesh-shape diversity; the chair/shelf/door/barrel/rug prefixes are
+    # arbitrary salt for the SHA-256 input, not a generator swap.
+    PAIRS = [
+        ("chair_z01",  "table_x07"),
+        ("shelf_a05",  "barrel_m12"),
+        ("door_n03",   "rug_k44"),
+    ]
+
+
+    base_spec = {
+        "generator": "table",
+        "material": "dark_walnut",
+        "age": 0.2,
+        "params": {
+            "top_width": 1.5, "top_depth": 1.0, "top_thickness": 0.08,
+            "leg_height": 0.67, "leg_radius": 0.06, "leg_inset": 0.1,
+        },
+    }
+
+    drift_per_pair = []
+    for alpha_id, beta_id in PAIRS:
+        spec_a = dict(base_spec, asset_id=alpha_id)
+        spec_b = dict(base_spec, asset_id=beta_id)
+        out_a = str(tmp_path / f"{alpha_id}.glb")
+        out_b = str(tmp_path / f"{beta_id}.glb")
+
+        for spec, out in ((spec_a, out_a), (spec_b, out_b)):
+            sp = tmp_path / (spec["asset_id"] + ".json")
+            sp.write_text(json.dumps(spec), encoding="utf-8")
+            proc = subprocess.run(
+                [BLENDER, "--background", "--python", BUILD, "--", str(sp), out],
+                capture_output=True, text=True, timeout=180,
+            )
+            assert proc.returncode == 0, proc.stderr or proc.stdout
+            assert os.path.exists(out), f"no GLB written for {spec['asset_id']}"
+
+        mean_a = _read_base_color_mean(out_a)
+        mean_b = _read_base_color_mean(out_b)
+        drift = max(abs(mean_a[c] - mean_b[c]) for c in range(3))
+        drift_per_pair.append(((alpha_id, beta_id), drift, mean_a, mean_b))
+
+    failing = [r for r in drift_per_pair if r[1] < 2]
+    assert not failing, (
+        f"PROMPT 6-A load-bearing assertion: {len(failing)}/{len(PAIRS)} "
+        f"(alpha,beta) pairs produced near-identical baseColorTextures. "
+        f"Per-pair drift: "
+        f"{[(p, d) for p, d, _, _ in drift_per_pair]}. "
+        f"Expected >= 2 byte max-channel drift per pair -- the wire-up "
+        f"may be live-but-dead or the seed derivation may have collapsed "
+        f"to (0,0,0) for some seeds."
+    )
+
+
 
 def _parse_glb_json(glb_path):
     """Read a GLB file and return the parsed JSON chunk."""
