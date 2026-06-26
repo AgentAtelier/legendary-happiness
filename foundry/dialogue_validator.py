@@ -74,6 +74,66 @@ _CATEGORY_SYNONYMS: dict[str, list[str]] = {
     # Edge-case shapes — fall-through to bare category word on lookup miss.
 }
 
+# ── C4b (Phase C): Substance-adjective whitelist ───────────────
+# Words the LLM might use as material descriptors next to the
+# target category.  Validator compares the descriptor extracted from
+# the dialogue to the manifest material's expected adjective — and
+# flags a quest.dialogue_adjective_mismatch DP (severity='error')
+# when they disagree.  Conservative set: only unambiguous substance
+# nouns (no size/shape words), and includes "stone" / "glass" /
+# "crystal" etc. even though they're also gem-synonyms — the
+# positional extract (see _extract_substance_descriptor) only fires
+# when the substance word PRECEDES the category, not when it IS the
+# category word.
+_SUBSTANCE_ADJECTIVES: set[str] = {
+    # Wood
+    "wooden", "oak", "walnut", "pine", "ash", "mahogany",
+    # Metal
+    "iron", "steel", "brass", "bronze", "copper", "metal",
+    "gold", "golden", "silver", "platinum",
+    # Stone
+    "stone", "granite", "marble", "obsidian", "slate",
+    # Other rigid materials
+    "glass", "crystal", "ceramic", "clay", "porcelain",
+    # Soft materials
+    "leather", "silk", "velvet", "cloth", "linen", "cotton",
+    # Paper-ish
+    "paper", "parchment", "vellum",
+}
+
+
+def _extract_substance_descriptor(line: str, category: str) -> str:
+    """Phase C Fix B: positional extract of the substance adjective
+    that DIRECTLY modifies *category* (or one of its known synonyms)
+    in *line*.
+
+    Returns the descriptor word when it is in the substance-adjective
+    whitelist, else "".  Empty return means "no substance descriptor
+    found here" — caller treats this as no mismatch.
+
+    Why positional + filter: words like ``"stone"`` and ``"crystal"``
+    are gem category synonyms, so a free-text scan for substance words
+    would yield false positives on legitimate lines like ``"I lost a
+    precious stone."`` (where ``stone`` IS the noun, not a descriptor).
+    We therefore extract ONLY the word(s) IMMEDIATELY preceding the
+    category (or its synonym), and filter to the substance whitelist.
+
+    Examples::
+
+      line="I lost my wooden key",        category="key"     → "wooden"
+      line="I lost a precious stone",     category="gem"     → ""
+      line="I seek my sharp-edged dagger", category="dagger" → ""  ("edged" not in whitelist)
+      line="Find my oak key",             category="key"     → "oak"
+    """
+    lower = line.lower()
+    terms = [category.lower()] + list(_CATEGORY_SYNONYMS.get(category.lower(), []))
+    for term in terms:
+        for m in re.finditer(rf"\b(\w+)\s+{re.escape(term)}\b", lower):
+            word = m.group(1)
+            if word in _SUBSTANCE_ADJECTIVES:
+                return word
+    return ""
+
 # EB-6: Idle-bark words — a line must contain at least one to pass
 # relevance for a non-conversation idle line.
 _IDLE_WORDS: set[str] = {
@@ -324,6 +384,42 @@ def validate_dialogue(
                     )
                 )
             is_valid = cat_ref and length_ok and code_ok
+
+            # Phase C Fix B: substance-adjective mismatch check.
+            # When the dialogue uses a substance adjective that DIRECTLY
+            # modifies *category* (or its synonyms) and disagrees with
+            # the manifest material's expected adjective, emit
+            # ``quest.dialogue_adjective_mismatch`` at severity='error'
+            # AND fall back to the canned template so the player still
+            # sees a valid line that names the correct substance.
+            #
+            # Skipped when ``adjective`` is empty (older callers that
+            # don't know the material) — the check requires a known
+            # material to compare against.  Skipped when there's no
+            # substance descriptor in the line — vague lines like
+            # ``"Find my key."`` are fine.
+            if is_valid and adjective:
+                descriptor = _extract_substance_descriptor(stripped, category)
+                if descriptor and descriptor != adjective.lower():
+                    decisions.append(
+                        make_decision(
+                            code="quest.dialogue_adjective_mismatch",
+                            stage="planner",
+                            severity="error",
+                            context={
+                                "field": field,
+                                "original": stripped[:80],
+                                "descriptor": descriptor,
+                                "expected": adjective,
+                                "category": category,
+                            },
+                            choices=(),
+                        )
+                    )
+                    # Setting is_valid=False INTENTIONALLY triggers the
+                    # quest.dialogue_fallback DP below (one cue-line
+                    # error → two DPs; cumulative signal in build_report).
+                    is_valid = False
         else:
             # Greeter/reject lines use the looser semantics: category ref
             # OR a quest-verb ref is enough (a friendly "Ah, welcome,

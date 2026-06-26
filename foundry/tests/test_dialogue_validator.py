@@ -278,3 +278,212 @@ def test_validate_dialogue_ask_thank_with_synonyms_does_not_emit_dp():
         f"synonyms should satisfy ask/thank, got "
         f"{[(d.severity, d.context) for d in target_mismatch]}"
     )
+
+
+# ── Phase C: substance-adjective mismatch (Dual Fix B) ──────────────
+# When the LLM uses a substance adjective next to the target category
+# word that disagrees with the manifest material's expected adjective,
+# validate_dialogue must emit ``quest.dialogue_adjective_mismatch`` at
+# severity='error' and substitute the fallback line (so the player
+# still sees a clue, but the orchestrator flags the leak in the build
+# report).
+#
+# The check is scoped to ask+thank cue lines: greeter/reject lines are
+# allowed to be vague.  The extraction only fires on a substance
+# adjective that DIRECTLY modifies the category word, so words like
+# "stone" used as gem-synonyms must NOT be flagged as substance
+# mismatches.
+
+def test_validate_dialogue_substance_mismatch_emits_dp():
+    """Phase C: ask line says "wooden key" but target material is worn_oak
+    (expected adjective 'oak'). Must emit quest.dialogue_adjective_mismatch
+    at severity='error' AND substitute the fallback ask line."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask": "I lost my wooden key somewhere. Can you find it?",
+        "wrong": "That is not my key.",
+        "thank": "Yes, that's the wooden key! Thank you.",
+    }
+    _, decisions = validate_dialogue(dialogue, category="key", adjective="oak")
+    codes = [(d.code, d.severity, d.context.get("field")) for d in decisions]
+    assert ("quest.dialogue_adjective_mismatch", "error", "ask") in codes, (
+        f"Phase C: expected an error DP for the 'wooden key' substance "
+        f"mismatch, got {codes}"
+    )
+    assert ("quest.dialogue_adjective_mismatch", "error", "thank") in codes, (
+        f"Phase C: expected an error DP for the 'wooden key' substance "
+        f"mismatch on thank, got {codes}"
+    )
+
+
+def test_validate_dialogue_substance_match_emits_no_dp():
+    """Phase C: ask line says 'oak key' — descriptor matches expected
+    'oak' for worn_oak. Must NOT emit quest.dialogue_adjective_mismatch."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask": "Find my oak key, would you?",
+        "wrong": "That is not my key.",
+        "thank": "Yes, that's the oak key!",
+    }
+    _, decisions = validate_dialogue(dialogue, category="key", adjective="oak")
+    adj_dps = [
+        d for d in decisions
+        if d.code == "quest.dialogue_adjective_mismatch"
+    ]
+    assert adj_dps == [], (
+        f"matching substance adjective should NOT emit adjective_mismatch, "
+        f"got {[(d.context) for d in adj_dps]}"
+    )
+
+
+def test_validate_dialogue_stone_as_noun_not_flagged_as_substance():
+    """Phase C: gem category has 'stone' as a category synonym.
+    A line that uses 'stone' as the noun ('Find the missing stone') must
+    NOT be flagged as a substance mismatch — 'stone' here is the
+    synonym for gem, not a material descriptor."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask": "I lost a precious stone. Find it for me?",
+        "wrong": "That is not what I lost.",
+        "thank": "Yes, that's the right stone!",
+    }
+    _, decisions = validate_dialogue(dialogue, category="gem", adjective="emerald")
+    adj_dps = [
+        d for d in decisions
+        if d.code == "quest.dialogue_adjective_mismatch"
+    ]
+    assert adj_dps == [], (
+        f"stone-as-gem-synonym should NOT trigger substance mismatch, "
+        f"got {[(d.context) for d in adj_dps]}"
+    )
+
+
+def test_validate_dialogue_compound_non_whitelist_adjective_passes():
+    """Phase C: 'sharp-edged dagger' has a compound adjective that is
+    NOT in the substance whitelist. Must pass without emitting
+    adjective_mismatch (and not be confused for 'iron')."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask": "I seek my sharp-edged dagger.",
+        "wrong": "That blade is wrong.",
+        "thank": "Yes, that sharp-edged dagger is mine!",
+    }
+    _, decisions = validate_dialogue(dialogue, category="dagger", adjective="iron")
+    adj_dps = [
+        d for d in decisions
+        if d.code == "quest.dialogue_adjective_mismatch"
+    ]
+    assert adj_dps == [], (
+        f"non-substance adjective should NOT trigger mismatch, "
+        f"got {[(d.context) for d in adj_dps]}"
+    )
+
+
+def test_validate_dialogue_substance_mismatch_falls_back():
+    """Phase C: when substance mismatch fires on 'ask', the validated
+    ask must be the fallback template (so the player still sees a valid
+    line, but the build report loudly flags the leak)."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask": "I lost my wooden key somewhere. Can you find it?",
+        "wrong": "That is not my key.",
+        "thank": "Yes, that is my oak key!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="key", adjective="oak",
+    )
+    adj_dps = [
+        d for d in decisions
+        if d.code == "quest.dialogue_adjective_mismatch"
+    ]
+    assert adj_dps, "fixture sanity: expected at least one adjective_mismatch DP"
+    # The failing ask line must be replaced with the fallback template
+    # (which uses adjective='oak'). The fallback does NOT contain 'wooden'.
+    assert "wooden" not in validated["ask"].lower(), (
+        f"fallback should drop 'wooden' for 'oak'; got {validated['ask']!r}"
+    )
+    assert "oak" in validated["ask"].lower() and "key" in validated["ask"].lower(), (
+        f"fallback should still describe the right item, got {validated['ask']!r}"
+    )
+
+
+# ── Phase C hygiene nits (code-reviewer follow-ups) ───────────────
+#
+# Direct unit tests for the positional extract helper.  These pin the
+# helper's contract independently of the validator wire-up so future
+# refactors can't silently regress the false-positive guards.
+
+def test_extract_substance_descriptor_direct_match():
+    """Nit (a): bare-category match returns the whitelist word that
+    directly precedes it."""
+    from dialogue_validator import _extract_substance_descriptor
+    # "wooden" is in the whitelist; "key" is the bare category.
+    assert _extract_substance_descriptor(
+        "I lost my wooden key.", "key"
+    ) == "wooden"
+
+
+def test_extract_substance_descriptor_via_synonym():
+    """Nit (a): extract fires through a known category synonym, not just
+    the bare category word.  ``gem`` ⇒ ['jewel', 'stone', 'crystal'],
+    so a whitelist word before "stone" should be picked up."""
+    from dialogue_validator import _extract_substance_descriptor
+    assert _extract_substance_descriptor(
+        "I lost my oak stone.", "gem"
+    ) == "oak"
+
+
+def test_extract_substance_descriptor_filters_non_whitelist_compound():
+    """Nit (a): compound adjectives like "sharp-edged" or "precious"
+    are NOT in the whitelist, so the helper returns "" rather than
+    introducing false positives."""
+    from dialogue_validator import _extract_substance_descriptor
+    # "edged" not in whitelist — returns ""
+    assert _extract_substance_descriptor(
+        "I seek my sharp-edged dagger.", "dagger"
+    ) == ""
+    # "precious" not in whitelist — returns "" (and "stone" here IS
+    # the category noun, not a descriptor — the positional extract
+    # correctly skips it because "precious" precedes it, not a
+    # whitelist word).
+    assert _extract_substance_descriptor(
+        "I lost a precious stone.", "gem"
+    ) == ""
+
+
+def test_validate_dialogue_emits_both_adjective_mismatch_and_fallback():
+    """Nit (c): a single cue-line substance mismatch emits TWO DPs:
+    ``quest.dialogue_adjective_mismatch`` (severity=error, the
+    substance violation) and ``quest.dialogue_fallback`` (severity=info,
+    the substitution event).  This cumulative signal is intentional —
+    the orchestrator surfaces both in build_report so the cause
+    (substance) and the response (fallback line) are visible together.
+    """
+    dialogue = {
+        "greet": "Hello there, traveler.",
+        "ask":   "I am looking for my iron table. Can you bring it to me?",
+        "wrong": "That is not what I am looking for.",
+        "thank": "You found the iron table! Thank you so much.",
+    }
+    # category="table" + material="worn_oak" → adjective="oak" (Fix A).
+    # LLM emitted "iron" → mismatch.
+    validated, decisions = validate_dialogue(
+        dialogue, category="table", adjective="oak",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"expected adjective_mismatch DP; got codes={codes}"
+    )
+    assert "quest.dialogue_fallback" in codes, (
+        f"expected dialogue_fallback DP (the intentional double-DP "
+        f"triggered by setting is_valid=False); got codes={codes}"
+    )
+    # Sanity: fallback line was actually substituted into the ask field.
+    assert validated["ask"] != dialogue["ask"], (
+        "fallback DP fired but the ask field was NOT replaced — "
+        "that's a regression in the wire-up"
+    )
+    assert "oak" in validated["ask"].lower(), (
+        f"fallback should use the correct adjective 'oak'; "
+        f"got {validated['ask']!r}"
+    )

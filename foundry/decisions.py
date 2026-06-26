@@ -143,6 +143,25 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "a template line is used instead — otherwise the quest would be "
         "winnable-by-manifest but unplayable-by-text.",
     ),
+    # ── Phase C: substance-adjective mismatch (Fix B) ──
+    # The dialogue line uses a substance adjective (wooden/oak/iron/etc.)
+    # that disagrees with the manifest material's expected adjective.
+    # Severity='error' to match dialogue_target_mismatch — the leak
+    # misleads the player into looking for a substance that doesn't
+    # match the actual prop.  Note: a falling back ASK or THANK line
+    # will additionally emit quest.dialogue_fallback (info) — the
+    # layering is intentional.
+    "quest.dialogue_adjective_mismatch": (
+        # technical
+        "dialogue field {field} used descriptor {descriptor!r} but "
+        "target material expects {expected!r} (category {category}). "
+        "Substitutes canned fallback so the player still sees a valid "
+        "line naming the right substance.",
+        # plain
+        "The model's '{field}' line called the item '{descriptor}' "
+        "but it's actually {expected} — I used a template line "
+        "instead so you're told the right substance.",
+    ),
     "quest.no_eligible_target": (
         # technical
         "manifest has no eligible target props for a fetch quest.",
