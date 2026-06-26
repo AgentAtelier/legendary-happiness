@@ -16,6 +16,7 @@ summary.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -131,8 +132,22 @@ def _cmd_add(args: argparse.Namespace) -> None:
 
 
 def _cmd_show(args: argparse.Namespace) -> None:
-    """Print a formatted overview of the world."""
+    """Print a formatted overview of the world.
+
+    PROMPT 2-A: ``--json`` flag prints ``world.query.world_index(world)``
+    as formatted JSON (LLM-consumable compact map) instead of the
+    human-readable table.  Default (no flag) keeps the original
+    formatted text for backwards-compatibility with the original
+    per-op tests in ``test_world_cli.py``.
+    """
     world = _load_existing(args.dir)
+
+    if getattr(args, "json", False):
+        # Local import keeps the top-of-module import surface lean
+        # (world.query is only needed in JSON mode).
+        from world.query import world_index
+        print(json.dumps(world_index(world), indent=2, sort_keys=True))
+        return
 
     print(f"World at {args.dir!r}:")
     print(f"  Spaces: {len(world.nodes)}")
@@ -168,6 +183,59 @@ def _cmd_replay(args: argparse.Namespace) -> None:
     print(
         f"Reconstructed world successfully from {len(world.op_log)} op(s)."
         f"  Spaces: {len(world.nodes)}  Portals: {len(world.portals)}"
+    )
+
+
+# ── PROMPT 2-A: apply (batch from JSON patch file) ────────────────────
+
+
+def _cmd_apply(args: argparse.Namespace) -> None:
+    """PROMPT 2-A: ``apply`` reads a JSON-array patch file and applies
+    each op via ``apply_op_checked``.  Saves the world ATOMICALLY —
+    the on-disk state is only updated after the full batch succeeds.
+    On any violation: print structured Violation(s) to stderr and exit
+    nonzero WITHOUT saving (roll forward by never committing).
+    """
+    world = _load_existing(args.dir)
+    patch_path = Path(args.patch)
+    if not patch_path.exists():
+        print(f"Error: patch file not found: {args.patch!r}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        patch_text = patch_path.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"Error: cannot read patch file {args.patch!r}: {e}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        ops = json.loads(patch_text)
+    except json.JSONDecodeError as e:
+        print(f"Error: patch file {args.patch!r} is not valid JSON: {e}",
+              file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(ops, list):
+        print(
+            f"Error: patch file must contain a JSON ARRAY of ops, "
+            f"got {type(ops).__name__}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    try:
+        for op in ops:
+            world = apply_op_checked(world, op)
+    except WorldValidationError as e:
+        for v in e.violations:
+            print(f"Violation [{v.code}]: {v.message}", file=sys.stderr)
+        sys.exit(1)
+    except WorldOpError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # ATOMIC: only NOW, after the full batch succeeded, commit.
+    save_world(world, args.dir)
+    print(
+        f"Applied {len(ops)} ops. "
+        f"Spaces: {len(world.nodes)}. Portals: {len(world.portals)}."
     )
 
 
@@ -238,6 +306,23 @@ def _build_parser() -> argparse.ArgumentParser:
     # ── show ───────────────────────────────────────────────────────
     p = sub.add_parser("show", help="Print spaces, portals, entities, op-count")
     p.add_argument("--dir", required=True, help="World directory")
+    # PROMPT 2-A: --json prints world.query.world_index output (compact
+    # LLM-consumable map).  Default stays the human-readable table for
+    # backwards compatibility with the original per-op tests.
+    p.add_argument(
+        "--json", action="store_true",
+        help="Print world.query.world_index output as JSON (LLM-consumable)",
+    )
+
+    # ── apply (PROMPT 2-A) ───────────────────────────────────────────
+    p = sub.add_parser(
+        "apply",
+        help="Apply a JSON-array patch file (each op gated by apply_op_checked)",
+    )
+    p.add_argument("--dir", required=True, help="World directory")
+    p.add_argument(
+        "patch", help="Path to a JSON file containing an array of ops",
+    )
 
     # ── replay ─────────────────────────────────────────────────────
     p = sub.add_parser("replay", help="Reload from op_log; confirm reconstruction")
@@ -256,6 +341,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if cmd == "replay":
         _cmd_replay(args)
+        return 0
+    if cmd == "apply":
+        # PROMPT 2-A: batch JSON-patch file applier.
+        _cmd_apply(args)
         return 0
     # add-space, add-portal, add-entity, move-entity
     _cmd_add(args)

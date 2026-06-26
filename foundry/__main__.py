@@ -50,6 +50,12 @@ def main() -> int:
     if len(sys.argv) >= 2 and sys.argv[1] == "visual-eval":
         return _cmd_visual_eval(sys.argv[2:])
 
+    if len(sys.argv) >= 2 and sys.argv[1] == "world":
+        # PROMPT 2-A: delegate to foundry.world_cli (add-space / add-portal /
+        # add-entity / move-entity / show --json / apply / replay).
+        from world_cli import main as world_main
+        return world_main(sys.argv[2:])
+
     if "--request" in sys.argv:
         # --request "<text>" <lexicon.json> <library_dir>
         try:

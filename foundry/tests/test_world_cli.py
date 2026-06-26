@@ -8,6 +8,7 @@ Encodes the acceptance criteria:
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -230,3 +231,106 @@ def test_add_entity_missing_space_exits_nonzero(world_dir: str):
     assert exit_code == 1
     # Referential error from apply_op, passed through WorldOpError
     assert "space not found" in err.lower() or "Error" in err
+
+
+# ── PROMPT 2-A: forge world apply / show --json ─────────────────────
+
+
+def test_apply_patch_file_happy_path(world_dir: str, tmp_path: Path):
+    """PROMPT 2-A: apply reads a JSON-array patch file + applies each op
+    via apply_op_checked; on success prints 'Applied N ops' summary
+    and saves the world ATOMICALLY only after the full batch succeeds."""
+    # Base world already has one space
+    _run("add-space", "--dir", world_dir,
+         "--id", "hall", "--size", "4", "3", "4")
+
+    patch = tmp_path / "patch.json"
+    patch.write_text(json.dumps([
+        {"op": "add_space", "id": "court", "brief": {},
+         "footprint": {"origin": [4.0, 0.0, 0.0], "size": [4.0, 3.0, 4.0]}},
+        {"op": "add_entity", "space": "court",
+         "entity": {"id": "fountain", "type": "fountain", "pos": [6.0, 0.0, 2.0]}},
+    ]), encoding="utf-8")
+
+    exit_code, out, err = _run("apply", "--dir", world_dir, str(patch))
+    assert exit_code == 0, err
+    assert "Applied 2 ops" in out
+    assert "Spaces: 2" in out
+    assert "Portals: 0" in out
+
+    # Verify both spaces persisted AND the entity registered
+    w = load_world(world_dir)
+    assert set(w.nodes) == {"hall", "court"}
+    fountain = next(e for e in w.nodes["court"].entities if e.id == "fountain")
+    assert fountain.type == "fountain"
+
+
+def test_apply_overlap_rejected(world_dir: str, tmp_path: Path):
+    """PROMPT 2-A: apply with overlapping-space op → violation printed
+    + exit nonzero + ATOMIC rollback (no partial state ever saved)."""
+    _run("add-space", "--dir", world_dir,
+         "--id", "hall", "--size", "4", "3", "4")
+
+    patch = tmp_path / "patch.json"
+    # First patch-op is OK; second overlaps the first patch-op.
+    # boundary between them is at x=8, so origin (5,0,0) overlaps the
+    # x=4..8 span of e1.
+    patch.write_text(json.dumps([
+        {"op": "add_space", "id": "e1", "brief": {},
+         "footprint": {"origin": [4.0, 0.0, 0.0], "size": [4.0, 3.0, 4.0]}},
+        {"op": "add_space", "id": "e2", "brief": {},
+         "footprint": {"origin": [5.0, 0.0, 0.0], "size": [4.0, 3.0, 4.0]}},
+    ]), encoding="utf-8")
+
+    exit_code, out, err = _run("apply", "--dir", world_dir, str(patch))
+    assert exit_code == 1, err
+    assert "space.overlap" in err
+    assert "Violation" in err
+
+    # ATOMIC: only the original 'hall' space remains; the patch ops
+    # were rolled back because save_world() was never called.
+    w = load_world(world_dir)
+    assert set(w.nodes) == {"hall"}
+    assert len(w.op_log) == 1  # the original add-space only
+
+
+def test_apply_unknown_op_exits_nonzero(world_dir: str, tmp_path: Path):
+    """PROMPT 2-A: apply with unknown vocabulary op → exit nonzero +
+    clean referential error, world state unchanged."""
+    # Seed a world so load_world succeeds
+    _run("add-space", "--dir", world_dir,
+         "--id", "hall", "--size", "4", "3", "4")
+
+    patch = tmp_path / "patch.json"
+    patch.write_text(json.dumps([
+        {"op": "teleport_portal", "id": "x"},  # not in vocabulary
+    ]), encoding="utf-8")
+
+    exit_code, out, err = _run("apply", "--dir", world_dir, str(patch))
+    assert exit_code == 1, err
+    # The world must still reflect only the seeded add-space
+    w = load_world(world_dir)
+    assert set(w.nodes) == {"hall"}
+    assert len(w.op_log) == 1
+
+
+def test_show_json_is_valid_json(world_dir: str):
+    """PROMPT 2-A: `show --json <dir>` prints world.query.world_index
+    output as valid JSON (LLM-consumable shape)."""
+    _run("add-space", "--dir", world_dir,
+         "--id", "hall", "--size", "4", "3", "4")
+    _run("add-space", "--dir", world_dir,
+         "--id", "keep", "--size", "4", "3", "4",
+         "--origin", "4", "0", "0")
+
+    exit_code, out, err = _run("show", "--dir", world_dir, "--json")
+    assert exit_code == 0, err
+
+    # Parse the printed JSON
+    parsed = json.loads(out)
+    assert isinstance(parsed, dict)
+    assert "spaces" in parsed
+    assert "portal_count" in parsed
+    assert isinstance(parsed["spaces"], list)
+    assert {s["id"] for s in parsed["spaces"]} == {"hall", "keep"}
+    assert parsed["portal_count"] == 0
