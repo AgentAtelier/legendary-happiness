@@ -1,0 +1,11 @@
+trimesh
+embreex  # BVH-accelerated mesh.contains() for proxy.py — far faster + lower memory
+pytest
+pygltflib
+requests
+jsonschema
+fastapi
+uvicorn
+httpx
+shapely        # 2D polygon boolean for navmesh carving (foundry/navmesh.py)
+mapbox_earcut  # triangulation of walkable polygon-with-holes

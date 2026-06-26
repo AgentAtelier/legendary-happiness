@@ -7,23 +7,41 @@ extend-exclude = [
     "engine/experiments",
     "engine/docs",
     "engine/integration_tests",
+    "foundry/builds",
+    "foundry/.venv",
+    "legacy",
 ]
 
 [tool.ruff.lint]
-select = ["F", "I", "B"]
+# Phase 0.9: hygiene - select E+F+I+UP+B (UP auto-fixes are OFF by default; B retained from prior vetting).
+# AUDIT-03 findings driving the ignore list are documented in docs/current/ACCEPTED.md.
+# Project-deliberate style ignores (E701/E702/E741) are also documented there with rationale.
+select = ["E", "F", "I", "UP", "B"]
 ignore = [
-    "B904",   # raise without from inside except - noisy in CLI wrappers
+    "B904",   # raise without from inside except - noisy in CLI wrappers (AUDIT-03 Q11)
     "B028",   # No explicit stacklevel keyword in warn - tolerable
     "B007",   # unused loop control variable - noisy, harmless
     "B011",   # assert False - a legitimate "can't happen" marker here
     "B023",   # function uses loop variable - reviewed, intentional in this code
     "B905",   # zip without explicit strict= - not targeting 3.10-incompat
     "F841",   # unused local variable - very noisy on AI-written code, low value
+    "E701",   # compact one-liners (e.g., Blender `bm = bmesh.new(); _add_box(...)`) are deliberate style (ACCEPTED)
+    "E702",   # same — semicolon-chained statements are a deliberate project idiom (ACCEPTED)
+    "E741",   # ambiguous l/I/O in tight math/helpers; same theme as AUDIT-03 Q14 (ACCEPTED)
+
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]          # re-exports are the public API, not dead imports
-"**/tests/**" = ["F821", "F811"]  # test fixtures/dynamic names; tests verified by running
+# Per-file ignores are SCOPED — NOT a global E402/E266/etc ignore — so real
+# import-order bugs elsewhere still surface.  E402 is allowed only on files
+# that legitimately set sys.path or do a conditional `import bpy` BEFORE the
+# bare imports; other files (e.g. ui/app.py, planner.py, materials.py) had
+# their imports moved to the top in the Phase 0.9 cleanup.
+"__init__.py" = ["F401"]                                              # re-exports are the public API, not dead imports
+"**/tests/**" = ["F401", "F821", "F811", "E402"]                      # tests use local imports + module-level skip()
+"**/blender/**" = ["E402"]                                            # blender scripts set sys.path before importing materials.py
+"__main__.py" = ["E402"]                                              # CLI bootstrap: sys.path.insert(0, _foundry_dir) then bare imports
+"world_cli.py" = ["E402"]                                           # Same CLI bootstrap pattern as __main__.py
 
 [tool.ruff.format]
 quote-style = "double"
@@ -32,3 +50,8 @@ skip-magic-trailing-comma = false
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.pytest.ini_options]
+# Backstop only — the real fix for hangs is marking stack-dependent tests `live`.
+# 60s is well above the slowest legit test (~7s); a stray hang costs 60s, not 120.
+timeout = 60

@@ -1,0 +1,231 @@
+# Backlog — Finalized Prompts (paste-ready for the CLI AI)
+
+**Date:** 2026-06-20 (rev 4 — NQ1–NQ10 + R1–R4 folded in)
+**Order:** B-prompts first (small, parallel-safe), then C-slices in the agreed sequence. Each C-slice is
+larger — the prompt tells the CLI AI to produce a short spec+plan, get it reviewed, then implement.
+
+## Guiding principle (R1) — build broad & modular
+> There is **no fixed game**. The open-world RPG is a *lighthouse* (integration target), not a spec.
+> When a choice is narrow-vs-broad, take the **broad** path (include the common options). Build every
+> subsystem so it **stands alone and is extractable** (asset foundry · room-gen · quest-gen · combat ·
+> character-gen) — worst case we spin one out as its own product. We are in an **exploration phase**:
+> include things, keep options open, find the gold. Prefer data-driven/extensible over hard-coded.
+
+## Standing rules (paste at the top of every handoff)
+> Read `AGENTS.md` + `docs/current/SLICE1-RPG-FETCH-QUEST.md`. **Dedicated branch/worktree** (Q13). TDD
+> red→green. Tests: `cd foundry && .venv/bin/python -m pytest tests/ -q`. **Godot-in-the-loop gate:** after
+> any `godot_template/`/`scene_compiler.py` change, scaffold a build, `godot --headless --path <build>
+> --quit`, grep stderr `SCRIPT ERROR|Parse Error|Failed to load` = 0; regenerate builds after shell changes.
+> **Eval-first (Q15):** every generation change adds/extends a `foundry/eval/` signal. Single-line GBNF.
+> Never mutate real `asset_lexicon.json` in tests. qwen stochastic → live claims twice. Manifest contract:
+> `room_size, yaw, surface, decor`. Never touch `addons/godot_ai`. Commit per task with commit-proof.
+
+---
+
+# READY PROMPTS
+
+## P-E · Carryable items + target realism — DONE ✅ (f75d9d7; 573+ py / 7 godot / 10 blender green)
+_Original brief kept for reference._
+
+## P-E · Carryable items + target realism  [Q1=C, NQ1=a]
+> Add 10 small **pickable** carryable generators (≤0.3 m, `decor=false`): **key, book, cup, gem, bottle,
+> scroll, coin-pouch, candle, dagger, ring** — built from primitive boxes/cylinders (mirror the rug/painting
+> thin-box pattern): each = `_build_*_geometry` + `_BUILDERS` + `compiler.GENERATORS`/`PARAM_RANGES` +
+> grammar branch + lexicon envelope + **live gate-passing build test**.
+> Then: extend `RoomPlanner` grammar to allow carryables; `room_layout` places them `surface:"on"` on a
+> furniture top (y-top + offset) or floor if none (Q2); change `_cmd_quest`/behaviour-gen so the **quest
+> target is a carryable**, named in dialogue by category(+material) ("find my brass key on the table").
+> Furniture stays pickable scenery. **Eval:** "target-is-carryable + reachable + named-in-dialogue" signal.
+> **Verify:** headless playthrough — wrong carryable → wrong line; right → thank → win. Run-twice.
+
+## P-F · 20 stress-test prop generators — DONE ✅ (8a2dadb·3ee061e·cbd4682·76c6975; 611 py / 20 blender green)
+_Original brief kept for reference._
+
+## P-F · 20 stress-test prop generators  [Q3, NQ2=C hybrid]
+> Add these 20 generators (≈12 themed-useful + ≈8 deliberate edge-cases). Per item: builder +
+> `_BUILDERS` + `GENERATORS`/`PARAM_RANGES` + grammar + lexicon envelope + **live gate-passing build test**.
+> Build in batches of 5, commit each. Extend the eval gate-pass corpus to cover every new generator.
+>
+> **Themed-useful (12):** barrel, crate, chest (lidded box), stool, bench, wardrobe (tall closed),
+> desk (table variant), lantern (tall thin + emissive), pot/urn, weapon-rack (tall narrow frame),
+> pillar, planter.
+> **Edge-case stressors (8):** huge_table (size-max), tiny_stool (size-min), partition (very thin + large
+> area), tall_post (very tall narrow), wide_platform (wide + flat), many_leg_table (8 legs — part count),
+> ladder (many thin rungs — part count + thinness), L_bench (asymmetric/aspect).
+> **Goal of the stressors:** each pushes one gate/topology axis; if any fails the gate, that's a generator
+> bug worth a ticket — do NOT loosen the gate to pass them without justification.
+
+## P-G · Material & visual richness  [Q5=all, NQ3=a, Q7=default]
+> 1. **Painting modes (all):** `blank | solid | pattern | image`; both `pattern` and `image` are
+>    **procedurally generated** canvas textures (NQ3=a — no external files), baked like existing materials.
+> 2. **Per-theme lighting (deterministic):** derive `DirectionalLight3D`/ambient color+energy from theme
+>    keywords in the prompt (warm forge vs cool hermit) in `scene_compiler`.
+> 3. **Fabric material family** for rugs (extend `materials.py` + a `_fabric_color_nodes` builder).
+> TDD + headless-verify each; eval signals: "painting mode honored", "theme→light deterministic & stable".
+
+---
+
+# DESIGN-FIRST SLICES (sequenced — spec+plan then implement)
+
+## C-0 · Room control rules / theme tables — DONE ✅ (81b8ce4; foundry/room_control.py — THEME_TABLE + global guards)
+> Note: door-clearance guard deferred to C-5 (where doors first exist). Themes + density guards landed.
+
+## C-0 · Room control rules / theme tables  [Q6+Q13, NQ10=c, R4]  — DO FIRST
+> Build a deterministic **control layer** over RoomPlanner: a **data-driven theme table** (JSON, so new
+> themes are trivial to add) + global **guards**. Per-theme entry: required props, allowed palette/material
+> bias, density band (min/max prop count), must-include (e.g. at-least-one-seat). Global guards (apply to
+> every theme): NPC clearance, player-spawn clearance, min/max density, door clearance (for C-5). The LLM
+> fills *within* the table; guards clamp + emit Decision Points. **Seed 5 themes (R4):** `blacksmith`
+> (metal bias, dense, anvil/weapon-rack), `hermit_shack` (worn wood, sparse), `tavern` (mixed, many
+> seats+tables), `storeroom` (containers — crates/barrels/chests), `study` (shelves+books+carryables).
+> Theme is picked from the prompt by keyword match (deterministic), default = a generic table. Keep
+> stochastic variety *within* the rules. **Eval:** "variety-within-rules" + "guards never violated" +
+> "theme keyword → table" signals. Land this early — it shapes every later room and is itself a
+> standalone, reusable generator-control module.
+
+## C-1 · Audio — in-engine synth  [Q4=C, NQ4=b]
+> Generation-first SFX via Godot `AudioStreamGenerator`/procedural DSP in GDScript: footstep, pickup, talk,
+> win, (later) combat hit. A small reusable `audio.gd` autoload the shell triggers on events. No sound
+> files. Verify headless that streams instantiate without error; manual listen for the cues.
+
+## C-2 · Inventory  [systems #1]
+> Carry/hold multiple carryables (from P-E), simple HUD list, select-active, deliver-active to NPC.
+> Spec+plan first. Eval: "deliver correct item → win; wrong → wrong line" still holds with N items.
+
+## C-3 · NPC quest-state persistence  [systems #2, NQ9=a]
+> Wire NPC quest state (idle→given→done) into the **existing world-model transactional log** (reuse, don't
+> add a parallel save system). Survives reload. Spec the world-model touchpoints first.
+
+## C-4 · Multiple NPCs / multiple quests  [systems #3]
+> >1 NPC per room, a quest each (behaviour-gen per NPC), HUD tracks the active quest. Decor-vs-target and
+> carryable-target rules from P-E still hold per NPC.
+
+## C-5 · Multi-room graph + leave-to-win  [systems #4, Q11/Q14, NQ8=b, R2]
+> A **graph/grid** of generated rooms. Model (R2): a separate **graph-manager** module (room-gen stays
+> standalone) builds a random grid graph with a **spanning tree + a few extra loop edges** and a
+> **guaranteed path** from a start room to a designated **exit room**. Rooms are generated **lazily on
+> entry** (reuse the existing room-gen + C-0). Doors sit on the wall shared with a neighbour; C-0's
+> door-clearance guard keeps them unobstructed. Traverse by walking through a door → load/generate the
+> neighbour. **Win = both supported:** completing quests AND reaching the exit (configurable; default =
+> reach exit). Spec+plan first (reviewed). **Eval:** "start→exit path always exists", "every door leads
+> to a generated room", "no orphan rooms". Keep the graph manager extractable as a standalone dungeon-graph tool.
+
+## C-6 · NPC pathfinding / idle-wander  [systems #5]
+> NavMesh bake in the generated room; NPC idle-wander + approach. Spec first.
+
+## C-7 · Camera first/third-person — build-time flag  [Q9, NQ5=b]
+> A scaffold/build flag selects first- OR third-person rig (NO runtime swap). Both share the visible body.
+> Add the flag to `quest`/`scaffold_project`/`scene_compiler`. Verify both modes headless-load clean.
+
+## C-8 · Basic combat  [Q10, NQ7=a, R3]
+> Player melee (E/click swing, short range) + health, and ONE enemy type. **Enemy source (R3):** a
+> **generated primitive "golem"** (existing primitive generators + a simple idle/approach bob) so combat
+> does **not** block on the rigged humanoid (C-9); add a humanoid enemy variant later, once C-9 lands.
+> Enemy has health + approach-only AI (walk toward player, melee on contact). **Enemies are optional
+> obstacles** — some rooms have them, some don't (driven by C-0 theme/density); clearing is not always
+> required. Player death → respawn/restart. Spec+plan first. **Eval:** "enemy defeatable", "player can die
+> & recover", "a combat room is still completable". Keep the combat module decoupled so it's reusable.
+
+## C-9 · Rigged animated humanoid NPC (basic)  [Q10, NQ6=a]  — frontier
+> Replace the primitive NPC body with a **rigged GLB + a single idle animation**, gate-passing AND
+> animating in Godot headless without error, facing the player. Off-ramp allowed (generated simpler form)
+> if the full rig stalls — documented. Its own slice, eval-gated. Spec+plan first.
+
+---
+
+# R1–R4 — RESOLVED (broad/modular philosophy)
+R1 no fixed game → broadest coherent superset, each subsystem standalone/extractable · R2 lazy grid-graph
+(spanning tree + loops, guaranteed start→exit), separate graph manager, dual win · R3 generated primitive
+"golem" enemy first (combat un-blocked from C-9), enemies optional obstacles · R4 5 data-driven seed themes
+(blacksmith, hermit_shack, tavern, storeroom, study). No open questions remain — the full pipeline is specced.
+
+---
+
+# FINDINGS — kitchen-sink run (2026-06-20, 4 qwen × 3 prompts)
+All 11 generated builds load clean in Godot (0 script errors); 620 tests green. Three integration
+bugs fixed first (commits f9d978c, f83389d, 9f0e5f7): theme filter dropped carryables+new props;
+behaviour-gen hard-failed w/o carryable; layout now guarantees a carryable; RoomPlanner no longer
+remaps new props→table. New tickets:
+
+## T-1 · RoomPlanner parse-failure fallback  [robustness · S]
+> 4B emitted ~1900 chars of malformed JSON for the dense "store" prompt → `RoomPlanner.parse()`
+> raised `JSONDecodeError` and crashed the whole quest (behaviour-gen recovers from bad output;
+> RoomPlanner doesn't). Add a fallback: on parse failure, retry once then fall back to a minimal
+> default room plan + a Decision Point. Eval signal: "planner never crashes on junk".
+
+## T-2 · Model-driven carryable target  [quality · S-M]
+> The quest target is almost always the injected `key_auto` — models rarely pick their own carryable.
+> Nudge the RoomPlanner/behaviour-gen prompt to include & target a themed carryable; prefer an
+> LLM-picked carryable over the injected fallback when present.
+
+## T-3 · Fabric materials never surface  [content · S]
+> P-G's linen/wool/silk are built but no theme `allowed_palette` includes them, so they're clamped
+> away. Add fabric to relevant themes' palettes (rugs/tavern/study) so the family actually appears.
+
+## T-4 · Single source of truth for the category set  [tech-debt · M]  ← root cause of the 3 bugs
+> A new generator must currently be registered in ~6 places (grammar, compiler GENERATORS/PARAM_RANGES,
+> lexicon, blender _BUILDERS, room_layout FURNITURE/CARRYABLES, room_planner CATEGORIES). The scatter
+> is exactly what let carryables/new-props get dropped & remapped. Consolidate into one registry
+> (category → {builder, params, envelope, kind: furniture|carryable|decor, collision}) that the other
+> modules derive from. Highest-leverage cleanup — prevents the whole class of bug.
+
+## T-5 · Tiny rooms place ~0 furniture  [layout · S]
+> 4×4 rooms (min clamp) fit 0–2 grid cells at CELL=1.8 → near-empty (saved by the carryable guarantee).
+> Scale CELL/WALL_MARGIN down for small rooms, or raise the min room size.
+
+---
+
+# POLISH BATCH (do before resuming C-slices) — playtest fixes
+**Verification mandate:** these are "passed-tests-but-broken-in-real-play" bugs (parse crash, pickup/drop,
+missing walls, dialogue, painting). Headless-load is NOT sufficient. **V-1 below must land first**, then each
+fix is verified through the REAL scripts (and a screenshot where it's visual/feel).
+
+## V-1 · Real-play probe drives the actual scripts  [eval · M] — DO FIRST
+> Rewrite `probe_playthrough.gd` to drive the REAL `interaction.gd` / `pickup.gd` / `npc.gd` (not
+> reimplementations) through the full loop: walk → look-at-NPC → talk → advance → pick up A → pick up B
+> (assert A returned to its spot) → drop B (assert B on floor) → deliver target → win. This closes the gap
+> that let the interaction.gd parse error + pickup float bug pass CI. Every fix below is verified through it.
+
+## U-1 · Missing walls + ceiling  [scene_compiler · S]
+> 4 walls + ceiling are emitted but only 2 walls render from inside — back-face culling (single-sided
+> StandardMaterial3D). Set wall/ceiling materials double-sided (`cull_mode = CULL_DISABLED`) or fix normals
+> so all 4 walls + ceiling show from spawn. Verify with a screenshot from the player start.
+
+## U-2 · Pickup/drop broken  [pickup.gd + shell · M]  (the big one)
+> (a) Switching items leaves the previous item FLOATING: `_restore_to_world` calls `model.reparent(prop)`
+> which keeps global transform — pass `keep_global_transform=false` so it snaps back to the prop's origin.
+> (b) No working/discoverable DROP: add a drop action (G) that places the carried item on the floor in
+> front of the player, clears `carried_item`, re-enables its collision, and a HUD hint "G to drop". Verify
+> via V-1: pick A → pick B (A back in place, not floating) → drop B (on floor, not clipping).
+
+## U-3 · Painting orientation off 90°  [room_layout / painting geometry · S]
+> Wall paintings render rotated 90° (flat face perpendicular to the wall). Fix the painting yaw (or the
+> generator's axis) so the picture face is parallel to its wall and faces into the room — for back/left/right
+> walls. Verify each wall visually.
+
+## U-4 · Semantic placement (chairs around tables)  [room_layout · M]
+> Naive grid → props don't relate. Add relational placement: chairs cluster around + face the nearest table;
+> stools near benches; keep non-overlap + spawn/NPC clearance; deterministic. Eval: "chairs adjacent to a
+> table when both present".
+
+## U-5 · All props read as the same texture  [materials / build_asset · S-M]
+> Props look identically textured even across materials. Investigate the per-prop bake (likely no per-prop
+> variation, and/or theme palette clamps a whole room to one material). Add seed-driven per-prop color/texture
+> variation and allow ≥2 materials per room so rooms aren't monochrome. Verify with a screenshot.
+
+## U-6 · NPC dialogue UX  [npc.gd / interaction.gd / hud · S-M]
+> (a) Must look DOWN to talk — raise the NPC talk trigger to eye level (taller talk Area / aim assist) so you
+> can talk looking straight ahead. (b) Advance dialogue with Space/Enter, with a "Space to continue" hint.
+> Verify in V-1.
+
+## U-7 · Camera first/third build-time flag  [scene_compiler/scaffold/quest · S]  (C-7 pulled forward)
+> Implement NQ5=B: `quest --camera first|third` (default first) selects the rig at scaffold time, no runtime
+> swap. First-person should feel right after U-1/U-6. Both modes headless-load clean + a screenshot each.
+
+## Also fold in the earlier tickets (same batch)
+> **T-4 (category registry — DO right after V-1):** single source of truth for the category set; root cause
+> of the 3 integration bugs. **T-1** RoomPlanner parse fallback. **T-2** model-driven carryable target.
+> **T-3** fabric materials reach themes. **T-5** tiny-room furniture (CELL/min-size).
+
+**After this batch:** resume the C-slices — next is **C-2 Inventory** (pairs naturally with the fixed
+pickup/drop) then C-1 audio · C-3 persistence · C-4 multi-NPC · C-5 multi-room · C-6 · C-8 combat · C-9 humanoid.

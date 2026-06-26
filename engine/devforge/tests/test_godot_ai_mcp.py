@@ -630,6 +630,48 @@ def test_translate_uses_plugin_command_names():
     ]
 
 
+def test_add_node_with_scene_path():
+    """add_node op with scene_path → create_node command includes scene_path."""
+    commands = GodotAIMCPExecutor._translate_ops_to_commands(
+        [
+            {
+                "type": "add_node",
+                "parent": "/root/Main",
+                "node_type": "MeshInstance3D",
+                "name": "InstancedTable",
+                "scene_path": "res://assets/table.glb",
+            },
+        ]
+    )
+    assert len(commands) == 1
+    assert commands[0]["command"] == "create_node"
+    assert commands[0]["params"]["parent_path"] == "/root/Main"
+    assert commands[0]["params"]["type"] == "MeshInstance3D"
+    assert commands[0]["params"]["name"] == "InstancedTable"
+    assert commands[0]["params"]["scene_path"] == "res://assets/table.glb"
+
+
+def test_add_node_without_scene_path_regression():
+    """add_node without scene_path → unchanged output (regression guard)."""
+    commands = GodotAIMCPExecutor._translate_ops_to_commands(
+        [
+            {
+                "type": "add_node",
+                "parent": "/root/Main",
+                "node_type": "Camera3D",
+                "name": "Cam",
+            },
+        ]
+    )
+    assert len(commands) == 1
+    assert commands[0]["command"] == "create_node"
+    assert commands[0]["params"] == {
+        "parent_path": "/root/Main",
+        "type": "Camera3D",
+        "name": "Cam",
+    }
+
+
 def test_res_path_normalization():
     """Project-relative script paths gain the res:// prefix exactly once."""
     assert GodotAIMCPExecutor._res_path("scripts/a.gd") == "res://scripts/a.gd"

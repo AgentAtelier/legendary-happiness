@@ -1,0 +1,21 @@
+# quest_spec.gbnf — Constrains LLM output to a valid quest-spec JSON.
+# Single-line alternations only — normalize_gbnf() joins any multi-line `|`.
+# Dialogue values are bounded free text; the validator caps length after parsing.
+
+root ::= "{" ws "\"npc_role\"" ws ":" ws string ws "," ws "\"target_entity\"" ws ":" ws string ws "," ws "\"dialogue\"" ws ":" ws dialogue-object ws "," ws "\"objective\"" ws ":" ws objective-object ws "}"
+
+dialogue-object ::= "{" ws "\"greet\"" ws ":" ws string ws "," ws "\"ask\"" ws ":" ws string ws "," ws "\"wrong\"" ws ":" ws string ws "," ws "\"thank\"" ws ":" ws string ws "}"
+
+objective-object ::= "{" ws "\"type\"" ws ":" ws "\"fetch\"" ws "," ws "\"target\"" ws ":" ws string ws "," ws "\"giver\"" ws ":" ws "\"npc\"" ws "}"
+
+# ── JSON primitives ──────────────────────────────────────────────
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

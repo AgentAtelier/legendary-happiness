@@ -1,0 +1,356 @@
+"""TDD tests for foundry.interpreter — prompt → Brief (spine slice 1 task 2).
+
+Tests the Interpreter's build_prompt, parse (raw_decode), and interpret
+behaviour — all with stub LLMs (no llama.cpp dependency).  Mirrors the
+test_behaviour_gen.py / test_room_planner.py pattern.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+# ── build_prompt ───────────────────────────────────────────────────
+
+
+def test_build_prompt_contains_vocabularies():
+    """build_prompt injects the closed vocabularies so the LLM can
+    make capability-aware choices."""
+    from interpreter import Interpreter
+
+    interp = Interpreter()
+    prompt_text = interp.build_prompt("a wizard's tower study")
+
+    # Known themes should be listed
+    assert "hermit" in prompt_text
+    assert "blacksmith" in prompt_text
+    assert "wizard" in prompt_text
+    assert "tavern" in prompt_text
+    assert 'or "*"' in prompt_text
+
+    # Placeable categories should be listed
+    assert "table" in prompt_text
+    assert "chair" in prompt_text
+    assert "shelf" in prompt_text
+
+    # The user's description should be included
+    assert "a wizard's tower study" in prompt_text
+
+    # Output JSON instruction should be present
+    assert "Output JSON now" in prompt_text
+
+
+# ── parse ──────────────────────────────────────────────────────────
+
+
+def test_parse_valid_json():
+    from interpreter import Interpreter
+
+    data = Interpreter.parse('{"theme_tag": "blacksmith", "scale": "medium"}')
+    assert data["theme_tag"] == "blacksmith"
+    assert data["scale"] == "medium"
+
+
+def test_parse_json_with_markdown_fences():
+    from interpreter import Interpreter
+
+    data = Interpreter.parse('```json\n{"theme_tag": "wizard"}\n```')
+    assert data["theme_tag"] == "wizard"
+
+
+def test_parse_json_with_think_tags():
+    from interpreter import Interpreter
+
+    data = Interpreter.parse(
+        '<think>hmm</think>\n{"theme_tag": "tavern", "mood": ["cozy"]}'
+    )
+    assert data["theme_tag"] == "tavern"
+    assert data["mood"] == ["cozy"]
+
+
+def test_parse_trailing_prose_handled_by_raw_decode():
+    """Trailing prose / unclosed <think> after JSON → raw_decode
+    parses the first complete object, ignores the rest.  This is the
+    hard-won lesson — json.loads() would reject with 'Extra data'."""
+    from interpreter import Interpreter
+
+    # Trailing prose after valid JSON
+    data = Interpreter.parse(
+        '{"theme_tag": "dungeon", "scale": "small"}<think>unclosed prose'
+    )
+    assert data["theme_tag"] == "dungeon"
+    assert data["scale"] == "small"
+
+    # Unclosed think block after valid JSON
+    data = Interpreter.parse(
+        '{"theme_tag": "armory"}<think>this is not closed'
+    )
+    assert data["theme_tag"] == "armory"
+
+
+def test_parse_empty_text_raises():
+    from interpreter import Interpreter
+
+    with pytest.raises(ValueError, match="Empty"):
+        Interpreter.parse("")
+
+
+def test_parse_no_json_found_raises():
+    from interpreter import Interpreter
+
+    with pytest.raises(ValueError, match="No JSON found"):
+        Interpreter.parse("not json at all")
+
+
+def test_parse_malformed_json_raises():
+    from interpreter import Interpreter
+
+    with pytest.raises(ValueError, match="Invalid JSON"):
+        Interpreter.parse("{malformed : stuff")
+
+
+# ── interpret (stub LLMs, no llama) ────────────────────────────────
+
+
+def test_interpret_valid_json_passthrough():
+    """Stub returns valid JSON → interpret yields Brief with
+    source_prompt set, no error decisions."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return json.dumps({
+            "theme_tag": "blacksmith",
+            "scale": "medium",
+            "setting": "a blacksmith's forge",
+            "mood": ["hot", "industrious"],
+            "key_features": [
+                {"text": "anvil", "category": "table"},
+            ],
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a blacksmith's forge", fake_llm)
+
+    assert brief["theme_tag"] == "blacksmith"
+    assert brief["scale"] == "medium"
+    assert brief["source_prompt"] == "a blacksmith's forge"
+    assert brief["setting"] == "a blacksmith's forge"
+    assert brief["mood"] == ["hot", "industrious"]
+    assert len(brief["key_features"]) == 1
+
+    # No error decisions for clean input
+    error_dps = [d for d in decs if d.severity == "error"]
+    assert not error_dps, f"Unexpected error DPs: {[d.code for d in error_dps]}"
+
+
+def test_interpret_parse_fallback():
+    """Stub returns unparseable text → Brief.minimal + parse_fallback
+    decision.  Never raises."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return "not json at all"
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a wizard's tower", fake_llm)
+
+    # Should fall back to minimal Brief (theme inferred from prompt)
+    assert brief["source_prompt"] == "a wizard's tower"
+    assert brief["scale"] == "medium"  # minimal default
+
+    # parse_fallback DP must be present
+    dp = next((d for d in decs if d.code == "brief.parse_fallback"), None)
+    assert dp is not None, f"No parse_fallback decision: {[d.code for d in decs]}"
+    assert dp.severity == "error"
+
+
+def test_interpret_passes_json_schema_to_llm():
+    """Spine Fix: interpret() MUST pass json_schema=brief_json_schema()
+    to constrain structured output.  The old grammar="" path let verbose
+    thinkers (14B/27B) ramble in prose, making parse() fail and souls
+    never engage."""
+    from interpreter import Interpreter
+
+    seen_schemas: list = []
+
+    def capturing_llm(prompt: str, grammar: str | None = None,
+                      json_schema: dict | None = None) -> str:
+        seen_schemas.append(json_schema)
+        return json.dumps({
+            "theme_tag": "wizard",
+            "scale": "medium",
+        })
+
+    interp = Interpreter()
+    interp.interpret("mystical study", capturing_llm)
+
+    assert len(seen_schemas) == 1
+    assert seen_schemas[0] is not None, (
+        f"interpret() must pass a json_schema to constrain output, "
+        f"got {seen_schemas[0]!r}"
+    )
+    assert seen_schemas[0]["type"] == "object"
+    assert "theme_tag" in seen_schemas[0]["properties"]
+
+
+def test_interpret_llm_exception_handled():
+    """LLM raises an exception → Brief.minimal + parse_fallback, no raise."""
+    from interpreter import Interpreter
+
+    def crashing_llm(prompt: str, grammar: str | None = None,
+                     json_schema: dict | None = None) -> str:
+        raise RuntimeError("LLM server down")
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("cozy tavern", crashing_llm)
+
+    assert brief["source_prompt"] == "cozy tavern"
+    dp = next(d for d in decs if d.code == "brief.parse_fallback")
+    assert "LLM server down" in dp.context["error"]
+
+
+def test_interpret_valid_with_unmapped_features():
+    """Stub returns features with unknown categories → unmapped in Brief."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return json.dumps({
+            "theme_tag": "kitchen",
+            "scale": "large",
+            "key_features": [
+                {"text": "a magic portal", "category": "portal"},
+                {"text": "large table", "category": "table"},
+            ],
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("magic kitchen", fake_llm)
+
+    assert len(brief["key_features"]) == 2
+    assert brief["key_features"][0]["status"] == "unmapped"
+    assert "a magic portal" in brief["unmapped"]
+    assert brief["key_features"][1]["status"] == "mapped"
+
+
+def test_interpret_star_theme_passthrough():
+    """Valid Brief with theme_tag=\"*\" is accepted without error."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return json.dumps({
+            "theme_tag": "*",
+            "scale": "large",
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("some strange place", fake_llm)
+
+    assert brief["theme_tag"] == "*"
+    error_dps = [d for d in decs if d.severity == "error"]
+    assert not error_dps
+
+
+def test_interpret_extracts_characters():
+    """Interpreter stub returns characters → they survive into the Brief,
+    with default soul added by validate_brief."""
+    from interpreter import Interpreter
+    from soul import default_soul
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return json.dumps({
+            "theme_tag": "blacksmith",
+            "scale": "medium",
+            "characters": [
+                {"role": "blacksmith", "note": "master forger"},
+                {"role": "apprentice", "note": None},
+            ],
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a blacksmith's forge with an apprentice", fake_llm)
+
+    assert brief["characters"][0]["role"] == "blacksmith"
+    assert brief["characters"][0]["note"] == "master forger"
+    assert brief["characters"][0]["soul"] == default_soul()
+    assert brief["characters"][1]["role"] == "apprentice"
+    assert brief["characters"][1]["note"] is None
+    assert brief["characters"][1]["soul"] == default_soul()
+    # No error decisions for valid characters
+    error_dps = [d for d in decs if d.severity == "error"]
+    assert not error_dps
+
+
+def test_interpret_no_characters_stays_empty():
+    """Interpreter returns no characters → characters stays []."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return json.dumps({
+            "theme_tag": "tavern",
+            "scale": "medium",
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a cozy tavern", fake_llm)
+    assert brief["characters"] == []
+
+
+def test_interpret_character_with_soul():
+    """Interpreter stub returns a character with soul → soul survives into Brief."""
+    from interpreter import Interpreter
+
+    def fake_llm(prompt: str, grammar: str | None = None,
+                 json_schema: dict | None = None) -> str:
+        return json.dumps({
+            "theme_tag": "blacksmith",
+            "scale": "medium",
+            "characters": [{
+                "role": "generous_hermit",
+                "soul": {"substrate": {"generosity": 0.7, "courage": -0.1, "stability": 0.2}},
+            }],
+        })
+
+    interp = Interpreter()
+    brief, decs = interp.interpret("a generous hermit's hut", fake_llm)
+
+    assert len(brief["characters"]) == 1
+    assert brief["characters"][0]["role"] == "generous_hermit"
+    assert brief["characters"][0]["soul"]["substrate"]["generosity"] == 0.7
+    assert brief["characters"][0]["soul"]["substrate"]["courage"] == -0.1
+
+
+def test_parse_strips_think_block_with_braces_in_reasoning():
+    """Heavy thinkers (14B/27B) emit a <think> block whose reasoning contains
+    braces / example JSON, then the real JSON after. The think content MUST be
+    removed wholesale — a tag-only strip left an inner brace for find('{') to
+    grab, so interpret() collapsed every capable model to a minimal-Brief
+    fallback and souls never engaged."""
+    from interpreter import Interpreter
+    resp = (
+        "<think>\nThe schema is like {\"setting\": ..., \"characters\": [...]}.\n"
+        "I'll set courage to -0.8.\n</think>\n\n"
+        '{"setting":"a workshop","scale":"medium","theme_tag":"hermit",'
+        '"key_features":[],"characters":[{"role":"hermit",'
+        '"soul":{"substrate":{"courage":-0.8}}}]}'
+    )
+    d = Interpreter.parse(resp)
+    assert d["setting"] == "a workshop"
+    assert d["characters"][0]["role"] == "hermit"
+    assert d["characters"][0]["soul"]["substrate"]["courage"] == -0.8
+
+
+def test_parse_strips_unclosed_think_to_end():
+    """An unclosed <think> (model truncated mid-thought) leaves no valid JSON;
+    parse must not pick a brace out of the reasoning."""
+    import pytest as _pytest
+    from interpreter import Interpreter
+    resp = '<think>\nLet me think about {"setting": ...\nmore reasoning'
+    with _pytest.raises(ValueError):
+        Interpreter.parse(resp)

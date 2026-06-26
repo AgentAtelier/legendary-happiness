@@ -1,0 +1,22 @@
+# room_plan.gbnf — Constrains LLM output to a valid room-plan JSON.
+# Single-line alternations only — normalize_gbnf() joins any multi-line `|`.
+
+root ::= "{" ws "\"room_size\"" ws ":" ws size-object ws "," ws "\"props\"" ws ":" ws props-array ws "}"
+
+size-object ::= "{" ws "\"w\"" ws ":" ws number ws "," ws "\"d\"" ws ":" ws number ws "}"
+
+props-array ::= "[" ws (prop (ws "," ws prop)*)? ws "]"
+prop ::= "{" ws "\"category\"" ws ":" ws category-val ws "," ws "\"material\"" ws ":" ws material-val ws "," ws "\"count\"" ws ":" ws number ws "}"
+
+category-val ::= "\"table\"" | "\"chair\"" | "\"shelf\"" | "\"cabinet\"" | "\"rug\"" | "\"painting\"" | "\"key\"" | "\"book\"" | "\"cup\"" | "\"gem\"" | "\"bottle\"" | "\"scroll\"" | "\"coin-pouch\"" | "\"candle\"" | "\"dagger\"" | "\"ring\"" | "\"barrel\"" | "\"crate\"" | "\"chest\"" | "\"stool\"" | "\"bench\"" | "\"wardrobe\"" | "\"desk\"" | "\"lantern\"" | "\"pot\"" | "\"weapon-rack\"" | "\"pillar\"" | "\"planter\"" | "\"huge_table\"" | "\"tiny_stool\"" | "\"partition\"" | "\"tall_post\"" | "\"wide_platform\"" | "\"many_leg_table\"" | "\"ladder\"" | "\"L_bench\""
+material-val ::= "\"worn_oak\"" | "\"rough_granite\"" | "\"wrought_iron\"" | "\"linen\"" | "\"wool\"" | "\"silk\""
+
+number ::= "-"? [0-9]+ ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+
+string ::= "\"" char* "\""
+char ::= unescaped | "\\" escape
+unescaped ::= [^"\\\x00-\x1F]
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+hex ::= [0-9a-fA-F]
+
+ws ::= [ \t\n\r]*

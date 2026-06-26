@@ -1,0 +1,5 @@
+# Phase 0.9: developer-only requirements (linter).
+# Foundry runtime deps live in foundry/requirements.txt.
+# Install with: pip install -r foundry/requirements-dev.txt -r foundry/requirements.txt
+ruff==0.15.19
+pytest-timeout>=2.3

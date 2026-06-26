@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge UI</title>
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<style>
+  :root { --bg: #1a1a2e; --card: #16213e; --accent: #e94560; --text: #eee; --muted: #888; --green: #4ade80; --amber: #fbbf24; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; }
+  .app { max-width: 900px; margin: 0 auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  h2 { font-size: 1.1rem; color: var(--muted); border-bottom: 1px solid #333; padding-bottom: 0.3rem; margin-bottom: 0.5rem; }
+  .card { background: var(--card); border-radius: 8px; padding: 1rem; }
+  input, textarea, select, button { font-family: inherit; font-size: 0.9rem; border: 1px solid #444; border-radius: 6px; padding: 0.5rem 0.75rem; background: #0f0f1a; color: var(--text); }
+  button { cursor: pointer; border: none; font-weight: 600; transition: opacity .15s; }
+  button:hover { opacity: 0.85; }
+  button.primary { background: var(--accent); }
+  button.secondary { background: #333; }
+  button.success { background: var(--green); color: #000; }
+  .row { display: flex; gap: 0.5rem; align-items: center; }
+  .col { display: flex; flex-direction: column; gap: 0.5rem; }
+  .muted { color: var(--muted); font-size: 0.85rem; }
+  .status-done { color: var(--green); }
+  .status-error { color: var(--accent); }
+  .status-pending { color: var(--amber); }
+  textarea { font-family: monospace; min-height: 200px; width: 100%; resize: vertical; }
+  .decision-card { border-left: 3px solid var(--accent); padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; border-radius: 0 6px 6px 0; }
+  .decision-card code { font-size: 0.8rem; color: var(--muted); display: block; margin-top: 0.3rem; }
+  .choice-btn { font-size: 0.8rem; padding: 0.25rem 0.6rem; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="app" x-data="forgeApp()">
+
+  <!-- Area 1: Request Box -->
+  <section class="card">
+    <h2>Forge an asset</h2>
+    <div class="row">
+      <input type="text" x-model="requestText" @keyup.enter="submitForge()"
+             placeholder="Describe your asset (e.g. 'an old oak table')..."
+             style="flex:1" autofocus>
+      <button class="primary" @click="submitForge()" :disabled="forging">
+        <span x-show="!forging">Forge</span>
+        <span x-show="forging">...</span>
+      </button>
+    </div>
+    <!-- Job status -->
+    <div x-show="jobId" style="margin-top:0.5rem" class="muted">
+      Job <code x-text="jobId"></code> —
+      <span :class="'status-'+jobStatus" x-text="jobStatus"></span>
+      <span x-show="jobStatus === 'done'"> ✓</span>
+    </div>
+    <!-- Result info -->
+    <div x-show="jobResult" style="margin-top:0.5rem" class="col">
+      <div class="row">
+        <span class="muted">GLB:</span>
+        <code x-text="jobResult.glb_path || '(not built)'"></code>
+        <button class="secondary" style="font-size:0.75rem;padding:0.2rem 0.5rem"
+                @click="copyPath(jobResult.glb_path)" x-show="jobResult.glb_path">
+          Copy path
+        </button>
+      </div>
+      <div class="row">
+        <span class="muted">Material:</span>
+        <strong x-text="jobResult.spec?.material"></strong>
+        <span class="muted">Age:</span>
+        <strong x-text="jobResult.spec?.age"></strong>
+        <span class="muted">Generator:</span>
+        <strong x-text="jobResult.spec?.generator"></strong>
+      </div>
+    </div>
+    <div x-show="jobError" style="margin-top:0.5rem;color:var(--accent)" x-text="jobError"></div>
+  </section>
+
+  <!-- Area 2: Decision Point Inbox -->
+  <section class="card">
+    <h2>Decision Points <span class="muted" x-text="'('+decisions.length+')'"></span></h2>
+    <button class="secondary" style="margin-bottom:0.5rem" @click="refreshDecisions()">Refresh</button>
+    <div x-show="decisions.length === 0" class="muted">No decisions yet — forge something!</div>
+    <template x-for="(d, i) in decisions" :key="i">
+      <div class="decision-card">
+        <div x-text="d.plain" style="font-weight:500"></div>
+        <code x-text="d.technical" x-show="d.technical" style="cursor:pointer"
+              @click="d._show = !d._show"></code>
+        <div x-show="d._show" style="margin-top:0.3rem;font-size:0.75rem;color:var(--muted)"
+             x-text="JSON.stringify(d.context, null, 2)"></div>
+        <div class="row" style="margin-top:0.4rem;flex-wrap:wrap" x-show="d.choices?.length">
+          <template x-for="c in d.choices" :key="c.label">
+            <button class="choice-btn secondary"
+                    x-text="c.label + ' — ' + c.plain"
+                    @click="applyChoice(d, c)"></button>
+          </template>
+        </div>
+        <div class="muted" x-text="'from: ' + d.request" style="font-size:0.7rem;margin-top:0.2rem"></div>
+      </div>
+    </template>
+  </section>
+
+  <!-- Area 3: Spec Editor with re-run at layer -->
+  <section class="card" x-show="jobResult">
+    <h2>Spec editor</h2>
+    <div class="row" style="margin-bottom:0.5rem">
+      <label class="muted">Re-run at layer:</label>
+      <select x-model="rerunLayer">
+        <option value="material-only">Material only (deterministic)</option>
+        <option value="params">Params (keep material/age)</option>
+        <option value="full-prompt">Full prompt (LLM re-plan)</option>
+      </select>
+      <button class="primary" @click="rerunSpec()" :disabled="rerunning">
+        <span x-show="!rerunning">Re-run</span>
+        <span x-show="rerunning">...</span>
+      </button>
+    </div>
+    <textarea x-model="specEditor" @input="specDirty = true"></textarea>
+    <div class="row muted" style="justify-content:space-between">
+      <span x-show="specDirty">✎ edited</span>
+      <span></span>
+    </div>
+  </section>
+
+</div>
+
+<script>
+function forgeApp() {
+  return {
+    // Area 1 — Forge
+    requestText: '',
+    forging: false,
+    jobId: '',
+    jobStatus: '',
+    jobResult: null,
+    jobError: '',
+    _pollHandle: null,
+
+    // Area 2 — Decisions
+    decisions: [],
+
+    // Area 3 — Spec editor
+    specEditor: '',
+    rerunLayer: 'full-prompt',
+    rerunning: false,
+    specDirty: false,
+
+    async submitForge() {
+      if (!this.requestText.trim() || this.forging) return;
+      this.forging = true; this.jobError = ''; this.jobResult = null;
+      try {
+        const r = await fetch('/forge', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({request: this.requestText})
+        });
+        const {job_id} = await r.json();
+        this.jobId = job_id; this.jobStatus = 'pending';
+        this._startPoll();
+      } catch(e) { this.jobError = e.message; this.forging = false; }
+    },
+
+    _startPoll() {
+      if (this._pollHandle) clearInterval(this._pollHandle);
+      this._pollHandle = setInterval(async () => {
+        try {
+          const r = await fetch('/jobs/' + this.jobId);
+          const j = await r.json();
+          this.jobStatus = j.status;
+          if (j.status === 'done') {
+            this.jobResult = j.result;
+            this.specEditor = JSON.stringify(j.result.spec, null, 2);
+            this.specDirty = false;
+            this.forging = false;
+            clearInterval(this._pollHandle);
+            this.refreshDecisions();
+          } else if (j.status === 'error') {
+            this.jobError = j.error;
+            this.forging = false;
+            clearInterval(this._pollHandle);
+          }
+        } catch(e) { this.jobError = e.message; this.forging = false; clearInterval(this._pollHandle); }
+      }, 500);
+    },
+
+    async refreshDecisions() {
+      try {
+        const r = await fetch('/decisions'); const d = await r.json();
+        this.decisions = d.decisions.map(x => ({...x, _show: false}));
+      } catch(e) {}
+    },
+
+    async applyChoice(decision, choice) {
+      // Build override spec and re-forge
+      this.requestText = `override: ${choice.apply.field}=${choice.apply.value} — ${decision.request || ''}`;
+      this.submitForge();
+    },
+
+    copyPath(path) {
+      if (!path) return;
+      navigator.clipboard.writeText(path).then(() => {
+        alert('Copied: ' + path);
+      }).catch(() => {});
+    },
+
+    async rerunSpec() {
+      if (this.rerunning) return;
+      this.rerunning = true; this.jobError = '';
+      try {
+        let spec;
+        try { spec = JSON.parse(this.specEditor); } catch(e) { this.jobError = 'Invalid JSON'; this.rerunning = false; return; }
+        spec.request = spec.request || this.requestText;
+        const r = await fetch('/rerun', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({spec, layer: this.rerunLayer})
+        });
+        const data = await r.json();
+        this.jobResult = { ...this.jobResult, spec: data.spec, decisions: data.decisions || [] };
+        this.specEditor = JSON.stringify(data.spec, null, 2);
+        this.specDirty = false;
+        this.jobId = ''; this.jobStatus = '';
+      } catch(e) { this.jobError = e.message; }
+      this.rerunning = false;
+    },
+
+    init() {
+      this.refreshDecisions();
+    }
+  };
+}
+</script>
+</body>
+</html>

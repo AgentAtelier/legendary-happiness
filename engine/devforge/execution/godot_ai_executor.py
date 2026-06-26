@@ -70,12 +70,16 @@ class GodotAIMCPExecutor(Executor):
     TOOL_PROJECT_RUN = "project_run"  # dedicated tool: mode, scene, autosave
     TOOL_PROJECT_MANAGE = "project_manage"  # ops: stop, settings_get, settings_set
 
-    # Backward-compatible class-level aliases for translation tables.
-    # These live in op_translator.py now; kept here so external code
-    # that references GodotAIMCPExecutor._OP_TO_COMMAND still works.
+    # Backward-compatible class-level aliases for translation tables
+    # and functions.  These live in op_translator.py now; kept here so
+    # external code (and tests) that references them via the class still works.
     _OP_TO_COMMAND = OP_TO_COMMAND
     _FIELD_MAP = FIELD_MAP
     _DROP_FIELDS = DROP_FIELDS
+    _translate_ops_to_commands = staticmethod(translate_ops_to_commands)
+    _res_path = staticmethod(res_path)
+    _normalize_op_result = staticmethod(normalize_op_result)
+    _unwrap_scene_hierarchy = staticmethod(unwrap_scene_hierarchy)
 
     def __init__(self, mcp_url: str = "http://localhost:8000/mcp"):
         self._error_parser = ErrorParser()
@@ -216,7 +220,7 @@ class GodotAIMCPExecutor(Executor):
         return await self._session.ensure()
 
     async def _close_session(self):
-        await self._session.close()
+        await self._session._close()
 
     async def _call_tool_safe(self, session, name: str, arguments: dict) -> Any:
         return await self._session.call_tool_safe(session, name, arguments)
@@ -256,6 +260,65 @@ class GodotAIMCPExecutor(Executor):
         except Exception as exc:
             logger.error("executor.mcp", f"take_screenshot failed: {exc}")
             return None
+
+    # Backward-compat: tests (and older code) access _loop / _thread directly.
+    # These now live on MCPSession; expose them as properties.
+
+    @property
+    def _loop(self):
+        return self._session._loop
+
+    @property
+    def _thread(self):
+        return self._session._thread
+
+    # Backward-compat: old _mcp_* names — circuit breaker state and session
+    # reference now live on MCPSession. Tests read AND mutate several of
+    # these, so we need getter/setter properties rather than read-only.
+
+    @property
+    def _mcp_session(self):
+        return self._session._session
+
+    @_mcp_session.setter
+    def _mcp_session(self, value):
+        self._session._session = value
+
+    @property
+    def _mcp_failures(self):
+        return self._session._failures
+
+    @_mcp_failures.setter
+    def _mcp_failures(self, value):
+        self._session._failures = value
+
+    @property
+    def _mcp_failure_threshold(self):
+        return self._session._failure_threshold
+
+    @_mcp_failure_threshold.setter
+    def _mcp_failure_threshold(self, value):
+        self._session._failure_threshold = value
+
+    @property
+    def _mcp_next_retry_mono(self):
+        return self._session._next_retry_mono
+
+    @_mcp_next_retry_mono.setter
+    def _mcp_next_retry_mono(self, value):
+        self._session._next_retry_mono = value
+
+    @property
+    def _mcp_backoff_ms(self):
+        return self._session._backoff_ms
+
+    @_mcp_backoff_ms.setter
+    def _mcp_backoff_ms(self, value):
+        self._session._backoff_ms = value
+
+    def _record_mcp_failure(self):
+        """Backward-compat alias for MCPSession._record_failure."""
+        self._session._record_failure()
 
     def shutdown(self):
         """Close the persistent session and stop the background loop."""

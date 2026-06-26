@@ -28,7 +28,6 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 # Add hub/ to sys.path so we can import forge_* modules
 HUB_DIR = Path(__file__).parent
@@ -178,7 +177,7 @@ async def start_llama(model_path: str, ctx_size: int, base_args: str, extra_args
     return False, f"timeout waiting for /health after {60}s"
 
 
-async def measure_one(model: dict, ctx_size: int, base_args: str, baseline_vram: int) -> Optional[dict]:
+async def measure_one(model: dict, ctx_size: int, base_args: str, baseline_vram: int) -> dict | None:
     """Load one model at one ctx size and measure peak VRAM.
 
     Returns None if the model won't load (OOM, crash), or a dict with

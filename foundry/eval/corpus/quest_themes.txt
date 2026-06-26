@@ -1,0 +1,13 @@
+# foundry/eval/corpus/quest_themes.txt
+# P-K: Quest corpus for eval oracle extensions.
+# Comment lines starting with '#' are skipped by load_corpus().
+# Room themes used by the quest eval harness to generate and score variety.
+
+a hermit's shack with worn furniture
+a blacksmith's workshop
+a wizard's study filled with curios
+a cozy cottage kitchen
+a dungeon storage room
+a noble's sitting room
+a dusty attic
+a ship captain's quarters

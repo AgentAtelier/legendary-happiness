@@ -41,3 +41,7 @@ legacy/
 
 # --- Tooling ---
 .superpowers/
+
+# --- Disposable Godot builds ---
+builds/
+

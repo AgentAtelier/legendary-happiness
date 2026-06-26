@@ -240,6 +240,7 @@ body.has-sidebar.collapsed { margin-right:28px; }
     <span style="margin:0 6px;">|</span>
     <button id="modeBuild" style="font-size:11px;" title="Swap to qwen3-14b (best for building), set persona temp 0.2">⚒ Build</button>
     <button id="modeWrite" style="font-size:11px;" title="Swap to Cydonia-22B (best for writing), set persona temp 1.0">✍ Write</button>
+    <button id="modeGame" style="font-size:11px;" title="Free GPU/CPU for Steam (~14 GB VRAM freed) — stops llama + godot, kills hunyuan/bake. Idempotent.">🎮 Game Mode</button>
     <button id="warmupBtn" style="font-size:10px;" title="Post a warmup chat to Odysseus to index MCP tools">🔥 Warmup</button>
     <span style="margin:0 6px;">|</span>
     <label>Model <input id="modelArg" size="12" placeholder="fragment" style="background:#050805;color:var(--fg);border:1px solid #333;padding:2px 6px;font:inherit;font-size:11px;"></label>
@@ -433,7 +434,7 @@ function handleShootoutMarker(txt) {
   }
 }
 
-function setBusy(b) { running = b; document.querySelectorAll('#actions button, #modelBtn, .swapBtn, #configSave, #configRestore, #configLoad, #modeBuild, #modeWrite, #warmupBtn, button.danger').forEach(bt => bt.disabled = b);
+function setBusy(b) { running = b; document.querySelectorAll('#actions button, #modelBtn, .swapBtn, #configSave, #configRestore, #configLoad, #modeBuild, #modeWrite, #modeGame, #warmupBtn, button.danger').forEach(bt => bt.disabled = b);
   if (b) { $('busybanner').style.display = ''; $('busyLabel').textContent = 'Running...'; $('busyTimer').textContent = ''; }
   else { $('busybanner').style.display = 'none'; }
 }
@@ -447,6 +448,22 @@ function showSwapProgress(show) {
 function setSwapPhase(pct, label) {
   $('swapBar').style.width = pct + '%';
   if (label) $('swapPhase').textContent = label;
+}
+
+// Reflect Game Mode state on the 🎮 button so users see whether the box is free.
+// Called from refresh(); also re-runs the logic after runGameMode() returns.
+function refreshGameModeLabel(active) {
+  const gm = $('modeGame');
+  if (!gm) return;
+  if (active) {
+    gm.textContent = '⏵ Resume Stack';
+    gm.title = 'Resume the Forge stack — restarts forge-llama (~30s to /health) and forge-godot. Scripts are NOT auto-restarted. Idempotent — safe to re-run.';
+    gm.style.color = 'var(--ok)';
+  } else {
+    gm.textContent = '🎮 Game Mode';
+    gm.title = 'Free GPU/CPU for Steam (~14 GB VRAM) — stops llama + godot, kills any running hunyuan/bake. hub stays up so the resume call can find it. Idempotent — safe to re-run. See GAME-MODE.md for the Steam launch line.';
+    gm.style.color = '';
+  }
 }
 
 // ── Swap (with ambiguity handling) ─────────────────────────────
@@ -514,7 +531,13 @@ async function refresh() {
   try {
     const d = await (await api('/api/status')).json();
     const order = ['llama','devforge','godot-ai','godot','odysseus'];
-    $('chips').innerHTML = order.map(k => {
+    // Game Mode HUD indicator — when active, llama+godot chips will read as "inactive"
+    // AND look identical to a stack that's accidentally down. The 🎮 chip makes the
+    // intent visible so you don't panic-restart the LLM during a Steam session.
+    const gameChip = d.gamemode_active
+      ? `<span class="chip warn" title="Game Mode active — VRAM/CPU freed for Steam (llama + godot stopped on purpose). Click 🎮 Game Mode button to resume.">🎮 GAME</span> `
+      : '';
+    $('chips').innerHTML = gameChip + order.map(k => {
       const v = d.chips[k] || '?';
       const cls = v === 'active' ? 'on' : (v === 'inactive' || v === 'failed' ? 'off' : '');
       return `<span class="chip ${cls}" title="${k} — ${v}">${k}</span>`;
@@ -546,6 +569,7 @@ async function refresh() {
       $('busybanner').style.display = 'none';
     }
     setBusy(d.busy);
+    refreshGameModeLabel(!!d.gamemode_active);
 
 
   } catch (e) {
@@ -566,11 +590,10 @@ async function reconcile() {
 // ── Actions ─────────────────────────────────────────────────────
 document.getElementById('actions').addEventListener('click', async e => {
   if (e.target.tagName !== 'BUTTON' || running) return;
-  const action = e.target.dataset.action;
-
-  if (e.target.id === 'modeBuild') { runMode('build'); return; }
-  if (e.target.id === 'modeWrite') { runMode('write'); return; }
-  if (e.target.id === 'warmupBtn') { runWarmup(); return; }
+  const action = e.target.dataset.action;  if (e.target.id === 'modeBuild') { runMode('build'); return; }
+    if (e.target.id === 'modeWrite') { runMode('write'); return; }
+    if (e.target.id === 'modeGame') { runGameMode(); return; }
+    if (e.target.id === 'warmupBtn') { runWarmup(); return; }
 
   if (!action) return;
 
@@ -598,6 +621,29 @@ async function runMode(mode) {
     const r = await api('/api/mode', {method:'POST', body: JSON.stringify({mode})});
     streamJob((await r.json()).job, $('term'), () => { showSwapProgress(false); loadModels(); });
   } catch(e) { $('term').textContent = 'mode error: ' + e.message; setBusy(false); showSwapProgress(false); }
+}
+
+// ── Game Mode toggle (Steam-friendly) ───────────────────────────
+// Reads /api/status (already polled) to decide whether we're entering or
+// exiting Game Mode. Idempotent upstream: the hub returns "already in game mode"
+// if state file is already active, "stack is normal" if not.
+async function runGameMode() {
+  if (running) return;
+  let active = false;
+  try {
+    const d = await (await api('/api/status')).json();
+    active = !!d.gamemode_active;
+  } catch (e) { /* fall through with active=false; hub will idempotently no-op */ }
+  const apiMode = active ? 'resume' : 'game';
+  const label = active
+    ? 'Resume the Forge stack?\n\nRestarts forge-llama (~30s to /health) and forge-godot. hub, devforge, godot-ai, odysseus were never stopped.'
+    : 'Enter Game Mode?\n\nStops forge-llama (~14 GB VRAM freed), the Godot editor, and any running Hunyuan/bake scripts. forge-hub stays up so the resume call can find it. Idempotent — safe to re-run.';
+  if (!confirm(label)) return;
+  $('term').textContent = ''; setBusy(true);
+  try {
+    const r = await api('/api/mode', {method:'POST', body: JSON.stringify({mode: apiMode})});
+    streamJob((await r.json()).job, $('term'), () => { refresh(); });
+  } catch (e) { $('term').textContent = 'game mode error: ' + e.message; setBusy(false); }
 }
 
 // Phase 3a: tool-index warmup (opens Odysseus UI since auth blocks hub API calls)

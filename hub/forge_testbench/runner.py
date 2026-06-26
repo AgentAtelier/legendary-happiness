@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import httpx
 from forge_env import read_env as _read_env
@@ -333,7 +333,7 @@ class Runner:
                     # Run the test with timeout guard
                     try:
                         raw = await asyncio.wait_for(test.run(ctx), timeout=test.timeout_s)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         self._log(f"  ✗ Timeout after {test.timeout_s}s")
                         artifact.add(
                             Result(

@@ -33,7 +33,7 @@ from devforge.infrastructure.logger import logger
 from devforge.infrastructure.runtime_config import RuntimeConfig, get_config, set_config
 from devforge.knowledge.system_graph.graph_updater import GraphUpdater
 from devforge.knowledge.system_graph.system_graph import SystemGraph
-from devforge.platform.monitor.monitor import monitor
+from devforge.platform.monitor import monitor
 from devforge.reasoning.ai.planning.lru_cache import LRUPlanCache
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

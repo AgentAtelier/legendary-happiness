@@ -9,7 +9,7 @@ Prerequisites (all must be running):
     - DevForge MCP server started separately (see run_integration_test.sh)
 
 Usage:
-    python tests/integration/test_smoke.py
+    python integration_tests/integration/test_smoke.py
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from pathlib import Path
 
 # Add project root to path for shared imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tests.integration.mcp_client import MCPClient
+from integration_tests.integration.mcp_client import MCPClient
 
 # ── Smoke test prompts ────────────────────────────────────────
 

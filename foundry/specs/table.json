@@ -1,0 +1,13 @@
+{
+  "asset_id": "table",
+  "generator": "table",
+  "material": "worn_oak",
+  "params": {
+    "top_width": 1.5,
+    "top_depth": 1.0,
+    "top_thickness": 0.08,
+    "leg_height": 0.67,
+    "leg_radius": 0.06,
+    "leg_inset": 0.1
+  }
+}
