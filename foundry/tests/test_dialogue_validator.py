@@ -21,6 +21,7 @@ import pytest
 from category_registry import REGISTRY
 from dialogue_validator import (
     _CATEGORY_SYNONYMS,
+    _extract_substance_descriptor,
     _references_quest,
     validate_dialogue,
     validate_line,
@@ -787,4 +788,257 @@ def test_validate_dialogue_glass_bottle_passes_through_bottle():
     assert validated["ask"] == dialogue["ask"], (
         f"glass bottle should pass through unchanged; got "
         f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )
+
+
+# └── Phase F follow-up: lantern / lamp / light vector ───────────
+#
+# Phase E code-reviewer deferred this.  lantern's synonyms are
+# ["lamp", "light"].  Without exemption, decorative descriptors
+# like "gold lamp" / "silver lamp" / "crystal lamp" / "glass
+# lantern" / "golden lantern" fire a false-positive adjective
+# mismatch DP when the manifest material is unrelated (e.g. iron,
+# oak, brass -- all plausible lantern FRAMES in the foundry).
+#
+# Mitigation: extend _CONTENTS_EXEMPTIONS with "lantern":
+# {gold, golden, silver, bronze, copper, glass, crystal}.  The
+# existing A1 loop in _extract_substance_descriptor auto-applies
+# the exemption to all synonyms (lamp, light) via the term loop,
+# so no caller-side or _extract_substance_descriptor-side change
+# is needed -- only the dict entry.
+
+
+# ─── Exemption-pass tests (TDD-red pre-fix, green post-fix) ─────
+
+def test_extract_substance_descriptor_gold_lamp_exempted():
+    """Phase F helper-level: '_extract_substance_descriptor("Find
+    my gold lamp", "lantern")' returns empty string because "gold"
+    is in _CONTENTS_EXEMPTIONS['lantern'] (decoration/shade allow-
+    list) and "lamp" is in lantern's synonym set, so the term-loop
+    A1 check catches it before the descriptor is returned."""
+    out = _extract_substance_descriptor("Find my gold lamp.", "lantern")
+    assert out == "", (
+        f"Phase F regression: gold lamp on lantern-category should "
+        f"be exempted by _CONTENTS_EXEMPTIONS['lantern']; got {out!r}"
+    )
+
+
+def test_extract_substance_descriptor_silver_light_exempted():
+    """Phase F helper-level: '_extract_substance_descriptor("Find
+    my silver light", "lantern")' returns empty string.  light is
+    lantern's lesser-known synonym; the term-loop auto-applies the
+    exemption to all synonyms."""
+    out = _extract_substance_descriptor("Find my silver light.", "lantern")
+    assert out == "", (
+        f"Phase F regression: silver light on lantern-category "
+        f"should be exempted; got {out!r}"
+    )
+
+
+def test_validate_dialogue_crystal_lamp_passes_through_lantern():
+    """Phase F wire-up: 'crystal lamp' (lamp is lantern's synonym)
+    with cat=lantern and a non-crystal manifest (brass frame) must
+    NOT fire mismatch DP -- the descriptor is in the new exemption
+    set because crystal lamp shades are a real shape."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Bring me the crystal lamp.",
+        "wrong": "That is not the right lamp.",
+        "thank": "Yes, the crystal lamp works!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="brass",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase F regression: crystal lamp on lantern should be "
+        f"exempted by _CONTENTS_EXEMPTIONS['lantern']; "
+        f"got codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"crystal lamp should pass through unchanged; got "
+        f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )
+
+
+def test_validate_dialogue_glass_lantern_passes_through_lantern():
+    """Phase F wire-up: 'glass lantern' (the bare category word
+    preceded by 'glass') with cat=lantern and a non-glass manifest
+    (iron, a plausible frame material) must NOT fire mismatch DP."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find my glass lantern, please.",
+        "wrong": "That is not the right lantern.",
+        "thank": "Yes, that glass lantern is mine!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="iron",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase F regression: glass lantern should be exempted; "
+        f"got codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"glass lantern should pass through unchanged; got "
+        f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )
+
+
+def test_validate_dialogue_golden_lantern_passes_through_lantern():
+    """Phase F wire-up: 'golden lantern' with iron manifest.  Both
+    'gold' and 'golden' are in _SUBSTANCE_ADJECTIVES; both must be
+    in _CONTENTS_EXEMPTIONS['lantern'] so 'golden lantern' does not
+    sporadically regress while 'gold lantern' passes."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Bring me the golden lantern.",
+        "wrong": "That is not the golden lantern.",
+        "thank": "Yes, the golden lantern is perfect!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="iron",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase F regression: golden lantern should be exempted "
+        f"alongside gold lantern; got codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"golden lantern should pass through unchanged; got "
+        f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )
+
+
+# ─── Over-fire guards (pass both pre- and post-fix) ────────────
+#
+# These pin that the lantern exemption isn't a blanket "accept
+# any descriptor on a lantern" -- structural-material mismatches
+# must STILL fire mismatch DPs (iron / brass / wood are real
+# lantern FRAMES; a manifest disagreement should be flagged).
+
+def test_validate_dialogue_iron_lamp_still_fires_mismatch():
+    """Phase F over-fire guard: 'iron lamp' (cat=lantern) with a
+    wooden manifest is a genuine structural-mismatch (iron is a
+    frame material, not decoration).  Must STILL fire mismatch DP
+    -- iron is NOT in _CONTENTS_EXEMPTIONS['lantern']."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find my iron lamp, please.",
+        "wrong": "That is not the iron lamp.",
+        "thank": "Yes, the iron lamp is what I needed!",
+    }
+    _, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="oak",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase F over-fire regression: iron lamp on lantern with "
+        f"oak manifest should still fire mismatch DP; "
+        f"got codes={codes}"
+    )
+
+
+def test_validate_dialogue_brass_lantern_still_fires_mismatch():
+    """Phase F over-fire guard: 'brass lantern' (cat=lantern) with
+    a wooden manifest is a genuine structural-mismatch (brass is a
+    common frame alloy, not decoration).  Must STILL fire mismatch
+    DP -- brass is NOT in _CONTENTS_EXEMPTIONS['lantern']."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Bring me the brass lantern.",
+        "wrong": "That is not the brass lantern.",
+        "thank": "Yes, the brass lantern is what I wanted!",
+    }
+    _, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="wood",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase F over-fire regression: brass lantern on lantern "
+        f"with wood manifest should still fire mismatch DP; "
+        f"got codes={codes}"
+    )
+
+
+def test_validate_dialogue_wooden_lantern_still_fires_mismatch():
+    """Phase F over-fire guard: 'wooden lantern' (cat=lantern) with
+    an iron manifest is a genuine structural-mismatch (wooden is a
+    common frame material, not decoration).  Must STILL fire
+    mismatch DP -- wooden is NOT in _CONTENTS_EXEMPTIONS['lantern']."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find my wooden lantern, please.",
+        "wrong": "That is not the wooden lantern.",
+        "thank": "Yes, the wooden lantern is perfect!",
+    }
+    _, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="iron",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase F over-fire regression: wooden lantern on lantern "
+        f"with iron manifest should still fire mismatch DP; "
+        f"got codes={codes}"
+    )
+
+
+# ─── Phase F follow-up (reviewer-recommended fold-in) ───────────
+#
+# The Phase F reviewer flagged that paper lanterns (Chinese / Japanese
+# chōchin shape) are a real historical lantern family, and that
+# 'paper' is in _SUBSTANCE_ADJECTIVES so a 'paper lantern' line with
+# a non-paper manifest (iron / oak / brass frame) would fire a
+# false-positive mismatch DP.  Folded into the lantern exemption
+# here + a 4th over-fire guard pins that 'stone lantern' (stone is
+# a real Japanese garden-lantern shape but the foundry palette
+# doesn't list stone-lantern, so firing mismatch is correct).
+
+
+def test_validate_dialogue_paper_lantern_passes_through_lantern():
+    """Phase F fold-in: 'paper lantern' (cat=lantern) with an
+    unrelated frame manifest (iron) must NOT fire mismatch DP --
+    paper-lantern is a real historical shape and 'paper' is now in
+    _CONTENTS_EXEMPTIONS['lantern']."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Bring me the paper lantern.",
+        "wrong": "That is not the paper lantern.",
+        "thank": "Yes, the paper lantern is what I needed!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="iron",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase F fold-in regression: paper lantern should be "
+        f"exempted by _CONTENTS_EXEMPTIONS['lantern']; "
+        f"got codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"paper lantern should pass through unchanged; got "
+        f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )
+
+
+def test_validate_dialogue_stone_lantern_still_fires_mismatch():
+    """Phase F fold-in over-fire guard: 'stone lantern' (cat=
+    lantern) with an iron manifest.  Stone IS in _SUBSTANCE_ADJECTIVES
+    but is NOT in _CONTENTS_EXEMPTIONS['lantern'] regardless of
+    palette state; pins that stone lantern still fires mismatch as
+    long as stone is not in the lantern exemption)."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Bring me the stone lantern.",
+        "wrong": "That is not the stone lantern.",
+        "thank": "Yes, the stone lantern is what I wanted!",
+    }
+    _, decisions = validate_dialogue(
+        dialogue, category="lantern", adjective="iron",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase F fold-in over-fire regression: stone lantern on "
+        f"lantern with iron manifest should still fire mismatch "
+        f"DP; got codes={codes}"
     )

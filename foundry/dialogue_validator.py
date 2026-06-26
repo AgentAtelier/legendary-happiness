@@ -97,8 +97,33 @@ _CATEGORY_SYNONYMS: dict[str, list[str]] = {
 # fine if/when a real "ash" material lands in the palette — update the
 # Phase D tests in foundry/tests/test_dialogue_validator.py then.
 #
-# Phase E (deferred): two adjacent false-positive vectors the same
-# positional extract will hit once they surface in builds:
+# Phase E (resolved): "gold" / "silver" in container contexts
+# ("Find my gold pouch" / "Bring me the silver chest") and
+# "parchment" double-duty on non-scroll surfaces ("old parchment
+# desk" where the manifest desk material is oak).  Both vectors
+# closed via _CONTENTS_EXEMPTIONS (per-category contents-class
+# allowlist) and the synonym-role skip in
+# _extract_substance_descriptor.  See the doc-block above
+# _CONTENTS_EXEMPTIONS for the category-by-category exemptions.
+#
+# Phase F (resolved): lantern / lamp / light vector closed by
+# extending _CONTENTS_EXEMPTIONS["lantern"] to {gold, golden,
+# silver, bronze, copper, glass, crystal, paper}.  Lantern's LLM
+# synonym set auto-shares these via the existing term loop in
+# _extract_substance_descriptor.  Iron / brass / wooden / stone
+# are NOT exempted -- those name structural frames and still fire
+# mismatch DPs (over-fire guards in
+# foundry/tests/test_dialogue_validator.py pin this).
+#
+# Phase G (deferred): silk / porcelain / ceramic / leather lantern
+# variants are real historical shapes; "silk" / "porcelain" /
+# "ceramic" / "leather" are in _SUBSTANCE_ADJECTIVES but not yet
+# in _CONTENTS_EXEMPTIONS["lantern"], so a "silk lantern" /
+# "ceramic lantern" line with an iron manifest would fire a real
+# false-positive mismatch DP.  Folding-in is mechanical: extend
+# the lantern exemption set + add wire-up tests in
+# foundry/tests/test_dialogue_validator.py.
+## positional extract will hit once they surface in builds:
 #   - "gold" / "silver" in container contexts — "Find my gold pouch"
 #     / "Bring me the gold chest" — the descriptor MAY name the
 #     contents (gold coins inside a leather pouch) OR the container's
@@ -152,6 +177,17 @@ _SUBSTANCE_ADJECTIVES: set[str] = {
 #     vellum extends to all four for symmetry with desk's prior
 #     exemption and to cover illuminated-manuscript / vellum-bound
 #     shapes).
+#   - Lighting fixtures (lantern) accept gold/golden/silver/bronze/
+#     copper (decoration) + glass/crystal (shade) + paper (Chinese
+#     and Japanese paper-lantern shape, real historical form).
+#     Lantern's LLM synonym set ("lamp", "light") auto-shares both
+#     via the term loop in _extract_substance_descriptor, so a
+#     "gold lamp" / "silver light" / "crystal lamp" / "paper
+#     lantern" line is exempted without per-synonym duplication.
+#     Iron / brass / wooden / stone are NOT exempted: those name
+#     structural frames, so an "iron lamp" with oak manifest must
+#     still fire a mismatch DP (over-fire guards in
+#     foundry/tests/test_dialogue_validator.py pin this).
 #
 # Adding a future contents-shape is a one-line change here + a
 # regression test in foundry/tests/test_dialogue_validator.py (see
@@ -181,6 +217,18 @@ _CONTENTS_EXEMPTIONS: dict[str, set[str]] = {
     "shelf": {"parchment", "paper", "vellum"},
     # Books whose binding/page material is parchment, paper, or vellum.
     "book":  {"parchment", "paper", "vellum"},
+    # Phase F: lighting fixtures (lantern).  Decorative-frame metals
+    # (gold, golden, silver, bronze, copper), shade materials
+    # (glass, crystal), and paper (Chinese / Japanese paper-lantern
+    # shape, real historical form) are contents-context descriptors
+    # on a lantern, not structural-material mismatches.  Iron /
+    # brass / wooden / stone are NOT in this set: those name
+    # structural frames and must still fire mismatch DPs against
+    # non-matching manifests.  The A1 term loop in
+    # _extract_substance_descriptor auto-applies this exemption to
+    # lantern's LLM synonyms ("lamp", "light").
+    "lantern": {"gold", "golden", "silver", "bronze", "copper",
+                "glass", "crystal", "paper"},
 }
 
 
