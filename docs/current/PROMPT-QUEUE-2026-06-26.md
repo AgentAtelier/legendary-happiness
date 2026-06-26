@@ -299,8 +299,37 @@ of the World Engine and can be done any time.
 > pair; hoist numpy/PIL/pygltflib/BytesIO to module top; seed-space
 > doc note explaining PAIRS ids are not mesh-shape diversity).
 > ruff exit 0; fast gate 1780 passed; ast.parse clean on 4 files.
-> ⏳ **NEXT** — per-instance HSV material variation in `foundry/blender/build_asset.py`<br>> (`@pytest.mark.blender` tests).  Seed derivation: `jitter_seed = hash(entity_id + material_name)`<br>> → HSV jitter (deterministic for a fixed seed + name; varies across different entity_ids).<br>> Being picked up in the next cycle.
 
+>
+> ✅ **HSV commit 3/4** landed on Forge `feat/exterior-and-props` commit `9e1562e`
+> (`feat(eval): PROMPT 6-A (3/4) -- material_per_instance_variation signal`).
+> 2 files: `foundry/eval/signals.py` (new low-severity POSITIVE
+> check `check_material_per_instance_variation(record)` which fires when
+> the manifest has ≥2 distinct asset_ids under the same (category, material)
+> pair AND every pair's `dh` from `jitter_for` differs by ≥1e-4 deg; registered
+> in `SIGNAL_SEVERITY = "low"`; wired into `compute_quest_signals(record)` OUTSIDE
+> the target-entity if-block so it fires on any record with a manifest, not just
+> quest-scoped records; helper imported from `foundry/materials.py` -- no new module
+> new coupling); `foundry/tests/test_eval_signals.py` (6 new tests: positive multi-pair,
+> vacuous 1-item-same-pair, vacuous empty manifest, determinism holds for same (id+name),
+> 2nd-pair-fires-after-positive, integration into `compute_quest_signals`).
+> ruff exit 0; fast gate 1786 passed; ast.parse clean on 2 files; the eval signal is
+> now a sampler-visible POSITIVE example confirming per-instance drift is alive across
+> distinct asset_ids in the same material family.
+>
+> **✅ DONE (HSV half = commits 1–3 of 4) -- PROMPT 6-A ✅ DONE.**  All HSV sub-tasks landed:
+> 6-A.A (SDFGI ✅ `2a1be8d`), 6-A.1/4 (helpers ✅ `4ff3374`), 6-A.2/4 (wire-up ✅ `9ddc02e`),
+> 6-A.3/4 (signal ✅ `9e1562e`).  The 4/4 marker placeholder has been retired.
+> Remaining work is purely orchestrator-side visual flag only:
+> `ORCH: eyeball a room with SDFGI -- confirm bounce light is visible and no
+> performance regression` AND `ORCH: confirm two same-material chairs in one
+> room show visible hue drift in player-eye view`.  Pause point -- no more HSV
+> code changes until the orchestrator verifies the visual.
+>
+> ⏳ **NEXT** (orchestrator-only -- no code work pending):
+> flag the two visual confirmations from the DONE header above for the
+> orchestrator's live session.  No `forge world` / `forge quest` code changes
+> are blocked on either.
 > **Verify first:** grep `scene_compiler.py` and `lighting_resolve.py` for `sdfgi` and
 > `WorldEnvironment`. Check if SDFGI is already wired. Check `MATURITY-LEAP-BACKLOG.md`
 > §1 EASY items to confirm this is still open.
