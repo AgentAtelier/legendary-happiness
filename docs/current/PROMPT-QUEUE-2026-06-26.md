@@ -265,7 +265,41 @@ From `MATURITY-LEAP-BACKLOG.md` §1 (Visuals) and §2 (Worldbuilding). These are
 of the World Engine and can be done any time.
 
 ## PROMPT 6-A · Enable SDFGI + per-instance material variation (EASY visual leap)
-> 🟡 **IN-PROGRESS** — SDFGI half ✅ DONE on Forge `feat/exterior-and-props` commit `2a1be8d`<br>> (`feat(scene): PROMPT 6-A.A -- bake SDFGI into WorldEnvironment`).<br>> 2 module-level constants in `foundry/scene_compiler.py`: `_SDFGI_MIN_CELL_SIZE=0.2`, `_SDFGI_CASCADE0_DISTANCE=12.0`.<br>> 4 properties baked into Environment sub_resource between glow + fog blocks:<br>> `sdfgi_enabled`, `sdfgi_use_occlusion`, `sdfgi_min_cell_size`, `sdfgi_cascade0_distance`.<br>> Tests: helper `_forge_environment_block` + 3 tests (enabled + tuning + use_occlusion);<br>> full `pytest tests/` 1764 passed, ruff exit 0.  Forward+ renderer already configured in `project.godot`<br>> (`config/features=PackedStringArray("4.7", "Forward Plus")`); day_night.gd now writes-to-same-value<br>> at runtime (`sdfgi_bounce_feedback` still modulated for the day/night cycle).<br>> <br>> ⏳ **NEXT** — per-instance HSV material variation in `foundry/blender/build_asset.py`<br>> (`@pytest.mark.blender` tests).  Seed derivation: `jitter_seed = hash(entity_id + material_name)`<br>> → HSV jitter (deterministic for a fixed seed + name; varies across different entity_ids).<br>> Being picked up in the next cycle.
+> 🟡 **IN-PROGRESS** — SDFGI half ✅ DONE on Forge `feat/exterior-and-props` commit `2a1be8d`<br>> (`feat(scene): PROMPT 6-A.A -- bake SDFGI into WorldEnvironment`).<br>> 2 module-level constants in `foundry/scene_compiler.py`: `_SDFGI_MIN_CELL_SIZE=0.2`, `_SDFGI_CASCADE0_DISTANCE=12.0`.<br>> 4 properties baked into Environment sub_resource between glow + fog blocks:<br>> `sdfgi_enabled`, `sdfgi_use_occlusion`, `sdfgi_min_cell_size`, `sdfgi_cascade0_distance`.<br>> Tests: helper `_forge_environment_block` + 3 tests (enabled + tuning + use_occlusion);<br>> full `pytest tests/` 1764 passed, ruff exit 0.  Forward+ renderer already configured in `project.godot`<br>> (`config/features=PackedStringArray("4.7", "Forward Plus")`); day_night.gd now writes-to-same-value<br>> at runtime (`sdfgi_bounce_feedback` still modulated for the day/night cycle).<br>> <br>> ✅ **HSV commit 1/4** landed on Forge `feat/exterior-and-props` commit `4ff3374`
+> (`feat(materials): PROMPT 6-A (1/4) -- HSV jitter helpers + algorithm`).
+> `foundry/materials.py` now exposes `jitter_seed(entity_id, material_name)` (SHA-256 /
+> 64-bit, NUL separator to avoid boundary collisions) and `jitter_for()` returning
+> bounded `(dh_deg, ds_frac, dv_frac)` in (+/-5°, +/-10%, +/-8%).  `material_variation()`
+> re-written to apply locked-step HSV-shift to every RGB triplet in the family so
+> grain light/dark drift together (preserves the wood-grain signature within one
+> asset; distinct asset_ids then diverge between assets).  TDD surface in
+> `foundry/tests/test_materials.py`: 9 tests pass (4 invariant guards + 3 hard-RED
+> on helpers + 2 code-review fixes: NUL separator regression + locked-step regression).
+> Pre-existing 211 tests in test_materials.py stay green; ruff exit 0;
+> fast gate 1773 passed (= 1764 baseline + 9 new); push: `4ff3374`,
+> already on > remote.
+>
+> ✅ **HSV commit 2/4** landed on Forge `feat/exterior-and-props`
+> (`feat(build_asset): PROMPT 6-A (2/4) -- per-instance HSV jitter
+> wire-up`).
+> 4 files: `foundry/materials.py` (extract `_apply_hsv_jitter_to_rgbs`
+> private helper shared by `material_variation` and the new public
+> `apply_instance_jitter` -- rng-call order preserved dh -> ds -> dv
+> -> rough -> metal so existing determinism tests stay byte-identical);
+> `foundry/blender/build_asset.py` (imports `apply_instance_jitter`
+> and calls it inside `apply_material` immediately after the
+> `roughness` capture, with `asset_id = (spec or {}).get("asset_id")
+> or material_name` fallback; new 4-line metallic-scope comment
+> emphasizing the helper iterates RGB triplets only);
+> `foundry/tests/test_materials.py` (7 new apply_instance_jitter
+> tests including load-bearing `distinct_for_distinct_asset_ids_same_palette`
+> that would FAIL if SHA-256 dedup broke);
+> `foundry/tests/test_build_blender.py` (3-pair @pytest.mark.blender
+> integration test that requires >= 2 byte max-channel drift on every
+> pair; hoist numpy/PIL/pygltflib/BytesIO to module top; seed-space
+> doc note explaining PAIRS ids are not mesh-shape diversity).
+> ruff exit 0; fast gate 1780 passed; ast.parse clean on 4 files.
+> ⏳ **NEXT** — per-instance HSV material variation in `foundry/blender/build_asset.py`<br>> (`@pytest.mark.blender` tests).  Seed derivation: `jitter_seed = hash(entity_id + material_name)`<br>> → HSV jitter (deterministic for a fixed seed + name; varies across different entity_ids).<br>> Being picked up in the next cycle.
 
 > **Verify first:** grep `scene_compiler.py` and `lighting_resolve.py` for `sdfgi` and
 > `WorldEnvironment`. Check if SDFGI is already wired. Check `MATURITY-LEAP-BACKLOG.md`
