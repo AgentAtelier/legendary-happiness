@@ -85,9 +85,11 @@ def test_build_prompt_contains_room_theme_and_manifest():
     assert "cabinet_0" in prompt
     assert "table_1" in prompt
     # EB-7b: manifest lines now include material adjective: "id (adj category)"
-    assert "(wooden table)" in prompt
+    # Phase C Fix A: worn_oak→oak and wrought_iron→iron (was "wooden"/"brass",
+    # which leaked onto every wood-theme carryable and mis-substanced iron).
+    assert "(oak table)" in prompt
     assert "(stone shelf)" in prompt
-    assert "(brass cabinet)" in prompt
+    assert "(iron cabinet)" in prompt
 
 
 def test_build_prompt_contains_example():
@@ -346,8 +348,9 @@ def test_plan_junk_dialogue_fallback_fires():
     # All four fields should have fallback values (since all were invalid)
     assert spec["target_entity"] == "table_0"
     from dialogue_validator import fallback_dialogue
-    # P-E: fallback now includes the material adjective ("wooden table")
-    fallback = fallback_dialogue("table", adjective="wooden")
+    # P-E: fallback now includes the material adjective ("oak table" after
+    # the Phase C Fix A worn_oak→oak change; was "wooden" previously).
+    fallback = fallback_dialogue("table", adjective="oak")
     for field in ("greet", "ask", "wrong", "thank"):
         assert spec["dialogue"][field] == fallback[field], (
             f"field {field}: expected fallback {fallback[field]!r}, "
@@ -388,9 +391,10 @@ def test_plan_short_irrelevant_dialogue_gets_fallback():
         "a test room", _MANIFEST_4, _fake_llm_short_dialogue
     )
 
-    # target is cabinet_0 → category is "cabinet", material "wrought_iron" → adjective "brass"
+    # target is cabinet_0 → category "cabinet", material "wrought_iron" → adjective "iron"
+    # (Phase C Fix A changed from "brass" to "iron")
     from dialogue_validator import fallback_dialogue
-    fallback = fallback_dialogue("cabinet", adjective="brass")
+    fallback = fallback_dialogue("cabinet", adjective="iron")
 
     # "Hello." → passes ("hello" is a valid NPC greeting word, \b match)
     assert spec["dialogue"]["greet"] == "Hello."
@@ -622,7 +626,7 @@ def test_plan_fallback_dialogue_includes_category():
     )
     # target is table_0 → category "table", material "worn_oak" → adjective "wooden"
     # P-E: ask line now includes adjective: "I am looking for the wooden table..."
-    assert "wooden" in spec["dialogue"]["ask"] or "table" in spec["dialogue"]["ask"]
+    assert "oak" in spec["dialogue"]["ask"] or "table" in spec["dialogue"]["ask"]
 
 
 # ── P-H-1: Seed determinism ─────────────────────────────────────
@@ -1660,3 +1664,50 @@ def test_plan_multi_soft_fallback_emits_no_dp_when_carryables_sufficient():
         f"happy path should not emit quest.carryables_short; "
         f"got codes {[d.code for d in decs]}"
     )
+
+
+# ── Phase C fix A: _material_adjective mapping (Dual Fix A) ─────────
+# Replace the prompt-builder leak where `worn_oak` was flattened to
+# "wooden" (forcing every wood-themed item in the manifest to read as
+# "wooden <category>" even for non-wood categories like gem, candle,
+# key) and `wrought_iron` was wrong-substanced as "brass". After the
+# fix, the mapping returns the actual material noun so the LLM sees
+# the right substance next to each item.
+
+def test_material_adjective_worn_oak_returns_oak():
+    """Phase C fix A: _material_adjective(worn_oak) returns 'oak'.
+
+    Previously returned 'wooden' which leaked into dialogue for every
+    wood-themed carryable, producing 'I lost my wooden gem' lines.
+    """
+    from behaviour_gen import QuestBehaviourPlanner
+    assert QuestBehaviourPlanner._material_adjective("worn_oak") == "oak", (
+        "Phase C fix A: worn_oak must map to its actual substance word "
+        "'oak' so the prompt no longer flattens non-wood items as 'wooden'"
+    )
+
+
+def test_material_adjective_wrought_iron_returns_iron():
+    """Phase C fix A: _material_adjective(wrought_iron) returns 'iron'.
+
+    Previously returned 'brass' (wrong substance)."""
+    from behaviour_gen import QuestBehaviourPlanner
+    assert QuestBehaviourPlanner._material_adjective("wrought_iron") == "iron", (
+        "Phase C fix A: wrought_iron must map to 'iron', not 'brass'"
+    )
+
+
+def test_material_adjective_does_not_flatten_to_wooden_anymore():
+    """Phase C fix A: NO material id should map to the over-broad
+    'wooden' descriptor anymore. The flattening caused every wood-
+    themed item in stress_test_01 to be called 'wooden <category>'.
+    """
+    from behaviour_gen import QuestBehaviourPlanner
+    # Probe over a representative set of wood-adjacent material ids
+    # (worn_oak and dark_walnut were the only flake-points).
+    for mat in ("worn_oak", "dark_walnut", "weathered_pine"):
+        adj = QuestBehaviourPlanner._material_adjective(mat)
+        assert adj != "wooden", (
+            f"Phase C fix A: _material_adjective({mat!r}) must not flatten "
+            f"to 'wooden' anymore (the leak); got {adj!r}"
+        )

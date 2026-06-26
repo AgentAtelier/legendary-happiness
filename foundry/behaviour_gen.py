@@ -441,13 +441,24 @@ class QuestBehaviourPlanner:
 
     @staticmethod
     def _material_adjective(material: str) -> str:
-        """Map a material id to a short descriptive adjective."""
+        """Map a material id to a short descriptive adjective.
+
+        Phase C Fix A: drop the ``"wooden"`` flattening and fix the
+        ``"brass"`` mismatch on ``wrought_iron``.  Previously worn_oak
+        flattened to ``"wooden"``, leaking onto every wood-themed
+        carryable in stress_test_01 (candles, gems, keys rendered as
+        ``"wooden candle"``, ``"wooden gem"``, etc.), and wrought_iron
+        substituted ``"brass"`` — wrong substance.  These now return
+        the actual material noun so dialogue_validator's
+        substance-mismatch check (Phase C Fix B) can compare LLM
+        adjectival choices to the manifest's substance.
+        """
         return {
-            "worn_oak": "wooden",
+            "worn_oak": "oak",
             "dark_walnut": "dark",
             "weathered_pine": "pine",
             "rough_granite": "stone",
-            "wrought_iron": "brass",
+            "wrought_iron": "iron",
         }.get(material, material)
 
     def plan(
