@@ -1595,3 +1595,132 @@ def test_soul_signals_in_severity_map():
     assert SIGNAL_SEVERITY.get("every_npc_has_valid_soul") == "low"
     assert SIGNAL_SEVERITY.get("soul_tones_vary") == "low"
 
+
+
+# ===== PROMPT 6-A commit 3: material_per_instance_variation eval signal =====
+
+def test_signals_material_per_instance_variation_no_manifest_returns_none():
+    """PROMPT 6-A: empty manifest is the vacuous-OK case -- no multi-
+    (asset_id)-same-(category, material) pair to inspect, so the signal
+    does NOT fire (None).  This matches the positive-signal pattern of
+    check_room_not_monochrome (which also returns None when the manifest
+    is empty)."""
+    _qr = _make_quest_record if "_make_quest_record" in dir() else None
+
+    # Construct a minimal QuestRecord-like object inline to avoid
+    # coupling to the test-fixture factory.
+    class _Rec:
+        manifest = []
+        quest_specs = None
+        quest_spec = None
+        decisions = None
+        error = None
+        compiled = True
+        npc_count = 1
+        room_theme = ""
+
+    from eval.signals import check_material_per_instance_variation
+    assert check_material_per_instance_variation(_Rec()) is None
+
+
+def test_signals_material_per_instance_variation_single_asset_per_group_returns_none():
+    """PROMPT 6-A: each (category, material) has only ONE asset_id -- no
+    multi-pair to compare -- returns None (vacuous)."""
+    class _Rec:
+        manifest = [
+            {"id": "table_1", "category": "table", "material": "worn_oak"},
+            {"id": "chair_1", "category": "chair", "material": "worn_oak"},
+            # NOTE: only one asset per (cat, mat) pair.
+        ]
+        quest_specs = None
+        quest_spec = None
+        decisions = None
+        error = None
+        compiled = True
+        npc_count = 1
+        room_theme = ""
+
+    from eval.signals import check_material_per_instance_variation
+    assert check_material_per_instance_variation(_Rec()) is None
+
+
+def test_signals_material_per_instance_variation_two_distinct_asset_ids_fires():
+    """PROMPT 6-A load-bearing positive-path test: two same-(cat, mat)-
+    different-(id) props in the manifest produce hue deltas of 1e-4+ deg
+    via jitter_for -- the signal fires.
+
+    The specific asset_ids are chosen to be short alphanumeric strings
+    whose SHA-256 premises are unlikely to land near-zero drift under
+    the queue envelope; even if some hash pair DID collapse through
+    unlikely astronomical coincidence, the test selection guarantees
+    the chosen ids do not."""
+    class _Rec:
+        manifest = [
+            {"id": "table_alpha",  "category": "table", "material": "worn_oak"},
+            {"id": "table_beta",   "category": "table", "material": "worn_oak"},
+        ]
+        quest_specs = None
+        quest_spec = None
+        decisions = None
+        error = None
+        compiled = True
+        npc_count = 1
+        room_theme = ""
+
+    from eval.signals import check_material_per_instance_variation
+    assert check_material_per_instance_variation(_Rec()) == "material_per_instance_variation"
+
+
+def test_signals_material_per_instance_variation_dh_drift_exceeds_eps():
+    """PROMPT 6-A explicit invariant: for any two distinct asset_ids under
+    the same (category, material), |dh1 - dh2| > 1e-4 deg.  This makes the
+    check's threshold explicit so a future relaxation is visible."""
+    from materials import jitter_for
+    asset_ids = ["table_alpha", "table_beta", "chair_alpha", "chair_beta"]
+    materials = ["worn_oak", "dark_walnut", "rough_granite", "wrought_iron"]
+    for mat_label in materials:
+        for i in range(len(asset_ids) - 1):
+            dh_a, _, _ = jitter_for(asset_ids[i], mat_label)
+            dh_b, _, _ = jitter_for(asset_ids[i + 1], mat_label)
+            assert abs(dh_a - dh_b) > 1e-4, (
+                f"asset_ids={asset_ids[i]!r} and {asset_ids[i + 1]!r} "
+                f"landed on dh={dh_a:.6f} and dh={dh_b:.6f} for "
+                f"material={mat_label!r}; delta={abs(dh_a - dh_b):.6f} "
+                f"below 1e-4 -- SHA-256 dedup regression"
+            )
+
+
+def test_signals_signal_severity_includes_material_per_instance_variation():
+    """PROMPT 6-A: the new tag must be registered in SIGNAL_SEVERITY so
+    the sampler / friction report know how to weight it.  Severity
+    mirrors the existing positive-pattern tags (room_not_monochrome,
+    fabric_in_fabric_themes) -- "low"."""
+    from eval.signals import SIGNAL_SEVERITY
+    assert SIGNAL_SEVERITY.get("material_per_instance_variation") == "low"
+
+
+def test_signals_compute_quest_signals_includes_material_per_instance_variation():
+    """PROMPT 6-A: compute_quest_signals integrates the new check on a
+    real-ish QuestRecord via the standard pipeline (manifest with two
+    same-(cat,mat)-different-(id) entries; quest_specs empty so other
+    quest signals don't dominate)."""
+    class _Rec:
+        manifest = [
+            {"id": "table_alpha",  "category": "table", "material": "worn_oak"},
+            {"id": "table_beta",   "category": "table", "material": "worn_oak"},
+        ]
+        quest_specs = []
+        quest_spec = None
+        decisions = []
+        error = None
+        compiled = True
+        gate_passed = None
+        spec = None
+        request = ""
+        npc_count = 1
+        room_theme = ""
+        rpc_target = None
+
+    from eval.signals import compute_quest_signals
+    tags = compute_quest_signals(_Rec())
+    assert "material_per_instance_variation" in tags

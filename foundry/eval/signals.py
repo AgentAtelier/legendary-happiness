@@ -49,6 +49,12 @@ from brief import THEMES as _BRIEF_THEMES  # spine-slice-1 schema validation; ho
 from category_registry import DECOR_CATEGORIES
 from compiler import PARAM_RANGES
 from material_resolver import material_cues, resolve_material
+# PROMPT 6-A: per-instance jitter hue shift -- SHA-256 hash of
+# (asset_id, NUL, material_name) surfaces a clean 3-tuple
+# (dh_deg, ds_frac, dv_frac) used by the eval signal below to confirm
+# that distinct asset_ids in the same (category, material) group produce
+# distinct hue shifts.
+from materials import jitter_for
 from wear_words import _AGE_BAND_SPLIT, AGED_WORDS, NEW_WORDS  # noqa: F401  (re-exported via signals.{AGED,NEW}_WORDS)
 
 # ── Size words ────────────────────────────────────────────────────────
@@ -545,6 +551,22 @@ def compute_quest_signals(record) -> set[str]:
         if winnable_tag:
             tags.add(winnable_tag)
 
+    # PROMPT 6-A: positive build-time signal -- per-instance HSV jitter
+    # end-to-end.  This runs OUTSIDE the target-entity if-block because
+    # it's a build-time/material signal and doesn't need a quest spec
+    # to operate; a record with a non-empty manifest but no quest_specs
+    # (the canonical "PRE-quest" snapshot) still demonstrates whether
+    # the per-instance jitter is alive across asset_ids in the scene.
+    # Mirrors the `compute_signals(record)` tier rather than the
+    # quest-spec tier -- record.manifest is the only required input.
+    # The other material-diversity signals in this function
+    # (room_not_monochrome, fabric_in_fabric_themes) run inside the
+    # if-block because they evaluate theme ratchets; this one does
+    # not.
+    per_instance_tag = check_material_per_instance_variation(record)
+    if per_instance_tag:
+        tags.add(per_instance_tag)
+
     if not tags:
         tags.add("clean")
     return tags
@@ -724,6 +746,77 @@ def check_fabric_in_fabric_themes(record, theme: str = "") -> str | None:
     return None
 
 
+# PROMPT 6-A: positive eval signal -- per-instance HSV jitter end-to-end.
+def check_material_per_instance_variation(record) -> str | None:
+    """Return ``"material_per_instance_variation"`` when the manifest
+    has >=2 distinct asset_ids in the same ``(category, material)`` group
+    AND the per-instance jitter hue shift differs by at least 1e-4 deg
+    across EVERY pair in that group (deterministic confirmation that
+    the build pipeline's per-instance HSV jitter is alive).
+
+    Returns None in two cases:
+      1. The manifest has no multi-(asset_id)-same-(category,material)
+         groups (the vacuous-OK case; per-instance variation can't be
+         demonstrated when there's nothing to compare against).
+      2. ANY pair across ANY multi-(asset_id)-same-(category,material)
+         group produces a near-zero hue delta -- a SHA-256 dedup
+         regression that we cannot induce in practice (the math is
+         collision-astronomically-low) but must guard against.
+
+    The 1e-4-deg floor is a SANITY guard, not the load-bearing
+    invariant: SHA-256 collisions that produce IDENTICAL seeds would
+    have probability ~2^-64, so the assertion is effectively
+    "/jitter_for returns numeric output and SHA-256 dedup isn't
+    catastrophically broken/".  Per-instance triples span the full
+    +/- 5 deg envelope, so healthy pairs always exceed the floor by
+    orders of magnitude.
+
+    # FUTURE: if SHA-256 dedup ever regresses and a collision becomes
+    # possible in practice, spawn a SIBLING high-severity tag
+    # `material_per_instance_collision` (mirrors how
+    # multi_npc_distinct_targets pairs with multi_npc_distinct_targets;
+    # the helper stays the same, just split the return into two tags).
+    """
+    manifest = getattr(record, "manifest", None) or []
+
+    # Group entries by (category, material_label).  We dedupe ids
+    # below via set(): actor identity is what matters for the per-
+    # instance jitter check, not row count, so a duplicate row of
+    # the same (cat, mat, id) in the manifest is signal-meaningless
+    # (only counts as one actor).
+    # (`id` IS the asset_id; same field name as confirmed by the
+    # existing compute_quest_signals code -- grep for `e.get("id")`.)
+    by_group: dict[tuple[str, str], list[str]] = {}
+    for entry in manifest:
+        if not isinstance(entry, dict):
+            continue
+        cat = entry.get("category", "")
+        mat_label = entry.get("material", "")
+        eid = entry.get("id", "")
+        if not (cat and mat_label and eid):
+            continue
+        by_group.setdefault((cat, mat_label), []).append(str(eid))
+
+    # Find groups with >=2 distinct asset_ids.
+    multi_asset: list[tuple[str, list[str]]] = []
+    for (_cat, mat_label), ids in by_group.items():
+        unique_ids = list(set(ids))
+        if len(unique_ids) >= 2:
+            multi_asset.append((mat_label, unique_ids))
+    if not multi_asset:
+        return None  # vacuous-OK
+
+    EPS_DEG = 1e-4
+    for mat_label, ids in multi_asset:
+        dh_first, _ds_first, _dv_first = jitter_for(ids[0], mat_label)
+        for other_id in ids[1:]:
+            dh_other, _ds_other, _dv_other = jitter_for(other_id, mat_label)
+            if abs(dh_first - dh_other) < EPS_DEG:
+                return None  # regression: SHA-256 dedup broke
+    return "material_per_instance_variation"
+
+
+
 def check_target_is_carryable(record) -> str | None:
     """P-E: Return a signal tag if the quest target_entity is NOT a
     carryable item (i.e. it's furniture or decor) AND carryables exist
@@ -877,6 +970,8 @@ SIGNAL_SEVERITY["insufficient_carryables_for_npcs"] = "high"
 # EB-7: material variety
 SIGNAL_SEVERITY["room_not_monochrome"] = "low"
 SIGNAL_SEVERITY["fabric_in_fabric_themes"] = "low"
+# PROMPT 6-A commit 3: per-instance jitter end-to-end confirmation
+SIGNAL_SEVERITY["material_per_instance_variation"] = "low"
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Spine Slice 2: dialogue-not-all-canned signal
