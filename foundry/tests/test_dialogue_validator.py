@@ -553,3 +553,238 @@ def test_validate_dialogue_ash_descriptor_does_not_emit_mismatch():
         f"{validated['ask']!r} vs original {dialogue['ask']!r}"
     )
     assert "ash" in validated["ask"].lower()  # intent assertion
+
+
+# ── Phase E — gold/silver containers (a) + parchment double-duty (b) ──────
+#
+# Two adjacent false-positive vectors surfaced after Phase D:
+#   (a) "Find my gold pouch" / "Bring me the silver chest" — the
+#       descriptor may name the *contents* (gold coins inside a
+#       leather pouch) OR the *container's actual material* (an
+#       ornate gold-adorned treasure chest).  Phase A1 mitigation:
+#       per-category contents-allowlist.  A descriptor that's in the
+#       contents-allowlist for the category is treated as
+#       possibly-canonical-contents, NOT compared against the
+#       manifest's material adjective.
+#   (b) "parchment" is BOTH a scroll-category synonym AND a
+#       _SUBSTANCE_ADJECTIVES entry.  Phase B1 mitigation: skip the
+#       match entirely when the captured descriptor word IS a known
+#       synonym of the category (synonym-role).  Combined with A1
+#       (some categories like 'desk' / 'book' / 'table' have
+#       parchment in their contents-allowlist), this protects common
+#       doc-on-surface shapes from false-positive mismatch DPs.
+
+def test_extract_substance_descriptor_gold_pouch_exempted():
+    """Phase E (a): 'gold coin-pouch' returns '' post-mitigation.
+    Pre-mitigation the helper captured 'gold' as a descriptor and
+    fires a mismatch DP against a leather coin-pouch.  After A1
+    exemption, 'gold' is in _CONTENTS_EXEMPTIONS['coin-pouch'] and
+    is skipped."""
+    from dialogue_validator import _extract_substance_descriptor
+    assert _extract_substance_descriptor(
+        "Find my gold coin-pouch.", "coin-pouch"
+    ) == "", (
+        "Phase E regression: 'gold' was treated as a substance "
+        "descriptor on a coin-pouch; 'gold' should be in "
+        "_CONTENTS_EXEMPTIONS['coin-pouch']"
+    )
+
+
+def test_extract_substance_descriptor_silver_chest_exempted():
+    """Phase E (a): 'silver chest' returns '' post-mitigation."""
+    from dialogue_validator import _extract_substance_descriptor
+    assert _extract_substance_descriptor(
+        "Bring me the silver chest.", "chest"
+    ) == "", (
+        "Phase E regression: 'silver' was treated as a substance "
+        "descriptor on a chest; 'silver' should be in "
+        "_CONTENTS_EXEMPTIONS['chest']"
+    )
+
+
+def test_validate_dialogue_parchment_scroll_synonym_bypass():
+    """Phase E (b): B1 — 'parchment' IS a synonym of 'scroll', so
+    when it precedes the bare category 'scroll' the helper returns
+    '' instead of treating 'parchment' as a substance descriptor
+    (which would mismatch against the typical 'paper' material)."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Read the old parchment scroll.",
+        "wrong": "That is not the right scroll.",
+        "thank": "Yes, the parchment scroll is mine!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="scroll", adjective="paper",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase E regression: parchment is a scroll-synonym but was "
+        f"treated as a substance descriptor; got codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"Phase E regression: parchment-as-synonym should leave the "
+        f"line preserved unchanged; got {validated['ask']!r} vs "
+        f"{dialogue['ask']!r}"
+    )
+
+
+def test_extract_substance_descriptor_parchment_desk_exempted():
+    """Phase E (b): A1 — 'parchment desk' returns '' because
+    'parchment' is in _CONTENTS_EXEMPTIONS['desk'].  Without the
+    mitigation, parchment would match a wooden desk manifest and
+    fire a false-positive mismatch DP."""
+    from dialogue_validator import _extract_substance_descriptor
+    assert _extract_substance_descriptor(
+        "An old parchment desk stands there.", "desk"
+    ) == "", (
+        "Phase E regression: 'parchment' before 'desk' should be "
+        "exempted by _CONTENTS_EXEMPTIONS['desk']"
+    )
+
+
+def test_validate_dialogue_parchment_via_volume_synonym_exempted():
+    """Phase E (b): A1 for book — a manifest material of 'leather'
+    must NOT fire mismatch when the LLM says 'My parchment volume'
+    (volume is a book-synonym; parchment is in
+    _CONTENTS_EXEMPTIONS['book'])."""
+    dialogue = {
+        "greet": "Hello, scholar.",
+        "ask":   "My parchment volume, please.",
+        "wrong": "That is not the volume.",
+        "thank": "Yes, the parchment volume is mine!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="book", adjective="leather",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase E regression: parchment-as-book-material via volume "
+        f"synonym should be exempted by _CONTENTS_EXEMPTIONS['book']; "
+        f"got codes={codes}"
+    )
+
+
+# └── Phase E *negative* tests — over-fire guards ────────────────
+#
+# The mitigations MUST NOT over-fire.  Three sanity-check shapes
+# that must STILL fire mismatch DPs after Phase E (so we don't
+# silently skip genuine structural-material mismatches):
+
+def test_validate_dialogue_gold_key_still_fires_mismatch():
+    """Phase E (a) negative: 'key' has no contents-exemption, so a
+    gold key vs iron manifest IS a real structural mismatch and
+    must still fire."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find my gold key.",
+        "wrong": "That is not my key.",
+        "thank": "Yes, the gold key is mine.",
+    }
+    _, decisions = validate_dialogue(dialogue, category="key", adjective="iron")
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase E regression: gold-on-key should still fire mismatch "
+        f"DP (key not in any contents-exemption); got codes={codes}"
+    )
+
+
+def test_validate_dialogue_iron_chest_still_fires_mismatch():
+    """Phase E (a) negative: 'iron' is in _SUBSTANCE_ADJECTIVES but
+    NOT in _CONTENTS_EXEMPTIONS['chest'] (only gold/silver/bronze/
+    copper are), so an 'iron chest' (manifest oak) is still a real
+    structural-material mismatch and must fire."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find me an iron chest.",
+        "wrong": "That is not the chest.",
+        "thank": "Yes, the iron chest will do.",
+    }
+    _, decisions = validate_dialogue(dialogue, category="chest", adjective="oak")
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase E regression: iron-on-chest should still fire mismatch "
+        f"DP (iron not in chest contents-exemptions); got codes={codes}"
+    )
+
+
+def test_validate_dialogue_parchment_chest_still_fires_mismatch():
+    """Phase E (b) negative: parchment IS in the substance whitelist
+    but NOT in _CONTENTS_EXEMPTIONS['chest'] (chest gets gold/silver/
+    bronze/copper only — chests are made of wood/metal, not paper),
+    so 'an old parchment chest' (manifest oak) is a real structural
+    mismatch and must still fire."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find my old parchment chest.",
+        "wrong": "That chest is wrong.",
+        "thank": "Yes, that's my parchment chest.",
+    }
+    _, decisions = validate_dialogue(dialogue, category="chest", adjective="oak")
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" in codes, (
+        f"Phase E regression: parchment-on-chest should still fire "
+        f"mismatch DP (parchment not in chest contents-exemptions); "
+        f"got codes={codes}"
+    )
+
+
+# └── Phase E follow-up exemptions (pot urn, bottle flask) ───────────
+#
+# After the code-reviewer flagged missed container-adjacent
+# exemptions, _CONTENTS_EXEMPTIONS was extended to include:
+#   - "pot" (synonym "urn" -- a gold urn / silver urn describes the
+#     ornament/contents, not the pot's own material).
+#   - "bottle" (synonyms flask/vial/phial/jug -- those shapes are
+#     typically glass or crystal shells).
+
+def test_validate_dialogue_gold_urn_passes_through_pot():
+    """Phase E follow-up: 'gold urn' (urn is pot's synonym) is in
+    _CONTENTS_EXEMPTIONS['pot'] (gold/silver/bronze/copper).  Must
+    NOT fire mismatch DP even when the manifest material is
+    unrelated (e.g. clay)."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Find my gold urn, please.",
+        "wrong": "That is not the right urn.",
+        "thank": "Yes, the gold urn is mine!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="pot", adjective="clay",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase E follow-up regression: gold urn via pot-synonym "
+        f"should be exempted by _CONTENTS_EXEMPTIONS['pot']; "
+        f"got codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"gold urn on pot should pass through unchanged; got "
+        f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )
+
+
+def test_validate_dialogue_glass_bottle_passes_through_bottle():
+    """Phase E follow-up: 'glass bottle' is in _CONTENTS_EXEMPTIONS
+    ['bottle'] (glass/crystal).  Must NOT fire mismatch DP even when
+    the manifest material is unrelated (e.g. iron).  Without the
+    exemption, an 'iron bottle' manifest + 'glass bottle' LLM line
+    would falsely fire a structural-material mismatch."""
+    dialogue = {
+        "greet": "Hello, traveler.",
+        "ask":   "Bring me the glass bottle.",
+        "wrong": "That is not the right bottle.",
+        "thank": "Yes, the glass bottle is what I needed!",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="bottle", adjective="iron",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase E follow-up regression: glass bottle should be "
+        f"exempted by _CONTENTS_EXEMPTIONS['bottle']; got "
+        f"codes={codes}"
+    )
+    assert validated["ask"] == dialogue["ask"], (
+        f"glass bottle should pass through unchanged; got "
+        f"{validated['ask']!r} vs {dialogue['ask']!r}"
+    )

@@ -129,6 +129,61 @@ _SUBSTANCE_ADJECTIVES: set[str] = {
 }
 
 
+# ── Phase E A1: per-category contents-allowlist ──────────────────────
+#
+# When a descriptor in _SUBSTANCE_ADJECTIVES ambiguously names the
+# *contents* of a container (gold coins in a leather pouch) or the
+# *contents* of a surface (a parchment scroll on a desk), the
+# validator should not fire a mismatch against the container's /
+# surface's own manifest material.  The dict below lists, for each
+# shape of container/surface, the descriptors whose presence in a
+# line is a legitimate contents-context descriptor (not a
+# structural-material mismatch).
+#
+#   - Containers (coin-pouch, chest, pot) accept gold/silver/bronze/copper
+#     (the metals commonly held inside; note "pot" has "urn" in its
+#     synonym list, so "gold urn" / "silver urn" are contents-shape
+#     descriptors for the pot category).
+#   - Containers (bottle) accept glass/crystal (since bottle's synonym
+#     list includes flask/vial/phial/jug, which are typically glass
+#     or crystal shells).
+#   - Surfaces (book, desk, table, shelf) accept parchment/paper/
+#     vellum (the document materials legitimately on the surface;
+#     vellum extends to all four for symmetry with desk's prior
+#     exemption and to cover illuminated-manuscript / vellum-bound
+#     shapes).
+#
+# Adding a future contents-shape is a one-line change here + a
+# regression test in foundry/tests/test_dialogue_validator.py (see
+# the Phase E over-fire guards for the contract shape).  A1 reads
+# this dict from _extract_substance_descriptor.
+#
+# Phase E B1 (synonym-role skip) lives in _extract_substance_descriptor
+# itself: when the captured descriptor IS a known synonym of the
+# category, the match is skipped -- a "parchment scroll" with a
+# paper manifest will not fire because parchment is in scroll's
+# synonym list (synonym-role, not descriptor-role).
+_CONTENTS_EXEMPTIONS: dict[str, set[str]] = {
+    # Containers whose descriptors name contents.
+    "coin-pouch": {"gold", "silver", "bronze", "copper"},
+    "chest":      {"gold", "silver", "bronze", "copper"},
+    # Pot has "urn" in its synonym list -- a gold urn / silver urn
+    # describes the ornament/contents, not the pot's own material.
+    "pot":        {"gold", "silver", "bronze", "copper"},
+    # Bottle has flask/vial/phial/jug in its synonyms -- those
+    # shapes are typically glass or crystal shells.
+    "bottle":     {"glass", "crystal"},
+    # Surfaces covered in paper-like documents.  Vellum extends to
+    # all four (symmetric with desk): illuminated manuscripts,
+    # vellum-bound furnishings, etc.
+    "desk":  {"parchment", "paper", "vellum"},
+    "table": {"parchment", "paper", "vellum"},
+    "shelf": {"parchment", "paper", "vellum"},
+    # Books whose binding/page material is parchment, paper, or vellum.
+    "book":  {"parchment", "paper", "vellum"},
+}
+
+
 def _extract_substance_descriptor(line: str, category: str) -> str:
     """Phase C Fix B: positional extract of the substance adjective
     that DIRECTLY modifies *category* (or one of its known synonyms)
@@ -153,12 +208,35 @@ def _extract_substance_descriptor(line: str, category: str) -> str:
       line="Find my oak key",             category="key"     → "oak"
     """
     lower = line.lower()
-    terms = [category.lower()] + list(_CATEGORY_SYNONYMS.get(category.lower(), []))
+    # Phase E A1 + B1: build the per-category exemption sets once
+    # outside the finditer loop so we don't re-resolve them per match.
+    cat_lower = category.lower()
+    synonyms_set = set(_CATEGORY_SYNONYMS.get(cat_lower, []))
+    contents_exempt = _CONTENTS_EXEMPTIONS.get(cat_lower, set())
+    terms = [cat_lower] + list(synonyms_set)
     for term in terms:
         for m in re.finditer(rf"\b(\w+)\s+{re.escape(term)}\b", lower):
             word = m.group(1)
-            if word in _SUBSTANCE_ADJECTIVES:
-                return word
+            if word not in _SUBSTANCE_ADJECTIVES:
+                continue
+            # Phase E B1: skip if the captured descriptor is acting as a
+            # synonym of the category itself (e.g. "parchment scroll" --
+            # "parchment" is in the scroll synonym list, so it is
+            # playing a synonym-role, NOT a substance-descriptor role).
+            # Without B1, a paper-manifest scroll would fire a false
+            # mismatch DP on a perfectly legitimate line.
+            if word in synonyms_set:
+                continue
+            # Phase E A1: skip if the descriptor is a known
+            # contents-context descriptor for the category (e.g. "gold
+            # coin-pouch" -- "gold" is in coin-pouch's
+            # contents-exempt set, naming the contents (coins) rather
+            # than the container-material (often leather)).
+            # Without A1, a leather-manifest coin-pouch would fire a
+            # false mismatch DP on a perfectly legitimate line.
+            if word in contents_exempt:
+                continue
+            return word
     return ""
 
 # EB-6: Idle-bark words — a line must contain at least one to pass
