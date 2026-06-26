@@ -487,3 +487,69 @@ def test_validate_dialogue_emits_both_adjective_mismatch_and_fallback():
         f"fallback should use the correct adjective 'oak'; "
         f"got {validated['ask']!r}"
     )
+
+
+# ── Phase D — 'ash' whitelist removal (code-reviewer deferred nit) ─────
+#
+# 'ash' was originally in _SUBSTANCE_ADJECTIVES, but:
+#   - there is NO 'ash' / 'ash_wood' material in the foundry materials
+#     palette, so the matcher can only ever fire if the LLM
+#     hallucinates 'ash' as a descriptor — the validator can never
+#     *correctly* match 'ash';
+#   - 'ash' doubles as a colour adjective in non-substance English
+#     ('ash blonde', 'ash grey', 'ash urn' as a funerary urn for
+#     ashes, 'ash figurine' as incense residue), so any line
+#     containing it before a category word tends to be a false
+#     positive.
+# Removing 'ash' from the set closes all those vectors at zero real
+# coverage loss (the matcher could never legitimately match an 'ash'
+# material).
+
+def test_extract_substance_descriptor_ash_returns_empty():
+    """Phase D: 'ash' is no longer in _SUBSTANCE_ADJECTIVES, so even
+    when it precedes a category synonym ('urn' for 'pot'), the
+    helper returns '' instead of 'ash'."""
+    from dialogue_validator import _extract_substance_descriptor
+    assert _extract_substance_descriptor(
+        "I seek the ash urn.", "pot"
+    ) == "", (
+        "Phase D regression: 'ash' is still in _SUBSTANCE_ADJECTIVES "
+        "and was captured via the 'urn' synonym for 'pot'"
+    )
+
+
+def test_validate_dialogue_ash_descriptor_does_not_emit_mismatch():
+    """Phase D: a line with 'ash urn' + category='pot' + an unrelated
+    manifest adjective ('ceramic') must NOT emit a
+    quest.dialogue_adjective_mismatch DP.  Without the whitelist
+    removal, the helper would capture 'ash' (via 'urn' synonym) and
+    mismatch it against 'ceramic'."""
+    dialogue = {
+        "greet": "Hello there, traveler.",
+        "ask":   "Bring me the ash urn. Please.",
+        "wrong": "That is not what I am looking for.",
+        "thank": "You found the ash urn! Thank you.",
+    }
+    validated, decisions = validate_dialogue(
+        dialogue, category="pot", adjective="ceramic",
+    )
+    codes = [d.code for d in decisions]
+    assert "quest.dialogue_adjective_mismatch" not in codes, (
+        f"Phase D regression: 'ash' was treated as a substance "
+        f"descriptor; got codes={codes}"
+    )
+    # Sanity: under Phase-D, the validator accepts the line as-is
+    # (the LLM line is generic — no substance descriptor, so the
+    # validator no-ops; the line still references the category via
+    # 'urn' synonym so _references_quest passes).  The equality
+    # check below pins the no-op contract so any future fallback
+    # template that happens to contain the word "ash" can't slip
+    # through as a false-positive signal; the substring check
+    # stays as a redundant intent-assert so future readers
+    # remember why the line passes through untouched.
+    assert validated["ask"] == dialogue["ask"], (
+        f"Phase D regression: validator should no-op on lines with no "
+        f"substance descriptor (line preserved unchanged); got "
+        f"{validated['ask']!r} vs original {dialogue['ask']!r}"
+    )
+    assert "ash" in validated["ask"].lower()  # intent assertion

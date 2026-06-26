@@ -85,9 +85,36 @@ _CATEGORY_SYNONYMS: dict[str, list[str]] = {
 # positional extract (see _extract_substance_descriptor) only fires
 # when the substance word PRECEDES the category, not when it IS the
 # category word.
+#
+# Phase D (code-reviewer follow-up): "ash" is intentionally NOT in
+# this set.  Reason: there is no "ash" / "ash_wood" / "ash-tree"
+# material in the foundry manifest, so the matcher could only ever fire
+# if the LLM hallucinated "ash" as a descriptor (zero legitimate
+# matches); AND "ash" is heavily ambiguous in non-substance English
+# ("ash blonde", "ash grey", "ash urn" as a funerary urn for ashes,
+# "ash figurine" as incense residue).  Keeping it produced more
+# false-positive DP emissions than real coverage.  Adding it back is
+# fine if/when a real "ash" material lands in the palette — update the
+# Phase D tests in foundry/tests/test_dialogue_validator.py then.
+#
+# Phase E (deferred): two adjacent false-positive vectors the same
+# positional extract will hit once they surface in builds:
+#   - "gold" / "silver" in container contexts — "Find my gold pouch"
+#     / "Bring me the gold chest" — the descriptor MAY name the
+#     contents (gold coins inside a leather pouch) OR the container's
+#     actual material (an ornate gold-adorned treasure chest).  The
+#     positional extract can't tell them apart, so the validator
+#     fires adjective_mismatch for both shapes.  Mitigation TBD
+#     pending a survey of LLM output shapes — likely a per-category
+#     contents-class allowlist of some form, but specifics still open.
+#   - "parchment" double-duty — it's both a scroll-category synonym
+#     AND a substance; positional extract saves most cases but
+#     "parchment <non-scroll>" (e.g. "old parchment desk" where the
+#     manifest desk material is oak) still slips through and fires a
+#     false-positive mismatch DP.
 _SUBSTANCE_ADJECTIVES: set[str] = {
     # Wood
-    "wooden", "oak", "walnut", "pine", "ash", "mahogany",
+    "wooden", "oak", "walnut", "pine", "mahogany",  # ash removed — Phase D
     # Metal
     "iron", "steel", "brass", "bronze", "copper", "metal",
     "gold", "golden", "silver", "platinum",
